@@ -388,6 +388,44 @@ impl Database {
         )?;
         Ok(())
     }
+
+    /// Get all comments for a specific PR
+    pub fn get_comments_for_pr(&self, pr_id: i64) -> Result<Vec<PrCommentRow>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, pr_id, author, body, comment_type, file_path, line_number, addressed, created_at 
+             FROM pr_comments 
+             WHERE pr_id = ?1 
+             ORDER BY created_at ASC"
+        )?;
+
+        let comments = stmt.query_map([pr_id], |row| {
+            Ok(PrCommentRow {
+                id: row.get(0)?,
+                pr_id: row.get(1)?,
+                author: row.get(2)?,
+                body: row.get(3)?,
+                comment_type: row.get(4)?,
+                file_path: row.get(5)?,
+                line_number: row.get(6)?,
+                addressed: row.get(7)?,
+                created_at: row.get(8)?,
+            })
+        })?;
+
+        let mut result = Vec::new();
+        for comment in comments {
+            result.push(comment?);
+        }
+        Ok(result)
+    }
+
+    /// Mark a PR comment as addressed
+    pub fn mark_comment_addressed(&self, id: i64) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute("UPDATE pr_comments SET addressed = 1 WHERE id = ?1", [id])?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]

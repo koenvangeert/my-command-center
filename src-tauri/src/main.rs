@@ -10,10 +10,11 @@ mod github_client;
 mod github_poller;
 
 use std::sync::Mutex;
-use tauri::{Manager, State};
+use tauri::{Manager, State, Emitter};
 use opencode_manager::OpenCodeManager;
 use opencode_client::OpenCodeClient;
 use jira_client::JiraClient;
+use github_client::GitHubClient;
 use db::TicketRow;
 
 // ============================================================================
@@ -235,6 +236,128 @@ async fn transition_ticket(
         .map_err(|e| format!("Failed to transition ticket: {}", e))
 }
 
+/// Poll GitHub PR comments now (one-shot sync)
+#[tauri::command]
+async fn poll_pr_comments_now(
+    db: State<'_, Mutex<db::Database>>,
+    github_client: State<'_, GitHubClient>,
+    app: tauri::AppHandle,
+) -> Result<usize, String> {
+    // Read config from database
+    let (github_token, github_default_repo) = {
+        let db_lock = db.lock().unwrap();
+
+        let github_token = db_lock
+            .get_config("github_token")
+            .map_err(|e| format!("Failed to read config: {}", e))?
+            .unwrap_or_default();
+
+        let github_default_repo = db_lock
+            .get_config("github_default_repo")
+            .map_err(|e| format!("Failed to read config: {}", e))?
+            .unwrap_or_default();
+
+        (github_token, github_default_repo)
+    };
+
+    if github_token.is_empty() {
+        return Err("github_token not configured".to_string());
+    }
+
+    // Parse repo owner and name from github_default_repo (format: "owner/repo")
+    let (repo_owner, repo_name) = {
+        let parts: Vec<&str> = github_default_repo.split('/').collect();
+        if parts.len() != 2 {
+            return Err("github_default_repo must be in format 'owner/repo'".to_string());
+        }
+        (parts[0].to_string(), parts[1].to_string())
+    };
+
+    // Get all open PRs from database
+    let open_prs = {
+        let db_lock = db.lock().unwrap();
+        db_lock
+            .get_open_prs()
+            .map_err(|e| format!("Failed to get open PRs: {}", e))?
+    };
+
+    let mut new_comment_count = 0;
+
+    // For each PR, fetch comments and insert new ones
+    for pr in open_prs {
+        let comments = github_client
+            .get_pr_comments(&repo_owner, &repo_name, pr.id, &github_token)
+            .await
+            .map_err(|e| format!("Failed to fetch PR comments: {}", e))?;
+
+        for comment in comments {
+            // Check if comment already exists
+            let db_lock = db.lock().unwrap();
+            let exists = db_lock
+                .comment_exists(comment.id)
+                .map_err(|e| format!("Failed to check comment existence: {}", e))?;
+
+            if !exists {
+                // Parse timestamp
+                let created_at = chrono::DateTime::parse_from_rfc3339(&comment.created_at)
+                    .map_err(|e| format!("Failed to parse timestamp: {}", e))?
+                    .timestamp();
+
+                // Insert comment
+                db_lock
+                    .insert_pr_comment(
+                        comment.id,
+                        pr.id,
+                        &comment.user.login,
+                        &comment.body,
+                        &comment.comment_type,
+                        comment.path.as_deref(),
+                        comment.line,
+                        created_at,
+                    )
+                    .map_err(|e| format!("Failed to insert comment: {}", e))?;
+
+                new_comment_count += 1;
+
+                // Emit event for new comment
+                let _ = app.emit("new-pr-comment", serde_json::json!({
+                    "pr_id": pr.id,
+                    "comment_id": comment.id,
+                    "author": comment.user.login,
+                    "body": comment.body,
+                }));
+            }
+            drop(db_lock);
+        }
+    }
+
+    Ok(new_comment_count)
+}
+
+/// Get all comments for a specific PR
+#[tauri::command]
+async fn get_pr_comments(
+    db: State<'_, Mutex<db::Database>>,
+    pr_id: i64,
+) -> Result<Vec<db::PrCommentRow>, String> {
+    let db_lock = db.lock().unwrap();
+    db_lock
+        .get_comments_for_pr(pr_id)
+        .map_err(|e| format!("Failed to get PR comments: {}", e))
+}
+
+/// Mark a PR comment as addressed
+#[tauri::command]
+async fn mark_comment_addressed(
+    db: State<'_, Mutex<db::Database>>,
+    comment_id: i64,
+) -> Result<(), String> {
+    let db_lock = db.lock().unwrap();
+    db_lock
+        .mark_comment_addressed(comment_id)
+        .map_err(|e| format!("Failed to mark comment addressed: {}", e))
+}
+
 /// Map JIRA status to cockpit status
 fn map_jira_status_to_cockpit(jira_status: &str) -> &'static str {
     match jira_status {
@@ -296,10 +419,14 @@ fn main() {
             // Create JIRA client
             let jira_client = JiraClient::new();
 
+            // Create GitHub client
+            let github_client = GitHubClient::new();
+
             // Store OpenCode manager and client in app state
             app.manage(opencode_manager);
             app.manage(opencode_client);
             app.manage(jira_client);
+            app.manage(github_client);
 
             let app_handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
@@ -323,7 +450,10 @@ fn main() {
             send_prompt,
             get_tickets,
             sync_jira_now,
-            transition_ticket
+            transition_ticket,
+            poll_pr_comments_now,
+            get_pr_comments,
+            mark_comment_addressed
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
