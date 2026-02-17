@@ -11,6 +11,8 @@ use std::sync::Mutex;
 use tauri::{Manager, State};
 use opencode_manager::OpenCodeManager;
 use opencode_client::OpenCodeClient;
+use jira_client::JiraClient;
+use db::TicketRow;
 
 // ============================================================================
 // Tauri Commands
@@ -62,6 +64,187 @@ async fn send_prompt(
         .map_err(|e| format!("Failed to send prompt: {}", e))
 }
 
+/// Get all tickets from the database
+#[tauri::command]
+async fn get_tickets(
+    db: State<'_, Mutex<db::Database>>,
+) -> Result<Vec<TicketRow>, String> {
+    let db = db.lock().unwrap();
+    db.get_all_tickets()
+        .map_err(|e| format!("Failed to get tickets: {}", e))
+}
+
+/// Sync JIRA now (one-shot sync, not the background loop)
+#[tauri::command]
+async fn sync_jira_now(
+    db: State<'_, Mutex<db::Database>>,
+    jira_client: State<'_, JiraClient>,
+) -> Result<usize, String> {
+    // Read config from database
+    let (jira_base_url, jira_username, jira_api_token, jira_board_id, filter_assigned_to_me, exclude_done_tickets, custom_jql) = {
+        let db_lock = db.lock().unwrap();
+
+        let jira_base_url = db_lock
+            .get_config("jira_base_url")
+            .map_err(|e| format!("Failed to read config: {}", e))?
+            .ok_or("jira_base_url not configured")?;
+
+        let jira_username = db_lock
+            .get_config("jira_username")
+            .map_err(|e| format!("Failed to read config: {}", e))?
+            .ok_or("jira_username not configured")?;
+
+        let jira_api_token = db_lock
+            .get_config("jira_api_token")
+            .map_err(|e| format!("Failed to read config: {}", e))?
+            .ok_or("jira_api_token not configured")?;
+
+        let jira_board_id = db_lock
+            .get_config("jira_board_id")
+            .map_err(|e| format!("Failed to read config: {}", e))?
+            .unwrap_or_default();
+
+        let filter_assigned_to_me = db_lock
+            .get_config("filter_assigned_to_me")
+            .map_err(|e| format!("Failed to read config: {}", e))?
+            .unwrap_or_else(|| "true".to_string())
+            == "true";
+
+        let exclude_done_tickets = db_lock
+            .get_config("exclude_done_tickets")
+            .map_err(|e| format!("Failed to read config: {}", e))?
+            .unwrap_or_else(|| "true".to_string())
+            == "true";
+
+        let custom_jql = db_lock
+            .get_config("custom_jql")
+            .map_err(|e| format!("Failed to read config: {}", e))?
+            .unwrap_or_default();
+
+        (jira_base_url, jira_username, jira_api_token, jira_board_id, filter_assigned_to_me, exclude_done_tickets, custom_jql)
+    };
+
+    // Build JQL query
+    let mut conditions = Vec::new();
+    if filter_assigned_to_me {
+        conditions.push("assignee = currentUser()".to_string());
+    }
+    if !jira_board_id.is_empty() {
+        conditions.push(format!("project = {}", jira_board_id));
+    }
+    if exclude_done_tickets {
+        conditions.push("status != Done".to_string());
+    }
+    if !custom_jql.is_empty() {
+        conditions.push(custom_jql);
+    }
+
+    let jql = if conditions.is_empty() {
+        "ORDER BY updated DESC".to_string()
+    } else {
+        format!("{} ORDER BY updated DESC", conditions.join(" AND "))
+    };
+
+    // Fetch issues from JIRA
+    let issues = jira_client
+        .search_issues(&jira_base_url, &jira_username, &jira_api_token, &jql)
+        .await
+        .map_err(|e| format!("Failed to fetch issues from JIRA: {}", e))?;
+
+    // Upsert tickets to database
+    let mut success_count = 0;
+    for issue in issues {
+        let jira_status = issue.fields.status.name.clone();
+        let status = map_jira_status_to_cockpit(&jira_status);
+        let description = issue
+            .fields
+            .description
+            .as_ref()
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        let assignee = issue
+            .fields
+            .assignee
+            .as_ref()
+            .map(|u| u.display_name.clone())
+            .unwrap_or_default();
+
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64;
+
+        let db_lock = db.lock().unwrap();
+        if let Err(e) = db_lock.upsert_ticket(
+            &issue.key,
+            &issue.fields.summary,
+            &description,
+            status,
+            &jira_status,
+            &assignee,
+            now,
+            now,
+        ) {
+            eprintln!("Failed to upsert ticket {}: {}", issue.key, e);
+        } else {
+            success_count += 1;
+        }
+        drop(db_lock);
+    }
+
+    Ok(success_count)
+}
+
+/// Transition a ticket to a new status
+#[tauri::command]
+async fn transition_ticket(
+    db: State<'_, Mutex<db::Database>>,
+    jira_client: State<'_, JiraClient>,
+    key: String,
+    transition_id: String,
+) -> Result<(), String> {
+    // Read JIRA credentials from config
+    let (jira_base_url, jira_username, jira_api_token) = {
+        let db_lock = db.lock().unwrap();
+
+        let jira_base_url = db_lock
+            .get_config("jira_base_url")
+            .map_err(|e| format!("Failed to read config: {}", e))?
+            .ok_or("jira_base_url not configured")?;
+
+        let jira_username = db_lock
+            .get_config("jira_username")
+            .map_err(|e| format!("Failed to read config: {}", e))?
+            .ok_or("jira_username not configured")?;
+
+        let jira_api_token = db_lock
+            .get_config("jira_api_token")
+            .map_err(|e| format!("Failed to read config: {}", e))?
+            .ok_or("jira_api_token not configured")?;
+
+        (jira_base_url, jira_username, jira_api_token)
+    };
+
+    // Call JIRA API to transition ticket
+    jira_client
+        .transition_ticket(&jira_base_url, &jira_username, &jira_api_token, &key, &transition_id)
+        .await
+        .map_err(|e| format!("Failed to transition ticket: {}", e))
+}
+
+/// Map JIRA status to cockpit status
+fn map_jira_status_to_cockpit(jira_status: &str) -> &'static str {
+    match jira_status {
+        "To Do" => "todo",
+        "In Progress" => "in_progress",
+        "In Review" | "Code Review" => "in_review",
+        "Testing" | "QA" => "testing",
+        "Done" | "Closed" => "done",
+        _ => "todo",
+    }
+}
+
 // ============================================================================
 // Response Types
 // ============================================================================
@@ -108,9 +291,13 @@ fn main() {
             // Create OpenCode API client
             let opencode_client = OpenCodeClient::with_base_url(opencode_manager.api_url());
 
+            // Create JIRA client
+            let jira_client = JiraClient::new();
+
             // Store OpenCode manager and client in app state
             app.manage(opencode_manager);
             app.manage(opencode_client);
+            app.manage(jira_client);
 
             let app_handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
@@ -124,7 +311,10 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             get_opencode_status,
             create_session,
-            send_prompt
+            send_prompt,
+            get_tickets,
+            sync_jira_now,
+            transition_ticket
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

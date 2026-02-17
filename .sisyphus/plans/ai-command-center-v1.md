@@ -487,7 +487,7 @@ async fn poll_pr_comments(db: &Database, github_client: &GitHubClient) {
   - Estimated effort: 2 hours
   - Deliverable: Tokio task that polls JIRA every 60s with JQL filter (assignee = currentUser()), upserts tickets to DB, emits events
 
-- [ ] **Task 2.3**: Create Tauri commands for JIRA operations
+- [x] **Task 2.3**: Create Tauri commands for JIRA operations
   - Parallelizable: No (depends on 2.1)
   - Estimated effort: 1 hour
   - Deliverable: Tauri commands: `sync_jira_now`, `get_tickets`, `transition_ticket`

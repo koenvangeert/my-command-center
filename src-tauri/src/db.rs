@@ -1,6 +1,20 @@
 use rusqlite::{Connection, Result};
+use serde::Serialize;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+
+/// Ticket row from database
+#[derive(Debug, Clone, Serialize)]
+pub struct TicketRow {
+    pub id: String,
+    pub title: String,
+    pub description: Option<String>,
+    pub status: String,
+    pub jira_status: Option<String>,
+    pub assignee: Option<String>,
+    pub created_at: i64,
+    pub updated_at: i64,
+}
 
 /// Database connection wrapper for thread-safe access
 pub struct Database {
@@ -216,6 +230,33 @@ impl Database {
             ],
         )?;
         Ok(())
+    }
+
+    /// Get all tickets from the database
+    pub fn get_all_tickets(&self) -> Result<Vec<TicketRow>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, title, description, status, jira_status, assignee, created_at, updated_at FROM tickets ORDER BY updated_at DESC"
+        )?;
+
+        let tickets = stmt.query_map([], |row| {
+            Ok(TicketRow {
+                id: row.get(0)?,
+                title: row.get(1)?,
+                description: row.get(2)?,
+                status: row.get(3)?,
+                jira_status: row.get(4)?,
+                assignee: row.get(5)?,
+                created_at: row.get(6)?,
+                updated_at: row.get(7)?,
+            })
+        })?;
+
+        let mut result = Vec::new();
+        for ticket in tickets {
+            result.push(ticket?);
+        }
+        Ok(result)
     }
 }
 
