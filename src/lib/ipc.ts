@@ -1,16 +1,24 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Ticket, AgentSession, AgentLog, PrComment, PullRequestInfo, OpenCodeStatus } from "./types";
+import type { Task, AgentSession, AgentLog, PrComment, PullRequestInfo, OpenCodeStatus } from "./types";
 
-export async function getTickets(): Promise<Ticket[]> {
-  return invoke<Ticket[]>("get_tickets");
+export async function createTask(title: string, description: string, status: string, jiraKey: string | null): Promise<Task> {
+  return invoke<Task>("create_task", { title, description, status, jiraKey });
 }
 
-export async function syncJiraNow(): Promise<number> {
-  return invoke<number>("sync_jira_now");
+export async function updateTask(id: string, title: string, description: string, jiraKey: string | null): Promise<void> {
+  return invoke("update_task", { id, title, description, jiraKey });
 }
 
-export async function transitionTicket(key: string, transitionId: string): Promise<void> {
-  return invoke("transition_ticket", { key, transitionId });
+export async function updateTaskStatus(id: string, status: string): Promise<void> {
+  return invoke("update_task_status", { id, status });
+}
+
+export async function getTasks(): Promise<Task[]> {
+  return invoke<Task[]>("get_tasks");
+}
+
+export async function refreshJiraInfo(): Promise<number> {
+  return invoke<number>("refresh_jira_info");
 }
 
 export async function getOpenCodeStatus(): Promise<OpenCodeStatus> {
@@ -77,10 +85,10 @@ export async function setConfig(key: string, value: string): Promise<void> {
   return invoke("set_config", { key, value });
 }
 
-export async function getTicketDetail(ticketId: string): Promise<Ticket> {
-  return invoke<Ticket>("get_ticket_detail", { ticketId });
+export async function getTaskDetail(taskId: string): Promise<Task> {
+  return invoke<Task>("get_task_detail", { taskId });
 }
 
-export async function updateTicketFields(ticketId: string, acceptanceCriteria: string, planText: string): Promise<void> {
-  return invoke("update_ticket_fields", { ticketId, acceptanceCriteria, planText });
+export async function updateTaskFields(taskId: string, acceptanceCriteria: string, planText: string): Promise<void> {
+  return invoke("update_task_fields", { taskId, acceptanceCriteria, planText });
 }

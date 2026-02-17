@@ -1,20 +1,22 @@
 <script lang="ts">
-  import type { Ticket, PrComment } from '../lib/types'
+  import type { Task, PrComment, KanbanColumn } from '../lib/types'
+  import { COLUMNS, COLUMN_LABELS } from '../lib/types'
   import { activeSessions } from '../lib/stores'
-  import { abortSession } from '../lib/ipc'
+  import { abortSession, updateTaskStatus } from '../lib/ipc'
   import LogViewer from './LogViewer.svelte'
   import CheckpointPanel from './CheckpointPanel.svelte'
   import PrCommentsPanel from './PrCommentsPanel.svelte'
   import { createEventDispatcher } from 'svelte'
 
-  export let ticket: Ticket
+  export let task: Task
   export let comments: PrComment[] = []
 
   const dispatch = createEventDispatcher()
 
   let activeTab: 'overview' | 'logs' | 'checkpoints' | 'comments' = 'overview'
 
-  $: session = $activeSessions.get(ticket.id) || null
+  $: session = $activeSessions.get(task.id) || null
+  $: statusLabel = COLUMN_LABELS[task.status as KanbanColumn] || task.status
 
   function close() {
     dispatch('close')
@@ -32,13 +34,22 @@
   function formatDate(timestamp: number): string {
     return new Date(timestamp * 1000).toLocaleDateString()
   }
+
+  async function handleStatusChange(newStatus: KanbanColumn) {
+    if (newStatus === task.status) return
+    try {
+      await updateTaskStatus(task.id, newStatus)
+    } catch (e) {
+      console.error('Failed to update status:', e)
+    }
+  }
 </script>
 
 <div class="detail-panel">
   <div class="panel-header">
     <div class="header-info">
-      <span class="ticket-id">{ticket.id}</span>
-      <h2 class="ticket-title">{ticket.title}</h2>
+      <span class="task-id">{task.id}</span>
+      <h2 class="task-title">{task.title}</h2>
     </div>
     <button class="close-btn" on:click={close}>X</button>
   </div>
@@ -60,24 +71,51 @@
       <div class="overview">
         <div class="field">
           <span class="label">Status</span>
-          <span class="value">{ticket.jira_status || ticket.status}</span>
+          <span class="value">{statusLabel}</span>
         </div>
-        {#if ticket.assignee}
-          <div class="field">
-            <span class="label">Assignee</span>
-            <span class="value">{ticket.assignee}</span>
-          </div>
-        {/if}
         <div class="field">
           <span class="label">Updated</span>
-          <span class="value">{formatDate(ticket.updated_at)}</span>
+          <span class="value">{formatDate(task.updated_at)}</span>
         </div>
-        {#if ticket.description}
+        {#if task.description}
           <div class="field">
             <span class="label">Description</span>
-            <pre class="description">{ticket.description}</pre>
+            <pre class="description">{task.description}</pre>
           </div>
         {/if}
+        {#if task.jira_key}
+          <div class="field">
+            <span class="label">JIRA</span>
+            <span class="value">{task.jira_key}</span>
+          </div>
+          {#if task.jira_status}
+            <div class="field">
+              <span class="label">JIRA Status</span>
+              <span class="value">{task.jira_status}</span>
+            </div>
+          {/if}
+          {#if task.jira_assignee}
+            <div class="field">
+              <span class="label">JIRA Assignee</span>
+              <span class="value">{task.jira_assignee}</span>
+            </div>
+          {/if}
+        {/if}
+        <div class="field">
+          <span class="label">Change Status</span>
+          <div class="status-actions">
+            {#each COLUMNS as col}
+              <button 
+                class="status-btn" 
+                class:active={task.status === col}
+                on:click={() => handleStatusChange(col)}
+                disabled={task.status === col}>
+                {COLUMN_LABELS[col]}
+              </button>
+            {/each}
+          </div>
+        </div>
+        <button class="btn btn-edit" on:click={() => dispatch('edit')}>Edit Task</button>
         {#if session}
           <div class="field">
             <span class="label">Agent</span>
@@ -103,7 +141,7 @@
         <div class="empty">No active session</div>
       {/if}
     {:else if activeTab === 'comments'}
-      <PrCommentsPanel ticketId={ticket.id} {comments} />
+      <PrCommentsPanel ticketId={task.id} {comments} />
     {/if}
   </div>
 </div>
@@ -130,13 +168,13 @@
     min-width: 0;
   }
 
-  .ticket-id {
+  .task-id {
     font-size: 0.7rem;
     font-weight: 600;
     color: var(--accent);
   }
 
-  .ticket-title {
+  .task-title {
     font-size: 0.9rem;
     margin: 4px 0 0;
     color: var(--text-primary);
@@ -262,5 +300,51 @@
     background: var(--error);
     color: white;
     align-self: flex-start;
+  }
+
+  .btn-edit {
+    background: var(--accent);
+    color: white;
+    align-self: flex-start;
+  }
+
+  .btn-edit:hover {
+    opacity: 0.9;
+  }
+
+  .status-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+  }
+
+  .status-btn {
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    cursor: pointer;
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+  }
+
+  .status-btn:hover:not(:disabled) {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--accent);
+  }
+
+  .status-btn.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+
+  .status-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.8;
   }
 </style>

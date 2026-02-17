@@ -1,15 +1,14 @@
 //! JIRA Sync Service
 //!
-//! Background Tokio task that polls JIRA every N seconds, builds JQL queries based on config,
-//! fetches tickets, upserts them to SQLite, and emits Tauri events to notify the frontend.
+//! Background Tokio task that polls JIRA every N seconds, refreshes JIRA info on tasks
+//! that have JIRA links, and emits Tauri events to notify the frontend.
 //!
 //! ## Architecture
 //! - Spawned as background task in main.rs setup hook
-//! - Reads config from database (API token, board ID, filters, poll interval)
-//! - Builds JQL query based on filter settings
-//! - Calls JiraClient::search_issues() to fetch tickets
-//! - Upserts tickets to database via Database::upsert_ticket()
-//! - Maps JIRA status to cockpit status
+//! - Reads config from database (API token, username, base URL, poll interval)
+//! - Queries database for tasks with JIRA links
+//! - Fetches JIRA issue data for those specific keys
+//! - Updates JIRA status and assignee fields in database (read-only display info)
 //! - Emits `jira-sync-complete` event to frontend
 //! - Sleeps for poll_interval seconds, then loops
 //!
@@ -19,7 +18,8 @@
 //! - Network errors trigger retry on next cycle
 
 use crate::db::Database;
-use crate::jira_client::{JiraClient, JiraIssue};
+use crate::jira_client::JiraClient;
+use std::collections::HashSet;
 use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::time::{sleep, Duration};
@@ -41,32 +41,59 @@ pub async fn start_jira_sync(app: AppHandle) {
     let jira_client = JiraClient::new();
 
     loop {
-        // Read config from database
         let db = app.state::<Mutex<Database>>();
         let config = match read_sync_config(&db) {
             Ok(cfg) => cfg,
             Err(e) => {
                 eprintln!("[JIRA Sync] Failed to read config: {}", e);
-                sleep(Duration::from_secs(60)).await; // Default fallback
+                sleep(Duration::from_secs(60)).await;
                 continue;
             }
         };
 
-        // Skip sync if required config is missing
         if config.jira_api_token.is_empty()
             || config.jira_username.is_empty()
             || config.jira_base_url.is_empty()
         {
-            eprintln!("[JIRA Sync] Missing required config (jira_api_token, jira_username, or jira_base_url). Skipping sync.");
             sleep(Duration::from_secs(config.poll_interval)).await;
             continue;
         }
 
-        // Build JQL query
-        let jql = build_jql_query(&config);
-        println!("[JIRA Sync] Polling JIRA with JQL: {}", jql);
+        let tasks_result = {
+            let db_lock = db.lock().unwrap();
+            db_lock.get_tasks_with_jira_links()
+        };
 
-        // Fetch tickets from JIRA
+        let jira_keys: Vec<String> = match tasks_result {
+            Ok(tasks) => tasks
+                .into_iter()
+                .filter_map(|t| t.jira_key)
+                .collect::<HashSet<_>>()
+                .into_iter()
+                .collect(),
+            Err(e) => {
+                eprintln!("[JIRA Sync] Failed to get linked tasks: {}", e);
+                sleep(Duration::from_secs(config.poll_interval)).await;
+                continue;
+            }
+        };
+
+        if jira_keys.is_empty() {
+            println!("[JIRA Sync] No tasks with JIRA links, skipping");
+            sleep(Duration::from_secs(config.poll_interval)).await;
+            continue;
+        }
+
+        let jql = format!(
+            "key IN ({}) ORDER BY updated DESC",
+            jira_keys
+                .iter()
+                .map(|k| format!("\"{}\"", k))
+                .collect::<Vec<_>>()
+                .join(",")
+        );
+        println!("[JIRA Sync] Refreshing JIRA info with JQL: {}", jql);
+
         match jira_client
             .search_issues(
                 &config.jira_base_url,
@@ -77,41 +104,37 @@ pub async fn start_jira_sync(app: AppHandle) {
             .await
         {
             Ok(issues) => {
-                println!("[JIRA Sync] Fetched {} issues", issues.len());
-
-                // Upsert each ticket to database
-                let mut success_count = 0;
-                let mut error_count = 0;
-
+                let mut updated = 0;
                 for issue in issues {
-                    match upsert_ticket_from_jira(&db, &issue) {
-                        Ok(_) => success_count += 1,
-                        Err(e) => {
-                            eprintln!(
-                                "[JIRA Sync] Failed to upsert ticket {}: {}",
-                                issue.key, e
-                            );
-                            error_count += 1;
-                        }
+                    let jira_status = issue
+                        .fields
+                        .status
+                        .as_ref()
+                        .map(|s| s.name.clone())
+                        .unwrap_or_default();
+                    let assignee = issue
+                        .fields
+                        .assignee
+                        .as_ref()
+                        .map(|u| u.display_name.clone())
+                        .unwrap_or_default();
+
+                    let db_lock = db.lock().unwrap();
+                    match db_lock.update_task_jira_info(&issue.key, &jira_status, &assignee) {
+                        Ok(count) => updated += count,
+                        Err(e) => eprintln!("[JIRA Sync] Failed to update {}: {}", issue.key, e),
                     }
+                    drop(db_lock);
                 }
 
-                println!(
-                    "[JIRA Sync] Upserted {} tickets ({} errors)",
-                    success_count, error_count
-                );
-
-                // Emit event to notify frontend
+                println!("[JIRA Sync] Updated JIRA info for {} tasks", updated);
                 if let Err(e) = app.emit("jira-sync-complete", ()) {
                     eprintln!("[JIRA Sync] Failed to emit event: {}", e);
                 }
             }
-            Err(e) => {
-                eprintln!("[JIRA Sync] Failed to fetch issues: {}", e);
-            }
+            Err(e) => eprintln!("[JIRA Sync] Failed to fetch issues: {}", e),
         }
 
-        // Sleep for poll interval
         sleep(Duration::from_secs(config.poll_interval)).await;
     }
 }
@@ -121,11 +144,7 @@ pub async fn start_jira_sync(app: AppHandle) {
 struct SyncConfig {
     jira_api_token: String,
     jira_base_url: String,
-    jira_board_id: String,
     jira_username: String,
-    filter_assigned_to_me: bool,
-    exclude_done_tickets: bool,
-    custom_jql: String,
     poll_interval: u64,
 }
 
@@ -143,30 +162,8 @@ fn read_sync_config(db: &Mutex<Database>) -> Result<SyncConfig, String> {
         .map_err(|e| e.to_string())?
         .unwrap_or_default();
 
-    let jira_board_id = db
-        .get_config("jira_board_id")
-        .map_err(|e| e.to_string())?
-        .unwrap_or_default();
-
     let jira_username = db
         .get_config("jira_username")
-        .map_err(|e| e.to_string())?
-        .unwrap_or_default();
-
-    let filter_assigned_to_me = db
-        .get_config("filter_assigned_to_me")
-        .map_err(|e| e.to_string())?
-        .unwrap_or_else(|| "true".to_string())
-        == "true";
-
-    let exclude_done_tickets = db
-        .get_config("exclude_done_tickets")
-        .map_err(|e| e.to_string())?
-        .unwrap_or_else(|| "true".to_string())
-        == "true";
-
-    let custom_jql = db
-        .get_config("custom_jql")
         .map_err(|e| e.to_string())?
         .unwrap_or_default();
 
@@ -180,171 +177,7 @@ fn read_sync_config(db: &Mutex<Database>) -> Result<SyncConfig, String> {
     Ok(SyncConfig {
         jira_api_token,
         jira_base_url,
-        jira_board_id,
         jira_username,
-        filter_assigned_to_me,
-        exclude_done_tickets,
-        custom_jql,
         poll_interval,
     })
-}
-
-/// Build JQL query based on config filters
-///
-/// Combines multiple filters with AND:
-/// - filter_assigned_to_me → `assignee = currentUser()`
-/// - jira_board_id → `project = {board_id}`
-/// - exclude_done_tickets → `status != Done`
-/// - custom_jql → appended as-is
-fn build_jql_query(config: &SyncConfig) -> String {
-    let mut conditions = Vec::new();
-
-    // Filter by assignee
-    if config.filter_assigned_to_me {
-        conditions.push("assignee = currentUser()".to_string());
-    }
-
-    // Filter by project/board
-    if !config.jira_board_id.is_empty() {
-        conditions.push(format!("project = {}", config.jira_board_id));
-    }
-
-    // Exclude done tickets
-    if config.exclude_done_tickets {
-        conditions.push("status != Done".to_string());
-    }
-
-    // Append custom JQL
-    if !config.custom_jql.is_empty() {
-        conditions.push(config.custom_jql.clone());
-    }
-
-    // Join with AND
-    if conditions.is_empty() {
-        // No filters, return all tickets (not recommended but valid)
-        "ORDER BY updated DESC".to_string()
-    } else {
-        format!("{} ORDER BY updated DESC", conditions.join(" AND "))
-    }
-}
-
-/// Map JIRA status to cockpit status
-///
-/// Mapping:
-/// - "To Do" → "todo"
-/// - "In Progress" → "in_progress"
-/// - "In Review" | "Code Review" → "in_review"
-/// - "Testing" | "QA" → "testing"
-/// - "Done" | "Closed" → "done"
-/// - _ → "todo" (default)
-fn map_jira_status_to_cockpit(jira_status: &str) -> &'static str {
-    match jira_status {
-        "To Do" => "todo",
-        "In Progress" => "in_progress",
-        "In Review" | "Code Review" => "in_review",
-        "Testing" | "QA" => "testing",
-        "Done" | "Closed" => "done",
-        _ => "todo", // Default fallback
-    }
-}
-
-/// Upsert a ticket from JIRA issue to database
-fn upsert_ticket_from_jira(db: &Mutex<Database>, issue: &JiraIssue) -> Result<(), String> {
-    let db = db.lock().unwrap();
-
-    // Extract fields
-    let id = issue.key.clone();
-    let title = issue.fields.summary.clone();
-    let description = issue
-        .fields
-        .description
-        .as_ref()
-        .and_then(|v| v.as_str())
-        .unwrap_or("")
-        .to_string();
-    let jira_status = issue.fields.status.as_ref().map(|s| s.name.clone()).unwrap_or_default();
-    let status = map_jira_status_to_cockpit(&jira_status);
-    let assignee = issue
-        .fields
-        .assignee
-        .as_ref()
-        .map(|u| u.display_name.clone())
-        .unwrap_or_default();
-
-    // Use current timestamp for both created_at and updated_at
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_secs() as i64;
-
-    // Upsert ticket
-    db.upsert_ticket(
-        &id,
-        &title,
-        &description,
-        status,
-        &jira_status,
-        &assignee,
-        now,
-        now,
-    )
-    .map_err(|e| e.to_string())?;
-
-    Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_build_jql_query_all_filters() {
-        let config = SyncConfig {
-            jira_api_token: "token".to_string(),
-            jira_base_url: "https://example.atlassian.net".to_string(),
-            jira_board_id: "PROJ".to_string(),
-            jira_username: "user@example.com".to_string(),
-            filter_assigned_to_me: true,
-            exclude_done_tickets: true,
-            custom_jql: "priority = High".to_string(),
-            poll_interval: 60,
-        };
-
-        let jql = build_jql_query(&config);
-        assert!(jql.contains("assignee = currentUser()"));
-        assert!(jql.contains("project = PROJ"));
-        assert!(jql.contains("status != Done"));
-        assert!(jql.contains("priority = High"));
-        assert!(jql.contains("AND"));
-    }
-
-    #[test]
-    fn test_build_jql_query_no_filters() {
-        let config = SyncConfig {
-            jira_api_token: "token".to_string(),
-            jira_base_url: "https://example.atlassian.net".to_string(),
-            jira_board_id: "".to_string(),
-            jira_username: "user@example.com".to_string(),
-            filter_assigned_to_me: false,
-            exclude_done_tickets: false,
-            custom_jql: "".to_string(),
-            poll_interval: 60,
-        };
-
-        let jql = build_jql_query(&config);
-        assert_eq!(jql, "ORDER BY updated DESC");
-    }
-
-    #[test]
-    fn test_map_jira_status_to_cockpit() {
-        assert_eq!(map_jira_status_to_cockpit("To Do"), "todo");
-        assert_eq!(map_jira_status_to_cockpit("In Progress"), "in_progress");
-        assert_eq!(map_jira_status_to_cockpit("In Review"), "in_review");
-        assert_eq!(map_jira_status_to_cockpit("Code Review"), "in_review");
-        assert_eq!(map_jira_status_to_cockpit("Testing"), "testing");
-        assert_eq!(map_jira_status_to_cockpit("QA"), "testing");
-        assert_eq!(map_jira_status_to_cockpit("Done"), "done");
-        assert_eq!(map_jira_status_to_cockpit("Closed"), "done");
-        assert_eq!(map_jira_status_to_cockpit("Unknown Status"), "todo");
-    }
 }

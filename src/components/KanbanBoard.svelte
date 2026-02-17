@@ -1,39 +1,64 @@
 <script lang="ts">
-  import type { Ticket, AgentSession, KanbanColumn } from '../lib/types'
+  import type { Task, AgentSession, KanbanColumn } from '../lib/types'
   import { COLUMNS, COLUMN_LABELS } from '../lib/types'
-  import { tickets, selectedTicketId, activeSessions, ticketPrs, error } from '../lib/stores'
-  import { startTicketImplementation } from '../lib/ipc'
-  import TicketCard from './TicketCard.svelte'
+  import { tasks, selectedTaskId, activeSessions, ticketPrs, error } from '../lib/stores'
+  import { startTicketImplementation, updateTaskStatus, getTasks } from '../lib/ipc'
+  import TaskCard from './TaskCard.svelte'
+  import AddTaskInline from './AddTaskInline.svelte'
 
-  function ticketsForColumn(allTickets: Ticket[], column: KanbanColumn): Ticket[] {
-    return allTickets.filter(t => t.status === column)
+  function tasksForColumn(allTasks: Task[], column: KanbanColumn): Task[] {
+    return allTasks.filter(t => t.status === column)
   }
 
-  function getSession(sessions: Map<string, AgentSession>, ticketId: string): AgentSession | null {
-    return sessions.get(ticketId) || null
+  function getSession(sessions: Map<string, AgentSession>, taskId: string): AgentSession | null {
+    return sessions.get(taskId) || null
   }
 
   function handleSelect(event: CustomEvent<string>) {
-    $selectedTicketId = event.detail
+    $selectedTaskId = event.detail
   }
 
-  let contextMenu = { visible: false, x: 0, y: 0, ticketId: '' }
+  async function handleTaskCreated() {
+    try {
+      $tasks = await getTasks()
+    } catch (err: unknown) {
+      console.error('Failed to reload tasks:', err)
+    }
+  }
 
-  function handleContextMenu(event: MouseEvent, ticketId: string) {
+  let contextMenu = { visible: false, x: 0, y: 0, taskId: '', showMoveSubmenu: false }
+
+  function handleContextMenu(event: MouseEvent, taskId: string) {
     event.preventDefault()
-    contextMenu = { visible: true, x: event.clientX, y: event.clientY, ticketId }
+    contextMenu = { visible: true, x: event.clientX, y: event.clientY, taskId, showMoveSubmenu: false }
   }
 
   function closeContextMenu() {
-    contextMenu = { ...contextMenu, visible: false }
+    contextMenu = { ...contextMenu, visible: false, showMoveSubmenu: false }
+  }
+
+  function toggleMoveSubmenu() {
+    contextMenu = { ...contextMenu, showMoveSubmenu: !contextMenu.showMoveSubmenu }
   }
 
   async function handleStartImplementation() {
     closeContextMenu()
     try {
-      await startTicketImplementation(contextMenu.ticketId)
+      await startTicketImplementation(contextMenu.taskId)
     } catch (err: unknown) {
       console.error('Failed to start implementation:', err)
+      $error = String(err)
+    }
+  }
+
+  async function handleMoveTo(column: KanbanColumn) {
+    const taskId = contextMenu.taskId
+    closeContextMenu()
+    try {
+      await updateTaskStatus(taskId, column)
+      $tasks = await getTasks()
+    } catch (err: unknown) {
+      console.error('Failed to move task:', err)
       $error = String(err)
     }
   }
@@ -43,20 +68,23 @@
 
 <div class="kanban">
   {#each COLUMNS as column}
-    {@const columnTickets = ticketsForColumn($tickets, column)}
+    {@const columnTasks = tasksForColumn($tasks, column)}
     <div class="column">
       <div class="column-header">
         <span class="column-name">{COLUMN_LABELS[column]}</span>
-        <span class="column-count">{columnTickets.length}</span>
+        <div class="column-header-right">
+          <span class="column-count">{columnTasks.length}</span>
+          <AddTaskInline {column} on:task-created={handleTaskCreated} />
+        </div>
       </div>
       <div class="column-body">
-        {#each columnTickets as ticket (ticket.id)}
-          <div on:contextmenu={(e) => handleContextMenu(e, ticket.id)}>
-            <TicketCard {ticket} session={getSession($activeSessions, ticket.id)} pullRequests={$ticketPrs.get(ticket.id) || []} on:select={handleSelect} />
+        {#each columnTasks as task (task.id)}
+          <div on:contextmenu={(e) => handleContextMenu(e, task.id)}>
+            <TaskCard {task} session={getSession($activeSessions, task.id)} pullRequests={$ticketPrs.get(task.id) || []} on:select={handleSelect} />
           </div>
         {/each}
-        {#if columnTickets.length === 0}
-          <div class="empty-column">No tickets</div>
+        {#if columnTasks.length === 0}
+          <div class="empty-column">No tasks</div>
         {/if}
       </div>
     </div>
@@ -66,6 +94,18 @@
 {#if contextMenu.visible}
   <div class="context-menu" style="left: {contextMenu.x}px; top: {contextMenu.y}px;">
     <button class="context-item" on:click={handleStartImplementation}>Start Implementation</button>
+    <button class="context-item has-submenu" on:click|stopPropagation={toggleMoveSubmenu}>
+      Move to...
+    </button>
+    {#if contextMenu.showMoveSubmenu}
+      <div class="submenu">
+        {#each COLUMNS as col}
+          <button class="context-item" on:click={() => handleMoveTo(col)}>
+            {COLUMN_LABELS[col]}
+          </button>
+        {/each}
+      </div>
+    {/if}
   </div>
 {/if}
 
@@ -94,6 +134,12 @@
     justify-content: space-between;
     padding: 12px 14px;
     border-bottom: 1px solid var(--border);
+  }
+
+  .column-header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
 
   .column-name {
@@ -154,5 +200,17 @@
   .context-item:hover {
     background: var(--accent);
     color: var(--bg-primary);
+  }
+
+  .has-submenu::after {
+    content: ' >';
+    float: right;
+    color: var(--text-secondary);
+  }
+
+  .submenu {
+    border-top: 1px solid var(--border);
+    margin-top: 2px;
+    padding-top: 2px;
   }
 </style>

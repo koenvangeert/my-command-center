@@ -78,6 +78,7 @@
   <div class="settings-body">
     <section class="section">
       <h3>JIRA</h3>
+      <p class="section-note">Sync updates linked task info only (read-only)</p>
       <label class="field">
         <span>Base URL</span>
         <input type="text" bind:value={jiraBaseUrl} placeholder="https://your-domain.atlassian.net" />
@@ -203,6 +204,13 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
+  }
+
+  .section-note {
+    margin: 0;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    font-style: italic;
   }
 
   .field {

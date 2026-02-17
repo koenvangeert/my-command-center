@@ -19,7 +19,8 @@
 //! - Skips polling when github_token is empty
 
 use crate::db::{Database, PrRow};
-use crate::github_client::{GitHubClient, PullRequest};
+use crate::github_client::GitHubClient;
+use std::collections::{HashMap, HashSet};
 use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::time::{sleep, Duration};
@@ -166,12 +167,23 @@ async fn sync_open_prs(
         .await
         .map_err(|e| format!("Failed to list open PRs: {}", e))?;
 
-    let ticket_ids = {
+    let task_data: Vec<(String, Option<String>)> = {
         let db_lock = db.lock().unwrap();
         db_lock
-            .get_all_ticket_ids()
-            .map_err(|e| format!("Failed to get ticket IDs: {}", e))?
+            .get_task_ids_and_jira_keys()
+            .map_err(|e| format!("Failed to get task data: {}", e))?
     };
+
+    let mut jira_key_map: HashMap<String, Vec<String>> = HashMap::new();
+    let task_ids: Vec<String> = task_data.iter().map(|(id, _)| id.clone()).collect();
+    for (task_id, jira_key) in &task_data {
+        if let Some(key) = jira_key {
+            jira_key_map
+                .entry(key.clone())
+                .or_default()
+                .push(task_id.clone());
+        }
+    }
 
     let open_pr_ids: Vec<i64> = github_prs.iter().map(|pr| pr.number).collect();
 
@@ -189,17 +201,13 @@ async fn sync_open_prs(
 
     let mut synced = 0;
     for pr in &github_prs {
-        let matched_ticket = find_matching_ticket(&pr, &ticket_ids);
-        let ticket_id = match matched_ticket {
-            Some(id) => id,
-            None => continue,
-        };
-
-        let db_lock = db.lock().unwrap();
-        db_lock
-            .insert_pull_request(
+        let matched_tasks =
+            find_matching_task_ids(&pr.title, &pr.head.ref_name, &task_ids, &jira_key_map);
+        for task_id in matched_tasks {
+            let db_lock = db.lock().unwrap();
+            let _ = db_lock.insert_pull_request(
                 pr.number,
-                &ticket_id,
+                &task_id,
                 repo_owner,
                 repo_name,
                 &pr.title,
@@ -207,10 +215,10 @@ async fn sync_open_prs(
                 &pr.state,
                 now,
                 now,
-            )
-            .map_err(|e| format!("Failed to upsert PR #{}: {}", pr.number, e))?;
-        drop(db_lock);
-        synced += 1;
+            );
+            drop(db_lock);
+            synced += 1;
+        }
     }
 
     println!(
@@ -223,21 +231,37 @@ async fn sync_open_prs(
     Ok(synced)
 }
 
-fn find_matching_ticket(pr: &PullRequest, ticket_ids: &[String]) -> Option<String> {
-    for ticket_id in ticket_ids {
-        if pr.title.contains(ticket_id) || pr.head.ref_name.contains(ticket_id) {
-            return Some(ticket_id.clone());
+pub fn find_matching_task_ids(
+    pr_title: &str,
+    pr_branch: &str,
+    task_ids: &[String],
+    jira_key_map: &HashMap<String, Vec<String>>,
+) -> Vec<String> {
+    let mut matched = Vec::new();
+    let mut seen = HashSet::new();
+
+    for task_id in task_ids {
+        if pr_title.contains(task_id.as_str()) || pr_branch.contains(task_id.as_str()) {
+            if seen.insert(task_id.clone()) {
+                matched.push(task_id.clone());
+            }
         }
     }
-    for candidate in extract_jira_keys(&pr.title)
+
+    let jira_keys_found = extract_jira_keys(pr_title)
         .into_iter()
-        .chain(extract_jira_keys(&pr.head.ref_name))
-    {
-        if ticket_ids.contains(&candidate) {
-            return Some(candidate);
+        .chain(extract_jira_keys(pr_branch));
+    for key in jira_keys_found {
+        if let Some(task_ids_for_key) = jira_key_map.get(&key) {
+            for task_id in task_ids_for_key {
+                if seen.insert(task_id.clone()) {
+                    matched.push(task_id.clone());
+                }
+            }
         }
     }
-    None
+
+    matched
 }
 
 fn extract_jira_keys(text: &str) -> Vec<String> {
@@ -370,5 +394,96 @@ mod tests {
         let timestamp = "invalid";
         let result = parse_github_timestamp(timestamp);
         assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_find_matching_task_ids_direct_match_in_title() {
+        let pr_title = "Fix bug T-42";
+        let pr_branch = "main";
+        let task_ids = vec!["T-42".to_string(), "T-99".to_string()];
+        let jira_map = HashMap::new();
+
+        let matched = find_matching_task_ids(pr_title, pr_branch, &task_ids, &jira_map);
+        assert_eq!(matched.len(), 1);
+        assert_eq!(matched[0], "T-42");
+    }
+
+    #[test]
+    fn test_find_matching_task_ids_direct_match_in_branch() {
+        let pr_title = "Fix authentication";
+        let pr_branch = "feature/T-99-auth";
+        let task_ids = vec!["T-42".to_string(), "T-99".to_string()];
+        let jira_map = HashMap::new();
+
+        let matched = find_matching_task_ids(pr_title, pr_branch, &task_ids, &jira_map);
+        assert_eq!(matched.len(), 1);
+        assert_eq!(matched[0], "T-99");
+    }
+
+    #[test]
+    fn test_find_matching_task_ids_jira_key_in_title_single_task() {
+        let pr_title = "Implement PROJ-123 feature";
+        let pr_branch = "main";
+        let task_ids = vec!["T-1".to_string()];
+        let mut jira_map = HashMap::new();
+        jira_map.insert("PROJ-123".to_string(), vec!["T-1".to_string()]);
+
+        let matched = find_matching_task_ids(pr_title, pr_branch, &task_ids, &jira_map);
+        assert_eq!(matched.len(), 1);
+        assert_eq!(matched[0], "T-1");
+    }
+
+    #[test]
+    fn test_find_matching_task_ids_jira_key_multiple_tasks() {
+        let pr_title = "Fix PROJ-456 issue";
+        let pr_branch = "main";
+        let task_ids = vec!["T-10".to_string(), "T-20".to_string(), "T-30".to_string()];
+        let mut jira_map = HashMap::new();
+        jira_map.insert(
+            "PROJ-456".to_string(),
+            vec!["T-10".to_string(), "T-20".to_string()],
+        );
+
+        let matched = find_matching_task_ids(pr_title, pr_branch, &task_ids, &jira_map);
+        assert_eq!(matched.len(), 2);
+        assert!(matched.contains(&"T-10".to_string()));
+        assert!(matched.contains(&"T-20".to_string()));
+    }
+
+    #[test]
+    fn test_find_matching_task_ids_deduplication() {
+        let pr_title = "T-5 implements PROJ-789";
+        let pr_branch = "feature/T-5";
+        let task_ids = vec!["T-5".to_string()];
+        let mut jira_map = HashMap::new();
+        jira_map.insert("PROJ-789".to_string(), vec!["T-5".to_string()]);
+
+        let matched = find_matching_task_ids(pr_title, pr_branch, &task_ids, &jira_map);
+        assert_eq!(matched.len(), 1);
+        assert_eq!(matched[0], "T-5");
+    }
+
+    #[test]
+    fn test_find_matching_task_ids_no_matches() {
+        let pr_title = "Update documentation";
+        let pr_branch = "docs-update";
+        let task_ids = vec!["T-100".to_string()];
+        let jira_map = HashMap::new();
+
+        let matched = find_matching_task_ids(pr_title, pr_branch, &task_ids, &jira_map);
+        assert_eq!(matched.len(), 0);
+    }
+
+    #[test]
+    fn test_find_matching_task_ids_jira_key_in_branch() {
+        let pr_title = "Add feature";
+        let pr_branch = "bugfix/JIRA-999";
+        let task_ids = vec!["T-7".to_string()];
+        let mut jira_map = HashMap::new();
+        jira_map.insert("JIRA-999".to_string(), vec!["T-7".to_string()]);
+
+        let matched = find_matching_task_ids(pr_title, pr_branch, &task_ids, &jira_map);
+        assert_eq!(matched.len(), 1);
+        assert_eq!(matched[0], "T-7");
     }
 }

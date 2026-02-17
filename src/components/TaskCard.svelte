@@ -1,16 +1,16 @@
 <script lang="ts">
-  import type { Ticket, AgentSession, PullRequestInfo } from '../lib/types'
+  import type { Task, AgentSession, PullRequestInfo } from '../lib/types'
   import { openUrl } from '../lib/ipc'
   import { createEventDispatcher } from 'svelte'
 
-  export let ticket: Ticket
+  export let task: Task
   export let session: AgentSession | null = null
   export let pullRequests: PullRequestInfo[] = []
 
   const dispatch = createEventDispatcher()
 
   function handleClick() {
-    dispatch('select', ticket.id)
+    dispatch('select', task.id)
   }
 
   function truncate(text: string, max: number): string {
@@ -32,12 +32,17 @@
 
 <button class="card" class:running={statusClass === 'running'} class:paused={statusClass === 'paused'} class:failed={statusClass === 'failed'} on:click={handleClick}>
   <div class="card-header">
-    <span class="ticket-id">{ticket.id}</span>
+    <div class="id-row">
+      <span class="task-id">{task.id}</span>
+      {#if task.jira_key}
+        <span class="jira-badge">{task.jira_key}</span>
+      {/if}
+    </div>
     {#if session}
       <span class="status-dot {statusClass}"></span>
     {/if}
   </div>
-  <div class="card-title">{truncate(ticket.title, 60)}</div>
+  <div class="card-title">{truncate(task.title, 60)}</div>
   {#if session}
     <div class="card-status">
       {#if session.status === 'running'}
@@ -68,8 +73,8 @@
       {/each}
     </div>
   {/if}
-  {#if ticket.assignee}
-    <div class="card-assignee">{ticket.assignee}</div>
+  {#if task.jira_assignee}
+    <div class="card-assignee">{task.jira_assignee}</div>
   {/if}
 </button>
 
@@ -111,11 +116,27 @@
     margin-bottom: 4px;
   }
 
-  .ticket-id {
+  .id-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .task-id {
     font-size: 0.75rem;
     font-weight: 600;
     color: var(--accent);
     letter-spacing: 0.02em;
+  }
+
+  .jira-badge {
+    font-size: 0.65rem;
+    font-weight: 500;
+    padding: 1px 5px;
+    background: rgba(86, 95, 137, 0.15);
+    color: var(--text-secondary);
+    border-radius: 3px;
+    letter-spacing: 0.01em;
   }
 
   .status-dot {

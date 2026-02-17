@@ -1,11 +1,11 @@
 import { writable } from "svelte/store";
-import type { Ticket, AgentSession, PullRequestInfo } from "./types";
+import type { Task, AgentSession, PullRequestInfo } from "./types";
 
-export const tickets = writable<Ticket[]>([]);
-// selectedTicketId serves as both selection state and navigation:
+export const tasks = writable<Task[]>([]);
+// selectedTaskId serves as both selection state and navigation:
 // - null = show Kanban board
-// - non-null = show full-page detail view for that ticket
-export const selectedTicketId = writable<string | null>(null);
+// - non-null = show full-page detail view for that task
+export const selectedTaskId = writable<string | null>(null);
 export const activeSessions = writable<Map<string, AgentSession>>(new Map());
 export const ticketPrs = writable<Map<string, PullRequestInfo[]>>(new Map());
 export const isLoading = writable(false);

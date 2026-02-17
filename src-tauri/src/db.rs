@@ -3,19 +3,20 @@ use serde::Serialize;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
-/// Ticket row from database
+/// Task row from database
 #[derive(Debug, Clone, Serialize)]
-pub struct TicketRow {
+pub struct TaskRow {
     pub id: String,
     pub title: String,
     pub description: Option<String>,
     pub status: String,
+    pub jira_key: Option<String>,
     pub jira_status: Option<String>,
-    pub assignee: Option<String>,
-    pub created_at: i64,
-    pub updated_at: i64,
+    pub jira_assignee: Option<String>,
     pub acceptance_criteria: Option<String>,
     pub plan_text: Option<String>,
+    pub created_at: i64,
+    pub updated_at: i64,
 }
 
 /// Pull request row from database
@@ -103,22 +104,40 @@ impl Database {
     fn run_migrations(&self) -> Result<()> {
         let conn = self.conn.lock().unwrap();
 
-        // Create tickets table
+        let old_tickets_exists: bool = conn.query_row(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='tickets'",
+            [],
+            |row| {
+                let count: i64 = row.get(0)?;
+                Ok(count > 0)
+            },
+        )?;
+
+        if old_tickets_exists {
+            conn.execute("DROP TABLE IF EXISTS agent_logs", [])?;
+            conn.execute("DROP TABLE IF EXISTS pr_comments", [])?;
+            conn.execute("DROP TABLE IF EXISTS agent_sessions", [])?;
+            conn.execute("DROP TABLE IF EXISTS pull_requests", [])?;
+            conn.execute("DROP TABLE IF EXISTS tickets", [])?;
+        }
+
         conn.execute(
-            "CREATE TABLE IF NOT EXISTS tickets (
+            "CREATE TABLE IF NOT EXISTS tasks (
                 id TEXT PRIMARY KEY,
                 title TEXT NOT NULL,
                 description TEXT,
                 status TEXT NOT NULL,
+                jira_key TEXT,
                 jira_status TEXT,
-                assignee TEXT,
+                jira_assignee TEXT,
+                acceptance_criteria TEXT,
+                plan_text TEXT,
                 created_at INTEGER NOT NULL,
                 updated_at INTEGER NOT NULL
             )",
             [],
         )?;
 
-        // Create agent_sessions table
         conn.execute(
             "CREATE TABLE IF NOT EXISTS agent_sessions (
                 id TEXT PRIMARY KEY,
@@ -130,12 +149,11 @@ impl Database {
                 error_message TEXT,
                 created_at INTEGER NOT NULL,
                 updated_at INTEGER NOT NULL,
-                FOREIGN KEY (ticket_id) REFERENCES tickets(id)
+                FOREIGN KEY (ticket_id) REFERENCES tasks(id)
             )",
             [],
         )?;
 
-        // Create agent_logs table
         conn.execute(
             "CREATE TABLE IF NOT EXISTS agent_logs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -148,7 +166,6 @@ impl Database {
             [],
         )?;
 
-        // Create pull_requests table
         conn.execute(
             "CREATE TABLE IF NOT EXISTS pull_requests (
                 id INTEGER PRIMARY KEY,
@@ -160,12 +177,11 @@ impl Database {
                 state TEXT NOT NULL,
                 created_at INTEGER NOT NULL,
                 updated_at INTEGER NOT NULL,
-                FOREIGN KEY (ticket_id) REFERENCES tickets(id)
+                FOREIGN KEY (ticket_id) REFERENCES tasks(id)
             )",
             [],
         )?;
 
-        // Create pr_comments table
         conn.execute(
             "CREATE TABLE IF NOT EXISTS pr_comments (
                 id INTEGER PRIMARY KEY,
@@ -182,7 +198,6 @@ impl Database {
             [],
         )?;
 
-        // Create config table
         conn.execute(
             "CREATE TABLE IF NOT EXISTS config (
                 key TEXT PRIMARY KEY,
@@ -191,7 +206,6 @@ impl Database {
             [],
         )?;
 
-        // Insert default config values (using INSERT OR IGNORE to avoid duplicates)
         let default_configs = [
             ("jira_api_token", ""),
             ("jira_base_url", ""),
@@ -215,12 +229,10 @@ impl Database {
             )?;
         }
 
-        // Add new editable ticket fields (silently ignore if already exists)
-        let _ = conn.execute(
-            "ALTER TABLE tickets ADD COLUMN acceptance_criteria TEXT",
+        conn.execute(
+            "INSERT OR IGNORE INTO config (key, value) VALUES ('next_task_id', '1')",
             [],
-        );
-        let _ = conn.execute("ALTER TABLE tickets ADD COLUMN plan_text TEXT", []);
+        )?;
 
         Ok(())
     }
@@ -253,54 +265,217 @@ impl Database {
         Ok(())
     }
 
-    /// Upsert a ticket (INSERT OR REPLACE)
-    ///
-    /// # Arguments
-    /// * `id` - Ticket ID (JIRA key, e.g., "PROJ-123")
-    /// * `title` - Ticket title/summary
-    /// * `description` - Ticket description
-    /// * `status` - Cockpit status (todo, in_progress, in_review, testing, done)
-    /// * `jira_status` - Original JIRA status name
-    /// * `assignee` - Assignee display name
-    /// * `created_at` - Unix timestamp (seconds)
-    /// * `updated_at` - Unix timestamp (seconds)
-    pub fn upsert_ticket(
+    pub fn create_task(
         &self,
-        id: &str,
         title: &str,
-        description: &str,
+        description: Option<&str>,
         status: &str,
-        jira_status: &str,
-        assignee: &str,
-        created_at: i64,
-        updated_at: i64,
-    ) -> Result<()> {
+        jira_key: Option<&str>,
+    ) -> Result<TaskRow> {
         let conn = self.conn.lock().unwrap();
+
+        let next_id: i64 = conn.query_row(
+            "SELECT value FROM config WHERE key = 'next_task_id'",
+            [],
+            |row| {
+                let val: String = row.get(0)?;
+                Ok(val.parse::<i64>().unwrap_or(1))
+            },
+        )?;
+
+        let task_id = format!("T-{}", next_id);
+
         conn.execute(
-            "INSERT INTO tickets (id, title, description, status, jira_status, assignee, created_at, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
-             ON CONFLICT(id) DO UPDATE SET
-               title = excluded.title,
-               description = excluded.description,
-               status = excluded.status,
-               jira_status = excluded.jira_status,
-               assignee = excluded.assignee,
-               updated_at = excluded.updated_at",
-            [
-                id,
+            "UPDATE config SET value = ?1 WHERE key = 'next_task_id'",
+            [&(next_id + 1).to_string()],
+        )?;
+
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("time went backwards")
+            .as_secs() as i64;
+
+        conn.execute(
+            "INSERT INTO tasks (id, title, description, status, jira_key, jira_status, jira_assignee, acceptance_criteria, plan_text, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+            rusqlite::params![
+                &task_id,
                 title,
                 description,
                 status,
-                jira_status,
-                assignee,
-                &created_at.to_string(),
-                &updated_at.to_string(),
+                jira_key,
+                None::<String>,
+                None::<String>,
+                None::<String>,
+                None::<String>,
+                now,
+                now,
             ],
+        )?;
+
+        Ok(TaskRow {
+            id: task_id,
+            title: title.to_string(),
+            description: description.map(|s| s.to_string()),
+            status: status.to_string(),
+            jira_key: jira_key.map(|s| s.to_string()),
+            jira_status: None,
+            jira_assignee: None,
+            acceptance_criteria: None,
+            plan_text: None,
+            created_at: now,
+            updated_at: now,
+        })
+    }
+
+    pub fn get_all_tasks(&self) -> Result<Vec<TaskRow>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, title, description, status, jira_key, jira_status, jira_assignee, acceptance_criteria, plan_text, created_at, updated_at 
+             FROM tasks ORDER BY updated_at DESC"
+        )?;
+
+        let tasks = stmt.query_map([], |row| {
+            Ok(TaskRow {
+                id: row.get(0)?,
+                title: row.get(1)?,
+                description: row.get(2)?,
+                status: row.get(3)?,
+                jira_key: row.get(4)?,
+                jira_status: row.get(5)?,
+                jira_assignee: row.get(6)?,
+                acceptance_criteria: row.get(7)?,
+                plan_text: row.get(8)?,
+                created_at: row.get(9)?,
+                updated_at: row.get(10)?,
+            })
+        })?;
+
+        let mut result = Vec::new();
+        for task in tasks {
+            result.push(task?);
+        }
+        Ok(result)
+    }
+
+    pub fn get_task(&self, id: &str) -> Result<Option<TaskRow>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, title, description, status, jira_key, jira_status, jira_assignee, acceptance_criteria, plan_text, created_at, updated_at 
+             FROM tasks WHERE id = ?1"
+        )?;
+        let mut rows = stmt.query([id])?;
+        if let Some(row) = rows.next()? {
+            Ok(Some(TaskRow {
+                id: row.get(0)?,
+                title: row.get(1)?,
+                description: row.get(2)?,
+                status: row.get(3)?,
+                jira_key: row.get(4)?,
+                jira_status: row.get(5)?,
+                jira_assignee: row.get(6)?,
+                acceptance_criteria: row.get(7)?,
+                plan_text: row.get(8)?,
+                created_at: row.get(9)?,
+                updated_at: row.get(10)?,
+            }))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn update_task(
+        &self,
+        id: &str,
+        title: &str,
+        description: Option<&str>,
+        jira_key: Option<&str>,
+    ) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("time went backwards")
+            .as_secs() as i64;
+        conn.execute(
+            "UPDATE tasks SET title = ?1, description = ?2, jira_key = ?3, updated_at = ?4 WHERE id = ?5",
+            rusqlite::params![title, description, jira_key, now, id],
         )?;
         Ok(())
     }
 
-    pub fn update_ticket_fields(
+    pub fn update_task_status(&self, id: &str, status: &str) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("time went backwards")
+            .as_secs() as i64;
+        conn.execute(
+            "UPDATE tasks SET status = ?1, updated_at = ?2 WHERE id = ?3",
+            rusqlite::params![status, now, id],
+        )?;
+        Ok(())
+    }
+
+    pub fn update_task_jira_info(
+        &self,
+        jira_key: &str,
+        jira_status: &str,
+        jira_assignee: &str,
+    ) -> Result<usize> {
+        let conn = self.conn.lock().unwrap();
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("time went backwards")
+            .as_secs() as i64;
+        conn.execute(
+            "UPDATE tasks SET jira_status = ?1, jira_assignee = ?2, updated_at = ?3 WHERE jira_key = ?4",
+            rusqlite::params![jira_status, jira_assignee, now, jira_key],
+        )?;
+        Ok(conn.changes() as usize)
+    }
+
+    pub fn get_tasks_with_jira_links(&self) -> Result<Vec<TaskRow>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, title, description, status, jira_key, jira_status, jira_assignee, acceptance_criteria, plan_text, created_at, updated_at 
+             FROM tasks WHERE jira_key IS NOT NULL ORDER BY updated_at DESC"
+        )?;
+
+        let tasks = stmt.query_map([], |row| {
+            Ok(TaskRow {
+                id: row.get(0)?,
+                title: row.get(1)?,
+                description: row.get(2)?,
+                status: row.get(3)?,
+                jira_key: row.get(4)?,
+                jira_status: row.get(5)?,
+                jira_assignee: row.get(6)?,
+                acceptance_criteria: row.get(7)?,
+                plan_text: row.get(8)?,
+                created_at: row.get(9)?,
+                updated_at: row.get(10)?,
+            })
+        })?;
+
+        let mut result = Vec::new();
+        for task in tasks {
+            result.push(task?);
+        }
+        Ok(result)
+    }
+
+    pub fn get_task_ids_and_jira_keys(&self) -> Result<Vec<(String, Option<String>)>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare("SELECT id, jira_key FROM tasks")?;
+        let rows = stmt.query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?;
+        let mut result = Vec::new();
+        for row in rows {
+            result.push(row?);
+        }
+        Ok(result)
+    }
+
+    pub fn update_task_fields(
         &self,
         id: &str,
         acceptance_criteria: Option<&str>,
@@ -312,39 +487,10 @@ impl Database {
             .expect("time went backwards")
             .as_secs() as i64;
         conn.execute(
-            "UPDATE tickets SET acceptance_criteria = ?1, plan_text = ?2, updated_at = ?3 WHERE id = ?4",
+            "UPDATE tasks SET acceptance_criteria = ?1, plan_text = ?2, updated_at = ?3 WHERE id = ?4",
             rusqlite::params![acceptance_criteria, plan_text, now, id],
         )?;
         Ok(())
-    }
-
-    /// Get all tickets from the database
-    pub fn get_all_tickets(&self) -> Result<Vec<TicketRow>> {
-        let conn = self.conn.lock().unwrap();
-        let mut stmt = conn.prepare(
-            "SELECT id, title, description, status, jira_status, assignee, created_at, updated_at, acceptance_criteria, plan_text FROM tickets ORDER BY updated_at DESC"
-        )?;
-
-        let tickets = stmt.query_map([], |row| {
-            Ok(TicketRow {
-                id: row.get(0)?,
-                title: row.get(1)?,
-                description: row.get(2)?,
-                status: row.get(3)?,
-                jira_status: row.get(4)?,
-                assignee: row.get(5)?,
-                created_at: row.get(6)?,
-                updated_at: row.get(7)?,
-                acceptance_criteria: row.get(8)?,
-                plan_text: row.get(9)?,
-            })
-        })?;
-
-        let mut result = Vec::new();
-        for ticket in tickets {
-            result.push(ticket?);
-        }
-        Ok(result)
     }
 
     /// Get all open pull requests from the database
@@ -649,30 +795,6 @@ impl Database {
         Ok(result)
     }
 
-    pub fn get_ticket(&self, id: &str) -> Result<Option<TicketRow>> {
-        let conn = self.conn.lock().unwrap();
-        let mut stmt = conn.prepare(
-            "SELECT id, title, description, status, jira_status, assignee, created_at, updated_at, acceptance_criteria, plan_text FROM tickets WHERE id = ?1",
-        )?;
-        let mut rows = stmt.query([id])?;
-        if let Some(row) = rows.next()? {
-            Ok(Some(TicketRow {
-                id: row.get(0)?,
-                title: row.get(1)?,
-                description: row.get(2)?,
-                status: row.get(3)?,
-                jira_status: row.get(4)?,
-                assignee: row.get(5)?,
-                created_at: row.get(6)?,
-                updated_at: row.get(7)?,
-                acceptance_criteria: row.get(8)?,
-                plan_text: row.get(9)?,
-            }))
-        } else {
-            Ok(None)
-        }
-    }
-
     pub fn get_pr_comments_by_ids(&self, ids: &[i64]) -> Result<Vec<PrCommentRow>> {
         if ids.is_empty() {
             return Ok(Vec::new());
@@ -714,9 +836,9 @@ impl Database {
         Ok(result)
     }
 
-    pub fn get_all_ticket_ids(&self) -> Result<Vec<String>> {
+    pub fn get_all_task_ids(&self) -> Result<Vec<String>> {
         let conn = self.conn.lock().unwrap();
-        let mut stmt = conn.prepare("SELECT id FROM tickets")?;
+        let mut stmt = conn.prepare("SELECT id FROM tasks")?;
         let ids = stmt.query_map([], |row| row.get(0))?;
         let mut result = Vec::new();
         for id in ids {
@@ -810,7 +932,7 @@ mod tests {
 
         let table_count: i32 = conn
             .query_row(
-                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name IN ('tickets', 'agent_sessions', 'agent_logs', 'pull_requests', 'pr_comments', 'config')",
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name IN ('tasks', 'agent_sessions', 'agent_logs', 'pull_requests', 'pr_comments', 'config')",
                 [],
                 |row| row.get(0),
             )
@@ -818,14 +940,13 @@ mod tests {
 
         assert_eq!(table_count, 6, "All 6 tables should be created");
 
-        // Verify default config values
         let config_count: i32 = conn
             .query_row("SELECT COUNT(*) FROM config", [], |row| row.get(0))
             .expect("Failed to count config rows");
 
         assert_eq!(
-            config_count, 13,
-            "All 13 default config values should be inserted"
+            config_count, 14,
+            "All 14 default config values should be inserted"
         );
 
         // Clean up
@@ -874,90 +995,69 @@ mod tests {
         (db, db_path)
     }
 
-    fn insert_test_ticket(db: &Database) {
-        db.upsert_ticket(
-            "PROJ-100",
-            "Test ticket",
-            "A description",
-            "todo",
-            "To Do",
-            "alice",
-            1000,
-            1000,
-        )
-        .expect("Failed to insert ticket");
+    fn insert_test_task(db: &Database) {
+        let conn = db.connection();
+        let conn = conn.lock().unwrap();
+        conn.execute(
+            "INSERT INTO tasks (id, title, description, status, jira_key, jira_status, jira_assignee, acceptance_criteria, plan_text, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+            rusqlite::params!["T-100", "Test task", "A description", "todo", "PROJ-100", "To Do", "alice", None::<String>, None::<String>, 1000, 1000],
+        ).expect("Failed to insert test task");
     }
 
     #[test]
-    fn test_upsert_ticket_insert_and_retrieve() {
-        let (db, path) = make_test_db("upsert_ticket_insert");
+    fn test_create_task_and_retrieve() {
+        let (db, path) = make_test_db("create_task");
 
-        db.upsert_ticket(
-            "PROJ-1",
-            "My ticket",
-            "desc",
-            "todo",
-            "To Do",
-            "bob",
-            100,
-            200,
-        )
-        .expect("insert failed");
+        let task = db
+            .create_task("My task", Some("desc"), "todo", None)
+            .expect("create failed");
 
-        let tickets = db.get_all_tickets().expect("get_all failed");
-        assert_eq!(tickets.len(), 1);
-        assert_eq!(tickets[0].id, "PROJ-1");
-        assert_eq!(tickets[0].title, "My ticket");
-        assert_eq!(tickets[0].status, "todo");
-        assert_eq!(tickets[0].assignee, Some("bob".to_string()));
+        assert_eq!(task.id, "T-1");
+        assert_eq!(task.title, "My task");
+        assert_eq!(task.status, "todo");
+
+        let tasks = db.get_all_tasks().expect("get_all failed");
+        assert_eq!(tasks.len(), 1);
+        assert_eq!(tasks[0].id, "T-1");
+        assert_eq!(tasks[0].title, "My task");
 
         drop(db);
         let _ = fs::remove_file(&path);
     }
 
     #[test]
-    fn test_upsert_ticket_update_existing() {
-        let (db, path) = make_test_db("upsert_ticket_update");
+    fn test_update_task() {
+        let (db, path) = make_test_db("update_task");
 
-        db.upsert_ticket(
-            "PROJ-1", "Original", "desc", "todo", "To Do", "bob", 100, 200,
-        )
-        .expect("insert failed");
-        db.upsert_ticket(
-            "PROJ-1",
-            "Updated",
-            "new desc",
-            "in_progress",
-            "In Progress",
-            "alice",
-            100,
-            300,
-        )
-        .expect("update failed");
+        let task = db
+            .create_task("Original", Some("desc"), "todo", None)
+            .expect("create failed");
 
-        let tickets = db.get_all_tickets().expect("get_all failed");
-        assert_eq!(tickets.len(), 1);
-        assert_eq!(tickets[0].title, "Updated");
-        assert_eq!(tickets[0].status, "in_progress");
+        db.update_task(&task.id, "Updated", Some("new desc"), None)
+            .expect("update failed");
+
+        let tasks = db.get_all_tasks().expect("get_all failed");
+        assert_eq!(tasks.len(), 1);
+        assert_eq!(tasks[0].title, "Updated");
+        assert_eq!(tasks[0].description, Some("new desc".to_string()));
 
         drop(db);
         let _ = fs::remove_file(&path);
     }
 
     #[test]
-    fn test_get_ticket_by_id() {
-        let (db, path) = make_test_db("get_ticket_by_id");
+    fn test_get_task_by_id() {
+        let (db, path) = make_test_db("get_task_by_id");
 
-        db.upsert_ticket(
-            "PROJ-5", "Found me", "desc", "todo", "To Do", "alice", 100, 200,
-        )
-        .expect("insert failed");
+        let task = db
+            .create_task("Found me", Some("desc"), "todo", None)
+            .expect("create failed");
 
-        let ticket = db.get_ticket("PROJ-5").expect("get failed");
-        assert!(ticket.is_some());
-        assert_eq!(ticket.unwrap().title, "Found me");
+        let retrieved = db.get_task(&task.id).expect("get failed");
+        assert!(retrieved.is_some());
+        assert_eq!(retrieved.unwrap().title, "Found me");
 
-        let missing = db.get_ticket("PROJ-999").expect("get failed");
+        let missing = db.get_task("T-999").expect("get failed");
         assert!(missing.is_none());
 
         drop(db);
@@ -967,16 +1067,16 @@ mod tests {
     #[test]
     fn test_agent_session_lifecycle() {
         let (db, path) = make_test_db("agent_session_lifecycle");
-        insert_test_ticket(&db);
+        insert_test_task(&db);
 
-        db.create_agent_session("ses-1", "PROJ-100", None, "read_ticket", "running")
+        db.create_agent_session("ses-1", "T-100", None, "read_ticket", "running")
             .expect("create failed");
 
         let session = db
             .get_agent_session("ses-1")
             .expect("get failed")
             .expect("not found");
-        assert_eq!(session.ticket_id, "PROJ-100");
+        assert_eq!(session.ticket_id, "T-100");
         assert_eq!(session.stage, "read_ticket");
         assert_eq!(session.status, "running");
         assert!(session.opencode_session_id.is_none());
@@ -1017,15 +1117,15 @@ mod tests {
     #[test]
     fn test_get_latest_session_for_ticket() {
         let (db, path) = make_test_db("latest_session");
-        insert_test_ticket(&db);
+        insert_test_task(&db);
 
-        db.create_agent_session("ses-old", "PROJ-100", None, "read_ticket", "completed")
+        db.create_agent_session("ses-old", "T-100", None, "read_ticket", "completed")
             .expect("create 1 failed");
-        db.create_agent_session("ses-new", "PROJ-100", None, "implement", "running")
+        db.create_agent_session("ses-new", "T-100", None, "implement", "running")
             .expect("create 2 failed");
 
         let latest = db
-            .get_latest_session_for_ticket("PROJ-100")
+            .get_latest_session_for_ticket("T-100")
             .expect("get failed")
             .expect("not found");
         assert_eq!(latest.id, "ses-new");
@@ -1037,9 +1137,9 @@ mod tests {
     #[test]
     fn test_agent_logs() {
         let (db, path) = make_test_db("agent_logs");
-        insert_test_ticket(&db);
+        insert_test_task(&db);
 
-        db.create_agent_session("ses-log", "PROJ-100", None, "implement", "running")
+        db.create_agent_session("ses-log", "T-100", None, "implement", "running")
             .expect("create session failed");
 
         db.insert_agent_log("ses-log", "stdout", "Building project...")
@@ -1060,11 +1160,11 @@ mod tests {
     #[test]
     fn test_pull_request_crud() {
         let (db, path) = make_test_db("pr_crud");
-        insert_test_ticket(&db);
+        insert_test_task(&db);
 
         db.insert_pull_request(
             42,
-            "PROJ-100",
+            "T-100",
             "acme",
             "repo",
             "Fix auth",
@@ -1078,12 +1178,12 @@ mod tests {
         let open_prs = db.get_open_prs().expect("get open prs failed");
         assert_eq!(open_prs.len(), 1);
         assert_eq!(open_prs[0].id, 42);
-        assert_eq!(open_prs[0].ticket_id, "PROJ-100");
+        assert_eq!(open_prs[0].ticket_id, "T-100");
         assert_eq!(open_prs[0].state, "open");
 
         db.insert_pull_request(
             42,
-            "PROJ-100",
+            "T-100",
             "acme",
             "repo",
             "Fix auth",
@@ -1104,11 +1204,11 @@ mod tests {
     #[test]
     fn test_pr_comment_lifecycle() {
         let (db, path) = make_test_db("pr_comment_lifecycle");
-        insert_test_ticket(&db);
+        insert_test_task(&db);
 
         db.insert_pull_request(
             10,
-            "PROJ-100",
+            "T-100",
             "acme",
             "repo",
             "PR title",
@@ -1166,11 +1266,11 @@ mod tests {
     #[test]
     fn test_get_pr_comments_by_ids() {
         let (db, path) = make_test_db("pr_comments_by_ids");
-        insert_test_ticket(&db);
+        insert_test_task(&db);
 
         db.insert_pull_request(
             20,
-            "PROJ-100",
+            "T-100",
             "acme",
             "repo",
             "PR",
@@ -1232,11 +1332,11 @@ mod tests {
     #[test]
     fn test_mark_comments_addressed_batch() {
         let (db, path) = make_test_db("mark_batch_addressed");
-        insert_test_ticket(&db);
+        insert_test_task(&db);
 
         db.insert_pull_request(
             30,
-            "PROJ-100",
+            "T-100",
             "acme",
             "repo",
             "PR",
@@ -1279,6 +1379,114 @@ mod tests {
             .expect("overwrite failed");
         let val = db.get_config("custom_key").expect("get failed");
         assert_eq!(val, Some("overwritten".to_string()));
+
+        drop(db);
+        let _ = fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_create_task_autoincrement() {
+        let (db, path) = make_test_db("task_autoincrement");
+
+        let task1 = db
+            .create_task("Task 1", None, "todo", None)
+            .expect("create 1 failed");
+        let task2 = db
+            .create_task("Task 2", None, "todo", None)
+            .expect("create 2 failed");
+        let task3 = db
+            .create_task("Task 3", None, "todo", None)
+            .expect("create 3 failed");
+
+        assert_eq!(task1.id, "T-1");
+        assert_eq!(task2.id, "T-2");
+        assert_eq!(task3.id, "T-3");
+
+        drop(db);
+        let _ = fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_update_task_status() {
+        let (db, path) = make_test_db("update_task_status");
+
+        let task = db
+            .create_task("My task", None, "todo", None)
+            .expect("create failed");
+
+        db.update_task_status(&task.id, "in_progress")
+            .expect("update status failed");
+
+        let updated = db.get_task(&task.id).expect("get failed").unwrap();
+        assert_eq!(updated.status, "in_progress");
+
+        drop(db);
+        let _ = fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_update_task_jira_info() {
+        let (db, path) = make_test_db("update_jira_info");
+
+        db.create_task("Linked task", None, "todo", Some("PROJ-1"))
+            .expect("create 1 failed");
+        db.create_task("Unlinked task", None, "todo", None)
+            .expect("create 2 failed");
+
+        let updated = db
+            .update_task_jira_info("PROJ-1", "In Progress", "bob")
+            .expect("update jira info failed");
+
+        assert_eq!(updated, 1);
+
+        let tasks = db.get_all_tasks().expect("get all failed");
+        let linked = tasks.iter().find(|t| t.jira_key.is_some()).unwrap();
+        assert_eq!(linked.jira_status, Some("In Progress".to_string()));
+        assert_eq!(linked.jira_assignee, Some("bob".to_string()));
+
+        let unlinked = tasks.iter().find(|t| t.jira_key.is_none()).unwrap();
+        assert_eq!(unlinked.jira_status, None);
+
+        drop(db);
+        let _ = fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_get_tasks_with_jira_links() {
+        let (db, path) = make_test_db("tasks_with_jira");
+
+        db.create_task("Task 1", None, "todo", Some("PROJ-1"))
+            .expect("create 1 failed");
+        db.create_task("Task 2", None, "todo", Some("PROJ-2"))
+            .expect("create 2 failed");
+        db.create_task("Task 3", None, "todo", None)
+            .expect("create 3 failed");
+
+        let linked = db.get_tasks_with_jira_links().expect("get linked failed");
+        assert_eq!(linked.len(), 2);
+
+        drop(db);
+        let _ = fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_update_task_fields_preserves_on_jira_update() {
+        let (db, path) = make_test_db("preserve_fields");
+
+        let task = db
+            .create_task("My task", None, "todo", Some("PROJ-1"))
+            .expect("create failed");
+
+        db.update_task_fields(&task.id, Some("AC text"), Some("Plan text"))
+            .expect("update fields failed");
+
+        db.update_task_jira_info("PROJ-1", "In Progress", "alice")
+            .expect("update jira failed");
+
+        let updated = db.get_task(&task.id).expect("get failed").unwrap();
+        assert_eq!(updated.acceptance_criteria, Some("AC text".to_string()));
+        assert_eq!(updated.plan_text, Some("Plan text".to_string()));
+        assert_eq!(updated.jira_status, Some("In Progress".to_string()));
 
         drop(db);
         let _ = fs::remove_file(&path);

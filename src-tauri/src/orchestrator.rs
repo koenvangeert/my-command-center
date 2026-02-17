@@ -54,14 +54,14 @@ impl Orchestrator {
     ) -> Result<String, OrchestratorError> {
         let session_id = uuid::Uuid::new_v4().to_string();
 
-        // Read ticket from DB
+        // Read task from DB
         let ticket = {
             let db_lock = db.lock().unwrap();
             db_lock
-                .get_ticket(ticket_id)
+                .get_task(ticket_id)
                 .map_err(|e| OrchestratorError::Database(e.to_string()))?
                 .ok_or_else(|| {
-                    OrchestratorError::NotFound(format!("Ticket {} not found", ticket_id))
+                    OrchestratorError::NotFound(format!("Task {} not found", ticket_id))
                 })?
         };
 
@@ -89,9 +89,8 @@ impl Orchestrator {
 
         let description = ticket.description.unwrap_or_default();
         let prompt = format!(
-            "Read this JIRA ticket and propose an implementation approach.\n\n\
-             Ticket: {}\n\
-             Title: {}\n\
+            "Read this task and propose an implementation approach.\n\n\
+             Task: {} - {}\n\
              Description: {}\n\n\
              Propose a clear implementation plan with numbered steps.",
             ticket_id, ticket.title, description
@@ -580,18 +579,18 @@ mod tests {
 
         let db = Database::new(db_path.clone()).expect("Failed to create database");
 
-        // First insert a ticket (FK constraint)
-        db.upsert_ticket("PROJ-1", "Test ticket", "Description", "todo", "To Do", "user", 1000, 1000)
-            .expect("Failed to insert ticket");
+        // First insert a task (FK constraint)
+        let task = db.create_task("Test ticket", Some("Description"), "todo", None)
+            .expect("Failed to create task");
 
         // Create session
-        db.create_agent_session("ses-1", "PROJ-1", None, "read_ticket", "running")
+        db.create_agent_session("ses-1", &task.id, None, "read_ticket", "running")
             .expect("Failed to create session");
 
         // Read session
         let session = db.get_agent_session("ses-1").expect("Failed to get session").expect("Session not found");
         assert_eq!(session.id, "ses-1");
-        assert_eq!(session.ticket_id, "PROJ-1");
+        assert_eq!(session.ticket_id, task.id);
         assert_eq!(session.stage, "read_ticket");
         assert_eq!(session.status, "running");
         assert!(session.opencode_session_id.is_none());
@@ -614,10 +613,10 @@ mod tests {
         assert_eq!(session.opencode_session_id.as_deref(), Some("oc-abc"));
 
         // Get latest session for ticket
-        db.create_agent_session("ses-2", "PROJ-1", Some("oc-def"), "address_comments", "running")
+        db.create_agent_session("ses-2", &task.id, Some("oc-def"), "address_comments", "running")
             .expect("Failed to create session 2");
 
-        let latest = db.get_latest_session_for_ticket("PROJ-1").expect("Failed").expect("Not found");
+        let latest = db.get_latest_session_for_ticket(&task.id).expect("Failed").expect("Not found");
         // Should be ses-2 (most recent)
         assert_eq!(latest.id, "ses-2");
 
@@ -642,10 +641,10 @@ mod tests {
 
         let db = Database::new(db_path.clone()).expect("Failed to create database");
 
-        // Insert ticket and session first (FK constraints)
-        db.upsert_ticket("PROJ-2", "Test", "Desc", "todo", "To Do", "user", 1000, 1000)
-            .expect("Failed to insert ticket");
-        db.create_agent_session("ses-log-1", "PROJ-2", None, "read_ticket", "running")
+        // Insert task and session first (FK constraints)
+        let task = db.create_task("Test", Some("Desc"), "todo", None)
+            .expect("Failed to create task");
+        db.create_agent_session("ses-log-1", &task.id, None, "read_ticket", "running")
             .expect("Failed to create session");
 
         // Insert logs
@@ -678,18 +677,18 @@ mod tests {
 
         let db = Database::new(db_path.clone()).expect("Failed to create database");
 
-        // Non-existent ticket
-        let none = db.get_ticket("NOPE-1").expect("Failed");
+        // Non-existent task
+        let none = db.get_task("NOPE-1").expect("Failed");
         assert!(none.is_none());
 
         // Insert and retrieve
-        db.upsert_ticket("PROJ-3", "My ticket", "Details here", "in_progress", "In Progress", "dev", 2000, 2000)
-            .expect("Failed to insert ticket");
+        let task = db.create_task("My ticket", Some("Details here"), "in_progress", None)
+            .expect("Failed to create task");
 
-        let ticket = db.get_ticket("PROJ-3").expect("Failed").expect("Not found");
-        assert_eq!(ticket.id, "PROJ-3");
-        assert_eq!(ticket.title, "My ticket");
-        assert_eq!(ticket.status, "in_progress");
+        let retrieved = db.get_task(&task.id).expect("Failed").expect("Not found");
+        assert_eq!(retrieved.id, task.id);
+        assert_eq!(retrieved.title, "My ticket");
+        assert_eq!(retrieved.status, "in_progress");
 
         drop(db);
         let _ = std::fs::remove_file(&db_path);

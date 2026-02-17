@@ -1,14 +1,15 @@
-export interface Ticket {
+export interface Task {
   id: string;
   title: string;
   description: string | null;
   status: string;
+  jira_key: string | null;
   jira_status: string | null;
-  assignee: string | null;
-  created_at: number;
-  updated_at: number;
+  jira_assignee: string | null;
   acceptance_criteria: string | null;
   plan_text: string | null;
+  created_at: number;
+  updated_at: number;
 }
 
 export interface AgentSession {

@@ -1,37 +1,49 @@
 import { render, screen, fireEvent } from '@testing-library/svelte'
 import { describe, it, expect } from 'vitest'
-import TicketCard from './TicketCard.svelte'
-import type { Ticket, AgentSession } from '../lib/types'
+import TaskCard from './TaskCard.svelte'
+import type { Task, AgentSession } from '../lib/types'
 
-const baseTicket: Ticket = {
-  id: 'PROJ-42',
+const baseTask: Task = {
+  id: 'T-42',
   title: 'Implement auth middleware',
   description: 'Add JWT auth to API routes',
   status: 'todo',
+  jira_key: 'PROJ-123',
   jira_status: 'To Do',
-  assignee: 'Alice',
-  created_at: 1000,
-  updated_at: 2000,
+  jira_assignee: 'Alice',
   acceptance_criteria: null,
   plan_text: null,
+  created_at: 1000,
+  updated_at: 2000,
 }
 
-describe('TicketCard', () => {
-  it('renders ticket id and title', () => {
-    render(TicketCard, { props: { ticket: baseTicket } })
-    expect(screen.getByText('PROJ-42')).toBeTruthy()
+describe('TaskCard', () => {
+  it('renders task id and title', () => {
+    render(TaskCard, { props: { task: baseTask } })
+    expect(screen.getByText('T-42')).toBeTruthy()
     expect(screen.getByText('Implement auth middleware')).toBeTruthy()
   })
 
-  it('renders assignee', () => {
-    render(TicketCard, { props: { ticket: baseTicket } })
+  it('renders JIRA badge when jira_key is present', () => {
+    render(TaskCard, { props: { task: baseTask } })
+    expect(screen.getByText('PROJ-123')).toBeTruthy()
+  })
+
+  it('hides JIRA badge when jira_key is null', () => {
+    const taskWithoutJira = { ...baseTask, jira_key: null }
+    render(TaskCard, { props: { task: taskWithoutJira } })
+    expect(screen.queryByText('PROJ-123')).toBeNull()
+  })
+
+  it('renders jira_assignee', () => {
+    render(TaskCard, { props: { task: baseTask } })
     expect(screen.getByText('Alice')).toBeTruthy()
   })
 
   it('shows running status when session is running', () => {
     const session: AgentSession = {
       id: 'ses-1',
-      ticket_id: 'PROJ-42',
+      ticket_id: 'T-42',
       opencode_session_id: null,
       stage: 'implement',
       status: 'running',
@@ -40,14 +52,14 @@ describe('TicketCard', () => {
       created_at: 1000,
       updated_at: 2000,
     }
-    render(TicketCard, { props: { ticket: baseTicket, session } })
+    render(TaskCard, { props: { task: baseTask, session } })
     expect(screen.getByText('Implementing...')).toBeTruthy()
   })
 
   it('shows paused status for checkpoint', () => {
     const session: AgentSession = {
       id: 'ses-1',
-      ticket_id: 'PROJ-42',
+      ticket_id: 'T-42',
       opencode_session_id: null,
       stage: 'read_ticket',
       status: 'paused',
@@ -56,18 +68,18 @@ describe('TicketCard', () => {
       created_at: 1000,
       updated_at: 2000,
     }
-    render(TicketCard, { props: { ticket: baseTicket, session } })
+    render(TaskCard, { props: { task: baseTask, session } })
     expect(screen.getByText('Awaiting approval')).toBeTruthy()
   })
 
   it('dispatches select event on click', async () => {
-    const { component } = render(TicketCard, { props: { ticket: baseTicket } })
+    const { component } = render(TaskCard, { props: { task: baseTask } })
     let selectedId = ''
     component.$on('select', (e: CustomEvent<string>) => {
       selectedId = e.detail
     })
     const card = screen.getByRole('button')
     await fireEvent.click(card)
-    expect(selectedId).toBe('PROJ-42')
+    expect(selectedId).toBe('T-42')
   })
 })

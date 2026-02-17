@@ -2,12 +2,12 @@
   import { onMount, onDestroy } from 'svelte'
   import { listen } from '@tauri-apps/api/event'
   import type { UnlistenFn } from '@tauri-apps/api/event'
-  import { tickets, selectedTicketId, activeSessions, ticketPrs, error, isLoading } from './lib/stores'
-  import { getTickets, getOpenCodeStatus, getSessionStatus, checkOpenCodeInstalled, getPullRequests } from './lib/ipc'
-  import type { PullRequestInfo } from './lib/types'
-  import type { OpenCodeStatus, PrComment } from './lib/types'
+  import { tasks, selectedTaskId, activeSessions, ticketPrs, error, isLoading } from './lib/stores'
+  import { getTasks, getOpenCodeStatus, getSessionStatus, checkOpenCodeInstalled, getPullRequests } from './lib/ipc'
+  import type { Task, PullRequestInfo, OpenCodeStatus, PrComment } from './lib/types'
   import KanbanBoard from './components/KanbanBoard.svelte'
   import DetailPanel from './components/DetailPanel.svelte'
+  import AddTaskDialog from './components/AddTaskDialog.svelte'
   import SettingsPanel from './components/SettingsPanel.svelte'
   import Toast from './components/Toast.svelte'
 
@@ -16,15 +16,18 @@
   let showSettings = false
   let prComments: PrComment[] = []
   let openCodeInstalled: boolean | null = null
+  let showAddDialog = false
+  let editingTask: Task | null = null
+  let dialogMode: 'create' | 'edit' = 'create'
 
-  $: selectedTicket = $tickets.find(t => t.id === $selectedTicketId) || null
+  $: selectedTask = $tasks.find(t => t.id === $selectedTaskId) || null
 
-  async function loadTickets() {
+  async function loadTasks() {
     $isLoading = true
     try {
-      $tickets = await getTickets()
+      $tasks = await getTasks()
     } catch (e) {
-      console.error('Failed to load tickets:', e)
+      console.error('Failed to load tasks:', e)
       $error = String(e)
     } finally {
       $isLoading = false
@@ -62,13 +65,13 @@
       openCodeInstalled = false
     }
 
-    await loadTickets()
+    await loadTasks()
     await loadPullRequests()
     await checkOpenCode()
 
     unlisteners.push(
       await listen('jira-sync-complete', () => {
-        loadTickets()
+        loadTasks()
       })
     )
 
@@ -88,7 +91,7 @@
         try {
           const session = await getSessionStatus(event.payload.session_id)
           $activeSessions = new Map($activeSessions).set(session.ticket_id, session)
-          await loadTickets()
+          await loadTasks()
         } catch (e) {
           console.error('Failed to get session status:', e)
         }
@@ -97,7 +100,7 @@
 
     unlisteners.push(
       await listen('new-pr-comment', () => {
-        loadTickets()
+        loadTasks()
         loadPullRequests()
       })
     )
@@ -150,21 +153,25 @@
     {#if showSettings}
       <SettingsPanel on:close={() => showSettings = false} />
     {:else}
-      <div class="board-area" class:has-detail={selectedTicket !== null}>
-        {#if $isLoading && $tickets.length === 0}
+      <div class="board-area" class:has-detail={selectedTask !== null}>
+        {#if $isLoading && $tasks.length === 0}
           <div class="loading-overlay">
             <div class="spinner"></div>
-            <span>Loading tickets...</span>
+            <span>Loading tasks...</span>
           </div>
         {:else}
           <KanbanBoard />
         {/if}
       </div>
-      {#if selectedTicket}
+      {#if selectedTask}
         <div class="detail-area">
-          <DetailPanel ticket={selectedTicket} comments={prComments} on:close={() => $selectedTicketId = null} />
+          <DetailPanel task={selectedTask} comments={prComments} on:close={() => $selectedTaskId = null} on:edit={() => { editingTask = selectedTask; dialogMode = 'edit'; showAddDialog = true }} />
         </div>
       {/if}
+    {/if}
+
+    {#if showAddDialog}
+      <AddTaskDialog mode={dialogMode} task={editingTask} on:close={() => { showAddDialog = false; editingTask = null }} on:task-saved={() => { showAddDialog = false; editingTask = null; loadTasks() }} />
     {/if}
   </main>
 </div>
