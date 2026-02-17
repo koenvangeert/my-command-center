@@ -453,7 +453,7 @@ async fn poll_pr_comments(db: &Database, github_client: &GitHubClient) {
   - Estimated effort: 1 hour
   - Deliverable: `tauri init` scaffold, Svelte app renders "Hello World"
 
-- [ ] **Task 1.2**: Set up SQLite database with schema
+- [x] **Task 1.2**: Set up SQLite database with schema
   - Parallelizable: No (depends on 1.1)
   - Estimated effort: 2 hours
   - Deliverable: Rust module with SQLite connection, migrations for all tables
