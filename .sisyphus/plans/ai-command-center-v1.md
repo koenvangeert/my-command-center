@@ -530,7 +530,7 @@ async fn poll_pr_comments(db: &Database, github_client: &GitHubClient) {
   - Estimated effort: 2 hours
   - Deliverable: Function to resume OpenCode session with selected PR comments
 
-- [ ] **Task 4.4**: Create Tauri commands for orchestrator control
+- [x] **Task 4.4**: Create Tauri commands for orchestrator control
   - Parallelizable: No (depends on 4.1, 4.2, 4.3)
   - Estimated effort: 1 hour
   - Deliverable: Tauri commands: `start_ticket_implementation`, `approve_checkpoint`, `address_pr_comments`

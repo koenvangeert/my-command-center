@@ -1,18 +1,122 @@
 <script lang="ts">
-  import { onMount } from 'svelte'
+  import { onMount, onDestroy } from 'svelte'
+  import { listen } from '@tauri-apps/api/event'
+  import type { UnlistenFn } from '@tauri-apps/api/event'
+  import { tickets, activeSessions, error } from './lib/stores'
+  import { getTickets, getOpenCodeStatus, getSessionStatus } from './lib/ipc'
+  import type { OpenCodeStatus } from './lib/types'
+  import KanbanBoard from './components/KanbanBoard.svelte'
 
-  let message: string = 'Hello World'
+  let openCodeStatus: OpenCodeStatus | null = null
+  let unlisteners: UnlistenFn[] = []
 
-  onMount(() => {
-    console.log('App mounted')
+  async function loadTickets() {
+    try {
+      $tickets = await getTickets()
+    } catch (e) {
+      console.error('Failed to load tickets:', e)
+      $error = String(e)
+    }
+  }
+
+  async function checkOpenCode() {
+    try {
+      openCodeStatus = await getOpenCodeStatus()
+    } catch (e) {
+      openCodeStatus = null
+    }
+  }
+
+  onMount(async () => {
+    await loadTickets()
+    await checkOpenCode()
+
+    unlisteners.push(
+      await listen('jira-sync-complete', () => {
+        loadTickets()
+      })
+    )
+
+    unlisteners.push(
+      await listen<{ ticket_id: string; session_id: string; stage: string; data: unknown }>('checkpoint-reached', async (event) => {
+        try {
+          const session = await getSessionStatus(event.payload.session_id)
+          $activeSessions = new Map($activeSessions).set(session.ticket_id, session)
+        } catch (e) {
+          console.error('Failed to get session status:', e)
+        }
+      })
+    )
+
+    unlisteners.push(
+      await listen<{ ticket_id: string; session_id: string; stage: string }>('stage-completed', async (event) => {
+        try {
+          const session = await getSessionStatus(event.payload.session_id)
+          $activeSessions = new Map($activeSessions).set(session.ticket_id, session)
+          await loadTickets()
+        } catch (e) {
+          console.error('Failed to get session status:', e)
+        }
+      })
+    )
+
+    unlisteners.push(
+      await listen('new-pr-comment', () => {
+        loadTickets()
+      })
+    )
+
+    unlisteners.push(
+      await listen<{ ticket_id: string; session_id: string }>('session-aborted', (event) => {
+        const updated = new Map($activeSessions)
+        updated.delete(event.payload.ticket_id)
+        $activeSessions = updated
+      })
+    )
+  })
+
+  onDestroy(() => {
+    unlisteners.forEach(fn => fn())
   })
 </script>
 
-<main>
-  <h1>{message}</h1>
-</main>
+<div class="app">
+  <header class="top-bar">
+    <h1 class="app-title">AI Command Center</h1>
+    <div class="status-bar">
+      {#if openCodeStatus}
+        <span class="status-indicator" class:healthy={openCodeStatus.healthy} class:unhealthy={!openCodeStatus.healthy}>
+          <span class="dot"></span>
+          OpenCode {openCodeStatus.healthy ? 'Connected' : 'Disconnected'}
+        </span>
+      {:else}
+        <span class="status-indicator unhealthy">
+          <span class="dot"></span>
+          OpenCode Unavailable
+        </span>
+      {/if}
+    </div>
+  </header>
+
+  <main class="main-content">
+    <KanbanBoard />
+  </main>
+</div>
 
 <style>
+  :global(:root) {
+    --bg-primary: #1a1b26;
+    --bg-secondary: #24283b;
+    --bg-card: #2f3349;
+    --text-primary: #c0caf5;
+    --text-secondary: #565f89;
+    --accent: #7aa2f7;
+    --success: #9ece6a;
+    --warning: #e0af68;
+    --error: #f7768e;
+    --border: #3b4261;
+  }
+
   :global(body) {
     margin: 0;
     padding: 0;
@@ -21,20 +125,71 @@
       sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    background: var(--bg-primary);
+    color: var(--text-primary);
   }
 
-  main {
+  :global(*) {
+    box-sizing: border-box;
+  }
+
+  .app {
     display: flex;
-    justify-content: center;
-    align-items: center;
+    flex-direction: column;
     height: 100vh;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    overflow: hidden;
   }
 
-  h1 {
-    color: white;
-    font-size: 3rem;
+  .top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    height: 48px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .app-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
     margin: 0;
-    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    letter-spacing: 0.02em;
+  }
+
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+  }
+
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-secondary);
+  }
+
+  .healthy .dot {
+    background: var(--success);
+  }
+
+  .unhealthy .dot {
+    background: var(--error);
+  }
+
+  .main-content {
+    flex: 1;
+    overflow: hidden;
   }
 </style>
