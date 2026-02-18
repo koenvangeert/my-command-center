@@ -493,7 +493,7 @@ Max Concurrent: 4 (Wave 1)
 
 ---
 
-- [ ] 4. TaskDetailView.svelte + App.svelte navigation wiring
+- [x] 4. TaskDetailView.svelte + App.svelte navigation wiring
 
   **What to do**:
   - Create `src/components/TaskDetailView.svelte` — the full-page two-column layout container:
@@ -605,7 +605,7 @@ Max Concurrent: 4 (Wave 1)
 
 ---
 
-- [ ] 5. TaskInfoPanel.svelte (right column)
+- [x] 5. TaskInfoPanel.svelte (right column)
 
   **What to do**:
   - Create `src/components/TaskInfoPanel.svelte` — the right column of the detail view:
@@ -720,7 +720,7 @@ Max Concurrent: 4 (Wave 1)
 
 ---
 
-- [ ] 6. AgentChatPanel.svelte (right column + SSE wiring)
+- [x] 6. AgentPanel.svelte (left column + SSE wiring)
 
   **What to do**:
   - Create `src/components/AgentChatPanel.svelte` — the right column of the detail view:
@@ -837,7 +837,7 @@ Max Concurrent: 4 (Wave 1)
 
 ---
 
-- [ ] 7. Fix PR comments data flow in detail view
+- [x] 7. Fix PR comments data flow in detail view
 
   **What to do**:
   - The current PR comments data flow is broken: `prComments` in `App.svelte:17` is declared as `[]` and never populated. The `PrCommentsPanel` receives an always-empty array.
@@ -919,7 +919,7 @@ Max Concurrent: 4 (Wave 1)
 
 ---
 
-- [ ] 8. Remove old DetailPanel + dead code cleanup
+- [x] 8. Remove old DetailPanel + dead code cleanup
 
   **What to do**:
   - Delete `src/components/DetailPanel.svelte`
@@ -1001,7 +1001,7 @@ Max Concurrent: 4 (Wave 1)
 
 ---
 
-- [ ] 9. Integration verification + polish
+- [x] 9. Integration verification + polish
 
   **What to do**:
   - End-to-end verification of the complete feature:
@@ -1170,7 +1170,7 @@ Max Concurrent: 4 (Wave 1)
 
 ---
 
-- [ ] 11. Frontend tests for new components
+- [x] 11. Frontend tests for new components
 
   **What to do**:
   - Create test files for new components following existing patterns:
@@ -1245,7 +1245,7 @@ Max Concurrent: 4 (Wave 1)
 
 ---
 
-- [ ] 12. Full build + test suite verification
+- [x] 12. Full build + test suite verification
 
   **What to do**:
   - Run the complete build and test pipeline:

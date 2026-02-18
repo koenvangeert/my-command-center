@@ -1,7 +1,8 @@
 {
-  "active_plan": null,
-  "started_at": null,
-  "session_ids": [],
-  "plan_name": null,
-  "agent": null
+  "active_plan": "/Users/koen.vangeert/workspace/tmp/my-command-center/.sisyphus/plans/remove-subfolder-scanning.md",
+  "started_at": "2026-02-18T05:02:49.750Z",
+  "session_ids": [
+    "ses_390f32464ffeu7aCeQrAvShnOb"
+  ],
+  "plan_name": "remove-subfolder-scanning"
 }

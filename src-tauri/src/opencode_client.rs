@@ -229,6 +229,157 @@ impl OpenCodeClient {
 
         Ok(health)
     }
+
+    /// Send a prompt asynchronously (fire-and-forget)
+    ///
+    /// # Arguments
+    /// * `session_id` - Session ID
+    /// * `text` - Prompt text
+    /// * `agent` - Optional agent name to route the prompt to
+    ///
+    /// # Returns
+    /// Ok on successful submission (does not wait for completion)
+    pub async fn prompt_async(
+        &self,
+        session_id: &str,
+        text: String,
+        agent: Option<String>,
+    ) -> Result<(), OpenCodeError> {
+        let url = format!("{}/session/{}/prompt_async", self.base_url, session_id);
+        let request = PromptAsyncRequest {
+            parts: vec![Part {
+                r#type: "text".to_string(),
+                text,
+            }],
+            agent,
+        };
+
+        let response = self
+            .client
+            .post(&url)
+            .json(&request)
+            .send()
+            .await
+            .map_err(|e| OpenCodeError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unable to read response body".to_string());
+            return Err(OpenCodeError::ApiError {
+                status: status.as_u16(),
+                message: body,
+            });
+        }
+
+        Ok(())
+    }
+
+    /// Abort a running session
+    ///
+    /// # Arguments
+    /// * `session_id` - Session ID to abort
+    ///
+    /// # Returns
+    /// Ok on successful abort
+    pub async fn abort_session(&self, session_id: &str) -> Result<(), OpenCodeError> {
+        let url = format!("{}/session/{}/abort", self.base_url, session_id);
+
+        let response = self
+            .client
+            .post(&url)
+            .json(&serde_json::json!({}))
+            .send()
+            .await
+            .map_err(|e| OpenCodeError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unable to read response body".to_string());
+            return Err(OpenCodeError::ApiError {
+                status: status.as_u16(),
+                message: body,
+            });
+        }
+
+        Ok(())
+    }
+
+    /// List available agents
+    ///
+    /// # Returns
+    /// List of agent information
+    pub async fn list_agents(&self) -> Result<Vec<AgentInfo>, OpenCodeError> {
+        let url = format!("{}/agent", self.base_url);
+
+        let response = self
+            .client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| OpenCodeError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unable to read response body".to_string());
+            return Err(OpenCodeError::ApiError {
+                status: status.as_u16(),
+                message: body,
+            });
+        }
+
+        let agents: Vec<AgentInfo> = response
+            .json()
+            .await
+            .map_err(|e| OpenCodeError::ParseError(e.to_string()))?;
+
+        Ok(agents)
+    }
+
+    /// Get session information
+    ///
+    /// # Arguments
+    /// * `session_id` - Session ID
+    ///
+    /// # Returns
+    /// Session information including status
+    pub async fn get_session(&self, session_id: &str) -> Result<SessionInfo, OpenCodeError> {
+        let url = format!("{}/session/{}", self.base_url, session_id);
+
+        let response = self
+            .client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| OpenCodeError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unable to read response body".to_string());
+            return Err(OpenCodeError::ApiError {
+                status: status.as_u16(),
+                message: body,
+            });
+        }
+
+        let session: SessionInfo = response
+            .json()
+            .await
+            .map_err(|e| OpenCodeError::ParseError(e.to_string()))?;
+
+        Ok(session)
+    }
 }
 
 impl Default for OpenCodeClient {
@@ -287,6 +438,31 @@ pub struct HealthResponse {
     pub healthy: bool,
     #[serde(default)]
     pub version: Option<String>,
+}
+
+/// Request to send a prompt asynchronously
+#[derive(Debug, Serialize)]
+pub struct PromptAsyncRequest {
+    pub parts: Vec<Part>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub agent: Option<String>,
+}
+
+/// Agent information
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct AgentInfo {
+    pub name: String,
+    #[serde(flatten)]
+    pub extra: serde_json::Map<String, serde_json::Value>,
+}
+
+/// Session information
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct SessionInfo {
+    pub id: String,
+    pub status: String,
+    #[serde(flatten)]
+    pub extra: serde_json::Map<String, serde_json::Value>,
 }
 
 // ============================================================================

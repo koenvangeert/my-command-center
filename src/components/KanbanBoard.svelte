@@ -1,10 +1,13 @@
 <script lang="ts">
+  import { createEventDispatcher } from 'svelte'
   import type { Task, AgentSession, KanbanColumn } from '../lib/types'
   import { COLUMNS, COLUMN_LABELS } from '../lib/types'
   import { tasks, selectedTaskId, activeSessions, ticketPrs, error } from '../lib/stores'
-  import { startTicketImplementation, updateTaskStatus, deleteTask, getTasks } from '../lib/ipc'
+  import { updateTaskStatus, deleteTask, getTasks } from '../lib/ipc'
   import TaskCard from './TaskCard.svelte'
   import AddTaskInline from './AddTaskInline.svelte'
+
+  const dispatch = createEventDispatcher()
 
   function tasksForColumn(allTasks: Task[], column: KanbanColumn): Task[] {
     return allTasks.filter(t => t.status === column)
@@ -42,13 +45,9 @@
   }
 
   async function handleStartImplementation() {
+    const taskId = contextMenu.taskId
     closeContextMenu()
-    try {
-      await startTicketImplementation(contextMenu.taskId)
-    } catch (err: unknown) {
-      console.error('Failed to start implementation:', err)
-      $error = String(err)
-    }
+    dispatch('start-implementation', { taskId })
   }
 
   async function handleMoveTo(column: KanbanColumn) {

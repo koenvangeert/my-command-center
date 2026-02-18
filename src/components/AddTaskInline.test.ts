@@ -14,6 +14,7 @@ vi.mock('../lib/ipc', () => ({
     jira_assignee: null,
     acceptance_criteria: null,
     plan_text: null,
+    project_id: null,
     created_at: 1000,
     updated_at: 1000,
   } as Task),
@@ -65,7 +66,7 @@ describe('AddTaskInline', () => {
     await fireEvent.keyDown(input, { key: 'Enter' })
     
     await new Promise((r) => setTimeout(r, 10))
-    expect(createTask).toHaveBeenCalledWith('New task title', '', 'todo', null)
+    expect(createTask).toHaveBeenCalledWith('New task title', '', 'todo', null, null)
   })
 
   it('collapses without creating when Escape is pressed', async () => {

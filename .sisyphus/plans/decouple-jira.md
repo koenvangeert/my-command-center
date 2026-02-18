@@ -212,7 +212,7 @@ Max Concurrent: 8 (Wave 2)
 
 ## TODOs
 
-- [ ] 1. Backend DB Layer Rewrite
+- [x] 1. Backend DB Layer Rewrite
 
   **What to do**:
   - Rename `TicketRow` struct to `TaskRow`. Add `jira_key: Option<String>` field. Rename `jira_status` and keep `assignee` as `jira_assignee` (JIRA-supplementary).
@@ -331,7 +331,7 @@ Max Concurrent: 8 (Wave 2)
 
 ---
 
-- [ ] 2. Frontend Data Layer Update
+- [x] 2. Frontend Data Layer Update
 
   **What to do**:
   - **types.ts**: Rename `Ticket` interface to `Task`. Add `jira_key: string | null` field. Rename `assignee` to `jira_assignee`. Keep `jira_status`. Add `acceptance_criteria: string | null` and `plan_text: string | null` fields. Add new `OpenCodeEvent` interface: `{ event_type: string; data: string; }` (after OpenCodeStatus). Keep all other types (AgentSession, AgentLog, PrComment, PullRequestInfo, OpenCodeStatus) unchanged. Update `KanbanColumn` and `COLUMN_LABELS` — keep as-is (columns are the same).
@@ -410,7 +410,7 @@ Max Concurrent: 8 (Wave 2)
 
 ---
 
-- [ ] 3. Tauri Commands Rewrite
+- [x] 3. Tauri Commands Rewrite
 
   **What to do**:
   - Add new `#[tauri::command]` functions in main.rs:
@@ -517,7 +517,7 @@ Max Concurrent: 8 (Wave 2)
 
 ---
 
-- [ ] 4. JIRA Sync Rewrite
+- [x] 4. JIRA Sync Rewrite
 
   **What to do**:
   - Completely rewrite `start_jira_sync()` in jira_sync.rs. New architecture:
@@ -614,7 +614,7 @@ Max Concurrent: 8 (Wave 2)
 
 ---
 
-- [ ] 5. GitHub Poller Update (PR Matching)
+- [x] 5. GitHub Poller Update (PR Matching)
 
   **What to do**:
   - Update the PR matching logic in `github_poller.rs` to support dual matching:
@@ -713,7 +713,7 @@ Max Concurrent: 8 (Wave 2)
 
 ---
 
-- [ ] 6. Orchestrator Prompt Updates
+- [x] 6. Orchestrator Prompt Updates
 
   **What to do**:
   - Update prompt text in orchestrator.rs:
@@ -772,7 +772,7 @@ Max Concurrent: 8 (Wave 2)
 
 ---
 
-- [ ] 7. AddTaskInline Component
+- [x] 7. AddTaskInline Component
 
   **What to do**:
   - Create new `src/components/AddTaskInline.svelte`:
@@ -847,7 +847,7 @@ Max Concurrent: 8 (Wave 2)
 
 ---
 
-- [ ] 8. AddTaskDialog Component
+- [x] 8. AddTaskDialog Component
 
   **What to do**:
   - Create new `src/components/AddTaskDialog.svelte`:
@@ -929,7 +929,7 @@ Max Concurrent: 8 (Wave 2)
 
 ---
 
-- [ ] 9. TaskCard Component (Rename + Update TicketCard)
+- [x] 9. TaskCard Component (Rename + Update TicketCard)
 
   **What to do**:
   - Rename `src/components/TicketCard.svelte` → `src/components/TaskCard.svelte`
@@ -1002,7 +1002,7 @@ Max Concurrent: 8 (Wave 2)
 
 ---
 
-- [ ] 10. DetailPanel Update
+- [x] 10. DetailPanel Update
 
   **What to do**:
   - Update `src/components/DetailPanel.svelte`:
@@ -1077,7 +1077,7 @@ Max Concurrent: 8 (Wave 2)
 
 ---
 
-- [ ] 11. KanbanBoard Update
+- [x] 11. KanbanBoard Update
 
   **What to do**:
   - Update `src/components/KanbanBoard.svelte`:
@@ -1142,7 +1142,7 @@ Max Concurrent: 8 (Wave 2)
 
 ---
 
-- [ ] 12. App.svelte + SettingsPanel Integration
+- [x] 12. App.svelte + SettingsPanel Integration
 
   **What to do**:
   - **App.svelte**:
@@ -1209,7 +1209,7 @@ Max Concurrent: 8 (Wave 2)
 
 ---
 
-- [ ] 13. Rust Backend Tests
+- [x] 13. Rust Backend Tests
 
   **What to do**:
   - Add comprehensive `#[cfg(test)] mod tests` in `db.rs` for all new methods:
@@ -1279,7 +1279,7 @@ Max Concurrent: 8 (Wave 2)
 
 ---
 
-- [ ] 14. Frontend Tests
+- [x] 14. Frontend Tests
 
   **What to do**:
   - Update existing test files:

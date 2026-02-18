@@ -3,6 +3,7 @@
   import type { Task, KanbanColumn } from '../lib/types'
   import { COLUMNS, COLUMN_LABELS } from '../lib/types'
   import { createTask, updateTask } from '../lib/ipc'
+  import { activeProjectId } from '../lib/stores'
 
   export let mode: 'create' | 'edit' = 'create'
   export let task: Task | null = null
@@ -25,7 +26,8 @@
           title.trim(),
           description.trim() || '',
           status,
-          jiraKey.trim() || null
+          jiraKey.trim() || null,
+          $activeProjectId
         )
         dispatch('task-saved', newTask)
       } else if (task) {

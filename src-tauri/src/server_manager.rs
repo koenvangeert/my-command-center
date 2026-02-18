@@ -1,0 +1,358 @@
+use std::collections::HashMap;
+use std::fmt;
+use std::io;
+use std::path::{Path, PathBuf};
+use std::process::Stdio;
+use std::sync::Arc;
+use std::time::Duration;
+use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::process::{Child, Command};
+use tokio::sync::Mutex;
+use tokio::time::{sleep, timeout};
+use regex::Regex;
+
+const HEALTH_CHECK_RETRIES: u32 = 10;
+const HEALTH_CHECK_INTERVAL: Duration = Duration::from_millis(500);
+const PORT_DETECTION_TIMEOUT: Duration = Duration::from_secs(30);
+const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(5);
+
+// ============================================================================
+// Error Types
+// ============================================================================
+
+#[derive(Debug)]
+pub enum ServerError {
+    SpawnFailed(String),
+    PortDetectionTimeout,
+    HealthCheckFailed(String),
+    ProcessNotFound(String),
+    IoError(io::Error),
+}
+
+impl fmt::Display for ServerError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ServerError::SpawnFailed(msg) => write!(f, "Failed to spawn server: {}", msg),
+            ServerError::PortDetectionTimeout => {
+                write!(f, "Port detection timed out after {} seconds", PORT_DETECTION_TIMEOUT.as_secs())
+            }
+            ServerError::HealthCheckFailed(msg) => write!(f, "Health check failed: {}", msg),
+            ServerError::ProcessNotFound(task_id) => write!(f, "No server process found for task: {}", task_id),
+            ServerError::IoError(e) => write!(f, "IO error: {}", e),
+        }
+    }
+}
+
+impl std::error::Error for ServerError {}
+
+impl From<io::Error> for ServerError {
+    fn from(err: io::Error) -> Self {
+        ServerError::IoError(err)
+    }
+}
+
+// ============================================================================
+// Managed Server
+// ============================================================================
+
+struct ManagedServer {
+    child: Child,
+    port: u16,
+    pid: u32,
+    worktree_path: PathBuf,
+}
+
+// ============================================================================
+// Server Manager
+// ============================================================================
+
+/// Manages multiple OpenCode servers (one per task/worktree)
+pub struct ServerManager {
+    servers: Arc<Mutex<HashMap<String, ManagedServer>>>,
+}
+
+impl ServerManager {
+    /// Creates a new ServerManager with an empty server map
+    pub fn new() -> Self {
+        Self {
+            servers: Arc::new(Mutex::new(HashMap::new())),
+        }
+    }
+
+    /// Spawns a new OpenCode server for the given task_id and worktree_path.
+    /// Returns the dynamically assigned port number.
+    /// If a server is already running for this task_id, returns its existing port.
+    ///
+    /// # Arguments
+    /// * `task_id` - Unique identifier for the task
+    /// * `worktree_path` - Working directory for the OpenCode server
+    pub async fn spawn_server(&self, task_id: &str, worktree_path: &Path) -> Result<u16, ServerError> {
+        let mut servers = self.servers.lock().await;
+
+        if let Some(server) = servers.get(task_id) {
+            println!("Server already running for task {}: port {}", task_id, server.port);
+            return Ok(server.port);
+        }
+
+        println!("Spawning OpenCode server for task {} in {:?}", task_id, worktree_path);
+
+        let pid_dir = self.get_pid_dir()?;
+        std::fs::create_dir_all(&pid_dir)?;
+
+        let mut child = Command::new("opencode")
+            .arg("serve")
+            .arg("--port")
+            .arg("0")  // Dynamic port allocation
+            .current_dir(worktree_path)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .kill_on_drop(true)
+            .spawn()
+            .map_err(|e| ServerError::SpawnFailed(e.to_string()))?;
+
+        let pid = child.id().ok_or_else(|| ServerError::SpawnFailed("Failed to get PID".to_string()))?;
+
+        let port = self.detect_port(&mut child).await?;
+
+        println!("Server for task {} started on port {} (PID: {})", task_id, port, pid);
+
+        self.wait_for_health(port).await?;
+
+        println!("Server for task {} is healthy", task_id);
+
+        let pid_file = pid_dir.join(format!("{}.pid", task_id));
+        std::fs::write(&pid_file, pid.to_string())?;
+
+        servers.insert(
+            task_id.to_string(),
+            ManagedServer {
+                child,
+                port,
+                pid,
+                worktree_path: worktree_path.to_path_buf(),
+            },
+        );
+
+        Ok(port)
+    }
+
+    /// Stops the server for the given task_id.
+    /// Performs graceful shutdown (SIGTERM) followed by force kill if needed.
+    ///
+    /// # Arguments
+    /// * `task_id` - Unique identifier for the task
+    pub async fn stop_server(&self, task_id: &str) -> Result<(), ServerError> {
+        let mut servers = self.servers.lock().await;
+
+        let mut server = servers.remove(task_id).ok_or_else(|| {
+            ServerError::ProcessNotFound(task_id.to_string())
+        })?;
+
+        println!("Stopping server for task {} (PID: {})", task_id, server.pid);
+
+        #[cfg(unix)]
+        {
+            use nix::sys::signal::{kill, Signal};
+            use nix::unistd::Pid;
+
+            let pid = Pid::from_raw(server.pid as i32);
+            let _ = kill(pid, Signal::SIGTERM);
+
+            let wait_result = timeout(SHUTDOWN_TIMEOUT, server.child.wait()).await;
+
+            match wait_result {
+                Ok(Ok(status)) => {
+                    println!("Server for task {} exited gracefully: {:?}", task_id, status);
+                }
+                _ => {
+                    println!("Graceful shutdown timed out for task {}, forcing kill...", task_id);
+                    server.child.kill().await?;
+                    let _ = server.child.wait().await;
+                }
+            }
+        }
+
+        #[cfg(not(unix))]
+        {
+            server.child.kill().await?;
+            let _ = server.child.wait().await;
+        }
+
+        let pid_file = self.get_pid_dir()?.join(format!("{}.pid", task_id));
+        let _ = std::fs::remove_file(pid_file);
+
+        println!("Server for task {} stopped", task_id);
+
+        Ok(())
+    }
+
+    /// Stops all running servers
+    pub async fn stop_all(&self) -> Result<(), ServerError> {
+        let task_ids: Vec<String> = {
+            let servers = self.servers.lock().await;
+            servers.keys().cloned().collect()
+        };
+
+        for task_id in task_ids {
+            if let Err(e) = self.stop_server(&task_id).await {
+                eprintln!("Failed to stop server for task {}: {}", task_id, e);
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Returns the port number for the given task_id, or None if no server is running
+    ///
+    /// # Arguments
+    /// * `task_id` - Unique identifier for the task
+    pub async fn get_server_port(&self, task_id: &str) -> Option<u16> {
+        let servers = self.servers.lock().await;
+        servers.get(task_id).map(|s| s.port)
+    }
+
+    /// Cleans up stale PID files for processes that are no longer running
+    pub fn cleanup_stale_pids(&self) -> Result<(), ServerError> {
+        let pid_dir = self.get_pid_dir()?;
+
+        if !pid_dir.exists() {
+            return Ok(());
+        }
+
+        for entry in std::fs::read_dir(&pid_dir)? {
+            let entry = entry?;
+            let path = entry.path();
+
+            if path.extension().and_then(|s| s.to_str()) != Some("pid") {
+                continue;
+            }
+
+            let pid_str = match std::fs::read_to_string(&path) {
+                Ok(s) => s,
+                Err(_) => continue,
+            };
+
+            let pid: i32 = match pid_str.trim().parse() {
+                Ok(p) => p,
+                Err(_) => {
+                    let _ = std::fs::remove_file(&path);
+                    continue;
+                }
+            };
+
+            let is_running = unsafe {
+                libc::kill(pid, 0) == 0  // Signal 0 checks process existence
+            };
+
+            if !is_running {
+                println!("Removing stale PID file: {:?}", path);
+                let _ = std::fs::remove_file(&path);
+            }
+        }
+
+        Ok(())
+    }
+
+    // ============================================================================
+    // Private Helper Methods
+    // ============================================================================
+
+    /// Returns the PID directory path
+    fn get_pid_dir(&self) -> Result<PathBuf, ServerError> {
+        let home = dirs::home_dir()
+            .ok_or_else(|| ServerError::IoError(io::Error::new(io::ErrorKind::NotFound, "Home directory not found")))?;
+        Ok(home.join(".ai-command-center").join("pids"))
+    }
+
+    /// Detects the dynamically assigned port by parsing stdout for "127.0.0.1:(\d+)"
+    async fn detect_port(&self, child: &mut Child) -> Result<u16, ServerError> {
+        let stdout = child.stdout.take()
+            .ok_or_else(|| ServerError::SpawnFailed("Failed to capture stdout".to_string()))?;
+
+        let port_regex = Regex::new(r"127\.0\.0\.1:(\d+)")
+            .map_err(|e| ServerError::SpawnFailed(format!("Regex error: {}", e)))?;
+
+        let detect_task = async {
+            let reader = BufReader::new(stdout);
+            let mut lines = reader.lines();
+
+            while let Some(line) = lines.next_line().await.map_err(ServerError::IoError)? {
+                println!("OpenCode stdout: {}", line);
+
+                if let Some(captures) = port_regex.captures(&line) {
+                    if let Some(port_match) = captures.get(1) {
+                        if let Ok(port) = port_match.as_str().parse::<u16>() {
+                            return Ok(port);
+                        }
+                    }
+                }
+            }
+
+            Err(ServerError::PortDetectionTimeout)
+        };
+
+        timeout(PORT_DETECTION_TIMEOUT, detect_task)
+            .await
+            .map_err(|_| ServerError::PortDetectionTimeout)?
+    }
+
+    /// Polls the health endpoint until the server responds or max retries is reached
+    async fn wait_for_health(&self, port: u16) -> Result<(), ServerError> {
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(5))
+            .build()
+            .map_err(|e| ServerError::HealthCheckFailed(e.to_string()))?;
+
+        let health_url = format!("http://127.0.0.1:{}/global/health", port);
+
+        for attempt in 1..=HEALTH_CHECK_RETRIES {
+            match client.get(&health_url).send().await {
+                Ok(response) if response.status().is_success() => {
+                    println!("Health check passed for port {}: {}", port, response.status());
+                    return Ok(());
+                }
+                Ok(response) => {
+                    println!("Health check attempt {}/{} for port {} returned: {}", attempt, HEALTH_CHECK_RETRIES, port, response.status());
+                }
+                Err(e) => {
+                    println!("Health check attempt {}/{} for port {} failed: {}", attempt, HEALTH_CHECK_RETRIES, port, e);
+                }
+            }
+
+            if attempt < HEALTH_CHECK_RETRIES {
+                sleep(HEALTH_CHECK_INTERVAL).await;
+            }
+        }
+
+        Err(ServerError::HealthCheckFailed(format!("Failed after {} retries", HEALTH_CHECK_RETRIES)))
+    }
+}
+
+impl Default for ServerManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_server_error_display() {
+        let err = ServerError::SpawnFailed("test error".to_string());
+        assert_eq!(err.to_string(), "Failed to spawn server: test error");
+
+        let err = ServerError::PortDetectionTimeout;
+        assert!(err.to_string().contains("Port detection timed out"));
+
+        let err = ServerError::ProcessNotFound("task123".to_string());
+        assert_eq!(err.to_string(), "No server process found for task: task123");
+    }
+
+    #[test]
+    fn test_server_manager_new() {
+        let manager = ServerManager::new();
+        assert!(manager.servers.try_lock().is_ok());
+    }
+}

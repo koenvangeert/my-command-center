@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { KanbanColumn } from '../lib/types'
   import { createTask } from '../lib/ipc'
+  import { activeProjectId } from '../lib/stores'
   import { createEventDispatcher } from 'svelte'
 
   export let column: KanbanColumn
@@ -31,7 +32,7 @@
 
     loading = true
     try {
-      await createTask(trimmedTitle, '', column, null)
+      await createTask(trimmedTitle, '', column, null, $activeProjectId)
       dispatch('task-created')
       collapse()
     } catch (error) {

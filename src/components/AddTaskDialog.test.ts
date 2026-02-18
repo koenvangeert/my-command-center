@@ -32,6 +32,7 @@ const mockTask: Task = {
   jira_assignee: 'Alice',
   acceptance_criteria: null,
   plan_text: null,
+  project_id: null,
   created_at: 1000,
   updated_at: 2000,
 }
@@ -83,7 +84,7 @@ describe('AddTaskDialog', () => {
     await fireEvent.click(submitBtn)
     
     await new Promise((r) => setTimeout(r, 10))
-    expect(createTask).toHaveBeenCalledWith('My new task', 'Task details', 'todo', 'PROJ-456')
+    expect(createTask).toHaveBeenCalledWith('My new task', 'Task details', 'todo', 'PROJ-456', null)
   })
 
   it('pre-fills fields in edit mode', () => {

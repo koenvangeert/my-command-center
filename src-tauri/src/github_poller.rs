@@ -5,155 +5,242 @@
 //!
 //! ## Architecture
 //! - Spawned as background task in main.rs setup hook
-//! - Reads config from database (github_token, github_default_repo, github_poll_interval)
-//! - Gets all open PRs from pull_requests table
-//! - For each PR, fetches comments via GitHubClient::get_pr_comments()
-//! - Inserts NEW comments only (checks if comment id exists)
-//! - Emits `new-pr-comment` event with ticket_id and comment_id
+//! - Iterates all projects and reads per-project GitHub config
+//! - For each project with GitHub config:
+//!   - Gets all open PRs from pull_requests table
+//!   - Fetches PR status from GitHub API (detects merged/closed PRs)
+//!   - For each PR, fetches comments via GitHubClient::get_pr_comments()
+//!   - Inserts NEW comments only (checks if comment id exists)
+//!   - Emits `new-pr-comment` event with ticket_id and comment_id
+//!   - Triggers worktree cleanup on PR merge/close
 //! - Sleeps for poll_interval seconds, then loops
+//!
+//! ## Worktree Cleanup
+//! - When PR state changes to "merged" or "closed":
+//!   - Spawns async cleanup task (non-blocking)
+//!   - Removes worktree via git_worktree::remove_worktree()
+//!   - Deletes database record via db.delete_worktree_record()
+//!   - Emits `worktree-cleaned` event with task_id
 //!
 //! ## Error Handling
 //! - Logs errors and continues (doesn't crash the polling loop)
 //! - Individual PR errors don't stop the batch
 //! - Network errors trigger retry on next cycle
-//! - Skips polling when github_token is empty
+//! - Skips projects with missing GitHub config
 
 use crate::db::{Database, PrRow};
 use crate::github_client::GitHubClient;
 use std::collections::{HashMap, HashSet};
+use std::path::Path;
 use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::time::{sleep, Duration};
 
-/// Start the GitHub PR comment poller background task
-///
-/// This function spawns a Tokio task that runs indefinitely, polling GitHub
-/// at the configured interval and syncing PR comments to the database.
-///
-/// # Arguments
-/// * `app` - Tauri AppHandle for accessing managed state and emitting events
-///
-/// # Example
-/// ```no_run
-/// // In main.rs setup hook:
-/// tauri::async_runtime::spawn(start_github_poller(app.handle().clone()));
-/// ```
 pub async fn start_github_poller(app: AppHandle) {
     let github_client = GitHubClient::new();
 
     loop {
-        // Read config from database
         let db = app.state::<Mutex<Database>>();
-        let config = match read_poller_config(&db) {
-            Ok(cfg) => cfg,
+
+        let projects = {
+            let db_lock = db.lock().unwrap();
+            db_lock.get_all_projects()
+        };
+
+        let projects = match projects {
+            Ok(projects) => projects,
             Err(e) => {
-                eprintln!("[GitHub Poller] Failed to read config: {}", e);
-                sleep(Duration::from_secs(60)).await; // Default fallback
+                eprintln!("[GitHub Poller] Failed to get projects: {}", e);
+                sleep(Duration::from_secs(60)).await;
                 continue;
             }
         };
 
-        // Skip polling if github_token is empty
-        if config.github_token.is_empty() {
-            eprintln!("[GitHub Poller] github_token is empty. Skipping poll.");
-            sleep(Duration::from_secs(config.poll_interval)).await;
+        if projects.is_empty() {
+            sleep(Duration::from_secs(60)).await;
             continue;
         }
 
-        println!("[GitHub Poller] Polling GitHub for PR comments...");
+        println!("[GitHub Poller] Polling {} projects for PR updates...", projects.len());
 
-        // Sync open PRs from GitHub API into database
-        if !config.github_default_repo.is_empty() {
-            if let Err(e) = sync_open_prs(&github_client, &db, &config).await {
-                eprintln!("[GitHub Poller] Failed to sync open PRs: {}", e);
-            }
-        } else {
-            eprintln!("[GitHub Poller] github_default_repo not configured, skipping PR sync");
-        }
+        let mut total_new_comments = 0;
+        let mut total_errors = 0;
 
-        // Get all open PRs from database (now populated by sync)
-        let open_prs = match get_open_prs(&db) {
-            Ok(prs) => prs,
-            Err(e) => {
-                eprintln!("[GitHub Poller] Failed to get open PRs: {}", e);
-                sleep(Duration::from_secs(config.poll_interval)).await;
+        for project in projects {
+            let config = match read_project_config(&db, &project.id) {
+                Ok(Some(cfg)) => cfg,
+                Ok(None) => {
+                    continue;
+                }
+                Err(e) => {
+                    eprintln!("[GitHub Poller] Failed to read config for project {}: {}", project.id, e);
+                    total_errors += 1;
+                    continue;
+                }
+            };
+
+            if config.github_token.is_empty() || config.github_default_repo.is_empty() {
                 continue;
             }
-        };
 
-        println!("[GitHub Poller] Found {} open PRs", open_prs.len());
+            let parts: Vec<&str> = config.github_default_repo.split('/').collect();
+            if parts.len() != 2 {
+                eprintln!(
+                    "[GitHub Poller] Invalid repo format for project {}: {}",
+                    project.id, config.github_default_repo
+                );
+                total_errors += 1;
+                continue;
+            }
 
-        // Poll each PR for new comments
-        let mut new_comment_count = 0;
-        let mut error_count = 0;
+            if let Err(e) = sync_open_prs(&github_client, &db, &app, &config).await {
+                eprintln!(
+                    "[GitHub Poller] Failed to sync PRs for project {}: {}",
+                    project.id, e
+                );
+                total_errors += 1;
+                continue;
+            }
 
-        for pr in open_prs {
-            match poll_pr_comments(&github_client, &db, &app, &config, &pr).await {
-                Ok(count) => new_comment_count += count,
+            let open_prs = match get_open_prs_for_project(&db, &project.id) {
+                Ok(prs) => prs,
                 Err(e) => {
                     eprintln!(
-                        "[GitHub Poller] Failed to poll PR {}/{} #{}: {}",
-                        pr.repo_owner, pr.repo_name, pr.id, e
+                        "[GitHub Poller] Failed to get PRs for project {}: {}",
+                        project.id, e
                     );
-                    error_count += 1;
+                    total_errors += 1;
+                    continue;
+                }
+            };
+
+            for pr in open_prs {
+                match poll_pr_comments(&github_client, &db, &app, &config, &pr).await {
+                    Ok(count) => total_new_comments += count,
+                    Err(e) => {
+                        eprintln!(
+                            "[GitHub Poller] Failed to poll PR {}/{} #{}: {}",
+                            pr.repo_owner, pr.repo_name, pr.id, e
+                        );
+                        total_errors += 1;
+                    }
                 }
             }
         }
 
-        println!(
-            "[GitHub Poller] Found {} new comments ({} errors)",
-            new_comment_count, error_count
-        );
+        if total_new_comments > 0 || total_errors > 0 {
+            println!(
+                "[GitHub Poller] Found {} new comments ({} errors)",
+                total_new_comments, total_errors
+            );
+        }
 
-        // Sleep for poll interval
-        sleep(Duration::from_secs(config.poll_interval)).await;
+        sleep(Duration::from_secs(30)).await;
     }
 }
 
-/// Configuration for GitHub poller
 #[derive(Debug)]
 struct PollerConfig {
+    project_id: String,
     github_token: String,
     github_default_repo: String,
-    poll_interval: u64,
 }
 
-/// Read poller configuration from database
-fn read_poller_config(db: &Mutex<Database>) -> Result<PollerConfig, String> {
-    let db = db.lock().unwrap();
+fn read_project_config(
+    db: &Mutex<Database>,
+    project_id: &str,
+) -> Result<Option<PollerConfig>, String> {
+    let db_lock = db.lock().unwrap();
 
-    let github_token = db
-        .get_config("github_token")
+    let github_token = db_lock
+        .get_project_config(project_id, "github_token")
         .map_err(|e| e.to_string())?
         .unwrap_or_default();
 
-    let github_default_repo = db
-        .get_config("github_default_repo")
+    let github_default_repo = db_lock
+        .get_project_config(project_id, "github_default_repo")
         .map_err(|e| e.to_string())?
         .unwrap_or_default();
 
-    let poll_interval = db
-        .get_config("github_poll_interval")
-        .map_err(|e| e.to_string())?
-        .unwrap_or_else(|| "30".to_string())
-        .parse::<u64>()
-        .unwrap_or(30);
+    if github_token.is_empty() || github_default_repo.is_empty() {
+        return Ok(None);
+    }
 
-    Ok(PollerConfig {
+    Ok(Some(PollerConfig {
+        project_id: project_id.to_string(),
         github_token,
         github_default_repo,
-        poll_interval,
-    })
+    }))
 }
 
-fn get_open_prs(db: &Mutex<Database>) -> Result<Vec<PrRow>, String> {
-    let db = db.lock().unwrap();
-    db.get_open_prs().map_err(|e| e.to_string())
+fn get_open_prs_for_project(
+    db: &Mutex<Database>,
+    project_id: &str,
+) -> Result<Vec<PrRow>, String> {
+    let db_lock = db.lock().unwrap();
+    let all_open_prs = db_lock.get_open_prs().map_err(|e| e.to_string())?;
+    
+    let tasks = db_lock
+        .get_tasks_for_project(project_id)
+        .map_err(|e| e.to_string())?;
+    
+    let task_ids: HashSet<String> = tasks.into_iter().map(|t| t.id).collect();
+    
+    Ok(all_open_prs
+        .into_iter()
+        .filter(|pr| task_ids.contains(&pr.ticket_id))
+        .collect())
+}
+
+async fn cleanup_worktree_for_task(
+    db: &Mutex<Database>,
+    app: &AppHandle,
+    task_id: &str,
+) -> Result<(), String> {
+    let worktree = {
+        let db_lock = db.lock().unwrap();
+        db_lock
+            .get_worktree_for_task(task_id)
+            .map_err(|e| format!("Failed to get worktree: {}", e))?
+    };
+
+    let Some(worktree) = worktree else {
+        return Ok(());
+    };
+
+    println!("[GitHub Poller] Cleaning up worktree for task {}", task_id);
+
+    let repo_path = Path::new(&worktree.repo_path);
+    let worktree_path = Path::new(&worktree.worktree_path);
+
+    if let Err(e) = crate::git_worktree::remove_worktree(repo_path, worktree_path).await {
+        eprintln!(
+            "[GitHub Poller] Failed to remove worktree at {}: {}",
+            worktree_path.display(),
+            e
+        );
+    }
+
+    {
+        let db_lock = db.lock().unwrap();
+        db_lock
+            .delete_worktree_record(task_id)
+            .map_err(|e| format!("Failed to delete worktree record: {}", e))?;
+    }
+
+    if let Err(e) = app.emit("worktree-cleaned", task_id) {
+        eprintln!("[GitHub Poller] Failed to emit worktree-cleaned event: {}", e);
+    }
+
+    println!("[GitHub Poller] Successfully cleaned up worktree for task {}", task_id);
+
+    Ok(())
 }
 
 async fn sync_open_prs(
     github_client: &GitHubClient,
     db: &Mutex<Database>,
+    app: &AppHandle,
     config: &PollerConfig,
 ) -> Result<usize, String> {
     let parts: Vec<&str> = config.github_default_repo.split('/').collect();
@@ -170,8 +257,11 @@ async fn sync_open_prs(
     let task_data: Vec<(String, Option<String>)> = {
         let db_lock = db.lock().unwrap();
         db_lock
-            .get_task_ids_and_jira_keys()
+            .get_tasks_for_project(&config.project_id)
             .map_err(|e| format!("Failed to get task data: {}", e))?
+            .into_iter()
+            .map(|task| (task.id, task.jira_key))
+            .collect()
     };
 
     let mut jira_key_map: HashMap<String, Vec<String>> = HashMap::new();
@@ -186,6 +276,35 @@ async fn sync_open_prs(
     }
 
     let open_pr_ids: Vec<i64> = github_prs.iter().map(|pr| pr.number).collect();
+
+    let closed_prs = {
+        let db_lock = db.lock().unwrap();
+        let all_open_prs = db_lock.get_open_prs().map_err(|e| e.to_string())?;
+        
+        all_open_prs
+            .into_iter()
+            .filter(|pr| {
+                pr.repo_owner == repo_owner
+                    && pr.repo_name == repo_name
+                    && !open_pr_ids.contains(&pr.id)
+            })
+            .collect::<Vec<_>>()
+    };
+
+    for closed_pr in closed_prs {
+        let task_id = closed_pr.ticket_id.clone();
+        let app_clone = app.clone();
+
+        tokio::spawn(async move {
+            let db_state = app_clone.state::<Mutex<Database>>();
+            if let Err(e) = cleanup_worktree_for_task(&db_state, &app_clone, &task_id).await {
+                eprintln!(
+                    "[GitHub Poller] Failed to cleanup worktree for task {}: {}",
+                    task_id, e
+                );
+            }
+        });
+    }
 
     {
         let db_lock = db.lock().unwrap();
@@ -220,13 +339,6 @@ async fn sync_open_prs(
             synced += 1;
         }
     }
-
-    println!(
-        "[GitHub Poller] Synced {} PRs ({} open on GitHub, {} matched tickets)",
-        synced,
-        github_prs.len(),
-        synced
-    );
 
     Ok(synced)
 }
