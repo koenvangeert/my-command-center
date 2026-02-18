@@ -2,12 +2,12 @@
   import { createEventDispatcher, onMount } from 'svelte'
   import type { Task, PrComment, KanbanColumn, WorktreeInfo } from '../lib/types'
   import { COLUMNS, COLUMN_LABELS } from '../lib/types'
-  import { tasks, selectedTaskId, ticketPrs } from '../lib/stores'
+  import { tasks, selectedTaskId, ticketPrs, activeProjectId } from '../lib/stores'
   import { 
     updateTaskFields, 
     updateTaskStatus, 
     deleteTask, 
-    getTasks, 
+    getTasksForProject, 
     getPrComments, 
     markCommentAddressed, 
     openUrl, 
@@ -76,7 +76,9 @@
       saved = true
       setTimeout(() => { saved = false }, 2000)
       // Refresh tasks to update parent
-      $tasks = await getTasks()
+      if ($activeProjectId) {
+        $tasks = await getTasksForProject($activeProjectId)
+      }
     } catch (e) {
       console.error('Failed to save:', e)
     } finally {
@@ -88,7 +90,9 @@
     if (newStatus === task.status) return
     try {
       await updateTaskStatus(task.id, newStatus)
-      $tasks = await getTasks()
+      if ($activeProjectId) {
+        $tasks = await getTasksForProject($activeProjectId)
+      }
     } catch (e) {
       console.error('Failed to update status:', e)
     }
@@ -101,7 +105,9 @@
     try {
       await deleteTask(task.id)
       $selectedTaskId = null
-      $tasks = await getTasks()
+      if ($activeProjectId) {
+        $tasks = await getTasksForProject($activeProjectId)
+      }
     } catch (e) {
       console.error('Failed to delete task:', e)
     }

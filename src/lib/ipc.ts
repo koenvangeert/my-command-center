@@ -17,10 +17,6 @@ export async function deleteTask(id: string): Promise<void> {
   return invoke("delete_task", { id });
 }
 
-export async function getTasks(): Promise<Task[]> {
-  return invoke<Task[]>("get_tasks");
-}
-
 export async function refreshJiraInfo(): Promise<number> {
   return invoke<number>("refresh_jira_info");
 }

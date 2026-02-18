@@ -10,6 +10,7 @@ vi.mock('../lib/stores', () => ({
   activeSessions: writable(new Map()),
   ticketPrs: writable(new Map()),
   tasks: writable([]),
+  activeProjectId: writable('project-1'),
 }))
 
 // Mock IPC functions
@@ -18,7 +19,7 @@ vi.mock('../lib/ipc', () => ({
   updateTaskFields: vi.fn().mockResolvedValue(undefined),
   updateTaskStatus: vi.fn().mockResolvedValue(undefined),
   deleteTask: vi.fn().mockResolvedValue(undefined),
-  getTasks: vi.fn().mockResolvedValue([]),
+  getTasksForProject: vi.fn().mockResolvedValue([]),
   getPrComments: vi.fn().mockResolvedValue([]),
   markCommentAddressed: vi.fn().mockResolvedValue(undefined),
   openUrl: vi.fn().mockResolvedValue(undefined),
