@@ -988,19 +988,6 @@ impl Database {
         Ok(result)
     }
 
-    pub fn update_task_fields(&self, id: &str, plan_text: Option<&str>) -> Result<()> {
-        let conn = self.conn.lock().unwrap();
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .expect("time went backwards")
-            .as_secs() as i64;
-        conn.execute(
-            "UPDATE tasks SET plan_text = ?1, updated_at = ?2 WHERE id = ?3",
-            rusqlite::params![plan_text, now, id],
-        )?;
-        Ok(())
-    }
-
     /// Get all open pull requests from the database
     pub fn get_open_prs(&self) -> Result<Vec<PrRow>> {
         let conn = self.conn.lock().unwrap();
@@ -2176,28 +2163,6 @@ mod tests {
 
         let linked = db.get_tasks_with_jira_links().expect("get linked failed");
         assert_eq!(linked.len(), 2);
-
-        drop(db);
-        let _ = fs::remove_file(&path);
-    }
-
-    #[test]
-    fn test_update_task_fields_preserves_on_jira_update() {
-        let (db, path) = make_test_db("preserve_fields");
-
-        let task = db
-            .create_task("My task", "todo", Some("PROJ-1"), None)
-            .expect("create failed");
-
-        db.update_task_fields(&task.id, Some("Plan text"))
-            .expect("update fields failed");
-
-        db.update_task_jira_info("PROJ-1", "In Progress", "alice")
-            .expect("update jira failed");
-
-        let updated = db.get_task(&task.id).expect("get failed").unwrap();
-        assert_eq!(updated.plan_text, Some("Plan text".to_string()));
-        assert_eq!(updated.jira_status, Some("In Progress".to_string()));
 
         drop(db);
         let _ = fs::remove_file(&path);

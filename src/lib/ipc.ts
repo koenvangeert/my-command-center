@@ -136,10 +136,6 @@ export async function getSessionOutput(taskId: string): Promise<string> {
   return invoke<string>("get_session_output", { taskId });
 }
 
-export async function updateTaskFields(taskId: string, planText: string): Promise<void> {
-  return invoke("update_task_fields", { taskId, planText });
-}
-
 export async function getGithubUsername(): Promise<string> {
   return invoke<string>("get_github_username");
 }

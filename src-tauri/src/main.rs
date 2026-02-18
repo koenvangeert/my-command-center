@@ -89,20 +89,6 @@ async fn get_task_detail(
 }
 
 #[tauri::command]
-async fn update_task_fields(
-    db: State<'_, Mutex<db::Database>>,
-    task_id: String,
-    plan_text: String,
-) -> Result<(), String> {
-    let db = db.lock().unwrap();
-    db.update_task_fields(
-        &task_id,
-        Some(&plan_text),
-    )
-    .map_err(|e| format!("Failed to update task fields: {}", e))
-}
-
-#[tauri::command]
 async fn create_task(
     db: State<'_, Mutex<db::Database>>,
     title: String,
@@ -1609,7 +1595,6 @@ fn main() {
             send_prompt,
             get_tasks,
             get_task_detail,
-            update_task_fields,
             create_task,
             update_task,
             update_task_status,

@@ -4,7 +4,6 @@
   import { COLUMNS, COLUMN_LABELS } from '../lib/types'
   import { tasks, selectedTaskId, ticketPrs, activeProjectId } from '../lib/stores'
   import { 
-    updateTaskFields, 
     updateTaskStatus, 
     deleteTask, 
     getTasksForProject, 
@@ -18,9 +17,6 @@
 
   const dispatch = createEventDispatcher()
 
-  let planText = task.plan_text || ''
-  let isSaving = false
-  let saved = false
   let worktree: WorktreeInfo | null = null
   let prCommentsByPr: Map<number, PrComment[]> = new Map()
 
@@ -57,32 +53,9 @@
     }
   }
 
-  // Update local state when task prop changes
-  $: {
-    planText = task.plan_text || ''
-  }
-
   onMount(() => {
     loadPrComments()
   })
-
-  async function save() {
-    isSaving = true
-    saved = false
-    try {
-      await updateTaskFields(task.id, planText)
-      saved = true
-      setTimeout(() => { saved = false }, 2000)
-      // Refresh tasks to update parent
-      if ($activeProjectId) {
-        $tasks = await getTasksForProject($activeProjectId)
-      }
-    } catch (e) {
-      console.error('Failed to save:', e)
-    } finally {
-      isSaving = false
-    }
-  }
 
   async function handleStatusChange(newStatus: KanbanColumn) {
     if (newStatus === task.status) return
@@ -191,24 +164,6 @@
       {/if}
     {/if}
   </section>
-
-  <!-- Plan Section -->
-  <section class="section">
-    <h3 class="section-title">Plan</h3>
-    <textarea 
-      class="textarea"
-      bind:value={planText}
-      placeholder="Add plan..."
-      rows="8"
-    ></textarea>
-  </section>
-
-  <!-- Save Button -->
-  <div class="save-section">
-    <button class="btn btn-save" on:click={save} disabled={isSaving}>
-      {#if isSaving}Saving...{:else if saved}Saved!{:else}Save{/if}
-    </button>
-  </div>
 
   <!-- Status Change Section -->
   <section class="section">
@@ -365,27 +320,6 @@
     width: fit-content;
   }
 
-  .textarea {
-    background: var(--bg-primary);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 8px 10px;
-    color: var(--text-primary);
-    font-size: 0.8rem;
-    font-family: inherit;
-    line-height: 1.5;
-    resize: vertical;
-    outline: none;
-  }
-
-  .textarea:focus {
-    border-color: var(--accent);
-  }
-
-  .save-section {
-    display: flex;
-  }
-
   .btn {
     padding: 10px 20px;
     border: none;
@@ -399,16 +333,6 @@
   .btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
-  }
-
-  .btn-save {
-    background: var(--accent);
-    color: var(--bg-primary);
-    width: 100%;
-  }
-
-  .btn-save:hover:not(:disabled) {
-    opacity: 0.9;
   }
 
   .status-actions {

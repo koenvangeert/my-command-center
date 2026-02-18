@@ -12,7 +12,6 @@ vi.mock('../lib/stores', () => ({
 }))
 
 vi.mock('../lib/ipc', () => ({
-  updateTaskFields: vi.fn().mockResolvedValue(undefined),
   updateTaskStatus: vi.fn().mockResolvedValue(undefined),
   deleteTask: vi.fn().mockResolvedValue(undefined),
   getTasksForProject: vi.fn().mockResolvedValue([]),
@@ -74,16 +73,6 @@ describe('TaskInfoPanel', () => {
     expect(screen.queryByText('JIRA Assignee')).toBeNull()
   })
 
-  it('shows plan textarea with placeholder', () => {
-    render(TaskInfoPanel, { props: { task: baseTask } })
-    expect(screen.getByPlaceholderText('Add plan...')).toBeTruthy()
-  })
-
-  it('shows Save button', () => {
-    render(TaskInfoPanel, { props: { task: baseTask } })
-    expect(screen.getByText('Save')).toBeTruthy()
-  })
-
   it('shows Change Status section with status buttons', () => {
     render(TaskInfoPanel, { props: { task: baseTask } })
     expect(screen.getByText('Change Status')).toBeTruthy()
@@ -99,10 +88,4 @@ describe('TaskInfoPanel', () => {
     expect(screen.getByText('Delete')).toBeTruthy()
   })
 
-  it('pre-fills plan text when task has value', () => {
-    const taskWithPlan = { ...baseTask, plan_text: 'Step 1: Research' }
-    render(TaskInfoPanel, { props: { task: taskWithPlan } })
-    const textarea = screen.getByPlaceholderText('Add plan...') as HTMLTextAreaElement
-    expect(textarea.value).toBe('Step 1: Research')
-  })
 })
