@@ -867,6 +867,7 @@ async fn persist_session_status(
     task_id: String,
     status: String,
     error_message: Option<String>,
+    checkpoint_data: Option<String>,
 ) -> Result<(), String> {
     let db_lock = db.lock().unwrap();
     let session = db_lock
@@ -878,7 +879,7 @@ async fn persist_session_status(
             &session.id,
             &session.stage,
             &status,
-            None,
+            checkpoint_data.as_deref(),
             error_message.as_deref(),
         )
         .map_err(|e| format!("Failed to update session: {}", e))

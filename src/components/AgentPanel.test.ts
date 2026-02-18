@@ -158,4 +158,72 @@ describe('AgentPanel', () => {
     render(AgentPanel, { props: { taskId: 'T-1' } })
     expect(screen.getByText('completed')).toBeTruthy()
   })
+
+  it('shows question banner when session is paused with checkpoint_data', () => {
+    const session: AgentSession = {
+      id: 'ses-1',
+      ticket_id: 'T-1',
+      opencode_session_id: null,
+      stage: 'implement',
+      status: 'paused',
+      checkpoint_data: '{"properties":{"description":"Allow file write to src/main.ts?"}}',
+      error_message: null,
+      created_at: 1000,
+      updated_at: 2000,
+    }
+
+    const sessions = new Map<string, AgentSession>()
+    sessions.set('T-1', session)
+    activeSessions.set(sessions)
+
+    render(AgentPanel, { props: { taskId: 'T-1' } })
+    expect(screen.getByText('Allow file write to src/main.ts?')).toBeTruthy()
+  })
+
+  it('shows generic fallback banner when checkpoint_data has no known fields', () => {
+    const session: AgentSession = {
+      id: 'ses-1',
+      ticket_id: 'T-1',
+      opencode_session_id: null,
+      stage: 'implement',
+      status: 'paused',
+      checkpoint_data: '{"unknown":"data"}',
+      error_message: null,
+      created_at: 1000,
+      updated_at: 2000,
+    }
+
+    const sessions = new Map<string, AgentSession>()
+    sessions.set('T-1', session)
+    activeSessions.set(sessions)
+
+    render(AgentPanel, { props: { taskId: 'T-1' } })
+    expect(screen.getByText('Agent is waiting for input')).toBeTruthy()
+  })
+
+  it('does not show question banner when session is running', () => {
+    const session: AgentSession = {
+      id: 'ses-1',
+      ticket_id: 'T-1',
+      opencode_session_id: null,
+      stage: 'implement',
+      status: 'running',
+      checkpoint_data: null,
+      error_message: null,
+      created_at: 1000,
+      updated_at: 2000,
+    }
+
+    const sessions = new Map<string, AgentSession>()
+    sessions.set('T-1', session)
+    activeSessions.set(sessions)
+
+    render(AgentPanel, { props: { taskId: 'T-1' } })
+    expect(screen.queryByText('Agent is waiting for input')).toBeNull()
+  })
+
+  it('does not show question banner when no session exists', () => {
+    render(AgentPanel, { props: { taskId: 'T-1' } })
+    expect(screen.queryByText('Agent is waiting for input')).toBeNull()
+  })
 })

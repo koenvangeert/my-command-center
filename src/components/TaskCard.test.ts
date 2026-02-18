@@ -136,4 +136,61 @@ describe('TaskCard', () => {
     await fireEvent.click(card)
     expect(selectedId).toBe('T-42')
   })
+
+  it('applies needs-input class when session is paused with checkpoint_data', () => {
+    const session: AgentSession = {
+      id: 'ses-1',
+      ticket_id: 'T-42',
+      opencode_session_id: null,
+      stage: 'implement',
+      status: 'paused',
+      checkpoint_data: '{"question":"approve?"}',
+      error_message: null,
+      created_at: 1000,
+      updated_at: 2000,
+    }
+    render(TaskCard, { props: { task: baseTask, session } })
+    const card = screen.getByRole('button')
+    expect(card.classList.contains('needs-input')).toBe(true)
+  })
+
+  it('does not apply needs-input class when session is paused without checkpoint_data', () => {
+    const session: AgentSession = {
+      id: 'ses-1',
+      ticket_id: 'T-42',
+      opencode_session_id: null,
+      stage: 'implement',
+      status: 'paused',
+      checkpoint_data: null,
+      error_message: null,
+      created_at: 1000,
+      updated_at: 2000,
+    }
+    render(TaskCard, { props: { task: baseTask, session } })
+    const card = screen.getByRole('button')
+    expect(card.classList.contains('needs-input')).toBe(false)
+  })
+
+  it('does not apply needs-input class when session is running', () => {
+    const session: AgentSession = {
+      id: 'ses-1',
+      ticket_id: 'T-42',
+      opencode_session_id: null,
+      stage: 'implement',
+      status: 'running',
+      checkpoint_data: null,
+      error_message: null,
+      created_at: 1000,
+      updated_at: 2000,
+    }
+    render(TaskCard, { props: { task: baseTask, session } })
+    const card = screen.getByRole('button')
+    expect(card.classList.contains('needs-input')).toBe(false)
+  })
+
+  it('does not apply needs-input class when no session', () => {
+    render(TaskCard, { props: { task: baseTask } })
+    const card = screen.getByRole('button')
+    expect(card.classList.contains('needs-input')).toBe(false)
+  })
 })

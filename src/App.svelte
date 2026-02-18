@@ -84,7 +84,7 @@
       const sessions = await getLatestSessions(taskIds)
       const updated = new Map($activeSessions)
       for (const session of sessions) {
-        if (session.status === 'completed' || session.status === 'failed') {
+        if (session.status === 'completed' || session.status === 'failed' || session.status === 'paused') {
           updated.set(session.ticket_id, session)
         }
       }
@@ -266,6 +266,9 @@
           const updated = new Map($activeSessions)
           updated.set(taskId, { ...session, status: 'paused', checkpoint_data: event.payload.data })
           $activeSessions = updated
+          persistSessionStatus(taskId, 'paused', null, event.payload.data).catch(e =>
+            console.error('[session] Failed to persist paused status:', e)
+          )
           // Find the task to get ticketKey
           const task = $tasks.find(t => t.id === taskId)
           $checkpointNotification = {
@@ -282,6 +285,9 @@
           const updated = new Map($activeSessions)
           updated.set(taskId, { ...session, status: 'running', checkpoint_data: null })
           $activeSessions = updated
+          persistSessionStatus(taskId, 'running', null, null).catch(e =>
+            console.error('[session] Failed to persist running status:', e)
+          )
           if ($checkpointNotification?.ticketId === taskId) {
             $checkpointNotification = null
           }

@@ -1824,6 +1824,45 @@ mod tests {
     }
 
     #[test]
+    fn test_checkpoint_data_persistence() {
+        let (db, path) = make_test_db("checkpoint_persist");
+        insert_test_task(&db);
+
+        db.create_agent_session("ses-cp", "T-100", None, "implement", "running")
+            .expect("create session failed");
+
+        db.update_agent_session(
+            "ses-cp",
+            "implement",
+            "paused",
+            Some("{\"question\":\"approve?\"}"),
+            None,
+        )
+        .expect("update with checkpoint failed");
+
+        let session = db
+            .get_agent_session("ses-cp")
+            .expect("get failed")
+            .expect("not found");
+        assert_eq!(
+            session.checkpoint_data,
+            Some("{\"question\":\"approve?\"}".to_string())
+        );
+
+        db.update_agent_session("ses-cp", "implement", "running", None, None)
+            .expect("clear checkpoint failed");
+
+        let session = db
+            .get_agent_session("ses-cp")
+            .expect("get failed")
+            .expect("not found");
+        assert_eq!(session.checkpoint_data, None);
+
+        drop(db);
+        let _ = fs::remove_file(&path);
+    }
+
+    #[test]
     fn test_agent_logs() {
         let (db, path) = make_test_db("agent_logs");
         insert_test_task(&db);

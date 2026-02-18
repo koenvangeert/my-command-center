@@ -8,6 +8,7 @@
   import { Terminal } from '@xterm/xterm'
   import { FitAddon } from '@xterm/addon-fit'
   import '@xterm/xterm/css/xterm.css'
+  import { parseCheckpointQuestion } from '../lib/parseCheckpoint'
 
   export let taskId: string
 
@@ -30,6 +31,12 @@
     ? `opencode attach http://127.0.0.1:${opencodePort} -s ${session.opencode_session_id}`
     : null
   $: console.log('[AgentPanel] session reactive update for task:', taskId, 'session:', session ? `id=${session.id} status=${session.status} stage=${session.stage}` : 'null')
+  $: questionText = session ? parseCheckpointQuestion(session.checkpoint_data) : null
+
+  $: if (questionText !== undefined) {
+    // Re-fit terminal when banner visibility changes
+    setTimeout(() => fitAddon?.fit(), 50)
+  }
 
   // Auto-spawn PTY when session becomes running and terminal is mounted
   $: if (session && session.status === 'running' && terminalContainer && terminal && !ptySpawned) {
@@ -110,10 +117,12 @@
         if (worktree?.opencode_port) opencodePort = worktree.opencode_port
       }
 
-      if (existingSession.status !== 'completed' && existingSession.status !== 'failed') return
+      if (existingSession.status !== 'completed' && existingSession.status !== 'failed' && existingSession.status !== 'paused') return
 
       if (existingSession.status === 'completed') {
         status = 'complete'
+      } else if (existingSession.status === 'paused') {
+        status = 'idle'
       } else {
         status = 'error'
         errorMessage = existingSession.error_message
@@ -338,6 +347,13 @@
     </div>
   </div>
 
+  {#if questionText}
+    <div class="question-banner">
+      <span class="question-icon">?</span>
+      <span class="question-text" title={questionText}>{questionText}</span>
+    </div>
+  {/if}
+
   <div class="output-container">
     <div class="terminal-wrapper" bind:this={terminalContainer}></div>
     {#if loadingHistory}
@@ -536,6 +552,40 @@
 
   .abort-button:active {
     transform: translateY(0);
+  }
+
+  .question-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 16px;
+    background: rgba(224, 175, 104, 0.12);
+    border: 1px solid rgba(224, 175, 104, 0.3);
+    border-radius: 6px;
+  }
+
+  .question-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(224, 175, 104, 0.2);
+    color: var(--warning);
+    font-size: 0.8rem;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .question-text {
+    color: var(--text-primary);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 
   .output-container {

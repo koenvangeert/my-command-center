@@ -119,8 +119,8 @@ export async function getTaskDetail(taskId: string): Promise<Task> {
   return invoke<Task>("get_task_detail", { taskId });
 }
 
-export async function persistSessionStatus(taskId: string, status: string, errorMessage: string | null): Promise<void> {
-  return invoke("persist_session_status", { taskId, status, errorMessage });
+export async function persistSessionStatus(taskId: string, status: string, errorMessage: string | null, checkpointData?: string | null): Promise<void> {
+  return invoke("persist_session_status", { taskId, status, errorMessage, checkpointData });
 }
 
 export async function getLatestSession(taskId: string): Promise<AgentSession | null> {
