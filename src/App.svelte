@@ -2,24 +2,23 @@
   import { onMount, onDestroy } from 'svelte'
   import { listen } from '@tauri-apps/api/event'
   import type { UnlistenFn } from '@tauri-apps/api/event'
-  import { tasks, selectedTaskId, activeSessions, checkpointNotification, ticketPrs, error, isLoading, projects, activeProjectId } from './lib/stores'
+  import { tasks, selectedTaskId, activeSessions, checkpointNotification, ticketPrs, error, isLoading, projects, activeProjectId, currentView, reviewRequestCount } from './lib/stores'
   import { getProjects, getTasksForProject, getOpenCodeStatus, getPullRequests, startImplementation, getSessionStatus, getLatestSessions, persistSessionStatus } from './lib/ipc'
   import type { Task, PullRequestInfo, OpenCodeStatus, AgentEvent } from './lib/types'
   import KanbanBoard from './components/KanbanBoard.svelte'
   import TaskDetailView from './components/TaskDetailView.svelte'
   import AddTaskDialog from './components/AddTaskDialog.svelte'
-import SettingsPanel from './components/SettingsPanel.svelte'
-import GlobalSettingsPanel from './components/GlobalSettingsPanel.svelte'
-import Toast from './components/Toast.svelte'
-import CheckpointToast from './components/CheckpointToast.svelte'
-import ProjectSwitcher from './components/ProjectSwitcher.svelte'
-import ProjectSetupDialog from './components/ProjectSetupDialog.svelte'
+  import SettingsPanel from './components/SettingsPanel.svelte'
+  import GlobalSettingsPanel from './components/GlobalSettingsPanel.svelte'
+  import PrReviewView from './components/PrReviewView.svelte'
+  import Toast from './components/Toast.svelte'
+  import CheckpointToast from './components/CheckpointToast.svelte'
+  import ProjectSwitcher from './components/ProjectSwitcher.svelte'
+  import ProjectSetupDialog from './components/ProjectSetupDialog.svelte'
 
 
   let openCodeStatus: OpenCodeStatus | null = null
   let unlisteners: UnlistenFn[] = []
-  let showSettings = false
-  let showGlobalSettings = false
   let showAddDialog = false
   let editingTask: Task | null = null
   let dialogMode: 'create' | 'edit' = 'create'
@@ -27,8 +26,18 @@ import ProjectSetupDialog from './components/ProjectSetupDialog.svelte'
 
   $: selectedTask = $tasks.find(t => t.id === $selectedTaskId) || null
 
-  // Close settings panels when a task is selected (includes toast click navigation)
-  $: if ($selectedTaskId) { showSettings = false; showGlobalSettings = false }
+  // Navigation logic
+  $: if ($selectedTaskId && $currentView === 'board') {
+    // Stay in board view when a task is selected
+  }
+  
+  $: if ($currentView === 'pr_review') {
+    $selectedTaskId = null
+  }
+  
+  $: if ($currentView === 'settings') {
+    $selectedTaskId = null
+  }
 
   // Reload tasks when active project changes
   $: if ($activeProjectId) {
@@ -300,15 +309,39 @@ import ProjectSetupDialog from './components/ProjectSetupDialog.svelte'
 
 <div class="app">
   <header class="top-bar">
-    <h1 class="app-title">AI Command Center</h1>
-    <ProjectSwitcher on:new-project={() => showProjectSetup = true} />
+    <div class="top-bar-left">
+      <h1 class="app-title">AI Command Center</h1>
+      <ProjectSwitcher on:new-project={() => showProjectSetup = true} />
+    </div>
+    
+    <nav class="view-switcher">
+      <button 
+        class="view-tab" 
+        class:active={$currentView === 'board'} 
+        on:click={() => $currentView = 'board'}
+      >
+        Board
+      </button>
+      <button 
+        class="view-tab" 
+        class:active={$currentView === 'pr_review'} 
+        on:click={() => $currentView = 'pr_review'}
+      >
+        PR Review
+        {#if $reviewRequestCount > 0}
+          <span class="badge">{$reviewRequestCount}</span>
+        {/if}
+      </button>
+      <button 
+        class="view-tab" 
+        class:active={$currentView === 'settings'} 
+        on:click={() => $currentView = 'settings'}
+      >
+        Settings
+      </button>
+    </nav>
+
     <div class="status-bar">
-      <button class="settings-btn" on:click={() => { showGlobalSettings = !showGlobalSettings; showSettings = false; $selectedTaskId = null }}>
-        ⚙
-      </button>
-      <button class="settings-btn" on:click={() => { showSettings = !showSettings; showGlobalSettings = false; $selectedTaskId = null }}>
-        {showSettings ? 'Board' : 'Settings'}
-      </button>
       {#if openCodeStatus}
         <span class="status-indicator" class:healthy={openCodeStatus.healthy} class:unhealthy={!openCodeStatus.healthy}>
           <span class="dot"></span>
@@ -324,10 +357,10 @@ import ProjectSetupDialog from './components/ProjectSetupDialog.svelte'
   </header>
 
   <main class="main-content">
-    {#if showGlobalSettings}
-      <GlobalSettingsPanel on:close={() => showGlobalSettings = false} />
-    {:else if showSettings}
-      <SettingsPanel on:close={() => showSettings = false} on:project-deleted={loadProjects} />
+    {#if $currentView === 'settings'}
+      <SettingsPanel on:close={() => $currentView = 'board'} on:project-deleted={loadProjects} />
+    {:else if $currentView === 'pr_review'}
+      <PrReviewView />
     {:else if selectedTask}
       <TaskDetailView task={selectedTask} />
     {:else}
@@ -398,10 +431,17 @@ import ProjectSetupDialog from './components/ProjectSetupDialog.svelte'
     align-items: center;
     justify-content: space-between;
     padding: 0 20px;
-    height: 48px;
+    height: 56px;
     background: var(--bg-secondary);
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
+    gap: 20px;
+  }
+
+  .top-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
   }
 
   .app-title {
@@ -410,6 +450,54 @@ import ProjectSetupDialog from './components/ProjectSetupDialog.svelte'
     color: var(--text-primary);
     margin: 0;
     letter-spacing: 0.02em;
+  }
+
+  .view-switcher {
+    display: flex;
+    gap: 4px;
+    background: var(--bg-primary);
+    padding: 4px;
+    border-radius: 8px;
+  }
+
+  .view-tab {
+    all: unset;
+    position: relative;
+    padding: 8px 16px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .view-tab:hover {
+    color: var(--text-primary);
+    background: rgba(122, 162, 247, 0.1);
+  }
+
+  .view-tab.active {
+    color: var(--accent);
+    background: var(--bg-card);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  .badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--bg-primary);
+    background: var(--accent);
+    border-radius: 9px;
   }
 
   .status-bar {
@@ -450,21 +538,6 @@ import ProjectSetupDialog from './components/ProjectSetupDialog.svelte'
   .board-area {
     flex: 1;
     overflow: hidden;
-  }
-
-  .settings-btn {
-    all: unset;
-    padding: 4px 12px;
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    cursor: pointer;
-  }
-
-  .settings-btn:hover {
-    color: var(--text-primary);
-    border-color: var(--accent);
   }
 
   .loading-overlay {

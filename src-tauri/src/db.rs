@@ -74,6 +74,30 @@ pub struct PrCommentRow {
     pub created_at: i64,
 }
 
+/// Review PR row from database (cross-repo, not task-linked)
+#[derive(Debug, Clone, Serialize)]
+pub struct ReviewPrRow {
+    pub id: i64,
+    pub number: i64,
+    pub title: String,
+    pub body: Option<String>,
+    pub state: String,
+    pub draft: bool,
+    pub html_url: String,
+    pub user_login: String,
+    pub user_avatar_url: Option<String>,
+    pub repo_owner: String,
+    pub repo_name: String,
+    pub head_ref: String,
+    pub base_ref: String,
+    pub head_sha: String,
+    pub additions: i64,
+    pub deletions: i64,
+    pub changed_files: i64,
+    pub created_at: i64,
+    pub updated_at: i64,
+}
+
 /// Agent session row from database
 #[derive(Debug, Clone, Serialize)]
 pub struct AgentSessionRow {
@@ -334,6 +358,31 @@ impl Database {
 
         conn.execute(
             "INSERT OR IGNORE INTO config (key, value) VALUES ('next_project_id', '1')",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS review_prs (
+                id INTEGER PRIMARY KEY,
+                number INTEGER NOT NULL,
+                title TEXT NOT NULL,
+                body TEXT,
+                state TEXT NOT NULL,
+                draft INTEGER NOT NULL DEFAULT 0,
+                html_url TEXT NOT NULL,
+                user_login TEXT NOT NULL,
+                user_avatar_url TEXT,
+                repo_owner TEXT NOT NULL,
+                repo_name TEXT NOT NULL,
+                head_ref TEXT NOT NULL,
+                base_ref TEXT NOT NULL,
+                head_sha TEXT NOT NULL,
+                additions INTEGER NOT NULL DEFAULT 0,
+                deletions INTEGER NOT NULL DEFAULT 0,
+                changed_files INTEGER NOT NULL DEFAULT 0,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL
+            )",
             [],
         )?;
 
@@ -1420,6 +1469,110 @@ impl Database {
         Ok(())
     }
 
+    // ============================================================================
+    // Review PRs (cross-repo)
+    // ============================================================================
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn upsert_review_pr(
+        &self,
+        id: i64,
+        number: i64,
+        title: &str,
+        body: Option<&str>,
+        state: &str,
+        draft: bool,
+        html_url: &str,
+        user_login: &str,
+        user_avatar_url: Option<&str>,
+        repo_owner: &str,
+        repo_name: &str,
+        head_ref: &str,
+        base_ref: &str,
+        head_sha: &str,
+        additions: i64,
+        deletions: i64,
+        changed_files: i64,
+        created_at: i64,
+        updated_at: i64,
+    ) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "INSERT OR REPLACE INTO review_prs (id, number, title, body, state, draft, html_url, user_login, user_avatar_url, repo_owner, repo_name, head_ref, base_ref, head_sha, additions, deletions, changed_files, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19)",
+            rusqlite::params![
+                id, number, title, body, state, draft as i32, html_url, user_login, user_avatar_url,
+                repo_owner, repo_name, head_ref, base_ref, head_sha, additions, deletions, changed_files,
+                created_at, updated_at
+            ],
+        )?;
+        Ok(())
+    }
+
+    pub fn get_all_review_prs(&self) -> Result<Vec<ReviewPrRow>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, number, title, body, state, draft, html_url, user_login, user_avatar_url,
+                    repo_owner, repo_name, head_ref, base_ref, head_sha, additions, deletions,
+                    changed_files, created_at, updated_at
+             FROM review_prs ORDER BY updated_at DESC",
+        )?;
+        let rows = stmt.query_map([], |row| {
+            Ok(ReviewPrRow {
+                id: row.get(0)?,
+                number: row.get(1)?,
+                title: row.get(2)?,
+                body: row.get(3)?,
+                state: row.get(4)?,
+                draft: row.get::<_, i32>(5)? != 0,
+                html_url: row.get(6)?,
+                user_login: row.get(7)?,
+                user_avatar_url: row.get(8)?,
+                repo_owner: row.get(9)?,
+                repo_name: row.get(10)?,
+                head_ref: row.get(11)?,
+                base_ref: row.get(12)?,
+                head_sha: row.get(13)?,
+                additions: row.get(14)?,
+                deletions: row.get(15)?,
+                changed_files: row.get(16)?,
+                created_at: row.get(17)?,
+                updated_at: row.get(18)?,
+            })
+        })?;
+        let mut result = Vec::new();
+        for row in rows {
+            result.push(row?);
+        }
+        Ok(result)
+    }
+
+    pub fn delete_stale_review_prs(&self, current_ids: &[i64]) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+        if current_ids.is_empty() {
+            conn.execute("DELETE FROM review_prs", [])?;
+        } else {
+            let placeholders: Vec<String> = current_ids
+                .iter()
+                .enumerate()
+                .map(|(i, _)| format!("?{}", i + 1))
+                .collect();
+            let sql = format!(
+                "DELETE FROM review_prs WHERE id NOT IN ({})",
+                placeholders.join(", ")
+            );
+            let mut stmt = conn.prepare(&sql)?;
+            let params: Vec<Box<dyn rusqlite::types::ToSql>> = current_ids
+                .iter()
+                .map(|id| Box::new(*id) as Box<dyn rusqlite::types::ToSql>)
+                .collect();
+            let param_refs: Vec<&dyn rusqlite::types::ToSql> =
+                params.iter().map(|p| p.as_ref()).collect();
+            stmt.execute(param_refs.as_slice())?;
+        }
+        Ok(())
+    }
+
     pub fn mark_comments_addressed(&self, ids: &[i64]) -> Result<()> {
         if ids.is_empty() {
             return Ok(());
@@ -1468,13 +1621,13 @@ mod tests {
 
         let table_count: i32 = conn
             .query_row(
-                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name IN ('tasks', 'agent_sessions', 'agent_logs', 'pull_requests', 'pr_comments', 'config', 'projects', 'project_config', 'worktrees')",
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name IN ('tasks', 'agent_sessions', 'agent_logs', 'pull_requests', 'pr_comments', 'config', 'projects', 'project_config', 'worktrees', 'review_prs')",
                 [],
                 |row| row.get(0),
             )
             .expect("Failed to count tables");
 
-        assert_eq!(table_count, 9, "All 9 tables should be created");
+        assert_eq!(table_count, 10, "All 10 tables should be created");
 
         let config_count: i32 = conn
             .query_row("SELECT COUNT(*) FROM config", [], |row| row.get(0))

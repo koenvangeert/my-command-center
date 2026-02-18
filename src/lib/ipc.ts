@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Task, AgentSession, AgentLog, PrComment, PullRequestInfo, OpenCodeStatus, Project, WorktreeInfo, ImplementationStatus } from "./types";
+import type { Task, AgentSession, AgentLog, PrComment, PullRequestInfo, OpenCodeStatus, Project, WorktreeInfo, ImplementationStatus, ReviewPullRequest, PrFileDiff } from "./types";
 
 export async function createTask(title: string, description: string, status: string, jiraKey: string | null, projectId: string | null): Promise<Task> {
   return invoke<Task>("create_task", { title, description, status, jiraKey, projectId });
@@ -137,4 +137,28 @@ export async function getSessionOutput(taskId: string): Promise<string> {
 
 export async function updateTaskFields(taskId: string, acceptanceCriteria: string, planText: string): Promise<void> {
   return invoke("update_task_fields", { taskId, acceptanceCriteria, planText });
+}
+
+export async function getGithubUsername(): Promise<string> {
+  return invoke<string>("get_github_username");
+}
+
+export async function fetchReviewPrs(): Promise<ReviewPullRequest[]> {
+  return invoke<ReviewPullRequest[]>("fetch_review_prs");
+}
+
+export async function getReviewPrs(): Promise<ReviewPullRequest[]> {
+  return invoke<ReviewPullRequest[]>("get_review_prs");
+}
+
+export async function getPrFileDiffs(owner: string, repo: string, prNumber: number): Promise<PrFileDiff[]> {
+  return invoke<PrFileDiff[]>("get_pr_file_diffs", { owner, repo, prNumber });
+}
+
+export async function getFileContent(owner: string, repo: string, sha: string): Promise<string> {
+  return invoke<string>("get_file_content", { owner, repo, sha });
+}
+
+export async function getFileAtRef(owner: string, repo: string, path: string, refSha: string): Promise<string> {
+  return invoke<string>("get_file_at_ref", { owner, repo, path, refSha });
 }

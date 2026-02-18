@@ -21,6 +21,7 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::error::Error as StdError;
 use std::fmt;
+use base64::{Engine as _, engine::general_purpose};
 
 /// GitHub API client
 #[derive(Clone)]
@@ -387,6 +388,253 @@ impl GitHubClient {
 
         Ok(prs)
     }
+
+    /// Get authenticated user's login
+    ///
+    /// # Arguments
+    /// * `token` - GitHub Personal Access Token
+    ///
+    /// # Returns
+    /// User's login (username) on success
+    pub async fn get_authenticated_user(&self, token: &str) -> Result<String, GitHubError> {
+        let url = "https://api.github.com/user";
+
+        let response = self
+            .client
+            .get(url)
+            .header("Authorization", format!("token {}", token))
+            .header("User-Agent", "ai-command-center")
+            .send()
+            .await
+            .map_err(|e| GitHubError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unable to read response body".to_string());
+            return Err(GitHubError::ApiError {
+                status: status.as_u16(),
+                message: body,
+            });
+        }
+
+        let user: AuthenticatedUser = response
+            .json()
+            .await
+            .map_err(|e| GitHubError::ParseError(e.to_string()))?;
+
+        Ok(user.login)
+    }
+
+    /// Search for PRs where the user is requested as a reviewer
+    ///
+    /// # Arguments
+    /// * `username` - GitHub username to search for
+    /// * `token` - GitHub Personal Access Token
+    ///
+    /// # Returns
+    /// Vector of SearchPrResult with full PR details
+    pub async fn search_review_requested_prs(
+        &self,
+        username: &str,
+        token: &str,
+    ) -> Result<Vec<SearchPrResult>, GitHubError> {
+        let url = format!(
+            "https://api.github.com/search/issues?q=review-requested:{}+type:pr+state:open&per_page=100",
+            username
+        );
+
+        let response = self
+            .client
+            .get(&url)
+            .header("Authorization", format!("token {}", token))
+            .header("User-Agent", "ai-command-center")
+            .send()
+            .await
+            .map_err(|e| GitHubError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unable to read response body".to_string());
+            return Err(GitHubError::ApiError {
+                status: status.as_u16(),
+                message: body,
+            });
+        }
+
+        let search_response: SearchResponse = response
+            .json()
+            .await
+            .map_err(|e| GitHubError::ParseError(e.to_string()))?;
+
+        let mut results = Vec::new();
+
+        for item in search_response.items {
+            // Extract owner/repo from repository_url
+            let repo_url = &item.repository_url;
+            let parts: Vec<&str> = repo_url.split('/').collect();
+            if parts.len() < 2 {
+                continue;
+            }
+            let owner = parts[parts.len() - 2];
+            let repo = parts[parts.len() - 1];
+
+            // Fetch full PR details to get head/base refs and stats
+            let pr_details = self.get_pr_details(owner, repo, item.number, token).await?;
+
+            results.push(SearchPrResult {
+                id: item.id,
+                number: item.number,
+                title: item.title,
+                body: item.body,
+                state: item.state,
+                draft: item.draft.unwrap_or(false),
+                html_url: item.html_url,
+                user_login: item.user.login,
+                user_avatar_url: item.user.avatar_url,
+                repo_owner: owner.to_string(),
+                repo_name: repo.to_string(),
+                head_ref: pr_details.head.ref_name,
+                base_ref: pr_details.extra.get("base")
+                    .and_then(|b| b.get("ref"))
+                    .and_then(|r| r.as_str())
+                    .unwrap_or("main")
+                    .to_string(),
+                head_sha: pr_details.head.extra.get("sha")
+                    .and_then(|s| s.as_str())
+                    .unwrap_or("")
+                    .to_string(),
+                additions: pr_details.extra.get("additions")
+                    .and_then(|a| a.as_i64())
+                    .unwrap_or(0),
+                deletions: pr_details.extra.get("deletions")
+                    .and_then(|d| d.as_i64())
+                    .unwrap_or(0),
+                changed_files: pr_details.extra.get("changed_files")
+                    .and_then(|c| c.as_i64())
+                    .unwrap_or(0),
+                created_at: item.created_at,
+                updated_at: item.updated_at,
+            });
+        }
+
+        Ok(results)
+    }
+
+    /// Get file diffs for a pull request
+    ///
+    /// # Arguments
+    /// * `owner` - Repository owner
+    /// * `repo` - Repository name
+    /// * `pr_number` - Pull request number
+    /// * `token` - GitHub Personal Access Token
+    ///
+    /// # Returns
+    /// Vector of PrFileDiff with file changes
+    pub async fn get_pr_files(
+        &self,
+        owner: &str,
+        repo: &str,
+        pr_number: i64,
+        token: &str,
+    ) -> Result<Vec<PrFileDiff>, GitHubError> {
+        let url = format!(
+            "https://api.github.com/repos/{}/{}/pulls/{}/files?per_page=100",
+            owner, repo, pr_number
+        );
+
+        let response = self
+            .client
+            .get(&url)
+            .header("Authorization", format!("token {}", token))
+            .header("User-Agent", "ai-command-center")
+            .send()
+            .await
+            .map_err(|e| GitHubError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unable to read response body".to_string());
+            return Err(GitHubError::ApiError {
+                status: status.as_u16(),
+                message: body,
+            });
+        }
+
+        let files: Vec<PrFileDiff> = response
+            .json()
+            .await
+            .map_err(|e| GitHubError::ParseError(e.to_string()))?;
+
+        Ok(files)
+    }
+
+    /// Get blob content by SHA
+    ///
+    /// # Arguments
+    /// * `owner` - Repository owner
+    /// * `repo` - Repository name
+    /// * `sha` - Blob SHA
+    /// * `token` - GitHub Personal Access Token
+    ///
+    /// # Returns
+    /// Decoded blob content as String
+    pub async fn get_blob_content(
+        &self,
+        owner: &str,
+        repo: &str,
+        sha: &str,
+        token: &str,
+    ) -> Result<String, GitHubError> {
+        let url = format!(
+            "https://api.github.com/repos/{}/{}/git/blobs/{}",
+            owner, repo, sha
+        );
+
+        let response = self
+            .client
+            .get(&url)
+            .header("Authorization", format!("token {}", token))
+            .header("User-Agent", "ai-command-center")
+            .send()
+            .await
+            .map_err(|e| GitHubError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unable to read response body".to_string());
+            return Err(GitHubError::ApiError {
+                status: status.as_u16(),
+                message: body,
+            });
+        }
+
+        let blob: BlobResponse = response
+            .json()
+            .await
+            .map_err(|e| GitHubError::ParseError(e.to_string()))?;
+
+        // Decode base64 content
+        let decoded = general_purpose::STANDARD
+            .decode(&blob.content.replace('\n', ""))
+            .map_err(|e| GitHubError::ParseError(format!("Base64 decode error: {}", e)))?;
+
+        let content = String::from_utf8(decoded)
+            .map_err(|e| GitHubError::ParseError(format!("UTF-8 decode error: {}", e)))?;
+
+        Ok(content)
+    }
 }
 
 impl Default for GitHubClient {
@@ -410,6 +658,43 @@ pub struct PullRequest {
     pub head: GitHubHead,
     #[serde(flatten)]
     pub extra: serde_json::Value,
+}
+
+/// Search PR result with full details
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct SearchPrResult {
+    pub id: i64,
+    pub number: i64,
+    pub title: String,
+    pub body: Option<String>,
+    pub state: String,
+    pub draft: bool,
+    pub html_url: String,
+    pub user_login: String,
+    pub user_avatar_url: Option<String>,
+    pub repo_owner: String,
+    pub repo_name: String,
+    pub head_ref: String,
+    pub base_ref: String,
+    pub head_sha: String,
+    pub additions: i64,
+    pub deletions: i64,
+    pub changed_files: i64,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+/// PR file diff
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct PrFileDiff {
+    pub sha: String,
+    pub filename: String,
+    pub status: String,
+    pub additions: i64,
+    pub deletions: i64,
+    pub changes: i64,
+    pub patch: Option<String>,
+    pub previous_filename: Option<String>,
 }
 
 /// Unified PR comment (can be review comment or issue comment)
@@ -473,6 +758,53 @@ struct IssueComment {
 #[derive(Debug, Serialize)]
 struct CommentRequest {
     body: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct AuthenticatedUser {
+    login: String,
+    #[serde(flatten)]
+    extra: serde_json::Value,
+}
+
+#[derive(Debug, Deserialize)]
+struct SearchResponse {
+    items: Vec<SearchItem>,
+    #[serde(flatten)]
+    extra: serde_json::Value,
+}
+
+#[derive(Debug, Deserialize)]
+struct SearchItem {
+    id: i64,
+    number: i64,
+    title: String,
+    body: Option<String>,
+    state: String,
+    draft: Option<bool>,
+    html_url: String,
+    user: SearchUser,
+    repository_url: String,
+    created_at: String,
+    updated_at: String,
+    #[serde(flatten)]
+    extra: serde_json::Value,
+}
+
+#[derive(Debug, Deserialize)]
+struct SearchUser {
+    login: String,
+    avatar_url: Option<String>,
+    #[serde(flatten)]
+    extra: serde_json::Value,
+}
+
+#[derive(Debug, Deserialize)]
+struct BlobResponse {
+    content: String,
+    encoding: String,
+    #[serde(flatten)]
+    extra: serde_json::Value,
 }
 
 // ============================================================================

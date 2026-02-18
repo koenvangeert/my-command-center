@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "diff2html": "^3.4.56",
     "svelte": "^4.2.8"
   },
   "devDependencies": {

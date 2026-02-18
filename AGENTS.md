@@ -118,6 +118,23 @@ export async function getTickets(): Promise<Ticket[]> {
 }
 ```
 
+### External Links
+
+Tauri's webview does **not** support `<a href="..." target="_blank">` for opening external
+URLs. Use the `openUrl()` IPC wrapper which calls a Tauri command to open the system browser.
+Never use plain `<a>` tags for external links.
+
+```svelte
+<script lang="ts">
+  import { openUrl } from '../lib/ipc'
+</script>
+
+<span class="link" role="link" tabindex="0"
+  on:click={() => openUrl(url)}
+  on:keydown={(e) => e.key === 'Enter' && openUrl(url)}
+>Open link</span>
+```
+
 ### Error Handling (Frontend)
 
 try/catch in async functions. Log with `console.error`, set the `error` store for user-facing
