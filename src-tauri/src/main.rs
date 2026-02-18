@@ -133,14 +133,53 @@ async fn update_task(
 #[tauri::command]
 async fn update_task_status(
     db: State<'_, Mutex<db::Database>>,
+    server_mgr: State<'_, server_manager::ServerManager>,
+    sse_mgr: State<'_, sse_bridge::SseBridgeManager>,
+    pty_mgr: State<'_, PtyManager>,
     app: tauri::AppHandle,
     id: String,
     status: String,
 ) -> Result<(), String> {
-    let db = db.lock().unwrap();
-    db.update_task_status(&id, &status)
-        .map_err(|e| format!("Failed to update task status: {}", e))?;
+    {
+        let db = db.lock().unwrap();
+        db.update_task_status(&id, &status)
+            .map_err(|e| format!("Failed to update task status: {}", e))?;
+    }
     let _ = app.emit("task-changed", serde_json::json!({ "action": "updated", "task_id": id }));
+
+    // Clean up worktree and associated processes when task moves to done
+    if status == "done" {
+        let _ = pty_mgr.kill_pty(&id).await;
+        sse_mgr.stop_bridge(&id).await;
+        let _ = server_mgr.stop_server(&id).await;
+
+        let worktree = {
+            let db_lock = db.lock().unwrap();
+            db_lock
+                .get_worktree_for_task(&id)
+                .map_err(|e| format!("Failed to get worktree: {}", e))?
+        };
+        if let Some(worktree) = worktree {
+            let repo_path = std::path::Path::new(&worktree.repo_path);
+            let worktree_path = std::path::Path::new(&worktree.worktree_path);
+            if let Err(e) = git_worktree::remove_worktree(repo_path, worktree_path).await {
+                eprintln!(
+                    "[update_task_status] Failed to remove worktree at {}: {}",
+                    worktree_path.display(),
+                    e
+                );
+            }
+
+            let db_lock = db.lock().unwrap();
+            if let Err(e) = db_lock.delete_worktree_record(&id) {
+                eprintln!(
+                    "[update_task_status] Failed to delete worktree record for {}: {}",
+                    id, e
+                );
+            }
+        }
+    }
+
     Ok(())
 }
 
