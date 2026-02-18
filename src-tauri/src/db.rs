@@ -844,8 +844,13 @@ impl Database {
             "DELETE FROM agent_sessions WHERE ticket_id = ?1",
             rusqlite::params![id],
         )?;
+        conn.execute("DELETE FROM pr_comments WHERE pr_id IN (SELECT id FROM pull_requests WHERE ticket_id = ?1)", rusqlite::params![id])?;
         conn.execute(
             "DELETE FROM pull_requests WHERE ticket_id = ?1",
+            rusqlite::params![id],
+        )?;
+        conn.execute(
+            "DELETE FROM worktrees WHERE task_id = ?1",
             rusqlite::params![id],
         )?;
         conn.execute("DELETE FROM tasks WHERE id = ?1", rusqlite::params![id])?;

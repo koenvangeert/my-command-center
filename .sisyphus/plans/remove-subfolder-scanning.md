@@ -58,10 +58,10 @@ Simplify the project model from "parent folder containing repos" to "single repo
 - Updated App.svelte flow: "Implement" → direct `startImplementation(taskId, activeProject.path)`
 
 ### Definition of Done
-- [ ] `cargo build` and `npm run build` succeed with zero errors
-- [ ] `cargo test` and `npm run test` pass
-- [ ] Zero occurrences of `repos_root_path` / `reposRootPath` / `RepoPickerDialog` / `scanRepos` / `RepoInfo` remain in source
-- [ ] `RepoPickerDialog.svelte` file no longer exists
+- [x] `cargo build` and `npm run build` succeed with zero errors
+- [x] `cargo test` and `npm run test` pass
+- [x] Zero occurrences of `repos_root_path` / `reposRootPath` / `RepoPickerDialog` / `scanRepos` / `RepoInfo` remain in source
+- [x] `RepoPickerDialog.svelte` file no longer exists
 
 ### Must Have
 - DB migration step for existing databases (ALTER TABLE RENAME COLUMN)
@@ -575,19 +575,19 @@ Max Concurrent: 2 (Wave 1)
 
 > 4 review agents run in PARALLEL. ALL must APPROVE. Rejection → fix → re-run.
 
-- [ ] F1. **Plan Compliance Audit** — `oracle`
+- [x] F1. **Plan Compliance Audit** — `oracle`
   Read the plan end-to-end. For each "Must Have": verify implementation exists (grep codebase, check DB migration). For each "Must NOT Have": search codebase for forbidden patterns (worktrees.repo_path changes, git2 Cargo.toml removal, path validation additions) — reject with file:line if found. Check evidence files exist in .sisyphus/evidence/. Compare deliverables against plan.
   Output: `Must Have [N/N] | Must NOT Have [N/N] | Tasks [N/N] | VERDICT: APPROVE/REJECT`
 
-- [ ] F2. **Code Quality Review** — `unspecified-high`
+- [x] F2. **Code Quality Review** — `unspecified-high`
   Run `cargo build` + `npm run build` + `cargo test` + `npm run test`. Review all changed files for: unused imports, dead code references to removed features, `as any`/`@ts-ignore` hacks. Check no traces of `repos_root_path`, `reposRootPath`, `RepoPickerDialog`, `scanRepos`, `RepoInfo` remain in source.
   Output: `Build [PASS/FAIL] | Tests [N pass/N fail] | Dead Code [CLEAN/N issues] | VERDICT`
 
-- [ ] F3. **Real QA Verification** — `unspecified-high`
+- [x] F3. **Real QA Verification** — `unspecified-high`
   Start from clean state. Run `cargo build` and `npm run build`. Verify `RepoPickerDialog.svelte` file doesn't exist. Run full grep across `src/` and `src-tauri/src/` for all removed identifiers. Run `cargo test` and `npm run test`. Save all output to `.sisyphus/evidence/final-qa/`.
   Output: `Build [PASS/FAIL] | Tests [PASS/FAIL] | Dead References [CLEAN/N] | VERDICT`
 
-- [ ] F4. **Scope Fidelity Check** — `deep`
+- [x] F4. **Scope Fidelity Check** — `deep`
   For each task: read "What to do", read actual diff (`git diff`). Verify 1:1 — everything in spec was built (no missing), nothing beyond spec was built (no creep). Check "Must NOT do" compliance: `worktrees.repo_path` untouched, `agent_coordinator.rs` untouched, `git2` still in Cargo.toml, no path validation added, no confirmation dialog added. Flag unaccounted changes.
   Output: `Tasks [N/N compliant] | Scope Creep [CLEAN/N issues] | VERDICT`
 
@@ -621,7 +621,7 @@ ls src/components/RepoPickerDialog.svelte 2>&1
 ```
 
 ### Final Checklist
-- [ ] All "Must Have" present (DB migration, null guard, all 39 renames)
-- [ ] All "Must NOT Have" absent (no worktree.repo_path changes, no git2 removal, no validation, no confirmation dialog)
-- [ ] All tests pass (`cargo test` + `npm run test`)
-- [ ] All builds succeed (`cargo build` + `npm run build`)
+- [x] All "Must Have" present (DB migration, null guard, all 39 renames)
+- [x] All "Must NOT Have" absent (no worktree.repo_path changes, no git2 removal, no validation, no confirmation dialog)
+- [x] All tests pass (`cargo test` + `npm run test`)
+- [x] All builds succeed (`cargo build` + `npm run build`)
