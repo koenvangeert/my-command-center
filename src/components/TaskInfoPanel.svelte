@@ -2,10 +2,9 @@
   import { onMount } from 'svelte'
   import type { Task, PrComment, KanbanColumn, WorktreeInfo } from '../lib/types'
   import { COLUMN_LABELS } from '../lib/types'
-  import { selectedTaskId, ticketPrs } from '../lib/stores'
+  import { ticketPrs } from '../lib/stores'
   import { 
     updateTaskStatus, 
-    deleteTask, 
     getPrComments, 
     markCommentAddressed, 
     openUrl, 
@@ -14,10 +13,9 @@
 
   interface Props {
     task: Task
-    onEdit?: () => void
   }
 
-  let { task, onEdit }: Props = $props()
+  let { task }: Props = $props()
 
   let worktree = $state<WorktreeInfo | null>(null)
   let prCommentsByPr = $state<Map<number, PrComment[]>>(new Map())
@@ -69,18 +67,6 @@
       await updateTaskStatus(task.id, newStatus)
     } catch (e) {
       console.error('Failed to update status:', e)
-    }
-  }
-
-  async function handleDelete() {
-    const confirmed = confirm(`Are you sure you want to delete task "${task.title}"?`)
-    if (!confirmed) return
-
-    try {
-      await deleteTask(task.id)
-      $selectedTaskId = null
-    } catch (e) {
-      console.error('Failed to delete task:', e)
     }
   }
 
@@ -173,14 +159,6 @@
       </button>
     </section>
   {/if}
-
-  <!-- Action Row -->
-  <section class="section">
-    <div class="action-row">
-      <button class="btn btn-edit" onclick={() => onEdit?.()}>Edit Task</button>
-      <button class="btn btn-delete" onclick={handleDelete}>Delete</button>
-    </div>
-  </section>
 
   <!-- PR Links Section -->
   {#if taskPrs.length > 0}
@@ -313,21 +291,6 @@
     width: fit-content;
   }
 
-  .btn {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: opacity 0.2s;
-  }
-
-  .btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
   .btn-done {
     width: 100%;
     padding: 14px 20px;
@@ -349,33 +312,6 @@
 
   .btn-done:active {
     transform: translateY(0);
-  }
-
-  .action-row {
-    display: flex;
-    gap: 8px;
-  }
-
-  .btn-edit {
-    background: var(--accent);
-    color: white;
-    flex: 1;
-  }
-
-  .btn-edit:hover {
-    opacity: 0.9;
-  }
-
-  .btn-delete {
-    background: transparent;
-    color: var(--error);
-    border: 1px solid var(--error);
-    flex: 1;
-  }
-
-  .btn-delete:hover {
-    background: var(--error);
-    color: white;
   }
 
   .pr-list {

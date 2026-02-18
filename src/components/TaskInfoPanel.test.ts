@@ -6,12 +6,10 @@ import type { Task } from '../lib/types'
 
 vi.mock('../lib/stores', () => ({
   ticketPrs: writable(new Map()),
-  selectedTaskId: writable(null),
 }))
 
 vi.mock('../lib/ipc', () => ({
   updateTaskStatus: vi.fn().mockResolvedValue(undefined),
-  deleteTask: vi.fn().mockResolvedValue(undefined),
   getPrComments: vi.fn().mockResolvedValue([]),
   markCommentAddressed: vi.fn().mockResolvedValue(undefined),
   openUrl: vi.fn().mockResolvedValue(undefined),
@@ -81,10 +79,10 @@ describe('TaskInfoPanel', () => {
     expect(screen.queryByText('Move to Done')).toBeNull()
   })
 
-  it('shows Edit Task and Delete buttons', () => {
+  it('does not show Edit Task or Delete buttons', () => {
     render(TaskInfoPanel, { props: { task: baseTask } })
-    expect(screen.getByText('Edit Task')).toBeTruthy()
-    expect(screen.getByText('Delete')).toBeTruthy()
+    expect(screen.queryByText('Edit Task')).toBeNull()
+    expect(screen.queryByText('Delete')).toBeNull()
   })
 
 })
