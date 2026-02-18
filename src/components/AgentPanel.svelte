@@ -180,12 +180,6 @@
     })
   }
 
-  $effect(() => {
-    if (terminalContainer && terminal) {
-      mountTerminal()
-    }
-  })
-
   onMount(async () => {
     // Initialize xterm.js terminal
     terminal = new Terminal({
@@ -222,6 +216,10 @@
 
     fitAddon = new FitAddon()
     terminal.loadAddon(fitAddon)
+
+    // Mount terminal immediately — by onMount time, bind:this has set terminalContainer.
+    // In Svelte 5, $effect won't track plain let variables, so we mount directly here.
+    mountTerminal()
 
     await loadSessionHistory()
 
