@@ -142,7 +142,7 @@
   .left-column {
     flex: 0 0 70%;
     padding: 24px;
-    overflow-y: auto;
+    overflow: hidden;
   }
 
   .divider {
