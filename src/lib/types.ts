@@ -60,8 +60,27 @@ export interface PullRequestInfo {
   title: string;
   url: string;
   state: string;
+  head_sha: string;
+  ci_status: string | null;
+  ci_check_runs: string | null;
   created_at: number;
   updated_at: number;
+}
+
+export interface CheckRunInfo {
+  id: number;
+  name: string;
+  status: string;
+  conclusion: string | null;
+  html_url: string;
+}
+
+export interface CiFailureNotification {
+  task_id: string;
+  pr_id: number;
+  pr_title: string;
+  ci_status: string;
+  timestamp: number;
 }
 
 export interface OpenCodeStatus {
@@ -202,6 +221,15 @@ export interface PtyEvent {
   data: string;
 }
 
+
+export function parseCheckRuns(json: string | null): CheckRunInfo[] {
+  if (!json) return [];
+  try {
+    return JSON.parse(json);
+  } catch {
+    return [];
+  }
+}
 
 export type KanbanColumn = "backlog" | "doing" | "done";
 

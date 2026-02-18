@@ -54,6 +54,9 @@ pub struct PrRow {
     pub title: String,
     pub url: String,
     pub state: String,
+    pub head_sha: String,
+    pub ci_status: Option<String>,
+    pub ci_check_runs: Option<String>,
     pub created_at: i64,
     pub updated_at: i64,
 }
@@ -381,6 +384,54 @@ impl Database {
             )",
             [],
         )?;
+
+        // ============================================================================
+        // Migration: Add CI status columns to pull_requests table
+        // ============================================================================
+        let head_sha_exists: bool = conn.query_row(
+            "SELECT COUNT(*) FROM pragma_table_info('pull_requests') WHERE name='head_sha'",
+            [],
+            |row| {
+                let count: i64 = row.get(0)?;
+                Ok(count > 0)
+            },
+        )?;
+
+        if !head_sha_exists {
+            conn.execute(
+                "ALTER TABLE pull_requests ADD COLUMN head_sha TEXT NOT NULL DEFAULT ''",
+                [],
+            )?;
+        }
+
+        let ci_status_exists: bool = conn.query_row(
+            "SELECT COUNT(*) FROM pragma_table_info('pull_requests') WHERE name='ci_status'",
+            [],
+            |row| {
+                let count: i64 = row.get(0)?;
+                Ok(count > 0)
+            },
+        )?;
+
+        if !ci_status_exists {
+            conn.execute("ALTER TABLE pull_requests ADD COLUMN ci_status TEXT", [])?;
+        }
+
+        let ci_check_runs_exists: bool = conn.query_row(
+            "SELECT COUNT(*) FROM pragma_table_info('pull_requests') WHERE name='ci_check_runs'",
+            [],
+            |row| {
+                let count: i64 = row.get(0)?;
+                Ok(count > 0)
+            },
+        )?;
+
+        if !ci_check_runs_exists {
+            conn.execute(
+                "ALTER TABLE pull_requests ADD COLUMN ci_check_runs TEXT",
+                [],
+            )?;
+        }
 
         // ============================================================================
         // One-time migration: Copy per-project credentials to global config
@@ -1047,7 +1098,7 @@ impl Database {
     pub fn get_open_prs(&self) -> Result<Vec<PrRow>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT id, ticket_id, repo_owner, repo_name, title, url, state, created_at, updated_at 
+            "SELECT id, ticket_id, repo_owner, repo_name, title, url, state, head_sha, ci_status, ci_check_runs, created_at, updated_at 
              FROM pull_requests 
              WHERE state = 'open' 
              ORDER BY updated_at DESC"
@@ -1062,8 +1113,11 @@ impl Database {
                 title: row.get(4)?,
                 url: row.get(5)?,
                 state: row.get(6)?,
-                created_at: row.get(7)?,
-                updated_at: row.get(8)?,
+                head_sha: row.get(7)?,
+                ci_status: row.get(8)?,
+                ci_check_runs: row.get(9)?,
+                created_at: row.get(10)?,
+                updated_at: row.get(11)?,
             })
         })?;
 
@@ -1077,7 +1131,7 @@ impl Database {
     pub fn get_all_pull_requests(&self) -> Result<Vec<PrRow>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT id, ticket_id, repo_owner, repo_name, title, url, state, created_at, updated_at
+            "SELECT id, ticket_id, repo_owner, repo_name, title, url, state, head_sha, ci_status, ci_check_runs, created_at, updated_at
              FROM pull_requests
              ORDER BY updated_at DESC",
         )?;
@@ -1091,8 +1145,11 @@ impl Database {
                 title: row.get(4)?,
                 url: row.get(5)?,
                 state: row.get(6)?,
-                created_at: row.get(7)?,
-                updated_at: row.get(8)?,
+                head_sha: row.get(7)?,
+                ci_status: row.get(8)?,
+                ci_check_runs: row.get(9)?,
+                created_at: row.get(10)?,
+                updated_at: row.get(11)?,
             })
         })?;
 
@@ -1141,7 +1198,8 @@ impl Database {
         Ok(())
     }
 
-    /// Insert or replace a pull request in the database
+    /// Insert or update a pull request in the database
+    /// Uses ON CONFLICT to preserve CI status columns (head_sha, ci_status, ci_check_runs)
     pub fn insert_pull_request(
         &self,
         id: i64,
@@ -1156,8 +1214,16 @@ impl Database {
     ) -> Result<()> {
         let conn = self.conn.lock().unwrap();
         conn.execute(
-            "INSERT OR REPLACE INTO pull_requests (id, ticket_id, repo_owner, repo_name, title, url, state, created_at, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+            "INSERT INTO pull_requests (id, ticket_id, repo_owner, repo_name, title, url, state, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+             ON CONFLICT(id) DO UPDATE SET
+               ticket_id=excluded.ticket_id,
+               repo_owner=excluded.repo_owner,
+               repo_name=excluded.repo_name,
+               title=excluded.title,
+               url=excluded.url,
+               state=excluded.state,
+               updated_at=excluded.updated_at",
             rusqlite::params![
                 id,
                 ticket_id,
@@ -1171,6 +1237,44 @@ impl Database {
             ],
         )?;
         Ok(())
+    }
+
+    /// Update the head SHA for a pull request
+    pub fn update_pr_head_sha(&self, pr_id: i64, sha: &str) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "UPDATE pull_requests SET head_sha = ?1 WHERE id = ?2",
+            rusqlite::params![sha, pr_id],
+        )?;
+        Ok(())
+    }
+
+    /// Update CI status and check runs for a pull request
+    pub fn update_pr_ci_status(
+        &self,
+        pr_id: i64,
+        head_sha: &str,
+        ci_status: &str,
+        ci_check_runs: &str,
+    ) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "UPDATE pull_requests SET head_sha = ?1, ci_status = ?2, ci_check_runs = ?3 WHERE id = ?4",
+            rusqlite::params![head_sha, ci_status, ci_check_runs, pr_id],
+        )?;
+        Ok(())
+    }
+
+    /// Get CI status for a pull request
+    pub fn get_pr_ci_status(&self, pr_id: i64) -> Result<Option<String>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare("SELECT ci_status FROM pull_requests WHERE id = ?1")?;
+        let mut rows = stmt.query([pr_id])?;
+        if let Some(row) = rows.next()? {
+            Ok(row.get(0)?)
+        } else {
+            Ok(None)
+        }
     }
 
     /// Get all comments for a specific PR
@@ -2729,6 +2833,126 @@ mod tests {
         assert_eq!(prs.len(), 2);
         assert_eq!(prs[0].id, 2); // Newer PR first
         assert_eq!(prs[1].id, 1); // Older PR second
+
+        drop(db);
+        let _ = fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_ci_status_migration() {
+        let (db, path) = make_test_db("ci_migration");
+
+        // Verify columns exist by querying pragma
+        let conn = db.connection();
+        let conn = conn.lock().unwrap();
+
+        let has_head_sha: bool = conn
+            .query_row(
+                "SELECT COUNT(*) > 0 FROM pragma_table_info('pull_requests') WHERE name='head_sha'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        let has_ci_status: bool = conn.query_row(
+            "SELECT COUNT(*) > 0 FROM pragma_table_info('pull_requests') WHERE name='ci_status'",
+            [], |row| row.get(0)
+        ).unwrap();
+        let has_ci_check_runs: bool = conn.query_row(
+            "SELECT COUNT(*) > 0 FROM pragma_table_info('pull_requests') WHERE name='ci_check_runs'",
+            [], |row| row.get(0)
+        ).unwrap();
+
+        assert!(has_head_sha, "head_sha column missing");
+        assert!(has_ci_status, "ci_status column missing");
+        assert!(has_ci_check_runs, "ci_check_runs column missing");
+
+        drop(conn);
+        drop(db);
+        let _ = fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_update_pr_ci_status() {
+        let (db, path) = make_test_db("ci_status_update");
+        insert_test_task(&db);
+
+        let now = 1000i64;
+        db.insert_pull_request(
+            42,
+            "T-100",
+            "owner",
+            "repo",
+            "Test PR",
+            "https://github.com/pr/42",
+            "open",
+            now,
+            now,
+        )
+        .unwrap();
+
+        db.update_pr_ci_status(42, "sha123", "success", r#"[{"id":1,"name":"build","status":"completed","conclusion":"success","html_url":"https://example.com"}]"#).unwrap();
+
+        let prs = db.get_open_prs().unwrap();
+        let pr = prs.iter().find(|p| p.id == 42).expect("PR not found");
+
+        assert_eq!(pr.head_sha, "sha123");
+        assert_eq!(pr.ci_status, Some("success".to_string()));
+        assert!(pr.ci_check_runs.is_some());
+        assert!(pr.ci_check_runs.as_ref().unwrap().contains("build"));
+
+        drop(db);
+        let _ = fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_pr_upsert_preserves_ci_status() {
+        let (db, path) = make_test_db("ci_upsert_preserve");
+        insert_test_task(&db);
+
+        let now = 1000i64;
+        db.insert_pull_request(
+            42,
+            "T-100",
+            "owner",
+            "repo",
+            "Test PR",
+            "https://github.com/pr/42",
+            "open",
+            now,
+            now,
+        )
+        .unwrap();
+
+        db.update_pr_ci_status(42, "sha123", "success", r#"[{"id":1,"name":"build","status":"completed","conclusion":"success","html_url":"https://example.com"}]"#).unwrap();
+
+        // Re-insert PR (simulating 30s sync cycle) - this must NOT wipe CI data
+        db.insert_pull_request(
+            42,
+            "T-100",
+            "owner",
+            "repo",
+            "Test PR Updated",
+            "https://github.com/pr/42",
+            "open",
+            now + 30,
+            now + 30,
+        )
+        .unwrap();
+
+        let prs = db.get_open_prs().unwrap();
+        let pr = prs.iter().find(|p| p.id == 42).expect("PR not found");
+
+        assert_eq!(
+            pr.ci_status,
+            Some("success".to_string()),
+            "CI status was wiped by upsert!"
+        );
+        assert!(
+            pr.ci_check_runs.is_some(),
+            "CI check runs were wiped by upsert!"
+        );
+        assert_eq!(pr.head_sha, "sha123", "Head SHA was wiped by upsert!");
+        assert_eq!(pr.title, "Test PR Updated");
 
         drop(db);
         let _ = fs::remove_file(&path);

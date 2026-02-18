@@ -30,7 +30,7 @@
 //! - Skips projects with missing GitHub config
 
 use crate::db::{Database, PrRow};
-use crate::github_client::GitHubClient;
+use crate::github_client::{aggregate_ci_status, GitHubClient};
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::sync::Mutex;
@@ -129,8 +129,8 @@ pub async fn start_github_poller(app: AppHandle) {
                 }
             };
 
-            for pr in open_prs {
-                match poll_pr_comments(&github_client, &db, &app, &github_token, &pr).await {
+            for pr in &open_prs {
+                match poll_pr_comments(&github_client, &db, &app, &github_token, pr).await {
                     Ok(count) => total_new_comments += count,
                     Err(e) => {
                         eprintln!(
@@ -139,6 +139,20 @@ pub async fn start_github_poller(app: AppHandle) {
                         );
                         total_errors += 1;
                     }
+                }
+            }
+
+            let open_prs_for_ci = match get_open_prs_for_project(&db, &project.id) {
+                Ok(prs) => prs,
+                Err(e) => {
+                    eprintln!("[GitHub Poller] Failed to get PRs for CI polling: {}", e);
+                    continue;
+                }
+            };
+
+            for pr in &open_prs_for_ci {
+                if let Err(e) = poll_pr_ci_status(&github_client, &db, &app, &github_token, pr).await {
+                    eprintln!("[GitHub Poller] Failed to poll CI for PR #{}: {}", pr.id, e);
                 }
             }
         }
@@ -349,6 +363,7 @@ async fn sync_open_prs(
                 now,
                 now,
             );
+            let _ = db_lock.update_pr_head_sha(pr.number, &pr.head.sha);
             drop(db_lock);
             synced += 1;
         }
@@ -489,6 +504,85 @@ async fn poll_pr_comments(
     }
 
     Ok(new_count)
+}
+
+async fn poll_pr_ci_status(
+    github_client: &GitHubClient,
+    db: &Mutex<Database>,
+    app: &AppHandle,
+    github_token: &str,
+    pr: &PrRow,
+) -> Result<usize, String> {
+    if pr.head_sha.is_empty() {
+        return Ok(0);
+    }
+
+    let old_status = {
+        let db_lock = db.lock().unwrap();
+        db_lock.get_pr_ci_status(pr.id).map_err(|e| e.to_string())?
+    };
+
+    let check_runs = match github_client
+        .get_check_runs(&pr.repo_owner, &pr.repo_name, &pr.head_sha, github_token)
+        .await
+    {
+        Ok(runs) => runs,
+        Err(e) => {
+            eprintln!(
+                "[GitHub Poller] Failed to fetch check runs for PR #{}: {}",
+                pr.id, e
+            );
+            return Ok(0);
+        }
+    };
+
+    let combined_status = match github_client
+        .get_combined_status(&pr.repo_owner, &pr.repo_name, &pr.head_sha, github_token)
+        .await
+    {
+        Ok(status) => status,
+        Err(e) => {
+            eprintln!(
+                "[GitHub Poller] Failed to fetch combined status for PR #{}: {}",
+                pr.id, e
+            );
+            return Ok(0);
+        }
+    };
+
+    let new_status = aggregate_ci_status(&check_runs, &combined_status);
+
+    let check_runs_json = serde_json::to_string(&check_runs.check_runs)
+        .unwrap_or_else(|_| "[]".to_string());
+
+    {
+        let db_lock = db.lock().unwrap();
+        db_lock
+            .update_pr_ci_status(pr.id, &pr.head_sha, &new_status, &check_runs_json)
+            .map_err(|e| e.to_string())?;
+    }
+
+    if old_status.as_deref() != Some("failure") && new_status == "failure" {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64;
+
+        if let Err(e) = app.emit(
+            "ci-status-changed",
+            serde_json::json!({
+                "task_id": pr.ticket_id,
+                "pr_id": pr.id,
+                "pr_title": pr.title,
+                "ci_status": new_status,
+                "timestamp": now
+            }),
+        ) {
+            eprintln!("[GitHub Poller] Failed to emit CI status event: {}", e);
+        }
+    }
+
+    Ok(1)
 }
 
 async fn poll_review_prs(
