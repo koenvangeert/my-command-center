@@ -129,45 +129,51 @@
   })
 </script>
 
-<div class="pr-review-view">
+<div class="flex flex-col w-full h-full overflow-hidden">
   {#if $selectedReviewPr}
-    <div class="detail-view">
-      <div class="detail-header">
-        <button class="back-btn" onclick={backToList}>
+    <div class="flex flex-col h-full overflow-hidden">
+      <div class="flex flex-col gap-3 px-6 py-5 bg-base-200 border-b border-base-300 shrink-0">
+        <button class="btn btn-ghost btn-sm gap-2 self-start text-base-content/50" onclick={backToList}>
           ← Back to list
         </button>
-        <div class="pr-info">
-          <span class="repo-badge">{$selectedReviewPr.repo_owner}/{$selectedReviewPr.repo_name}</span>
-          <h2 class="pr-title">{$selectedReviewPr.title}</h2>
-          <div class="pr-meta">
-            <span class="number">#{$selectedReviewPr.number}</span>
-            <span class="separator">•</span>
-            <span class="author">{$selectedReviewPr.user_login}</span>
-            <span class="separator">•</span>
-            <span class="time">{timeAgo($selectedReviewPr.created_at)}</span>
-            <span class="separator">•</span>
-            <span class="gh-link" role="link" tabindex="0" onclick={openPrOnGitHub} onkeydown={(e: KeyboardEvent) => e.key === 'Enter' && openPrOnGitHub()}>View on GitHub ↗</span>
+        <div class="flex flex-col gap-2">
+          <span class="badge badge-primary badge-sm self-start">{$selectedReviewPr.repo_owner}/{$selectedReviewPr.repo_name}</span>
+          <h2 class="text-lg font-semibold text-base-content m-0 leading-snug">{$selectedReviewPr.title}</h2>
+          <div class="flex items-center gap-2 text-xs text-base-content/50">
+            <span class="font-semibold text-base-content">#{$selectedReviewPr.number}</span>
+            <span class="text-base-300">•</span>
+            <span class="font-medium">{$selectedReviewPr.user_login}</span>
+            <span class="text-base-300">•</span>
+            <span>{timeAgo($selectedReviewPr.created_at)}</span>
+            <span class="text-base-300">•</span>
+            <span
+              class="text-primary font-medium cursor-pointer hover:opacity-80 hover:underline"
+              role="link"
+              tabindex="0"
+              onclick={openPrOnGitHub}
+              onkeydown={(e: KeyboardEvent) => e.key === 'Enter' && openPrOnGitHub()}
+            >View on GitHub ↗</span>
           </div>
         </div>
       </div>
 
-      <div class="detail-content">
+      <div class="flex flex-1 overflow-hidden">
         {#if isLoading}
-          <div class="loading">
-            <div class="spinner"></div>
+          <div class="flex flex-col items-center justify-center flex-1 gap-3 text-base-content/50 text-sm">
+            <span class="loading loading-spinner loading-md text-primary"></span>
             <span>Loading diffs...</span>
           </div>
         {:else if error}
-          <div class="error-state">
-            <span class="error-icon">⚠</span>
+          <div class="flex flex-col items-center justify-center h-full gap-3 text-error text-sm text-center p-5">
+            <span class="text-5xl">⚠</span>
             <span>{error}</span>
           </div>
         {:else}
           {#if fileTreeVisible}
             <FileTree files={$prFileDiffs} onSelectFile={handleFileSelect} />
           {/if}
-          <DiffViewer 
-            bind:this={diffViewer} 
+          <DiffViewer
+            bind:this={diffViewer}
             files={$prFileDiffs}
             existingComments={$reviewComments}
             repoOwner={$selectedReviewPr.repo_owner}
@@ -179,7 +185,7 @@
         {/if}
       </div>
 
-      <ReviewSubmitPanel 
+      <ReviewSubmitPanel
         repoOwner={$selectedReviewPr.repo_owner}
         repoName={$selectedReviewPr.repo_name}
         prNumber={$selectedReviewPr.number}
@@ -187,42 +193,42 @@
       />
     </div>
   {:else}
-    <div class="list-view">
-      <div class="list-header">
-        <div class="header-left">
-          <h2 class="heading">PRs Requesting Your Review</h2>
-          <span class="count">{$reviewPrs.length} {$reviewPrs.length === 1 ? 'PR' : 'PRs'}</span>
+    <div class="flex flex-col h-full overflow-hidden">
+      <div class="flex items-center justify-between px-6 py-5 bg-base-200 border-b border-base-300 shrink-0">
+        <div class="flex items-center gap-3">
+          <h2 class="text-xl font-semibold text-base-content m-0">PRs Requesting Your Review</h2>
+          <span class="badge badge-primary badge-sm">{$reviewPrs.length} {$reviewPrs.length === 1 ? 'PR' : 'PRs'}</span>
         </div>
-        <button class="refresh-btn" onclick={refreshPrs} disabled={isLoading}>
+        <button class="btn btn-sm border border-base-300" onclick={refreshPrs} disabled={isLoading}>
           {isLoading ? '⟳' : '↻'} Refresh
         </button>
       </div>
 
-      <div class="pr-list">
+      <div class="flex-1 overflow-y-auto p-6">
         {#if isLoading && $reviewPrs.length === 0}
-          <div class="loading">
-            <div class="spinner"></div>
+          <div class="flex flex-col items-center justify-center h-full gap-3 text-base-content/50 text-sm">
+            <span class="loading loading-spinner loading-md text-primary"></span>
             <span>Loading PRs...</span>
           </div>
         {:else if error}
-          <div class="error-state">
-            <span class="error-icon">⚠</span>
+          <div class="flex flex-col items-center justify-center h-full gap-3 text-error text-sm text-center p-5">
+            <span class="text-5xl">⚠</span>
             <span>{error}</span>
           </div>
         {:else if $reviewPrs.length === 0}
-          <div class="empty-state">
-            <span class="empty-icon">✓</span>
-            <h3>No PRs requesting your review</h3>
-            <p>You're all caught up!</p>
+          <div class="flex flex-col items-center justify-center h-full gap-4 text-base-content/50 text-center">
+            <span class="text-6xl text-success">✓</span>
+            <h3 class="text-xl font-semibold text-base-content m-0">No PRs requesting your review</h3>
+            <p class="text-sm m-0">You're all caught up!</p>
           </div>
         {:else}
           {#each [...groupedPrs.entries()] as [repo, prs]}
-            <div class="repo-group">
-              <h3 class="repo-header">{repo}</h3>
-              <div class="pr-cards">
+            <div class="mb-8">
+              <h3 class="text-xs font-semibold text-base-content/50 m-0 mb-3 uppercase tracking-wider">{repo}</h3>
+              <div class="grid grid-cols-[repeat(auto-fill,minmax(400px,1fr))] gap-4">
                 {#each prs as pr}
-                  <ReviewPrCard 
-                    {pr} 
+                  <ReviewPrCard
+                    {pr}
                     selected={false}
                     onClick={() => selectPr(pr)}
                   />
@@ -235,260 +241,3 @@
     </div>
   {/if}
 </div>
-
-<style>
-  .pr-review-view {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-  }
-
-  .list-view {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    overflow: hidden;
-  }
-
-  .list-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 20px 24px;
-    background: var(--bg-secondary);
-    border-bottom: 1px solid var(--border);
-  }
-
-  .header-left {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .heading {
-    font-size: 1.2rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin: 0;
-  }
-
-  .count {
-    padding: 4px 10px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--accent);
-    background: rgba(122, 162, 247, 0.15);
-    border-radius: 12px;
-  }
-
-  .refresh-btn {
-    all: unset;
-    padding: 8px 16px;
-    font-size: 0.8rem;
-    color: var(--text-primary);
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-
-  .refresh-btn:hover:not(:disabled) {
-    border-color: var(--accent);
-    color: var(--accent);
-  }
-
-  .refresh-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .pr-list {
-    flex: 1;
-    overflow-y: auto;
-    padding: 24px;
-  }
-
-  .repo-group {
-    margin-bottom: 32px;
-  }
-
-  .repo-header {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-    margin: 0 0 12px 0;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  .pr-cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-    gap: 16px;
-  }
-
-  .detail-view {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    overflow: hidden;
-  }
-
-  .detail-header {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    padding: 20px 24px;
-    background: var(--bg-secondary);
-    border-bottom: 1px solid var(--border);
-  }
-
-  .back-btn {
-    all: unset;
-    align-self: flex-start;
-    padding: 6px 12px;
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-    cursor: pointer;
-    transition: color 0.15s;
-  }
-
-  .back-btn:hover {
-    color: var(--accent);
-  }
-
-  .pr-info {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .repo-badge {
-    align-self: flex-start;
-    padding: 4px 10px;
-    font-size: 0.7rem;
-    font-weight: 600;
-    color: var(--accent);
-    background: rgba(122, 162, 247, 0.15);
-    border-radius: 4px;
-  }
-
-  .pr-title {
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin: 0;
-    line-height: 1.4;
-  }
-
-  .pr-meta {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-  }
-
-  .number {
-    font-weight: 600;
-    color: var(--text-primary);
-  }
-
-  .separator {
-    color: var(--border);
-  }
-
-  .author {
-    font-weight: 500;
-  }
-
-  .gh-link {
-    color: var(--accent);
-    font-weight: 500;
-    cursor: pointer;
-    transition: opacity 0.15s;
-  }
-
-  .gh-link:hover {
-    opacity: 0.8;
-    text-decoration: underline;
-  }
-
-  .detail-content {
-    display: flex;
-    flex: 1;
-    overflow: hidden;
-  }
-
-  .loading {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    flex: 1;
-    gap: 12px;
-    color: var(--text-secondary);
-    font-size: 0.85rem;
-  }
-
-  .spinner {
-    width: 32px;
-    height: 32px;
-    border: 3px solid var(--border);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.6s linear infinite;
-  }
-
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-
-  .empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    gap: 16px;
-    color: var(--text-secondary);
-    text-align: center;
-  }
-
-  .empty-icon {
-    font-size: 4rem;
-    color: var(--success);
-  }
-
-  .empty-state h3 {
-    font-size: 1.2rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin: 0;
-  }
-
-  .empty-state p {
-    font-size: 0.9rem;
-    margin: 0;
-  }
-
-  .error-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    gap: 12px;
-    color: var(--error);
-    font-size: 0.85rem;
-    text-align: center;
-    padding: 20px;
-  }
-
-  .error-icon {
-    font-size: 3rem;
-  }
-</style>

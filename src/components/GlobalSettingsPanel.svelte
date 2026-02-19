@@ -52,154 +52,41 @@
   }
 </script>
 
-<div class="settings">
-  <div class="settings-header">
-    <h2>Global Settings</h2>
-    <button class="close-btn" onclick={close}>X</button>
+<div class="flex flex-col h-full w-full bg-base-200">
+  <div class="flex items-center justify-between px-5 py-3.5 border-b border-base-300">
+    <h2 class="text-[0.9rem] font-semibold text-base-content m-0">Global Settings</h2>
+    <button class="btn btn-ghost btn-xs text-base-content/50 hover:bg-error hover:text-error-content" onclick={close}>✕</button>
   </div>
 
-  <div class="settings-body">
-    <section class="section">
-      <h3>JIRA</h3>
-      <label class="field">
-        <span>Base URL</span>
-        <input type="text" bind:value={jiraBaseUrl} placeholder="https://your-domain.atlassian.net" />
+  <div class="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-6">
+    <section class="flex flex-col gap-2">
+      <h3 class="text-xs font-semibold text-primary uppercase tracking-wider mb-3 mt-0">JIRA</h3>
+      <label class="flex flex-col gap-1">
+        <span class="text-[0.7rem] text-base-content/50">Base URL</span>
+        <input type="text" bind:value={jiraBaseUrl} placeholder="https://your-domain.atlassian.net" class="input input-bordered input-sm w-full" />
       </label>
-      <label class="field">
-        <span>Email / Username</span>
-        <input type="text" bind:value={jiraUsername} placeholder="your@email.com" />
+      <label class="flex flex-col gap-1">
+        <span class="text-[0.7rem] text-base-content/50">Email / Username</span>
+        <input type="text" bind:value={jiraUsername} placeholder="your@email.com" class="input input-bordered input-sm w-full" />
       </label>
-      <label class="field">
-        <span>API Token</span>
-        <input type="password" bind:value={jiraApiToken} placeholder="Your JIRA API token" />
+      <label class="flex flex-col gap-1">
+        <span class="text-[0.7rem] text-base-content/50">API Token</span>
+        <input type="password" bind:value={jiraApiToken} placeholder="Your JIRA API token" class="input input-bordered input-sm w-full" />
       </label>
     </section>
 
-    <section class="section">
-      <h3>GitHub</h3>
-      <label class="field">
-        <span>Personal Access Token</span>
-        <input type="password" bind:value={githubToken} placeholder="ghp_..." />
+    <section class="flex flex-col gap-2">
+      <h3 class="text-xs font-semibold text-primary uppercase tracking-wider mb-3 mt-0">GitHub</h3>
+      <label class="flex flex-col gap-1">
+        <span class="text-[0.7rem] text-base-content/50">Personal Access Token</span>
+        <input type="password" bind:value={githubToken} placeholder="ghp_..." class="input input-bordered input-sm w-full" />
       </label>
     </section>
   </div>
 
-  <div class="settings-footer">
-    <button class="btn btn-save" onclick={save} disabled={isSaving}>
+  <div class="px-5 py-3 border-t border-base-300">
+    <button class="btn btn-primary btn-block" onclick={save} disabled={isSaving}>
       {#if isSaving}Saving...{:else if saved}Saved!{:else}Save Settings{/if}
     </button>
   </div>
 </div>
-
-<style>
-  .settings {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    background: var(--bg-secondary);
-  }
-
-  .settings-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 14px 20px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .settings-header h2 {
-    margin: 0;
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--text-primary);
-  }
-
-  .close-btn {
-    all: unset;
-    cursor: pointer;
-    color: var(--text-secondary);
-    font-size: 0.8rem;
-    padding: 4px 8px;
-    border-radius: 4px;
-  }
-
-  .close-btn:hover {
-    background: var(--bg-card);
-    color: var(--text-primary);
-  }
-
-  .settings-body {
-    flex: 1;
-    overflow-y: auto;
-    padding: 16px 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-  }
-
-  .section h3 {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--accent);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin: 0 0 12px;
-  }
-
-  .section {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .field {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .field span {
-    font-size: 0.7rem;
-    color: var(--text-secondary);
-  }
-
-  .field input {
-    background: var(--bg-primary);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 8px 10px;
-    color: var(--text-primary);
-    font-size: 0.8rem;
-    outline: none;
-  }
-
-  .field input:focus {
-    border-color: var(--accent);
-  }
-
-  .settings-footer {
-    padding: 12px 20px;
-    border-top: 1px solid var(--border);
-  }
-
-  .btn {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    cursor: pointer;
-    width: 100%;
-  }
-
-  .btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .btn-save {
-    background: var(--accent);
-    color: var(--bg-primary);
-  }
-
-</style>

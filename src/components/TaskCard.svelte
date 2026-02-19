@@ -35,19 +35,25 @@
   let hasVisibleStatus = $derived(session !== null && ['running', 'completed', 'paused', 'failed', 'interrupted'].includes(session?.status ?? ''))
 </script>
 
-<button class="card" class:running={statusClass === 'running'} class:paused={statusClass === 'paused'} class:failed={statusClass === 'failed'} class:interrupted={statusClass === 'interrupted'} class:completed={statusClass === 'completed'} class:needs-input={needsInput} onclick={handleClick}>
-  <div class="card-header">
-    <div class="id-row">
-      <span class="task-id">{task.id}</span>
+<button
+  class="block w-full text-left px-3 py-2.5 bg-base-100 border border-base-300 rounded-md shadow-sm cursor-pointer transition-all hover:border-primary hover:shadow-md {statusClass === 'running' ? 'running' : ''} {statusClass === 'paused' ? 'paused' : ''} {statusClass === 'failed' ? 'failed' : ''} {statusClass === 'interrupted' ? 'interrupted' : ''} {statusClass === 'completed' ? 'completed' : ''} {needsInput ? 'needs-input' : ''}"
+  onclick={handleClick}
+>
+  <div class="flex items-center justify-between mb-1">
+    <div class="flex items-center gap-1.5">
+      <span class="text-xs font-semibold text-primary tracking-wide">{task.id}</span>
       {#if task.jira_key}
-        <span class="jira-badge">{task.jira_key}</span>
+        <span class="badge badge-ghost badge-xs">{task.jira_key}</span>
       {/if}
       {#if needsInput}
-        <span class="needs-input-badge">Needs Input</span>
+        <span class="badge badge-warning badge-xs animate-pulse">Needs Input</span>
       {/if}
     </div>
     {#if hasVisibleStatus}
-      <span class="status-badge {statusClass}">
+      <span
+        class="text-[0.6rem] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider whitespace-nowrap leading-tight {statusClass === 'running' ? 'bg-success/15 text-success' : ''} {statusClass === 'completed' ? 'bg-primary/20 text-primary' : ''} {statusClass === 'paused' ? 'bg-warning/15 text-warning' : ''} {statusClass === 'failed' ? 'bg-error/15 text-error' : ''} {statusClass === 'interrupted' ? 'bg-base-content/15 text-base-content/50' : ''}"
+        style={statusClass === 'running' ? 'animation: badge-pulse 2s ease-in-out infinite;' : ''}
+      >
         {#if statusClass === 'running'}
           Running
         {:else if statusClass === 'completed'}
@@ -62,12 +68,12 @@
       </span>
     {/if}
   </div>
-  <div class="card-title">{truncate(task.title, 60)}</div>
+  <div class="text-sm text-base-content leading-tight mb-1">{truncate(task.title, 60)}</div>
   {#if task.jira_title}
-    <div class="jira-title">{truncate(task.jira_title, 80)}</div>
+    <div class="text-xs text-base-content/50 leading-tight mb-1.5">{truncate(task.jira_title, 80)}</div>
   {/if}
   {#if session}
-    <div class="card-status {statusClass}">
+    <div class="text-[0.7rem] mb-1 {statusClass === 'running' ? 'text-success' : statusClass === 'completed' ? 'text-primary' : statusClass === 'failed' ? 'text-error' : statusClass === 'paused' ? 'text-warning' : 'text-base-content/50'}">
       {#if session.status === 'running'}
         {stageLabel(session.stage)}...
       {:else if session.status === 'paused'}
@@ -82,24 +88,26 @@
     </div>
   {/if}
   {#if pullRequests.length > 0}
-    <div class="card-prs">
+    <div class="flex flex-wrap gap-1 mb-1">
       {#each pullRequests as pr}
         <span
-          class="pr-link"
-          class:pr-open={pr.state === 'open' && !isReadyToMerge(pr)}
-          class:pr-merged={pr.state === 'merged'}
-          class:pr-ready={isReadyToMerge(pr)}
-          class:pr-closed={pr.state === 'closed'}
+          class="text-[0.65rem] font-semibold px-1.5 py-px rounded cursor-pointer transition-opacity hover:opacity-80 {pr.state === 'open' && !isReadyToMerge(pr) ? 'bg-success/15 text-success' : ''} {pr.state === 'merged' ? 'bg-secondary/15 text-secondary' : ''} {isReadyToMerge(pr) ? 'bg-success/25 text-success border border-success/40' : ''} {pr.state === 'closed' ? 'bg-base-content/20 text-base-content/50' : ''}"
           role="link"
           tabindex="0"
           onclick={(e: MouseEvent) => { e.stopPropagation(); openUrl(pr.url) }}
           onkeydown={(e: KeyboardEvent) => { e.stopPropagation(); if (e.key === 'Enter') openUrl(pr.url) }}
         >
           {#if pr.ci_status && pr.ci_status !== 'none' && pr.state === 'open'}
-            <span class="ci-dot ci-{pr.ci_status}" title="CI: {pr.ci_status}"></span>
+            <span
+              class="ci-dot ci-{pr.ci_status} inline-block w-1.5 h-1.5 rounded-full mr-0.5 align-middle {pr.ci_status === 'success' ? 'bg-success' : ''} {pr.ci_status === 'failure' ? 'bg-error' : ''} {pr.ci_status === 'pending' ? 'bg-warning' : ''}"
+              title="CI: {pr.ci_status}"
+            ></span>
           {/if}
           {#if pr.review_status && pr.review_status !== 'none' && pr.state === 'open'}
-            <span class="review-dot review-{pr.review_status}" title="Review: {pr.review_status}"></span>
+            <span
+              class="review-dot review-{pr.review_status} inline-block w-1.5 h-1.5 rounded-full mr-0.5 align-middle {pr.review_status === 'approved' ? 'bg-success' : ''} {pr.review_status === 'changes_requested' ? 'bg-warning' : ''} {pr.review_status === 'review_required' ? 'bg-base-content/50' : ''}"
+              title="Review: {pr.review_status}"
+            ></span>
           {/if}
           PR #{pr.id}
         </span>
@@ -107,309 +115,65 @@
     </div>
     {#each pullRequests as pr}
       {#if pr.state === 'merged'}
-        <div class="card-merge-status merged">Merged</div>
+        <div class="text-[0.7rem] font-semibold px-2 py-0.5 rounded mt-1 text-center bg-secondary/15 text-secondary">Merged</div>
       {:else if isReadyToMerge(pr)}
-        <div class="card-merge-status ready">Ready to merge</div>
+        <div class="text-[0.7rem] font-semibold px-2 py-0.5 rounded mt-1 text-center bg-success/15 text-success border border-success/30">Ready to merge</div>
       {/if}
     {/each}
   {/if}
   {#if task.jira_assignee}
-    <div class="card-assignee">{task.jira_assignee}</div>
+    <div class="text-[0.7rem] text-base-content/50">{task.jira_assignee}</div>
   {/if}
 </button>
 
 <style>
-  .card {
-    all: unset;
-    display: block;
-    width: 100%;
-    box-sizing: border-box;
-    padding: 10px 12px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    cursor: pointer;
-    transition: border-color 0.15s, box-shadow 0.15s;
+  /* Status border-left indicators — use daisyUI theme color vars */
+  :global(.running) {
+    border-left: 3px solid oklch(var(--color-success));
+    background: linear-gradient(to right, oklch(var(--color-success) / 0.05), transparent 40%);
   }
-
-  .card:hover {
-    border-color: var(--accent);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  :global(.completed) {
+    border-left: 3px solid oklch(var(--color-primary));
+    background: linear-gradient(to right, oklch(var(--color-primary) / 0.08), transparent 40%);
   }
-
-  .card.running {
-    border-left: 3px solid var(--success);
-    background: linear-gradient(to right, rgba(158, 206, 106, 0.05), transparent 40%);
+  :global(.paused) {
+    border-left: 3px solid oklch(var(--color-warning));
+    background: linear-gradient(to right, oklch(var(--color-warning) / 0.05), transparent 40%);
   }
-
-  .card.completed {
-    border-left: 3px solid var(--accent);
-    background: linear-gradient(to right, rgba(122, 162, 247, 0.08), transparent 40%);
+  :global(.failed) {
+    border-left: 3px solid oklch(var(--color-error));
+    background: linear-gradient(to right, oklch(var(--color-error) / 0.05), transparent 40%);
   }
-
-  .card.paused {
-    border-left: 3px solid var(--warning);
-    background: linear-gradient(to right, rgba(224, 175, 104, 0.05), transparent 40%);
+  :global(.interrupted) {
+    border-left: 3px solid oklch(var(--color-base-content) / 0.3);
+    background: linear-gradient(to right, oklch(var(--color-base-content) / 0.03), transparent 40%);
   }
-
-  .card.failed {
-    border-left: 3px solid var(--error);
-    background: linear-gradient(to right, rgba(247, 118, 142, 0.05), transparent 40%);
-  }
-
-  .card.interrupted {
-    border-left: 3px solid var(--text-secondary);
-    background: linear-gradient(to right, rgba(86, 95, 137, 0.05), transparent 40%);
-  }
-
-  .card.needs-input {
-    border: 2px solid var(--warning);
-    background: rgba(224, 175, 104, 0.08);
-    box-shadow: 0 0 12px rgba(224, 175, 104, 0.15);
+  :global(.needs-input) {
+    border: 2px solid oklch(var(--color-warning));
+    background: oklch(var(--color-warning) / 0.08);
+    box-shadow: 0 0 12px oklch(var(--color-warning) / 0.15);
     animation: needs-input-pulse 2s ease-in-out infinite;
   }
-
   @keyframes needs-input-pulse {
-    0%, 100% {
-      box-shadow: 0 0 12px rgba(224, 175, 104, 0.15);
-    }
-    50% {
-      box-shadow: 0 0 20px rgba(224, 175, 104, 0.3);
-    }
+    0%, 100% { box-shadow: 0 0 12px oklch(var(--color-warning) / 0.15); }
+    50% { box-shadow: 0 0 20px oklch(var(--color-warning) / 0.3); }
   }
-
-  .card-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 4px;
-  }
-
-  .id-row {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .task-id {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--accent);
-    letter-spacing: 0.02em;
-  }
-
-  .jira-badge {
-    font-size: 0.65rem;
-    font-weight: 500;
-    padding: 1px 5px;
-    background: rgba(86, 95, 137, 0.15);
-    color: var(--text-secondary);
-    border-radius: 3px;
-    letter-spacing: 0.01em;
-  }
-
-  .needs-input-badge {
-    font-size: 0.65rem;
-    font-weight: 600;
-    padding: 1px 5px;
-    background: rgba(224, 175, 104, 0.15);
-    color: var(--warning);
-    border-radius: 3px;
-    letter-spacing: 0.01em;
-    animation: pulse 1.5s infinite;
-  }
-
-  .status-badge {
-    font-size: 0.6rem;
-    font-weight: 600;
-    padding: 2px 6px;
-    border-radius: 3px;
-    letter-spacing: 0.03em;
-    text-transform: uppercase;
-    white-space: nowrap;
-    line-height: 1.3;
-  }
-
-  .status-badge.running {
-    background: rgba(158, 206, 106, 0.15);
-    color: var(--success);
-    animation: badge-pulse 2s ease-in-out infinite;
-  }
-
-  .status-badge.completed {
-    background: rgba(122, 162, 247, 0.2);
-    color: var(--accent);
-  }
-
-  .status-badge.paused {
-    background: rgba(224, 175, 104, 0.15);
-    color: var(--warning);
-  }
-
-  .status-badge.failed {
-    background: rgba(247, 118, 142, 0.15);
-    color: var(--error);
-  }
-
-  .status-badge.interrupted {
-    background: rgba(86, 95, 137, 0.15);
-    color: var(--text-secondary);
-  }
-
   @keyframes badge-pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.6; }
   }
-
-  .card-title {
-    font-size: 0.85rem;
-    color: var(--text-primary);
-    line-height: 1.3;
-    margin-bottom: 4px;
-  }
-
-  .jira-title {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    line-height: 1.3;
-    margin-bottom: 6px;
-  }
-
-  .card-status {
-    font-size: 0.7rem;
-    color: var(--text-secondary);
-    margin-bottom: 4px;
-  }
-
-  .card-status.running {
-    color: var(--success);
-  }
-
-  .card-status.completed {
-    color: var(--accent);
-  }
-
-  .card-status.failed {
-    color: var(--error);
-  }
-
-  .card-status.paused {
-    color: var(--warning);
-  }
-
-  .card-prs {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    margin-bottom: 4px;
-  }
-
-  .pr-link {
-    font-size: 0.65rem;
-    font-weight: 600;
-    padding: 1px 6px;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: opacity 0.15s;
-  }
-
-  .pr-link:hover {
-    opacity: 0.8;
-  }
-
-  .pr-link.pr-open {
-    background: rgba(158, 206, 106, 0.15);
-    color: var(--success);
-  }
-
-  .pr-link.pr-merged {
-    background: rgba(187, 154, 247, 0.15);
-    color: #bb9af7;
-  }
-
-  .pr-link.pr-ready {
-    background: rgba(158, 206, 106, 0.25);
-    color: var(--success);
-    border: 1px solid rgba(158, 206, 106, 0.4);
-  }
-
-  .pr-link.pr-closed {
-    background: rgba(86, 95, 137, 0.2);
-    color: var(--text-secondary);
-  }
-
-  .card-merge-status {
-    font-size: 0.7rem;
-    font-weight: 600;
-    padding: 3px 8px;
-    border-radius: 4px;
-    margin-top: 4px;
-    text-align: center;
-  }
-
-  .card-merge-status.merged {
-    background: rgba(187, 154, 247, 0.15);
-    color: #bb9af7;
-  }
-
-  .card-merge-status.ready {
-    background: rgba(158, 206, 106, 0.15);
-    color: var(--success);
-    border: 1px solid rgba(158, 206, 106, 0.3);
-  }
-
-  .ci-dot {
-    display: inline-block;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    margin-right: 3px;
-    vertical-align: middle;
-  }
-
-  .ci-dot.ci-success {
-    background: var(--success);
-  }
-
-  .ci-dot.ci-failure {
-    background: var(--error);
-    animation: ci-pulse 1.5s ease-in-out infinite;
-  }
-
-  .ci-dot.ci-pending {
-    background: var(--warning);
-    animation: ci-pulse 2s ease-in-out infinite;
-  }
-
-  .review-dot {
-    display: inline-block;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    margin-right: 3px;
-    vertical-align: middle;
-  }
-
-  .review-dot.review-approved {
-    background: var(--success);
-  }
-
-  .review-dot.review-changes_requested {
-    background: var(--warning);
-  }
-
-  .review-dot.review-review_required {
-    background: var(--text-secondary);
-    animation: ci-pulse 2s ease-in-out infinite;
-  }
-
   @keyframes ci-pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.4; }
   }
-
-  .card-assignee {
-    font-size: 0.7rem;
-    color: var(--text-secondary);
+  /* CI/Review dot animations */
+  :global(.ci-dot.ci-failure) {
+    animation: ci-pulse 1.5s ease-in-out infinite;
+  }
+  :global(.ci-dot.ci-pending) {
+    animation: ci-pulse 2s ease-in-out infinite;
+  }
+  :global(.review-dot.review-review_required) {
+    animation: ci-pulse 2s ease-in-out infinite;
   }
 </style>

@@ -84,24 +84,24 @@
 
 <svelte:window onclick={closeContextMenu} />
 
-<div class="kanban">
+<div class="flex gap-3 p-4 h-full overflow-x-auto">
   {#each COLUMNS as column}
     {@const columnTasks = tasksForColumn($tasks, column)}
-    <div class="column">
-       <div class="column-header">
-         <span class="column-name">{COLUMN_LABELS[column]}</span>
-         <div class="column-header-right">
-           <span class="column-count">{columnTasks.length}</span>
+    <div class="flex-1 min-w-0 flex flex-col bg-base-200 rounded-lg border border-base-300">
+       <div class="flex items-center justify-between px-3.5 py-3 border-b border-base-300">
+         <span class="text-xs font-semibold text-base-content uppercase tracking-wider">{COLUMN_LABELS[column]}</span>
+         <div class="flex items-center gap-2">
+           <span class="badge badge-ghost badge-sm">{columnTasks.length}</span>
          </div>
        </div>
-      <div class="column-body">
+      <div class="flex-1 p-2 flex flex-col gap-2 overflow-y-auto">
         {#each columnTasks as task (task.id)}
           <div oncontextmenu={(e: MouseEvent) => handleContextMenu(e, task.id)}>
             <TaskCard {task} session={getSession($activeSessions, task.id)} pullRequests={$ticketPrs.get(task.id) || []} onSelect={handleSelect} />
           </div>
         {/each}
         {#if columnTasks.length === 0}
-          <div class="empty-column">No tasks</div>
+          <div class="text-center text-xs text-base-content/50 py-5">No tasks</div>
         {/if}
       </div>
     </div>
@@ -109,11 +109,10 @@
 </div>
 
 {#if contextMenu.visible}
-  <div class="context-menu" style="left: {contextMenu.x}px; top: {contextMenu.y}px;">
+  <div class="fixed z-[100] bg-base-300 border border-base-300 rounded-lg shadow-xl min-w-[180px] p-1" style="left: {contextMenu.x}px; top: {contextMenu.y}px;">
     {#each actions as action (action.id)}
       <button
-        class="context-item"
-        class:disabled={isSessionBusy}
+        class="context-item block w-full text-left px-3 py-2 text-sm text-base-content cursor-pointer rounded {isSessionBusy ? 'opacity-40 cursor-not-allowed' : 'hover:bg-primary hover:text-primary-content'}"
         disabled={isSessionBusy}
         title={isSessionBusy ? busyReason : action.name}
         onclick={() => handleRunAction(action)}
@@ -121,153 +120,20 @@
         {action.name}
       </button>
     {/each}
-    <div class="context-divider"></div>
-    <button class="context-item has-submenu" onclick={(e: MouseEvent) => { e.stopPropagation(); toggleMoveSubmenu() }}>
-      Move to...
+    <div class="h-px bg-base-300 my-1"></div>
+    <button class="context-item block w-full text-left px-3 py-2 text-sm text-base-content cursor-pointer rounded hover:bg-primary hover:text-primary-content" onclick={(e: MouseEvent) => { e.stopPropagation(); toggleMoveSubmenu() }}>
+      Move to... ›
     </button>
     {#if contextMenu.showMoveSubmenu}
-      <div class="submenu">
+      <div class="border-t border-base-300 mt-0.5 pt-0.5">
         {#each COLUMNS as col}
-          <button class="context-item" onclick={() => handleMoveTo(col)}>
+          <button class="context-item block w-full text-left px-3 py-2 text-sm text-base-content cursor-pointer rounded hover:bg-primary hover:text-primary-content" onclick={() => handleMoveTo(col)}>
             {COLUMN_LABELS[col]}
           </button>
         {/each}
       </div>
     {/if}
-    <div class="context-divider"></div>
-    <button class="context-item context-delete" onclick={handleDelete}>Delete</button>
+    <div class="h-px bg-base-300 my-1"></div>
+    <button class="context-item block w-full text-left px-3 py-2 text-sm text-error cursor-pointer rounded hover:bg-error hover:text-error-content" onclick={handleDelete}>Delete</button>
   </div>
 {/if}
-
-<style>
-  .kanban {
-    display: flex;
-    gap: 12px;
-    padding: 16px;
-    height: 100%;
-    overflow-x: auto;
-  }
-
-  .column {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    background: var(--bg-secondary);
-    border-radius: 8px;
-    border: 1px solid var(--border);
-  }
-
-  .column-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 14px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .column-header-right {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .column-name {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  .column-count {
-    font-size: 0.7rem;
-    color: var(--text-secondary);
-    background: var(--bg-primary);
-    padding: 2px 8px;
-    border-radius: 10px;
-  }
-
-  .column-body {
-    flex: 1;
-    padding: 8px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    overflow-y: auto;
-  }
-
-  .empty-column {
-    text-align: center;
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    padding: 20px 0;
-  }
-
-  .context-menu {
-    position: fixed;
-    z-index: 100;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-    min-width: 180px;
-    padding: 4px;
-  }
-
-  .context-item {
-    all: unset;
-    display: block;
-    width: 100%;
-    box-sizing: border-box;
-    padding: 8px 12px;
-    font-size: 0.8rem;
-    color: var(--text-primary);
-    cursor: pointer;
-    border-radius: 4px;
-  }
-
-  .context-item:hover {
-    background: var(--accent);
-    color: var(--bg-primary);
-  }
-
-  .context-item.disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
-
-  .context-item.disabled:hover {
-    background: none;
-    color: var(--text-primary);
-  }
-
-  .has-submenu::after {
-    content: ' >';
-    float: right;
-    color: var(--text-secondary);
-  }
-
-  .submenu {
-    border-top: 1px solid var(--border);
-    margin-top: 2px;
-    padding-top: 2px;
-  }
-
-  .context-divider {
-    height: 1px;
-    background: var(--border);
-    margin: 4px 0;
-  }
-
-  .context-delete {
-    color: var(--error);
-  }
-
-  .context-delete:hover {
-    background: var(--error);
-    color: white;
-  }
-
-
-</style>

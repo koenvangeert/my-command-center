@@ -71,19 +71,20 @@
   }
 </script>
 
-<div class="overlay" onclick={handleOverlayClick} onkeydown={handleKeydown} role="dialog" aria-modal="true" tabindex="-1">
-  <div class="dialog">
-    <div class="dialog-header">
-      <h2>{mode === 'create' ? 'Create Task' : 'Edit Task'}</h2>
-      <button class="close-btn" onclick={close} type="button">X</button>
+<div class="modal modal-open" onclick={handleOverlayClick} onkeydown={handleKeydown} role="dialog" aria-modal="true" tabindex="-1">
+  <div class="modal-box bg-base-100 shadow-xl max-w-[500px] p-0 flex flex-col max-h-[90vh]">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-base-300">
+      <h2 class="text-[0.95rem] font-semibold text-base-content m-0">{mode === 'create' ? 'Create Task' : 'Edit Task'}</h2>
+      <button class="btn btn-ghost btn-xs" onclick={close} type="button">✕</button>
     </div>
 
     <form onsubmit={(e: SubmitEvent) => { e.preventDefault(); handleSubmit() }}>
-      <div class="dialog-body">
-        <label class="field">
-          <span>Title <span class="required">*</span></span>
+      <div class="flex-1 overflow-y-auto p-5 flex flex-col gap-4">
+        <label class="flex flex-col gap-1.5">
+          <span class="text-xs text-base-content/60 font-medium">Title <span class="text-error">*</span></span>
           <input
             type="text"
+            class="input input-bordered input-sm w-full"
             bind:value={title}
             placeholder="Enter task title"
             required
@@ -91,22 +92,23 @@
           />
         </label>
 
-        <label class="field">
-          <span>JIRA Key</span>
+        <label class="flex flex-col gap-1.5">
+          <span class="text-xs text-base-content/60 font-medium">JIRA Key</span>
           <input
             type="text"
+            class="input input-bordered input-sm w-full"
             bind:value={jiraKey}
             placeholder="e.g. PROJ-123"
           />
         </label>
       </div>
 
-      <div class="dialog-footer">
-        <button class="btn btn-cancel" onclick={close} type="button" disabled={isSubmitting}>
+      <div class="flex gap-2.5 px-5 py-4 border-t border-base-300 justify-end">
+        <button class="btn btn-ghost btn-sm" onclick={close} type="button" disabled={isSubmitting}>
           Cancel
         </button>
         <button
-          class="btn btn-submit"
+          class="btn btn-primary btn-sm"
           type="submit"
           disabled={!title.trim() || isSubmitting}
         >
@@ -116,142 +118,3 @@
     </form>
   </div>
 </div>
-
-<style>
-  .overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.7);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    backdrop-filter: blur(2px);
-  }
-
-  .dialog {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    width: 90%;
-    max-width: 500px;
-    max-height: 90vh;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-  }
-
-  .dialog-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .dialog-header h2 {
-    margin: 0;
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: var(--text-primary);
-  }
-
-  .close-btn {
-    all: unset;
-    cursor: pointer;
-    color: var(--text-secondary);
-    font-size: 0.8rem;
-    padding: 4px 8px;
-    border-radius: 4px;
-  }
-
-  .close-btn:hover {
-    background: var(--bg-card);
-    color: var(--text-primary);
-  }
-
-  .dialog-body {
-    flex: 1;
-    overflow-y: auto;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .field {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .field > span {
-    font-size: 0.7rem;
-    color: var(--text-secondary);
-    font-weight: 500;
-  }
-
-  .required {
-    color: var(--error);
-  }
-
-  .field input {
-    background: var(--bg-primary);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 8px 10px;
-    color: var(--text-primary);
-    font-size: 0.8rem;
-    outline: none;
-    font-family: inherit;
-  }
-
-  .field input:focus {
-    border-color: var(--accent);
-  }
-
-  .dialog-footer {
-    display: flex;
-    gap: 10px;
-    padding: 16px 20px;
-    border-top: 1px solid var(--border);
-    justify-content: flex-end;
-  }
-
-  .btn {
-    padding: 8px 16px;
-    border: none;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.15s ease;
-  }
-
-  .btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .btn-cancel {
-    background: var(--bg-card);
-    color: var(--text-primary);
-    border: 1px solid var(--border);
-  }
-
-  .btn-cancel:not(:disabled):hover {
-    background: var(--bg-primary);
-  }
-
-  .btn-submit {
-    background: var(--accent);
-    color: var(--bg-primary);
-  }
-
-  .btn-submit:not(:disabled):hover {
-    filter: brightness(1.1);
-  }
-</style>

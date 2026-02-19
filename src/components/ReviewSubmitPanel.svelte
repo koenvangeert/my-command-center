@@ -1,7 +1,6 @@
 <script lang="ts">
   import { pendingManualComments } from '../lib/stores'
   import { submitPrReview } from '../lib/ipc'
-  import type { ReviewSubmissionComment } from '../lib/types'
 
   interface Props {
     repoOwner: string
@@ -71,54 +70,54 @@
   }
 </script>
 
-<div class="review-submit-panel">
-  <div class="panel-header">
-    <h3 class="panel-title">Submit Review</h3>
+<div class="flex flex-col bg-base-200 border-t border-base-300">
+  <div class="flex items-center justify-between px-6 py-4 pb-3 border-b border-base-300">
+    <h3 class="text-[0.9rem] font-semibold text-base-content m-0">Submit Review</h3>
     {#if $pendingManualComments.length > 0}
-      <span class="comment-count">{$pendingManualComments.length} comment{$pendingManualComments.length === 1 ? '' : 's'} will be submitted</span>
+      <span class="inline-flex items-center px-2.5 py-1 text-[0.7rem] font-semibold text-warning bg-warning/15 rounded-full">{$pendingManualComments.length} comment{$pendingManualComments.length === 1 ? '' : 's'} will be submitted</span>
     {/if}
   </div>
 
-  <div class="panel-body">
-    <textarea 
-      class="summary-input"
+  <div class="flex flex-col gap-3 px-6 py-4">
+    <textarea
+      class="textarea textarea-bordered w-full min-h-[70px] text-[0.85rem] leading-relaxed resize-y disabled:opacity-60 disabled:cursor-not-allowed"
       placeholder="Leave a summary comment (optional)"
       rows="3"
       bind:value={summary}
       disabled={isSubmitting}
-    />
+    ></textarea>
 
     {#if error}
-      <div class="error-message">
-        <span class="error-icon">⚠</span>
+      <div class="flex items-center gap-2 px-3 py-2.5 bg-error/10 border border-error/30 rounded-md text-error text-[0.8rem]">
+        <span>⚠</span>
         <span>{error}</span>
       </div>
     {/if}
 
     {#if successMessage}
-      <div class="success-message">
-        <span class="success-icon">✓</span>
+      <div class="flex items-center gap-2 px-3 py-2.5 bg-success/10 border border-success/30 rounded-md text-success text-[0.8rem]">
+        <span>✓</span>
         <span>{successMessage}</span>
       </div>
     {/if}
 
-    <div class="action-buttons">
-      <button 
-        class="submit-btn comment-btn"
+    <div class="flex gap-2.5 justify-end">
+      <button
+        class="btn btn-sm border border-base-300 hover:border-primary hover:text-primary"
         onclick={handleCommentClick}
         disabled={!canSubmit}
       >
         {isSubmitting && selectedEvent === 'COMMENT' ? 'Submitting...' : 'Comment'}
       </button>
-      <button 
-        class="submit-btn approve-btn"
+      <button
+        class="btn btn-sm btn-success"
         onclick={handleApproveClick}
         disabled={!canSubmit}
       >
         {isSubmitting && selectedEvent === 'APPROVE' ? 'Submitting...' : 'Approve'}
       </button>
-      <button 
-        class="submit-btn request-changes-btn"
+      <button
+        class="btn btn-sm btn-error"
         onclick={handleRequestChangesClick}
         disabled={!canSubmit}
       >
@@ -127,153 +126,3 @@
     </div>
   </div>
 </div>
-
-<style>
-  .review-submit-panel {
-    display: flex;
-    flex-direction: column;
-    background: var(--bg-secondary);
-    border-top: 1px solid var(--border);
-  }
-
-  .panel-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 24px 12px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .panel-title {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin: 0;
-  }
-
-  .comment-count {
-    padding: 4px 10px;
-    font-size: 0.7rem;
-    font-weight: 600;
-    color: var(--warning);
-    background: rgba(224, 175, 104, 0.15);
-    border-radius: 12px;
-  }
-
-  .panel-body {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    padding: 16px 24px;
-  }
-
-  .summary-input {
-    width: 100%;
-    min-height: 70px;
-    padding: 10px 12px;
-    background: var(--bg-primary);
-    color: var(--text-primary);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    font-family: inherit;
-    font-size: 0.85rem;
-    line-height: 1.5;
-    resize: vertical;
-    transition: border-color 0.15s;
-  }
-
-  .summary-input:focus {
-    outline: none;
-    border-color: var(--accent);
-  }
-
-  .summary-input:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  .error-message {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 12px;
-    background: rgba(247, 118, 142, 0.1);
-    border: 1px solid rgba(247, 118, 142, 0.3);
-    border-radius: 6px;
-    color: var(--error);
-    font-size: 0.8rem;
-  }
-
-  .error-icon {
-    font-size: 1rem;
-  }
-
-  .success-message {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 12px;
-    background: rgba(158, 206, 106, 0.1);
-    border: 1px solid rgba(158, 206, 106, 0.3);
-    border-radius: 6px;
-    color: var(--success);
-    font-size: 0.8rem;
-  }
-
-  .success-icon {
-    font-size: 1rem;
-  }
-
-  .action-buttons {
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end;
-  }
-
-  .submit-btn {
-    all: unset;
-    padding: 8px 16px;
-    font-size: 0.8rem;
-    font-weight: 500;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.15s;
-    border: 1px solid;
-  }
-
-  .submit-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .comment-btn {
-    color: var(--text-primary);
-    background: var(--bg-card);
-    border-color: var(--border);
-  }
-
-  .comment-btn:hover:not(:disabled) {
-    border-color: var(--accent);
-    color: var(--accent);
-  }
-
-  .approve-btn {
-    color: var(--bg-primary);
-    background: var(--success);
-    border-color: var(--success);
-  }
-
-  .approve-btn:hover:not(:disabled) {
-    opacity: 0.9;
-  }
-
-  .request-changes-btn {
-    color: var(--bg-primary);
-    background: var(--error);
-    border-color: var(--error);
-  }
-
-  .request-changes-btn:hover:not(:disabled) {
-    opacity: 0.9;
-  }
-</style>

@@ -385,86 +385,84 @@
   })
 </script>
 
-<div class="app">
-  <header class="top-bar">
-    <div class="top-bar-left">
-      <h1 class="app-title">AI Command Center</h1>
+<div class="flex flex-col h-screen overflow-hidden">
+  <header class="navbar bg-base-200 border-b border-base-300 px-5 gap-5 min-h-14 shrink-0">
+    <div class="flex items-center gap-4">
+      <h1 class="text-sm font-semibold text-base-content tracking-wide m-0">AI Command Center</h1>
       <ProjectSwitcher onNewProject={() => showProjectSetup = true} />
       <button 
         type="button"
-        class="add-task-btn"
+        class="btn btn-primary btn-sm"
         onclick={() => {
           dialogMode = 'create'
           editingTask = null
           showAddDialog = true
         }}
       >
-        + Add Task <span class="shortcut-hint">&#8984;T</span>
+        + Add Task <span class="text-[0.65rem] opacity-70 ml-1 font-normal">&#8984;T</span>
       </button>
     </div>
     
-    <nav class="view-switcher">
+    <nav class="flex gap-1 bg-base-100 p-1 rounded-lg">
       <button 
-        class="view-tab" 
-        class:active={$currentView === 'board'} 
+        class="btn btn-ghost btn-sm"
+        class:btn-active={$currentView === 'board'} 
         onclick={() => $currentView = 'board'}
       >
         Board
       </button>
       <button 
-        class="view-tab" 
-        class:active={$currentView === 'pr_review'} 
+        class="btn btn-ghost btn-sm"
+        class:btn-active={$currentView === 'pr_review'} 
         onclick={() => $currentView = 'pr_review'}
       >
         PR Review
         {#if $reviewRequestCount > 0}
-          <span class="badge">{$reviewRequestCount}</span>
+          <span class="badge badge-primary badge-sm ml-1">{$reviewRequestCount}</span>
         {/if}
       </button>
       <button 
-        class="view-tab" 
-        class:active={$currentView === 'settings' || $currentView === 'global_settings'} 
+        class="btn btn-ghost btn-sm"
+        class:btn-active={$currentView === 'settings' || $currentView === 'global_settings'} 
         onclick={() => { if ($currentView !== 'settings' && $currentView !== 'global_settings') $currentView = 'settings' }}
       >
         Settings
       </button>
     </nav>
 
-    <div class="status-bar">
+    <div class="flex items-center gap-3">
       {#if openCodeStatus}
-        <span class="status-indicator" class:healthy={openCodeStatus.healthy} class:unhealthy={!openCodeStatus.healthy}>
-          <span class="dot"></span>
+        <span class="flex items-center gap-1.5 text-xs text-base-content/60">
+          <span class="status {openCodeStatus.healthy ? 'status-success' : 'status-error'}"></span>
           OpenCode {openCodeStatus.healthy ? 'Connected' : 'Disconnected'}
         </span>
       {:else}
-        <span class="status-indicator unhealthy">
-          <span class="dot"></span>
+        <span class="flex items-center gap-1.5 text-xs text-base-content/60">
+          <span class="status status-error"></span>
           OpenCode Unavailable
         </span>
       {/if}
     </div>
   </header>
 
-  <main class="main-content">
+  <main class="flex-1 overflow-hidden flex">
     {#if $currentView === 'settings' || $currentView === 'global_settings'}
-      <div class="settings-view">
-        <div class="settings-sub-tabs">
+      <div class="flex flex-col flex-1 overflow-hidden w-full">
+        <div class="flex bg-base-200 border-b border-base-300 px-5 shrink-0">
           <button
-            class="sub-tab"
-            class:active={$currentView === 'settings'}
+            class="btn btn-ghost btn-sm rounded-none border-b-2 {$currentView === 'settings' ? 'text-primary border-b-primary' : 'border-transparent'}"
             onclick={() => $currentView = 'settings'}
           >
             Project
           </button>
           <button
-            class="sub-tab"
-            class:active={$currentView === 'global_settings'}
+            class="btn btn-ghost btn-sm rounded-none border-b-2 {$currentView === 'global_settings' ? 'text-primary border-b-primary' : 'border-transparent'}"
             onclick={() => $currentView = 'global_settings'}
           >
             Global
           </button>
         </div>
-        <div class="settings-panel-content">
+        <div class="flex-1 overflow-hidden">
           {#if $currentView === 'settings'}
             <SettingsPanel onClose={() => $currentView = 'board'} onProjectDeleted={loadProjects} />
           {:else}
@@ -477,10 +475,10 @@
     {:else if selectedTask}
       <TaskDetailView task={selectedTask} onRunAction={handleRunAction} />
     {:else}
-      <div class="board-area">
+      <div class="flex-1 overflow-hidden">
         {#if $isLoading && $tasks.length === 0}
-          <div class="loading-overlay">
-            <div class="spinner"></div>
+          <div class="flex flex-col items-center justify-center h-full gap-3 text-base-content/50 text-sm">
+            <span class="loading loading-spinner loading-md text-primary"></span>
             <span>Loading tasks...</span>
           </div>
         {:else}
@@ -502,252 +500,3 @@
 <Toast />
 <CheckpointToast />
 <CiFailureToast />
-
-<style>
-  :global(:root) {
-    --bg-primary: #1a1b26;
-    --bg-secondary: #24283b;
-    --bg-card: #2f3349;
-    --text-primary: #c0caf5;
-    --text-secondary: #565f89;
-    --accent: #7aa2f7;
-    --success: #9ece6a;
-    --warning: #e0af68;
-    --error: #f7768e;
-    --border: #3b4261;
-  }
-
-  :global(body) {
-    margin: 0;
-    padding: 0;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-      'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-      sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    background: var(--bg-primary);
-    color: var(--text-primary);
-  }
-
-  :global(*) {
-    box-sizing: border-box;
-  }
-
-  .app {
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    overflow: hidden;
-  }
-
-  .top-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 20px;
-    height: 56px;
-    background: var(--bg-secondary);
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-    gap: 20px;
-  }
-
-  .top-bar-left {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-  }
-
-  .app-title {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin: 0;
-    letter-spacing: 0.02em;
-  }
-
-  .add-task-btn {
-    all: unset;
-    padding: 8px 14px;
-    font-size: 0.8rem;
-    font-weight: 500;
-    color: var(--bg-primary);
-    background: var(--accent);
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .add-task-btn:hover {
-    background: #8ab3f8;
-    box-shadow: 0 2px 8px rgba(122, 162, 247, 0.3);
-  }
-
-  .add-task-btn:active {
-    transform: scale(0.98);
-  }
-
-  .shortcut-hint {
-    font-size: 0.65rem;
-    opacity: 0.7;
-    margin-left: 4px;
-    font-weight: 400;
-  }
-
-  .view-switcher {
-    display: flex;
-    gap: 4px;
-    background: var(--bg-primary);
-    padding: 4px;
-    border-radius: 8px;
-  }
-
-  .view-tab {
-    all: unset;
-    position: relative;
-    padding: 8px 16px;
-    font-size: 0.8rem;
-    font-weight: 500;
-    color: var(--text-secondary);
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .view-tab:hover {
-    color: var(--text-primary);
-    background: rgba(122, 162, 247, 0.1);
-  }
-
-  .view-tab.active {
-    color: var(--accent);
-    background: var(--bg-card);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  }
-
-  .badge {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 18px;
-    height: 18px;
-    padding: 0 5px;
-    font-size: 0.65rem;
-    font-weight: 700;
-    color: var(--bg-primary);
-    background: var(--accent);
-    border-radius: 9px;
-  }
-
-  .status-bar {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .status-indicator {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-  }
-
-  .dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--text-secondary);
-  }
-
-  .healthy .dot {
-    background: var(--success);
-  }
-
-  .unhealthy .dot {
-    background: var(--error);
-  }
-
-  .main-content {
-    flex: 1;
-    overflow: hidden;
-    display: flex;
-  }
-
-  .settings-view {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    overflow: hidden;
-    width: 100%;
-  }
-
-  .settings-sub-tabs {
-    display: flex;
-    gap: 0;
-    background: var(--bg-secondary);
-    border-bottom: 1px solid var(--border);
-    padding: 0 20px;
-    flex-shrink: 0;
-  }
-
-  .sub-tab {
-    all: unset;
-    padding: 10px 20px;
-    font-size: 0.8rem;
-    font-weight: 500;
-    color: var(--text-secondary);
-    cursor: pointer;
-    border-bottom: 2px solid transparent;
-    transition: all 0.2s;
-  }
-
-  .sub-tab:hover {
-    color: var(--text-primary);
-  }
-
-  .sub-tab.active {
-    color: var(--accent);
-    border-bottom-color: var(--accent);
-  }
-
-  .settings-panel-content {
-    flex: 1;
-    overflow: hidden;
-  }
-
-  .board-area {
-    flex: 1;
-    overflow: hidden;
-  }
-
-  .loading-overlay {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    gap: 12px;
-    color: var(--text-secondary);
-    font-size: 0.85rem;
-  }
-
-  .spinner {
-    width: 24px;
-    height: 24px;
-    border: 2px solid var(--border);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.6s linear infinite;
-  }
-
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-</style>

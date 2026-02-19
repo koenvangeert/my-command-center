@@ -65,50 +65,50 @@
 </script>
 
 {#if isAgentBusy}
-  <div class="agent-running-banner">
-    <span class="banner-icon">⚡</span>
+  <div class="flex items-center gap-2 px-6 py-2 bg-warning/10 border-t border-warning/30 border-b border-b-warning/20 text-warning text-[0.78rem] font-medium">
+    <span class="text-[0.9rem] shrink-0">⚡</span>
     <span>Agent is working — diff may be stale. Refresh when ready.</span>
   </div>
 {/if}
 
-<div class="send-to-agent-panel">
-  <div class="panel-left">
+<div class="flex items-center justify-between gap-4 px-6 py-3 bg-base-200 border-t border-base-300 min-h-14">
+  <div class="flex items-center gap-2 flex-1 min-w-0">
     {#if hasComments}
-      <div class="comment-summary">
+      <div class="flex items-center gap-2 flex-wrap">
         {#if inlineCount > 0}
-          <span class="summary-chip inline-chip">
-            <span class="chip-dot"></span>
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[0.72rem] font-semibold whitespace-nowrap text-primary bg-primary/12 border border-primary/25">
+            <span class="inline-block w-[5px] h-[5px] rounded-full bg-current shrink-0"></span>
             {inlineCount} inline {inlineCount === 1 ? 'comment' : 'comments'}
           </span>
         {/if}
         {#if generalCount > 0}
-          <span class="summary-chip general-chip">
-            <span class="chip-dot"></span>
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[0.72rem] font-semibold whitespace-nowrap text-warning bg-warning/12 border border-warning/25">
+            <span class="inline-block w-[5px] h-[5px] rounded-full bg-current shrink-0"></span>
             {generalCount} general {generalCount === 1 ? 'comment' : 'comments'}
           </span>
         {/if}
       </div>
     {:else}
-      <span class="no-comments">No feedback collected yet</span>
+      <span class="text-sm text-base-content/50 italic">No feedback collected yet</span>
     {/if}
   </div>
 
-  <div class="panel-right">
+  <div class="flex items-center gap-2.5 shrink-0">
     {#if error}
-      <span class="error-inline">
+      <span class="inline-flex items-center gap-1.5 text-xs text-error max-w-[280px] overflow-hidden text-ellipsis whitespace-nowrap">
         <span>⚠</span>
         {error}
       </span>
     {/if}
     {#if successMessage}
-      <span class="success-inline">
+      <span class="inline-flex items-center gap-1.5 text-xs text-success whitespace-nowrap">
         <span>✓</span>
         {successMessage}
       </span>
     {/if}
 
     <button
-      class="action-btn refresh-btn"
+      class="btn btn-ghost btn-sm border border-base-300"
       onclick={onRefresh}
       disabled={isSending}
       title="Refresh diff"
@@ -117,7 +117,7 @@
     </button>
 
     <button
-      class="action-btn send-btn"
+      class="btn btn-primary btn-sm font-semibold tracking-wide"
       onclick={handleSendToAgent}
       disabled={!canSend}
       title={!hasComments ? 'Add comments before sending' : isAgentBusy ? 'Agent is currently running' : 'Send feedback to agent'}
@@ -126,160 +126,3 @@
     </button>
   </div>
 </div>
-
-<style>
-  .agent-running-banner {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 24px;
-    background: rgba(224, 175, 104, 0.1);
-    border-top: 1px solid rgba(224, 175, 104, 0.3);
-    border-bottom: 1px solid rgba(224, 175, 104, 0.2);
-    color: var(--warning);
-    font-size: 0.78rem;
-    font-weight: 500;
-  }
-
-  .banner-icon {
-    font-size: 0.9rem;
-    flex-shrink: 0;
-  }
-
-  .send-to-agent-panel {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 12px 24px;
-    background: var(--bg-secondary);
-    border-top: 1px solid var(--border);
-    min-height: 56px;
-  }
-
-  .panel-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex: 1;
-    min-width: 0;
-  }
-
-  .comment-summary {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  .summary-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 10px;
-    border-radius: 12px;
-    font-size: 0.72rem;
-    font-weight: 600;
-    white-space: nowrap;
-  }
-
-  .inline-chip {
-    color: var(--accent);
-    background: rgba(122, 162, 247, 0.12);
-    border: 1px solid rgba(122, 162, 247, 0.25);
-  }
-
-  .general-chip {
-    color: var(--warning);
-    background: rgba(224, 175, 104, 0.12);
-    border: 1px solid rgba(224, 175, 104, 0.25);
-  }
-
-  .chip-dot {
-    display: inline-block;
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: currentColor;
-    flex-shrink: 0;
-  }
-
-  .no-comments {
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-    font-style: italic;
-  }
-
-  .panel-right {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-shrink: 0;
-  }
-
-  .error-inline {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 0.75rem;
-    color: var(--error);
-    max-width: 280px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .success-inline {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 0.75rem;
-    color: var(--success);
-    white-space: nowrap;
-  }
-
-  .action-btn {
-    all: unset;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 7px 14px;
-    font-size: 0.8rem;
-    font-weight: 500;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.15s;
-    border: 1px solid;
-    white-space: nowrap;
-  }
-
-  .action-btn:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-  }
-
-  .refresh-btn {
-    color: var(--text-secondary);
-    background: transparent;
-    border-color: var(--border);
-  }
-
-  .refresh-btn:hover:not(:disabled) {
-    color: var(--text-primary);
-    border-color: var(--text-secondary);
-    background: rgba(255, 255, 255, 0.04);
-  }
-
-  .send-btn {
-    color: var(--bg-primary);
-    background: var(--accent);
-    border-color: var(--accent);
-    font-weight: 600;
-    letter-spacing: 0.01em;
-  }
-
-  .send-btn:hover:not(:disabled) {
-    opacity: 0.88;
-    box-shadow: 0 0 0 2px rgba(122, 162, 247, 0.3);
-  }
-</style>

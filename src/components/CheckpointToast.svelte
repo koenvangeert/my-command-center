@@ -43,73 +43,24 @@
 </script>
 
 {#if visible && $checkpointNotification}
-  <div class="checkpoint-toast" onclick={handleClick} role="button" tabindex="0" onkeydown={(e: KeyboardEvent) => e.key === 'Enter' && handleClick()}>
-    <span class="toast-icon">!</span>
-    <span class="toast-message">
-      Agent needs input on {$checkpointNotification.ticketKey || truncate($checkpointNotification.ticketId, 20)}
-    </span>
-    <button class="toast-close" onclick={(e: MouseEvent) => { e.stopPropagation(); dismiss() }}>X</button>
+  <div class="toast toast-end z-[200]" style="bottom: 5rem;">
+    <div class="alert alert-warning shadow-lg gap-2.5 cursor-pointer max-w-[400px] font-semibold text-sm animate-slideIn"
+      onclick={handleClick} role="button" tabindex="0" onkeydown={(e: KeyboardEvent) => e.key === 'Enter' && handleClick()}>
+      <span class="flex items-center justify-center w-5 h-5 rounded-full bg-warning-content/20 text-xs font-bold shrink-0">!</span>
+      <span class="flex-1 max-w-[320px] overflow-hidden text-ellipsis whitespace-nowrap">
+        Agent needs input on {$checkpointNotification.ticketKey || truncate($checkpointNotification.ticketId, 20)}
+      </span>
+      <button class="btn btn-ghost btn-xs shrink-0" onclick={(e: MouseEvent) => { e.stopPropagation(); dismiss() }}>✕</button>
+    </div>
   </div>
 {/if}
 
 <style>
-  .checkpoint-toast {
-    position: fixed;
-    bottom: 80px;
-    right: 20px;
-    z-index: 200;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 12px 16px;
-    background: var(--warning, #e0af68);
-    color: #1a1b26;
-    border-radius: 6px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-    animation: slideIn 0.2s ease-out;
-    cursor: pointer;
-    max-width: 400px;
-  }
-
   @keyframes slideIn {
     from { transform: translateY(20px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
   }
-
-  .toast-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: rgba(26, 27, 38, 0.2);
-    font-size: 0.75rem;
-    font-weight: 700;
-    flex-shrink: 0;
-  }
-
-  .toast-message {
-    flex: 1;
-    max-width: 320px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .toast-close {
-    all: unset;
-    cursor: pointer;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 0.7rem;
-    font-weight: 600;
-    flex-shrink: 0;
-  }
-
-  .toast-close:hover {
-    background: rgba(26, 27, 38, 0.2);
+  :global(.animate-slideIn) {
+    animation: slideIn 0.2s ease-out;
   }
 </style>

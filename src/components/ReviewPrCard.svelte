@@ -21,142 +21,33 @@
   }
 </script>
 
-<button class="pr-card" class:selected onclick={onClick}>
-  <div class="header-row">
-    <span class="repo-badge">{pr.repo_owner}/{pr.repo_name}</span>
+<button
+  class="flex flex-col gap-2.5 p-4 bg-base-100 border rounded-lg cursor-pointer transition-all duration-150 text-left w-full {selected ? 'selected border-2 border-primary bg-primary/10' : 'border-base-300 hover:border-primary hover:-translate-y-px hover:shadow-md'}"
+  onclick={onClick}
+>
+  <div class="flex items-center gap-2">
+    <span class="inline-flex items-center px-2 py-0.5 text-[0.7rem] font-semibold text-primary bg-primary/15 rounded">{pr.repo_owner}/{pr.repo_name}</span>
     {#if pr.draft}
-      <span class="draft-badge">Draft</span>
+      <span class="inline-flex items-center px-2 py-0.5 text-[0.7rem] font-semibold text-base-content/50 bg-base-200 border border-base-300 rounded">Draft</span>
     {/if}
   </div>
 
-  <div class="title-row">
-    <h3 class="title">{pr.title}</h3>
+  <div class="flex items-start">
+    <h3 class="text-[0.9rem] font-medium text-base-content m-0 leading-snug">{pr.title}</h3>
   </div>
 
-  <div class="meta-row">
-    <span class="number">#{pr.number}</span>
-    <span class="separator">•</span>
-    <span class="author">{pr.user_login}</span>
-    <span class="separator">•</span>
-    <span class="time">{timeAgo(pr.created_at)}</span>
+  <div class="flex items-center gap-2 text-xs text-base-content/50">
+    <span class="font-semibold text-base-content">#{pr.number}</span>
+    <span class="text-base-300">•</span>
+    <span class="font-medium">{pr.user_login}</span>
+    <span class="text-base-300">•</span>
+    <span>{timeAgo(pr.created_at)}</span>
   </div>
 
-  <div class="stats-row">
-    <span class="stat">
-      <span class="label">{pr.changed_files} {pr.changed_files === 1 ? 'file' : 'files'}</span>
-    </span>
-    <span class="separator">•</span>
-    <span class="stat additions">+{pr.additions}</span>
-    <span class="stat deletions">−{pr.deletions}</span>
+  <div class="flex items-center gap-2 text-xs">
+    <span class="font-medium text-base-content/50">{pr.changed_files} {pr.changed_files === 1 ? 'file' : 'files'}</span>
+    <span class="text-base-300">•</span>
+    <span class="font-medium text-success">+{pr.additions}</span>
+    <span class="font-medium text-error">−{pr.deletions}</span>
   </div>
 </button>
-
-<style>
-  .pr-card {
-    all: unset;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    padding: 16px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-
-  .pr-card:hover {
-    border-color: var(--accent);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  }
-
-  .pr-card.selected {
-    border-color: var(--accent);
-    border-width: 2px;
-    background: rgba(122, 162, 247, 0.1);
-  }
-
-  .header-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .repo-badge {
-    padding: 4px 8px;
-    font-size: 0.7rem;
-    font-weight: 600;
-    color: var(--accent);
-    background: rgba(122, 162, 247, 0.15);
-    border-radius: 4px;
-  }
-
-  .draft-badge {
-    padding: 4px 8px;
-    font-size: 0.7rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-    background: var(--bg-secondary);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-  }
-
-  .title-row {
-    display: flex;
-    align-items: flex-start;
-  }
-
-  .title {
-    font-size: 0.9rem;
-    font-weight: 500;
-    color: var(--text-primary);
-    margin: 0;
-    line-height: 1.4;
-    text-align: left;
-  }
-
-  .meta-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-  }
-
-  .number {
-    font-weight: 600;
-    color: var(--text-primary);
-  }
-
-  .separator {
-    color: var(--border);
-  }
-
-  .author {
-    font-weight: 500;
-  }
-
-  .stats-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.75rem;
-  }
-
-  .stat {
-    font-weight: 500;
-  }
-
-  .label {
-    color: var(--text-secondary);
-  }
-
-  .additions {
-    color: var(--success);
-  }
-
-  .deletions {
-    color: var(--error);
-  }
-</style>

@@ -98,70 +98,70 @@
   let taskPrs = $derived($ticketPrs.get(task.id) || [])
 </script>
 
-<div class="info-panel">
+<div class="flex flex-col gap-5 p-5 overflow-y-auto bg-base-200 h-full">
   <!-- Title / Initial Prompt Section -->
-  <section class="section">
-    <h3 class="section-title">Initial Prompt</h3>
-    <div class="task-title-full">{task.title}</div>
+  <section class="flex flex-col gap-2.5">
+    <h3 class="text-xs font-semibold text-primary uppercase tracking-wider m-0">Initial Prompt</h3>
+    <div class="text-sm text-base-content leading-relaxed whitespace-pre-wrap break-words">{task.title}</div>
   </section>
 
   <!-- Metadata Section -->
-  <section class="section">
-    <h3 class="section-title">Task Info</h3>
+  <section class="flex flex-col gap-2.5">
+    <h3 class="text-xs font-semibold text-primary uppercase tracking-wider m-0">Task Info</h3>
     
-    <div class="field">
-      <span class="label">Status</span>
-      <span class="value status-badge">{statusLabel}</span>
+    <div class="flex flex-col gap-1">
+      <span class="text-[0.7rem] text-base-content/50 uppercase tracking-wider">Status</span>
+      <span class="inline-block px-2 py-1 bg-base-300 border border-base-300 rounded text-sm font-medium w-fit text-base-content">{statusLabel}</span>
     </div>
 
     {#if task.jira_key}
-      <div class="field">
-        <span class="label">JIRA</span>
-        <span class="value">{task.jira_key}</span>
+      <div class="flex flex-col gap-1">
+        <span class="text-[0.7rem] text-base-content/50 uppercase tracking-wider">JIRA</span>
+        <span class="text-sm text-base-content">{task.jira_key}</span>
       </div>
       {#if task.jira_status}
-        <div class="field">
-          <span class="label">JIRA Status</span>
-          <span class="value">{task.jira_status}</span>
+        <div class="flex flex-col gap-1">
+          <span class="text-[0.7rem] text-base-content/50 uppercase tracking-wider">JIRA Status</span>
+          <span class="text-sm text-base-content">{task.jira_status}</span>
         </div>
       {/if}
       {#if task.jira_assignee}
-        <div class="field">
-          <span class="label">JIRA Assignee</span>
-          <span class="value">{task.jira_assignee}</span>
+        <div class="flex flex-col gap-1">
+          <span class="text-[0.7rem] text-base-content/50 uppercase tracking-wider">JIRA Assignee</span>
+          <span class="text-sm text-base-content">{task.jira_assignee}</span>
         </div>
       {/if}
     {/if}
 
-    <div class="field">
-      <span class="label">Created</span>
-      <span class="value">{formatDate(task.created_at)}</span>
+    <div class="flex flex-col gap-1">
+      <span class="text-[0.7rem] text-base-content/50 uppercase tracking-wider">Created</span>
+      <span class="text-sm text-base-content">{formatDate(task.created_at)}</span>
     </div>
 
-    <div class="field">
-      <span class="label">Updated</span>
-      <span class="value">{formatDate(task.updated_at)}</span>
+    <div class="flex flex-col gap-1">
+      <span class="text-[0.7rem] text-base-content/50 uppercase tracking-wider">Updated</span>
+      <span class="text-sm text-base-content">{formatDate(task.updated_at)}</span>
     </div>
 
     {#if worktree}
-      <div class="field">
-        <span class="label">Worktree Branch</span>
-        <div class="copyable-field">
-          <span class="value monospace">{worktree.branch_name}</span>
+      <div class="flex flex-col gap-1">
+        <span class="text-[0.7rem] text-base-content/50 uppercase tracking-wider">Worktree Branch</span>
+        <div class="flex items-start gap-1.5">
+          <span class="text-sm text-base-content font-mono flex-1 min-w-0">{worktree.branch_name}</span>
           <CopyButton text={worktree.branch_name} label="Copy branch name" />
         </div>
       </div>
-      <div class="field">
-        <span class="label">Worktree Path</span>
-        <div class="copyable-field">
-          <span class="value monospace small">{worktree.worktree_path}</span>
+      <div class="flex flex-col gap-1">
+        <span class="text-[0.7rem] text-base-content/50 uppercase tracking-wider">Worktree Path</span>
+        <div class="flex items-start gap-1.5">
+          <span class="text-sm text-base-content font-mono text-xs break-all flex-1 min-w-0">{worktree.worktree_path}</span>
           <CopyButton text={worktree.worktree_path} label="Copy path" />
         </div>
       </div>
       {#if worktree.opencode_port}
-        <div class="field">
-          <span class="label">Server</span>
-          <span class="value">Port {worktree.opencode_port} · {worktree.status}</span>
+        <div class="flex flex-col gap-1">
+          <span class="text-[0.7rem] text-base-content/50 uppercase tracking-wider">Server</span>
+          <span class="text-sm text-base-content">Port {worktree.opencode_port} · {worktree.status}</span>
         </div>
       {/if}
     {/if}
@@ -169,8 +169,8 @@
 
 
   {#if task.status !== 'done'}
-    <section class="section">
-      <button class="btn-done" onclick={() => handleStatusChange('done')}>
+    <section class="flex flex-col gap-2.5">
+      <button class="btn btn-success btn-block text-base font-bold" onclick={() => handleStatusChange('done')}>
         Move to Done
       </button>
     </section>
@@ -178,26 +178,26 @@
 
   <!-- Merge Status Section -->
   {#if taskPrs.some(pr => pr.state === 'merged' || isReadyToMerge(pr))}
-    <section class="section">
-      <h3 class="section-title">Merge Status</h3>
+    <section class="flex flex-col gap-2.5">
+      <h3 class="text-xs font-semibold text-primary uppercase tracking-wider m-0">Merge Status</h3>
       {#each taskPrs as pr (pr.id)}
         {#if pr.state === 'merged'}
-          <div class="merge-status-group">
-            <div class="merge-status-header">
-              <span class="pipeline-pr-name">{pr.title}</span>
-              <span class="pipeline-status-badge merge-merged">&#x2714; Merged</span>
+          <div class="mb-3">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-xs text-base-content/50">{pr.title}</span>
+              <span class="text-[0.65rem] font-semibold px-1.5 py-0.5 rounded bg-secondary/15 text-secondary">&#x2714; Merged</span>
             </div>
             {#if pr.merged_at}
-              <div class="merge-timestamp">
+              <div class="text-[0.7rem] text-base-content/50 mt-1">
                 Merged on {formatDate(pr.merged_at)}
               </div>
             {/if}
           </div>
         {:else if isReadyToMerge(pr)}
-          <div class="merge-status-group">
-            <div class="merge-status-header">
-              <span class="pipeline-pr-name">{pr.title}</span>
-              <span class="pipeline-status-badge merge-ready">&#x25CF; Ready to Merge</span>
+          <div class="mb-3">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-xs text-base-content/50">{pr.title}</span>
+              <span class="text-[0.65rem] font-semibold px-1.5 py-0.5 rounded bg-success/25 text-success merge-ready">&#x25CF; Ready to Merge</span>
             </div>
           </div>
         {/if}
@@ -207,18 +207,18 @@
 
   <!-- PR Links Section -->
   {#if taskPrs.length > 0}
-    <section class="section">
-      <h3 class="section-title">Pull Requests</h3>
-      <div class="pr-list">
+    <section class="flex flex-col gap-2.5">
+      <h3 class="text-xs font-semibold text-primary uppercase tracking-wider m-0">Pull Requests</h3>
+      <div class="flex flex-col gap-2">
         {#each taskPrs as pr (pr.id)}
-          <div class="pr-item">
-            <div class="pr-header">
-              <span class="pr-state" class:open={pr.state === 'open'} class:closed={pr.state === 'closed'} class:merged={pr.state === 'merged'}>
+          <div class="bg-base-100 border border-base-300 rounded-md p-2.5 flex flex-col gap-1.5">
+            <div class="flex items-center gap-2">
+              <span class="text-[0.65rem] font-semibold uppercase px-1.5 py-0.5 rounded tracking-wider {pr.state === 'open' ? 'bg-success text-success-content' : pr.state === 'merged' ? 'bg-secondary text-secondary-content' : 'bg-error text-error-content'}">
                 {pr.state}
               </span>
-              <span class="pr-title">{pr.title}</span>
+              <span class="text-sm text-base-content font-medium">{pr.title}</span>
             </div>
-            <button class="pr-link" onclick={() => openUrl(pr.url)}>
+            <button class="btn btn-link btn-xs p-0 h-auto min-h-0 text-primary no-underline hover:underline text-[0.7rem] break-all text-left justify-start" onclick={() => openUrl(pr.url)}>
               {pr.url}
             </button>
           </div>
@@ -229,15 +229,15 @@
 
   <!-- Pipeline Status Section -->
   {#if taskPrs.some(pr => pr.ci_status)}
-    <section class="section">
-      <h3 class="section-title">Pipeline Status</h3>
+    <section class="flex flex-col gap-2.5">
+      <h3 class="text-xs font-semibold text-primary uppercase tracking-wider m-0">Pipeline Status</h3>
       {#each taskPrs as pr (pr.id)}
         {#if pr.ci_status}
           {@const checkRuns = parseCheckRuns(pr.ci_check_runs)}
-          <div class="pipeline-group">
-            <div class="pipeline-header">
-              <span class="pipeline-pr-name">{pr.title}</span>
-              <span class="pipeline-status-badge pipeline-{pr.ci_status}">
+          <div class="mb-3">
+            <div class="flex items-center justify-between gap-2 mb-1.5">
+              <span class="text-xs text-base-content/50">{pr.title}</span>
+              <span class="text-[0.65rem] font-semibold px-1.5 py-0.5 rounded {pr.ci_status === 'success' ? 'bg-success/15 text-success' : pr.ci_status === 'failure' ? 'bg-error/15 text-error' : pr.ci_status === 'pending' ? 'bg-warning/15 text-warning' : 'bg-base-content/15 text-base-content/50'}">
                 {#if pr.ci_status === 'success'}✓ Passing
                 {:else if pr.ci_status === 'failure'}✗ Failing
                 {:else if pr.ci_status === 'pending'}⏳ Running
@@ -246,21 +246,16 @@
               </span>
             </div>
             {#if checkRuns.length > 0}
-              <div class="check-runs-list">
+              <div class="flex flex-col gap-1">
                 {#each checkRuns as check (check.id)}
-                  <div class="check-run-item">
-                    <span class="check-status-icon"
-                      class:check-success={check.conclusion === 'success'}
-                      class:check-failure={check.conclusion === 'failure'}
-                      class:check-pending={check.status !== 'completed'}
-                      class:check-neutral={check.conclusion === 'neutral' || check.conclusion === 'skipped'}
-                    >
+                  <div class="flex items-center gap-1.5 text-xs">
+                    <span class="w-4 text-center font-semibold {check.conclusion === 'success' ? 'text-success' : check.conclusion === 'failure' ? 'text-error' : check.status !== 'completed' ? 'text-warning' : 'text-base-content/50'}">
                       {#if check.conclusion === 'success'}✓
                       {:else if check.conclusion === 'failure'}✗
                       {:else if check.status !== 'completed'}⏳
                       {:else}—{/if}
                     </span>
-                    <span class="check-name">{check.name}</span>
+                    <span class="text-base-content">{check.name}</span>
                   </div>
                 {/each}
               </div>
@@ -273,14 +268,14 @@
 
   <!-- Review Status Section -->
   {#if taskPrs.some(pr => pr.review_status && pr.review_status !== 'none')}
-    <section class="section">
-      <h3 class="section-title">Review Status</h3>
+    <section class="flex flex-col gap-2.5">
+      <h3 class="text-xs font-semibold text-primary uppercase tracking-wider m-0">Review Status</h3>
       {#each taskPrs as pr (pr.id)}
         {#if pr.review_status && pr.review_status !== 'none'}
-          <div class="pipeline-group">
-            <div class="pipeline-header">
-              <span class="pipeline-pr-name">{pr.title}</span>
-              <span class="pipeline-status-badge review-{pr.review_status}">
+          <div class="mb-3">
+            <div class="flex items-center justify-between gap-2 mb-1.5">
+              <span class="text-xs text-base-content/50">{pr.title}</span>
+              <span class="text-[0.65rem] font-semibold px-1.5 py-0.5 rounded {pr.review_status === 'approved' ? 'bg-success/15 text-success' : pr.review_status === 'changes_requested' ? 'bg-warning/15 text-warning' : 'bg-base-content/15 text-base-content/50'}">
                 {#if pr.review_status === 'approved'}✓ Approved
                 {:else if pr.review_status === 'changes_requested'}✗ Changes Requested
                 {:else if pr.review_status === 'review_required'}⏳ Review Required
@@ -295,39 +290,39 @@
 
   <!-- PR Comments Section -->
   {#if taskPrs.length > 0}
-    <section class="section">
-      <h3 class="section-title">PR Comments</h3>
+    <section class="flex flex-col gap-2.5">
+      <h3 class="text-xs font-semibold text-primary uppercase tracking-wider m-0">PR Comments</h3>
       {#each taskPrs as pr (pr.id)}
         {@const comments = prCommentsByPr.get(pr.id) || []}
         {@const unaddressedCount = getUnaddressedCount(comments)}
         {#if comments.length > 0}
-          <div class="pr-comments-group">
-            <div class="pr-comments-header">
-              <span class="pr-name">{pr.title}</span>
+          <div class="mb-4">
+            <div class="flex items-center justify-between gap-2 mb-2 pb-1.5 border-b border-base-300">
+              <span class="text-xs text-base-content/50 font-medium">{pr.title}</span>
               {#if unaddressedCount > 0}
-                <span class="unaddressed-badge">{unaddressedCount} unaddressed</span>
+                <span class="badge badge-error badge-sm">{unaddressedCount} unaddressed</span>
               {/if}
             </div>
-            <div class="comments-list">
+            <div class="flex flex-col gap-2">
               {#each comments as comment (comment.id)}
-                <div class="comment-item" class:addressed={comment.addressed === 1}>
-                  <div class="comment-header">
-                    <span class="comment-author">@{comment.author}</span>
+                <div class="bg-base-100 border border-base-300 rounded-md p-2.5 flex flex-col gap-1.5 {comment.addressed === 1 ? 'opacity-60' : ''}">
+                  <div class="flex gap-2 items-center flex-wrap">
+                    <span class="text-xs font-semibold text-primary">@{comment.author}</span>
                     {#if comment.file_path}
-                      <span class="comment-location">
+                      <span class="text-[0.7rem] text-base-content/50 font-mono">
                         {comment.file_path}{#if comment.line_number}:{comment.line_number}{/if}
                       </span>
                     {/if}
                   </div>
-                  <div class="comment-body">{comment.body}</div>
+                  <div class="text-sm text-base-content leading-snug whitespace-pre-wrap break-words">{comment.body}</div>
                   {#if comment.addressed === 0}
                     <button 
-                      class="btn-mark-addressed" 
+                      class="btn btn-ghost btn-xs border border-base-300 w-fit"
                       onclick={() => handleMarkAddressed(comment.id, pr.id)}>
                       Mark Addressed
                     </button>
                   {:else}
-                    <span class="addressed-label">✓ Addressed</span>
+                    <span class="text-[0.7rem] text-success font-medium">✓ Addressed</span>
                   {/if}
                 </div>
               {/each}
@@ -340,404 +335,11 @@
 </div>
 
 <style>
-  .info-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    padding: 20px;
-    overflow-y: auto;
-    background: var(--bg-secondary);
-    height: 100%;
-  }
-
-  .task-title-full {
-    font-size: 0.85rem;
-    color: var(--text-primary);
-    line-height: 1.5;
-    white-space: pre-wrap;
-    word-break: break-word;
-  }
-
-  .section {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .section-title {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--accent);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin: 0;
-  }
-
-  .field {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .label {
-    font-size: 0.7rem;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  .value {
-    font-size: 0.8rem;
-    color: var(--text-primary);
-  }
-
-  .value.monospace {
-    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
-  }
-
-  .value.small {
-    font-size: 0.75rem;
-    word-break: break-all;
-  }
-
-  .copyable-field {
-    display: flex;
-    align-items: flex-start;
-    gap: 6px;
-  }
-
-  .copyable-field .value {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .status-badge {
-    display: inline-block;
-    padding: 4px 8px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    font-weight: 500;
-    width: fit-content;
-  }
-
-  .btn-done {
-    width: 100%;
-    padding: 14px 20px;
-    border: none;
-    border-radius: 8px;
-    font-size: 0.95rem;
-    font-weight: 700;
-    cursor: pointer;
-    background: var(--success);
-    color: white;
-    transition: all 0.2s ease;
-    letter-spacing: 0.02em;
-  }
-
-  .btn-done:hover {
-    opacity: 0.9;
-    transform: translateY(-1px);
-  }
-
-  .btn-done:active {
-    transform: translateY(0);
-  }
-
-  .pr-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .pr-item {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .pr-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .pr-state {
-    font-size: 0.65rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    padding: 2px 6px;
-    border-radius: 3px;
-    letter-spacing: 0.03em;
-  }
-
-  .pr-state.open {
-    background: var(--success);
-    color: white;
-  }
-
-  .pr-state.merged {
-    background: #bb9af7;
-    color: white;
-  }
-
-  .pr-state.closed {
-    background: var(--error);
-    color: white;
-  }
-
-  .pr-title {
-    font-size: 0.8rem;
-    color: var(--text-primary);
-    font-weight: 500;
-  }
-
-  .pr-link {
-    all: unset;
-    font-size: 0.7rem;
-    color: var(--accent);
-    cursor: pointer;
-    text-decoration: underline;
-    word-break: break-all;
-  }
-
-  .pr-link:hover {
-    opacity: 0.8;
-  }
-
-  .pr-comments-group {
-    margin-bottom: 16px;
-  }
-
-  .pr-comments-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    margin-bottom: 8px;
-    padding-bottom: 6px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .pr-name {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    font-weight: 500;
-  }
-
-  .unaddressed-badge {
-    font-size: 0.65rem;
-    font-weight: 600;
-    background: var(--error);
-    color: white;
-    padding: 2px 6px;
-    border-radius: 8px;
-  }
-
-  .comments-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .comment-item {
-    background: var(--bg-primary);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .comment-item.addressed {
-    opacity: 0.6;
-  }
-
-  .comment-header {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    flex-wrap: wrap;
-  }
-
-  .comment-author {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--accent);
-  }
-
-  .comment-location {
-    font-size: 0.7rem;
-    color: var(--text-secondary);
-    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
-  }
-
-  .comment-body {
-    font-size: 0.8rem;
-    color: var(--text-primary);
-    line-height: 1.4;
-    white-space: pre-wrap;
-    word-break: break-word;
-  }
-
-  .btn-mark-addressed {
-    all: unset;
-    font-size: 0.7rem;
-    color: var(--accent);
-    cursor: pointer;
-    padding: 4px 8px;
-    border-radius: 4px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    width: fit-content;
-    font-weight: 500;
-  }
-
-  .btn-mark-addressed:hover {
-    background: var(--accent);
-    color: white;
-    border-color: var(--accent);
-  }
-
-  .addressed-label {
-    font-size: 0.7rem;
-    color: var(--success);
-    font-weight: 500;
-  }
-
-  .pipeline-group {
-    margin-bottom: 12px;
-  }
-
-  .pipeline-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    margin-bottom: 6px;
-  }
-
-  .pipeline-pr-name {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-  }
-
-  .pipeline-status-badge {
-    font-size: 0.65rem;
-    font-weight: 600;
-    padding: 2px 6px;
-    border-radius: 3px;
-  }
-
-  .pipeline-success {
-    background: rgba(158, 206, 106, 0.15);
-    color: var(--success);
-  }
-
-  .pipeline-failure {
-    background: rgba(247, 118, 142, 0.15);
-    color: var(--error);
-  }
-
-  .pipeline-pending {
-    background: rgba(224, 175, 104, 0.15);
-    color: var(--warning);
-  }
-
-  .pipeline-none {
-    background: rgba(86, 95, 137, 0.15);
-    color: var(--text-secondary);
-  }
-
-  .review-approved {
-    background: rgba(158, 206, 106, 0.15);
-    color: var(--success);
-  }
-
-  .review-changes_requested {
-    background: rgba(224, 175, 104, 0.15);
-    color: var(--warning);
-  }
-
-  .review-review_required {
-    background: rgba(86, 95, 137, 0.15);
-    color: var(--text-secondary);
-  }
-
-  .merge-merged {
-    background: rgba(187, 154, 247, 0.15);
-    color: #bb9af7;
-  }
-
-  .merge-ready {
-    background: rgba(158, 206, 106, 0.25);
-    color: var(--success);
-    animation: ready-pulse 2s ease-in-out infinite;
-  }
-
   @keyframes ready-pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.7; }
   }
-
-  .merge-status-group {
-    margin-bottom: 12px;
-  }
-
-  .merge-status-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-  }
-
-  .merge-timestamp {
-    font-size: 0.7rem;
-    color: var(--text-secondary);
-    margin-top: 4px;
-  }
-
-  .check-runs-list {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .check-run-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 0.75rem;
-  }
-
-  .check-status-icon {
-    width: 16px;
-    text-align: center;
-    font-weight: 600;
-  }
-
-  .check-success {
-    color: var(--success);
-  }
-
-  .check-failure {
-    color: var(--error);
-  }
-
-  .check-pending {
-    color: var(--warning);
-  }
-
-  .check-neutral {
-    color: var(--text-secondary);
-  }
-
-  .check-name {
-    color: var(--text-primary);
+  .merge-ready {
+    animation: ready-pulse 2s ease-in-out infinite;
   }
 </style>
