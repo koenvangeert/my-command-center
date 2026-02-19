@@ -869,7 +869,7 @@ async fn poll_pr_comments_now(
 
         for pr in open_prs {
             let comments = match github_client
-                .get_pr_comments(&pr.repo_owner, &pr.repo_name, pr.id, &github_token)
+                .get_pr_comments(&pr.repo_owner, &pr.repo_name, pr.id, &github_token, None)
                 .await
             {
                 Ok(comments) => comments,

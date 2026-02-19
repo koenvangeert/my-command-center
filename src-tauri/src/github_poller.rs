@@ -16,6 +16,12 @@
 //!   - Triggers worktree cleanup on PR merge/close
 //! - Sleeps for poll_interval seconds, then loops
 //!
+//! ## Parallelization
+//! - All PRs in a project are polled concurrently using futures::future::join_all
+//! - poll_single_pr() handles one PR: comments + CI (check_runs + combined_status in parallel)
+//! - DB is locked once after all HTTP calls complete for batch writes
+//! - last_polled_at timestamps are read before HTTP calls and written after
+//!
 //! ## Worktree Cleanup
 //! - When PR state changes to "merged" or "closed":
 //!   - Spawns async cleanup task (non-blocking)
@@ -30,10 +36,12 @@
 //! - Skips projects with missing GitHub config
 
 use crate::db::{Database, PrRow};
-use crate::github_client::{aggregate_ci_status, GitHubClient};
+use crate::github_client::{aggregate_ci_status, CheckRunsResponse, CombinedStatusResponse, GitHubClient, PrComment};
+use futures::future::join_all;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::sync::Mutex;
+use std::time::Instant;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::time::{sleep, Duration};
 
@@ -41,7 +49,18 @@ pub async fn start_github_poller(app: AppHandle) {
     let github_client = GitHubClient::new();
 
     loop {
+        let cycle_start = Instant::now();
         let db = app.state::<Mutex<Database>>();
+
+        let poll_interval = {
+            let db_lock = db.lock().unwrap();
+            db_lock
+                .get_config("github_poll_interval")
+                .ok()
+                .flatten()
+                .and_then(|s| s.parse::<u64>().ok())
+                .unwrap_or(30)
+        };
 
         let github_token = {
             let db_lock = db.lock().unwrap();
@@ -53,7 +72,7 @@ pub async fn start_github_poller(app: AppHandle) {
         };
 
         if github_token.is_empty() {
-            sleep(Duration::from_secs(60)).await;
+            sleep(Duration::from_secs(poll_interval)).await;
             continue;
         }
 
@@ -66,18 +85,19 @@ pub async fn start_github_poller(app: AppHandle) {
             Ok(projects) => projects,
             Err(e) => {
                 eprintln!("[GitHub Poller] Failed to get projects: {}", e);
-                sleep(Duration::from_secs(60)).await;
+                sleep(Duration::from_secs(poll_interval)).await;
                 continue;
             }
         };
 
         if projects.is_empty() {
-            sleep(Duration::from_secs(60)).await;
+            sleep(Duration::from_secs(poll_interval)).await;
             continue;
         }
 
         println!("[GitHub Poller] Polling {} projects for PR updates...", projects.len());
 
+        let project_count = projects.len();
         let mut total_new_comments = 0;
         let mut total_errors = 0;
 
@@ -108,6 +128,7 @@ pub async fn start_github_poller(app: AppHandle) {
                 continue;
             }
 
+            let sync_start = Instant::now();
             if let Err(e) = sync_open_prs(&github_client, &db, &app, &config, &github_token).await {
                 eprintln!(
                     "[GitHub Poller] Failed to sync PRs for project {}: {}",
@@ -116,6 +137,11 @@ pub async fn start_github_poller(app: AppHandle) {
                 total_errors += 1;
                 continue;
             }
+            println!(
+                "[GitHub Poller] Sync open PRs for project {} took {:.1}s",
+                project.id,
+                sync_start.elapsed().as_secs_f64()
+            );
 
             let open_prs = match get_open_prs_for_project(&db, &project.id) {
                 Ok(prs) => prs,
@@ -129,32 +155,16 @@ pub async fn start_github_poller(app: AppHandle) {
                 }
             };
 
-            for pr in &open_prs {
-                match poll_pr_comments(&github_client, &db, &app, &github_token, pr).await {
-                    Ok(count) => total_new_comments += count,
-                    Err(e) => {
-                        eprintln!(
-                            "[GitHub Poller] Failed to poll PR {}/{} #{}: {}",
-                            pr.repo_owner, pr.repo_name, pr.id, e
-                        );
-                        total_errors += 1;
-                    }
-                }
-            }
-
-            let open_prs_for_ci = match get_open_prs_for_project(&db, &project.id) {
-                Ok(prs) => prs,
-                Err(e) => {
-                    eprintln!("[GitHub Poller] Failed to get PRs for CI polling: {}", e);
-                    continue;
-                }
-            };
-
-            for pr in &open_prs_for_ci {
-                if let Err(e) = poll_pr_ci_status(&github_client, &db, &app, &github_token, pr).await {
-                    eprintln!("[GitHub Poller] Failed to poll CI for PR #{}: {}", pr.id, e);
-                }
-            }
+            let poll_start = Instant::now();
+            let (new_comments, errors) =
+                poll_prs_for_project(&github_client, &db, &app, &github_token, open_prs).await;
+            println!(
+                "[GitHub Poller] PR polling for project {} took {:.1}s",
+                project.id,
+                poll_start.elapsed().as_secs_f64()
+            );
+            total_new_comments += new_comments;
+            total_errors += errors;
         }
 
         if total_new_comments > 0 || total_errors > 0 {
@@ -164,12 +174,24 @@ pub async fn start_github_poller(app: AppHandle) {
             );
         }
 
-        // Poll review-requested PRs
+        let review_start = Instant::now();
         if let Err(e) = poll_review_prs(&github_client, &db, &app, &github_token).await {
             eprintln!("[GitHub Poller] Failed to poll review PRs: {}", e);
         }
+        println!(
+            "[GitHub Poller] Review PR polling took {:.1}s",
+            review_start.elapsed().as_secs_f64()
+        );
 
-        sleep(Duration::from_secs(30)).await;
+        println!(
+            "[GitHub Poller] Cycle completed in {:.1}s ({} projects, {} new comments, {} errors)",
+            cycle_start.elapsed().as_secs_f64(),
+            project_count,
+            total_new_comments,
+            total_errors
+        );
+
+        sleep(Duration::from_secs(poll_interval)).await;
     }
 }
 
@@ -436,153 +458,241 @@ fn extract_jira_keys(text: &str) -> Vec<String> {
     keys
 }
 
-async fn poll_pr_comments(
-    github_client: &GitHubClient,
-    db: &Mutex<Database>,
-    app: &AppHandle,
-    github_token: &str,
-    pr: &PrRow,
-) -> Result<usize, String> {
-    let comments = github_client
-        .get_pr_comments(&pr.repo_owner, &pr.repo_name, pr.id, github_token)
-        .await
-        .map_err(|e| format!("Failed to fetch comments: {}", e))?;
-
-    let mut new_count = 0;
-
-    // Insert new comments
-    for comment in comments {
-        // Check if comment already exists
-        let exists = {
-            let db_lock = db.lock().unwrap();
-            db_lock
-                .comment_exists(comment.id)
-                .map_err(|e| format!("Failed to check comment existence: {}", e))?
-        };
-
-        if exists {
-            continue; // Skip existing comments
-        }
-
-        // Parse created_at timestamp (ISO 8601 format)
-        let created_at = parse_github_timestamp(&comment.created_at).unwrap_or_else(|| {
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_secs() as i64
-        });
-
-        // Insert new comment
-        {
-            let db_lock = db.lock().unwrap();
-            db_lock
-                .insert_pr_comment(
-                    comment.id,
-                    pr.id,
-                    &comment.user.login,
-                    &comment.body,
-                    &comment.comment_type,
-                    comment.path.as_deref(),
-                    comment.line,
-                    created_at,
-                )
-                .map_err(|e| format!("Failed to insert comment: {}", e))?;
-        }
-
-        // Emit event to notify frontend
-        if let Err(e) = app.emit(
-            "new-pr-comment",
-            serde_json::json!({
-                "ticket_id": pr.ticket_id,
-                "comment_id": comment.id
-            }),
-        ) {
-            eprintln!("[GitHub Poller] Failed to emit event: {}", e);
-        }
-
-        new_count += 1;
-    }
-
-    Ok(new_count)
+struct PollSinglePrResult {
+    pr_id: i64,
+    ticket_id: String,
+    pr_title: String,
+    head_sha: String,
+    old_ci_status: Option<String>,
+    comments: Vec<PrComment>,
+    check_runs: Option<CheckRunsResponse>,
+    combined_status: Option<CombinedStatusResponse>,
+    error: Option<String>,
 }
 
-async fn poll_pr_ci_status(
+async fn poll_single_pr(
+    github_client: GitHubClient,
+    github_token: String,
+    pr: PrRow,
+    since: Option<String>,
+    old_ci_status: Option<String>,
+) -> PollSinglePrResult {
+    let since_ref = since.as_deref();
+
+    let comments_result = github_client
+        .get_pr_comments(&pr.repo_owner, &pr.repo_name, pr.id, &github_token, since_ref)
+        .await;
+
+    let comments = match comments_result {
+        Ok(c) => c,
+        Err(e) => {
+            return PollSinglePrResult {
+                pr_id: pr.id,
+                ticket_id: pr.ticket_id,
+                pr_title: pr.title,
+                head_sha: pr.head_sha,
+                old_ci_status,
+                comments: vec![],
+                check_runs: None,
+                combined_status: None,
+                error: Some(format!("Failed to fetch comments: {}", e)),
+            };
+        }
+    };
+
+    let (check_runs_result, combined_status_result) = if pr.head_sha.is_empty() {
+        (None, None)
+    } else {
+        let (cr, cs) = tokio::join!(
+            github_client.get_check_runs(&pr.repo_owner, &pr.repo_name, &pr.head_sha, &github_token),
+            github_client.get_combined_status(&pr.repo_owner, &pr.repo_name, &pr.head_sha, &github_token)
+        );
+        (Some(cr), Some(cs))
+    };
+
+    let check_runs = check_runs_result.and_then(|r| match r {
+        Ok(cr) => Some(cr),
+        Err(e) => {
+            eprintln!("[GitHub Poller] Failed to fetch check runs for PR #{}: {}", pr.id, e);
+            None
+        }
+    });
+
+    let combined_status = combined_status_result.and_then(|r| match r {
+        Ok(cs) => Some(cs),
+        Err(e) => {
+            eprintln!("[GitHub Poller] Failed to fetch combined status for PR #{}: {}", pr.id, e);
+            None
+        }
+    });
+
+    PollSinglePrResult {
+        pr_id: pr.id,
+        ticket_id: pr.ticket_id,
+        pr_title: pr.title,
+        head_sha: pr.head_sha,
+        old_ci_status,
+        comments,
+        check_runs,
+        combined_status,
+        error: None,
+    }
+}
+
+async fn poll_prs_for_project(
     github_client: &GitHubClient,
     db: &Mutex<Database>,
     app: &AppHandle,
     github_token: &str,
-    pr: &PrRow,
-) -> Result<usize, String> {
-    if pr.head_sha.is_empty() {
-        return Ok(0);
+    open_prs: Vec<PrRow>,
+) -> (usize, usize) {
+    if open_prs.is_empty() {
+        return (0, 0);
     }
 
-    let old_status = {
+    let pr_metadata: Vec<(i64, Option<i64>, Option<String>)> = {
         let db_lock = db.lock().unwrap();
-        db_lock.get_pr_ci_status(pr.id).map_err(|e| e.to_string())?
+        open_prs
+            .iter()
+            .map(|pr| {
+                let last_polled = db_lock.get_pr_last_polled(pr.id).ok().flatten();
+                let old_ci = db_lock.get_pr_ci_status(pr.id).ok().flatten();
+                (pr.id, last_polled, old_ci)
+            })
+            .collect()
     };
 
-    let check_runs = match github_client
-        .get_check_runs(&pr.repo_owner, &pr.repo_name, &pr.head_sha, github_token)
-        .await
-    {
-        Ok(runs) => runs,
-        Err(e) => {
+    let since_map: HashMap<i64, Option<String>> = pr_metadata
+        .iter()
+        .map(|(pr_id, last_polled, _)| {
+            let since = last_polled.map(|ts| {
+                chrono::DateTime::from_timestamp(ts, 0)
+                    .map(|dt| dt.format("%Y-%m-%dT%H:%M:%SZ").to_string())
+                    .unwrap_or_default()
+            });
+            (*pr_id, since)
+        })
+        .collect();
+
+    let old_ci_map: HashMap<i64, Option<String>> = pr_metadata
+        .into_iter()
+        .map(|(pr_id, _, old_ci)| (pr_id, old_ci))
+        .collect();
+
+    let futures: Vec<_> = open_prs
+        .into_iter()
+        .map(|pr| {
+            let client = github_client.clone();
+            let token = github_token.to_string();
+            let since = since_map.get(&pr.id).cloned().flatten();
+            let old_ci = old_ci_map.get(&pr.id).cloned().flatten();
+            poll_single_pr(client, token, pr, since, old_ci)
+        })
+        .collect();
+
+    let results = join_all(futures).await;
+
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as i64;
+
+    let mut new_comment_count = 0;
+    let mut error_count = 0;
+
+    let db_lock = db.lock().unwrap();
+
+    for result in results {
+        if let Some(err) = &result.error {
             eprintln!(
-                "[GitHub Poller] Failed to fetch check runs for PR #{}: {}",
-                pr.id, e
+                "[GitHub Poller] Failed to poll PR #{}: {}",
+                result.pr_id, err
             );
-            return Ok(0);
+            error_count += 1;
+            continue;
         }
-    };
 
-    let combined_status = match github_client
-        .get_combined_status(&pr.repo_owner, &pr.repo_name, &pr.head_sha, github_token)
-        .await
-    {
-        Ok(status) => status,
-        Err(e) => {
-            eprintln!(
-                "[GitHub Poller] Failed to fetch combined status for PR #{}: {}",
-                pr.id, e
-            );
-            return Ok(0);
+        let existing_ids = match db_lock.get_existing_comment_ids(result.pr_id) {
+            Ok(ids) => ids,
+            Err(e) => {
+                eprintln!(
+                    "[GitHub Poller] Failed to get existing comment IDs for PR #{}: {}",
+                    result.pr_id, e
+                );
+                error_count += 1;
+                continue;
+            }
+        };
+
+        for comment in &result.comments {
+            if existing_ids.contains(&comment.id) {
+                continue;
+            }
+
+            let created_at = parse_github_timestamp(&comment.created_at).unwrap_or(now);
+
+            if let Err(e) = db_lock.insert_pr_comment(
+                comment.id,
+                result.pr_id,
+                &comment.user.login,
+                &comment.body,
+                &comment.comment_type,
+                comment.path.as_deref(),
+                comment.line,
+                created_at,
+            ) {
+                eprintln!("[GitHub Poller] Failed to insert comment {}: {}", comment.id, e);
+                continue;
+            }
+
+            if let Err(e) = app.emit(
+                "new-pr-comment",
+                serde_json::json!({
+                    "ticket_id": result.ticket_id,
+                    "comment_id": comment.id
+                }),
+            ) {
+                eprintln!("[GitHub Poller] Failed to emit new-pr-comment event: {}", e);
+            }
+
+            new_comment_count += 1;
         }
-    };
 
-    let new_status = aggregate_ci_status(&check_runs, &combined_status);
+        if let (Some(check_runs), Some(combined_status)) =
+            (&result.check_runs, &result.combined_status)
+        {
+            let new_status = aggregate_ci_status(check_runs, combined_status);
+            let check_runs_json = serde_json::to_string(&check_runs.check_runs)
+                .unwrap_or_else(|_| "[]".to_string());
 
-    let check_runs_json = serde_json::to_string(&check_runs.check_runs)
-        .unwrap_or_else(|_| "[]".to_string());
+            if let Err(e) =
+                db_lock.update_pr_ci_status(result.pr_id, &result.head_sha, &new_status, &check_runs_json)
+            {
+                eprintln!("[GitHub Poller] Failed to update CI status for PR #{}: {}", result.pr_id, e);
+            } else if result.old_ci_status.as_deref() != Some("failure") && new_status == "failure" {
+                if let Err(e) = app.emit(
+                    "ci-status-changed",
+                    serde_json::json!({
+                        "task_id": result.ticket_id,
+                        "pr_id": result.pr_id,
+                        "pr_title": result.pr_title,
+                        "ci_status": new_status,
+                        "timestamp": now
+                    }),
+                ) {
+                    eprintln!("[GitHub Poller] Failed to emit ci-status-changed event: {}", e);
+                }
+            }
+        }
 
-    {
-        let db_lock = db.lock().unwrap();
-        db_lock
-            .update_pr_ci_status(pr.id, &pr.head_sha, &new_status, &check_runs_json)
-            .map_err(|e| e.to_string())?;
+        if let Err(e) = db_lock.set_pr_last_polled(result.pr_id, now) {
+            eprintln!("[GitHub Poller] Failed to set last_polled_at for PR #{}: {}", result.pr_id, e);
+        }
     }
 
-    if old_status.as_deref() != Some("failure") && new_status == "failure" {
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs() as i64;
+    drop(db_lock);
 
-        if let Err(e) = app.emit(
-            "ci-status-changed",
-            serde_json::json!({
-                "task_id": pr.ticket_id,
-                "pr_id": pr.id,
-                "pr_title": pr.title,
-                "ci_status": new_status,
-                "timestamp": now
-            }),
-        ) {
-            eprintln!("[GitHub Poller] Failed to emit CI status event: {}", e);
-        }
-    }
-
-    Ok(1)
+    (new_comment_count, error_count)
 }
 
 async fn poll_review_prs(

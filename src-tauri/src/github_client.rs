@@ -17,6 +17,7 @@
 //! ## User-Agent Requirement
 //! GitHub API requires a User-Agent header. This client uses: `ai-command-center`
 
+use futures::future::join_all;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::error::Error as StdError;
@@ -114,6 +115,7 @@ impl GitHubClient {
     /// * `repo` - Repository name
     /// * `pr_number` - Pull request number
     /// * `token` - GitHub Personal Access Token
+    /// * `since` - Optional timestamp to filter comments (ISO 8601 format)
     ///
     /// # Returns
     /// Vector of PrComment with both review and general comments
@@ -127,7 +129,8 @@ impl GitHubClient {
     ///     "facebook",
     ///     "react",
     ///     12345,
-    ///     "ghp_token_here"
+    ///     "ghp_token_here",
+    ///     None
     /// ).await?;
     /// for comment in comments {
     ///     println!("{}: {}", comment.comment_type, comment.body);
@@ -141,12 +144,16 @@ impl GitHubClient {
         repo: &str,
         pr_number: i64,
         token: &str,
+        since: Option<&str>,
     ) -> Result<Vec<PrComment>, GitHubError> {
         // Fetch review comments (inline code comments)
-        let review_comments_url = format!(
+        let mut review_comments_url = format!(
             "https://api.github.com/repos/{}/{}/pulls/{}/comments",
             owner, repo, pr_number
         );
+        if let Some(ts) = since {
+            review_comments_url.push_str(&format!("?since={}", ts));
+        }
 
         let review_response = self
             .client
@@ -175,10 +182,13 @@ impl GitHubClient {
             .map_err(|e| GitHubError::ParseError(e.to_string()))?;
 
         // Fetch general issue comments
-        let issue_comments_url = format!(
+        let mut issue_comments_url = format!(
             "https://api.github.com/repos/{}/{}/issues/{}/comments",
             owner, repo, pr_number
         );
+        if let Some(ts) = since {
+            issue_comments_url.push_str(&format!("?since={}", ts));
+        }
 
         let issue_response = self
             .client
@@ -647,52 +657,72 @@ impl GitHubClient {
             .await
             .map_err(|e| GitHubError::ParseError(e.to_string()))?;
 
+        let items_with_coords: Vec<(SearchItem, String, String)> = search_response
+            .items
+            .into_iter()
+            .filter_map(|item| {
+                let parts: Vec<&str> = item.repository_url.split('/').collect();
+                if parts.len() < 2 {
+                    return None;
+                }
+                let owner = parts[parts.len() - 2].to_string();
+                let repo = parts[parts.len() - 1].to_string();
+                Some((item, owner, repo))
+            })
+            .collect();
+
+        let detail_futures: Vec<_> = items_with_coords
+            .iter()
+            .map(|(item, owner, repo)| self.get_pr_details(owner, repo, item.number, token))
+            .collect();
+
+        let detail_results = join_all(detail_futures).await;
+
         let mut results = Vec::new();
-
-        for item in search_response.items {
-            // Extract owner/repo from repository_url
-            let repo_url = &item.repository_url;
-            let parts: Vec<&str> = repo_url.split('/').collect();
-            if parts.len() < 2 {
-                continue;
+        for ((item, owner, repo), pr_result) in
+            items_with_coords.into_iter().zip(detail_results)
+        {
+            match pr_result {
+                Ok(pr_details) => {
+                    results.push(SearchPrResult {
+                        id: item.id,
+                        number: item.number,
+                        title: item.title,
+                        body: item.body,
+                        state: item.state,
+                        draft: item.draft.unwrap_or(false),
+                        html_url: item.html_url,
+                        user_login: item.user.login,
+                        user_avatar_url: item.user.avatar_url,
+                        repo_owner: owner,
+                        repo_name: repo,
+                        head_ref: pr_details.head.ref_name,
+                        base_ref: pr_details.extra.get("base")
+                            .and_then(|b| b.get("ref"))
+                            .and_then(|r| r.as_str())
+                            .unwrap_or("main")
+                            .to_string(),
+                        head_sha: pr_details.head.sha,
+                        additions: pr_details.extra.get("additions")
+                            .and_then(|a| a.as_i64())
+                            .unwrap_or(0),
+                        deletions: pr_details.extra.get("deletions")
+                            .and_then(|d| d.as_i64())
+                            .unwrap_or(0),
+                        changed_files: pr_details.extra.get("changed_files")
+                            .and_then(|c| c.as_i64())
+                            .unwrap_or(0),
+                        created_at: item.created_at,
+                        updated_at: item.updated_at,
+                    });
+                }
+                Err(e) => {
+                    eprintln!(
+                        "[GitHub] Failed to fetch PR details for {}/{} #{}: {}",
+                        owner, repo, item.number, e
+                    );
+                }
             }
-            let owner = parts[parts.len() - 2];
-            let repo = parts[parts.len() - 1];
-
-            // Fetch full PR details to get head/base refs and stats
-            let pr_details = self.get_pr_details(owner, repo, item.number, token).await?;
-
-            results.push(SearchPrResult {
-                id: item.id,
-                number: item.number,
-                title: item.title,
-                body: item.body,
-                state: item.state,
-                draft: item.draft.unwrap_or(false),
-                html_url: item.html_url,
-                user_login: item.user.login,
-                user_avatar_url: item.user.avatar_url,
-                repo_owner: owner.to_string(),
-                repo_name: repo.to_string(),
-                head_ref: pr_details.head.ref_name,
-                base_ref: pr_details.extra.get("base")
-                    .and_then(|b| b.get("ref"))
-                    .and_then(|r| r.as_str())
-                    .unwrap_or("main")
-                    .to_string(),
-                head_sha: pr_details.head.sha,
-                additions: pr_details.extra.get("additions")
-                    .and_then(|a| a.as_i64())
-                    .unwrap_or(0),
-                deletions: pr_details.extra.get("deletions")
-                    .and_then(|d| d.as_i64())
-                    .unwrap_or(0),
-                changed_files: pr_details.extra.get("changed_files")
-                    .and_then(|c| c.as_i64())
-                    .unwrap_or(0),
-                created_at: item.created_at,
-                updated_at: item.updated_at,
-            });
         }
 
         Ok(results)
