@@ -89,8 +89,14 @@ impl PtyManager {
         let mut sessions = self.sessions.lock().await;
 
         if sessions.contains_key(task_id) {
-            println!("PTY already running for task {}", task_id);
-            return Ok(());
+            println!("[PTY] Replacing existing PTY for task {}", task_id);
+            if let Some(mut old_session) = sessions.remove(task_id) {
+                let _ = old_session.child.kill();
+            }
+            // Clean up old PID file (will be recreated below)
+            if let Ok(pid_dir) = self.get_pid_dir() {
+                let _ = std::fs::remove_file(pid_dir.join(format!("{}-pty.pid", task_id)));
+            }
         }
 
         println!("Spawning PTY for task {} ({}x{})", task_id, cols, rows);
@@ -123,6 +129,11 @@ impl PtyManager {
         // Override with terminal-specific env vars
         cmd.env("TERM", "xterm-256color");
         cmd.env("COLORTERM", "truecolor");
+        // Inform OpenTUI that this is a VSCode-compatible terminal. OpenTUI's Zig renderer
+        // (terminal.zig) checks TERM_PROGRAM and disables Kitty keyboard protocol and Kitty
+        // graphics queries when "vscode" is detected. xterm.js does not support these protocols,
+        // so this prevents unsupported escape sequences and startup delays.
+        cmd.env("TERM_PROGRAM", "vscode");
 
         // Spawn the command
         let child = pair
@@ -221,22 +232,64 @@ impl PtyManager {
             }
         });
 
-        // Async emitter task: receives from channel, emits Tauri events
+        // Async emitter task: receives from channel, batches output, emits Tauri events.
+        // Batch PTY output to reduce Tauri event frequency and prevent visual tearing.
+        // OpenTUI redraws at 60 FPS; without batching, partial frames appear between
+        // cursor-positioning and content writes. We flush at ~60 FPS (every 16ms) or
+        // when the buffer exceeds 64KB.
+        const FLUSH_INTERVAL_MS: u64 = 16;
+        const MAX_BUFFER_SIZE: usize = 65536; // 64KB early flush threshold
+
         let task_id_emitter = task_id.to_string();
         tokio::spawn(async move {
-            while let Some(msg) = rx.recv().await {
-                match msg {
-                    Some(text) => {
-                        let event_name = format!("pty-output-{}", task_id_emitter);
-                        let payload = serde_json::json!({ "task_id": &task_id_emitter, "data": text });
-                        if let Err(e) = app_handle.emit(&event_name, &payload) {
-                            eprintln!("[PTY] Failed to emit {}: {}", event_name, e);
+            let mut buffer = String::new();
+            let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(FLUSH_INTERVAL_MS));
+            interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+
+            loop {
+                tokio::select! {
+                    msg = rx.recv() => {
+                        match msg {
+                            Some(Some(text)) => {
+                                buffer.push_str(&text);
+                                if buffer.len() >= MAX_BUFFER_SIZE {
+                                    // Early flush: buffer exceeded threshold
+                                    if !buffer.is_empty() {
+                                        let event_name = format!("pty-output-{}", task_id_emitter);
+                                        let payload = serde_json::json!({ "task_id": &task_id_emitter, "data": &buffer });
+                                        if let Err(e) = app_handle.emit(&event_name, &payload) {
+                                            eprintln!("[PTY] Failed to emit {}: {}", event_name, e);
+                                        }
+                                        buffer.clear();
+                                    }
+                                }
+                            }
+                            Some(None) | None => {
+                                // PTY closed (EOF) or channel dropped — flush remaining buffer first
+                                if !buffer.is_empty() {
+                                    let event_name = format!("pty-output-{}", task_id_emitter);
+                                    let payload = serde_json::json!({ "task_id": &task_id_emitter, "data": &buffer });
+                                    if let Err(e) = app_handle.emit(&event_name, &payload) {
+                                        eprintln!("[PTY] Failed to emit {}: {}", event_name, e);
+                                    }
+                                    buffer.clear();
+                                }
+                                println!("[PTY] task={} emitter received exit signal", task_id_emitter);
+                                let _ = app_handle.emit(&format!("pty-exit-{}", task_id_emitter), ());
+                                break;
+                            }
                         }
                     }
-                    None => {
-                        println!("[PTY] task={} emitter received exit signal", task_id_emitter);
-                        let _ = app_handle.emit(&format!("pty-exit-{}", task_id_emitter), ());
-                        break;
+                    _ = interval.tick() => {
+                        // Periodic flush: emit accumulated output at ~60 FPS
+                        if !buffer.is_empty() {
+                            let event_name = format!("pty-output-{}", task_id_emitter);
+                            let payload = serde_json::json!({ "task_id": &task_id_emitter, "data": &buffer });
+                            if let Err(e) = app_handle.emit(&event_name, &payload) {
+                                eprintln!("[PTY] Failed to emit {}: {}", event_name, e);
+                            }
+                            buffer.clear();
+                        }
                     }
                 }
             }
