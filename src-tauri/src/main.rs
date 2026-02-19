@@ -349,13 +349,16 @@ async fn start_implementation(
     task_id: String,
     repo_path: String,
 ) -> Result<serde_json::Value, String> {
-    let (task, project_id_owned) = {
+    let (task, project_id_owned, additional_instructions) = {
         let db = db.lock().unwrap();
         let task = db.get_task(&task_id)
             .map_err(|e| format!("Failed to get task: {}", e))?
             .ok_or("Task not found")?;
         let project_id = task.project_id.clone().unwrap_or_default();
-        (task, project_id)
+        let instructions = db.get_project_config(&project_id, "additional_instructions")
+            .ok()
+            .flatten();
+        (task, project_id, instructions)
     };
     
     let branch = git_worktree::slugify_branch_name(&task_id, &task.title);
@@ -414,7 +417,7 @@ async fn start_implementation(
         .await
         .map_err(|e| e.to_string())?;
     
-    let prompt = build_task_prompt(&task, "Implement this task. Create a branch, make the changes, and create a pull request when done.");
+    let prompt = build_task_prompt(&task, "Implement this task. Create a branch, make the changes, and create a pull request when done.", additional_instructions.as_deref());
     
     client
         .prompt_async(&opencode_session_id, prompt, None)
@@ -460,16 +463,17 @@ async fn run_action(
     action_prompt: String,
     agent: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    let (task, project_id_owned) = {
+    let (task, project_id_owned, additional_instructions) = {
         let db = db.lock().unwrap();
         let task = db.get_task(&task_id)
             .map_err(|e| format!("Failed to get task: {}", e))?
             .ok_or("Task not found")?;
         let project_id = task.project_id.clone().unwrap_or_default();
-        (task, project_id)
+        let instructions = db.get_project_config(&project_id, "additional_instructions")
+            .ok()
+            .flatten();
+        (task, project_id, instructions)
     };
-    
-    let prompt = build_task_prompt(&task, &action_prompt);
     
     let existing_session = {
         let db = db.lock().unwrap();
@@ -500,6 +504,8 @@ async fn run_action(
                         }
                         
                         let client = OpenCodeClient::with_base_url(format!("http://127.0.0.1:{}", port));
+                        
+                        let prompt = build_task_prompt(&task, &action_prompt, None);
                         
                         client
                             .prompt_async(opencode_session_id, prompt, agent.clone())
@@ -604,6 +610,8 @@ async fn run_action(
         .start_bridge(app.clone(), task_id.clone(), Some(opencode_session_id.clone()), port)
         .await
         .map_err(|e| e.to_string())?;
+    
+    let prompt = build_task_prompt(&task, &action_prompt, additional_instructions.as_deref());
     
     client
         .prompt_async(&opencode_session_id, prompt, agent)
