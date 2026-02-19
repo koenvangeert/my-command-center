@@ -27,7 +27,7 @@ describe('Toast', () => {
     error.set('Dismiss me')
 
     await new Promise((r) => setTimeout(r, 10))
-    const closeBtn = screen.getByText('X')
+    const closeBtn = screen.getByText('✕')
     await fireEvent.click(closeBtn)
 
     expect(get(error)).toBeNull()
