@@ -11,6 +11,7 @@
   let isLoading = $state(false)
   let error = $state<string | null>(null)
   let diffViewer = $state<DiffViewer>()
+  let fileTreeVisible = $state(true)
 
   let groupedPrs = $derived(groupByRepo($reviewPrs))
 
@@ -140,13 +141,17 @@
             <span>{error}</span>
           </div>
         {:else}
-          <FileTree files={$prFileDiffs} onSelectFile={handleFileSelect} />
+          {#if fileTreeVisible}
+            <FileTree files={$prFileDiffs} onSelectFile={handleFileSelect} />
+          {/if}
           <DiffViewer 
             bind:this={diffViewer} 
             files={$prFileDiffs}
             existingComments={$reviewComments}
             repoOwner={$selectedReviewPr.repo_owner}
             repoName={$selectedReviewPr.repo_name}
+            {fileTreeVisible}
+            onToggleFileTree={() => { fileTreeVisible = !fileTreeVisible }}
           />
         {/if}
       </div>

@@ -12,9 +12,11 @@
     existingComments?: ReviewComment[]
     repoOwner?: string
     repoName?: string
+    fileTreeVisible?: boolean
+    onToggleFileTree?: () => void
   }
 
-  let { files = [], existingComments = [], repoOwner: _repoOwner = '', repoName: _repoName = '' }: Props = $props()
+  let { files = [], existingComments = [], repoOwner: _repoOwner = '', repoName: _repoName = '', fileTreeVisible = true, onToggleFileTree }: Props = $props()
 
   let diffViewMode = $state<DiffModeEnum>(DiffModeEnum.Split)
   let commentText = $state('')
@@ -29,6 +31,16 @@
 
 <div class="diff-viewer">
   <div class="controls">
+    {#if onToggleFileTree}
+      <button
+        class:active={fileTreeVisible}
+        title={fileTreeVisible ? 'Hide file tree' : 'Show file tree'}
+        onclick={() => onToggleFileTree!()}
+      >
+        {fileTreeVisible ? '◧' : '☰'}
+      </button>
+      <div class="controls-separator"></div>
+    {/if}
     <button
       class:active={diffViewMode === DiffModeEnum.Split}
       onclick={() => (diffViewMode = DiffModeEnum.Split)}
@@ -170,6 +182,14 @@
     color: var(--accent);
     border-color: var(--accent);
     background: rgba(122, 162, 247, 0.1);
+  }
+
+  .controls-separator {
+    width: 1px;
+    height: 20px;
+    background: var(--border);
+    margin: 0 4px;
+    align-self: center;
   }
 
   .diff-container {

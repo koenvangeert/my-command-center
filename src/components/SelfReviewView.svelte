@@ -21,6 +21,7 @@
   let diffViewer = $state<DiffViewer>()
   let prComments = $state<PrComment[]>([])
   let linkedPr = $state<PullRequestInfo | null>(null)
+  let fileTreeVisible = $state(true)
 
   function handleFileSelect(filename: string) {
     if (diffViewer) {
@@ -119,11 +120,15 @@
       </div>
     {:else}
       <div class="detail-content">
-        <FileTree files={$selfReviewDiffFiles} onSelectFile={handleFileSelect} />
+        {#if fileTreeVisible}
+          <FileTree files={$selfReviewDiffFiles} onSelectFile={handleFileSelect} />
+        {/if}
         <DiffViewer
           bind:this={diffViewer}
           files={$selfReviewDiffFiles}
           existingComments={[]}
+          {fileTreeVisible}
+          onToggleFileTree={() => { fileTreeVisible = !fileTreeVisible }}
         />
         <div class="sidebar-container">
           {#if linkedPr}
