@@ -157,6 +157,7 @@ pub async fn start_jira_sync(app: AppHandle) {
                 Ok(issues) => {
                     let mut updated = 0;
                     for issue in issues {
+                        let jira_title = issue.fields.summary.clone();
                         let jira_status = issue
                             .fields
                             .status
@@ -171,7 +172,7 @@ pub async fn start_jira_sync(app: AppHandle) {
                             .unwrap_or_default();
 
                         let db_lock = db.lock().unwrap();
-                        match db_lock.update_task_jira_info(&issue.key, &jira_status, &assignee) {
+                        match db_lock.update_task_jira_info(&issue.key, &jira_title, &jira_status, &assignee) {
                             Ok(count) => updated += count,
                             Err(e) => {
                                 eprintln!("[JIRA Sync] Failed to update {}: {}", issue.key, e)

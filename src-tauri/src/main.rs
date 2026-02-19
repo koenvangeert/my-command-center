@@ -715,10 +715,11 @@ async fn refresh_jira_info(
 
     let mut updated = 0;
     for issue in issues {
+        let jira_title = issue.fields.summary.clone();
         let jira_status = issue.fields.status.as_ref().map(|s| s.name.clone()).unwrap_or_default();
         let assignee = issue.fields.assignee.as_ref().map(|u| u.display_name.clone()).unwrap_or_default();
         let db_lock = db.lock().unwrap();
-        match db_lock.update_task_jira_info(&issue.key, &jira_status, &assignee) {
+        match db_lock.update_task_jira_info(&issue.key, &jira_title, &jira_status, &assignee) {
             Ok(count) => updated += count,
             Err(e) => eprintln!("Failed to update JIRA info for {}: {}", issue.key, e),
         }
@@ -1956,6 +1957,7 @@ mod tests {
             plan_text: Some("Step 1: Do this\nStep 2: Do that".to_string()),
             status: "backlog".to_string(),
             jira_key: None,
+            jira_title: None,
             jira_status: None,
             jira_assignee: None,
             project_id: None,
@@ -1979,6 +1981,7 @@ mod tests {
             plan_text: None,
             status: "backlog".to_string(),
             jira_key: None,
+            jira_title: None,
             jira_status: None,
             jira_assignee: None,
             project_id: None,
@@ -2002,6 +2005,7 @@ mod tests {
             plan_text: Some("".to_string()),
             status: "backlog".to_string(),
             jira_key: None,
+            jira_title: None,
             jira_status: None,
             jira_assignee: None,
             project_id: None,

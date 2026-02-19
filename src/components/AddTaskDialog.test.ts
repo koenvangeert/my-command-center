@@ -25,6 +25,7 @@ const mockTask: Task = {
   title: 'Existing Task',
   status: 'doing',
   jira_key: 'PROJ-123',
+  jira_title: null,
   jira_status: 'In Progress',
   jira_assignee: 'Alice',
   plan_text: null,

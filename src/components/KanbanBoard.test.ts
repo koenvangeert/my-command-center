@@ -28,6 +28,7 @@ const baseTask: Task = {
   title: 'Test task',
   status: 'backlog',
   jira_key: null,
+  jira_title: null,
   jira_status: null,
   jira_assignee: null,
   plan_text: null,
