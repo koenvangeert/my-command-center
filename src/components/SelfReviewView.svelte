@@ -1,8 +1,10 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte'
+  import { listen } from '@tauri-apps/api/event'
+  import type { UnlistenFn, Event } from '@tauri-apps/api/event'
   import { selfReviewDiffFiles, selfReviewGeneralComments, selfReviewArchivedComments, pendingManualComments, ticketPrs } from '../lib/stores'
   import { getTaskDiff, getActiveSelfReviewComments, getArchivedSelfReviewComments, getPrComments, openUrl } from '../lib/ipc'
-  import type { Task, PullRequestInfo, PrComment } from '../lib/types'
+  import type { Task, PullRequestInfo, PrComment, AgentEvent } from '../lib/types'
   import FileTree from './FileTree.svelte'
   import DiffViewer from './DiffViewer.svelte'
   import GeneralCommentsSidebar from './GeneralCommentsSidebar.svelte'
@@ -22,6 +24,10 @@
   let prComments = $state<PrComment[]>([])
   let linkedPr = $state<PullRequestInfo | null>(null)
   let fileTreeVisible = $state(true)
+  let unlistenAgentEvent: UnlistenFn | null = null
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null
+
+  const DEBOUNCE_MS = 1500
 
   function handleFileSelect(filename: string) {
     if (diffViewer) {
@@ -43,7 +49,19 @@
     }
   }
 
+  function debouncedRefresh() {
+    if (debounceTimer) clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(() => {
+      handleRefresh()
+    }, DEBOUNCE_MS)
+  }
+
   onMount(async () => {
+    unlistenAgentEvent = await listen<AgentEvent>('agent-event', (event: Event<AgentEvent>) => {
+      if (event.payload.task_id === task.id && event.payload.event_type === 'file.edited') {
+        debouncedRefresh()
+      }
+    })
     isLoading = true
     error = null
     try {
@@ -93,6 +111,8 @@
   })
 
   onDestroy(() => {
+    if (unlistenAgentEvent) unlistenAgentEvent()
+    if (debounceTimer) clearTimeout(debounceTimer)
     $selfReviewDiffFiles = []
     $selfReviewGeneralComments = []
     $selfReviewArchivedComments = []
@@ -116,7 +136,7 @@
       <div class="empty-state">
         <span class="empty-icon">📂</span>
         <h3>No changes on this branch yet</h3>
-        <p>Commit some changes and refresh to see your diff.</p>
+        <p>Make some changes and they will appear here automatically.</p>
       </div>
     {:else}
       <div class="detail-content">

@@ -1588,11 +1588,30 @@ async fn get_task_diff(
             .worktree_path
     };
 
+    // Find the merge-base between origin/main and HEAD
+    let merge_base_output = tokio::process::Command::new("git")
+        .arg("-C")
+        .arg(&worktree_path)
+        .args(["merge-base", "origin/main", "HEAD"])
+        .output()
+        .await
+        .map_err(|e| format!("Failed to run git merge-base: {}", e))?;
+
+    if !merge_base_output.status.success() {
+        let stderr = String::from_utf8_lossy(&merge_base_output.stderr);
+        return Err(format!("git merge-base failed: {}", stderr));
+    }
+
+    let merge_base = String::from_utf8_lossy(&merge_base_output.stdout)
+        .trim()
+        .to_string();
+
+    // Diff from merge-base to working tree (includes committed + staged + unstaged changes)
     let output = tokio::process::Command::new("git")
         .arg("-C")
         .arg(&worktree_path)
         .arg("diff")
-        .arg("origin/main...HEAD")
+        .arg(&merge_base)
         .output()
         .await
         .map_err(|e| format!("Failed to run git diff: {}", e))?;
