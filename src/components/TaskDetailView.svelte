@@ -315,4 +315,3 @@
     }
   }
 </style>
->>>>>>> 81868ca (feat(ui): add action buttons to task detail view header)
