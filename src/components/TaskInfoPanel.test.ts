@@ -26,6 +26,7 @@ const baseTask: Task = {
   title: 'Implement auth middleware',
   status: 'backlog',
   jira_key: 'PROJ-123',
+  jira_title: null,
   jira_status: 'To Do',
   jira_assignee: 'Alice',
   plan_text: null,

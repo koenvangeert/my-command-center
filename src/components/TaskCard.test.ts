@@ -8,6 +8,7 @@ const baseTask: Task = {
   title: 'Implement auth middleware',
   status: 'backlog',
   jira_key: 'PROJ-123',
+  jira_title: 'Add JWT authentication to REST API',
   jira_status: 'To Do',
   jira_assignee: 'Alice',
   plan_text: null,
@@ -47,6 +48,17 @@ describe('TaskCard', () => {
     const taskWithoutJira = { ...baseTask, jira_key: null }
     render(TaskCard, { props: { task: taskWithoutJira } })
     expect(screen.queryByText('PROJ-123')).toBeNull()
+  })
+
+  it('renders jira_title when present', () => {
+    render(TaskCard, { props: { task: baseTask } })
+    expect(screen.getByText('Add JWT authentication to REST API')).toBeTruthy()
+  })
+
+  it('hides jira_title when null', () => {
+    const taskWithoutJiraTitle = { ...baseTask, jira_title: null }
+    render(TaskCard, { props: { task: taskWithoutJiraTitle } })
+    expect(screen.queryByText('Add JWT authentication to REST API')).toBeNull()
   })
 
   it('renders jira_assignee', () => {

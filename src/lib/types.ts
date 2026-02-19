@@ -3,6 +3,7 @@ export interface Task {
   title: string;
   status: string;
   jira_key: string | null;
+  jira_title: string | null;
   jira_status: string | null;
   jira_assignee: string | null;
   plan_text: string | null;

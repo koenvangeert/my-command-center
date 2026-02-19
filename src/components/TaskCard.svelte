@@ -62,6 +62,9 @@
     {/if}
   </div>
   <div class="card-title">{truncate(task.title, 60)}</div>
+  {#if task.jira_title}
+    <div class="jira-title">{truncate(task.jira_title, 80)}</div>
+  {/if}
   {#if session}
     <div class="card-status {statusClass}">
       {#if session.status === 'running'}
@@ -251,6 +254,13 @@
   .card-title {
     font-size: 0.85rem;
     color: var(--text-primary);
+    line-height: 1.3;
+    margin-bottom: 4px;
+  }
+
+  .jira-title {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
     line-height: 1.3;
     margin-bottom: 6px;
   }
