@@ -734,8 +734,12 @@ async fn refresh_jira_info(
         let jira_title = issue.fields.summary.clone();
         let jira_status = issue.fields.status.as_ref().map(|s| s.name.clone()).unwrap_or_default();
         let assignee = issue.fields.assignee.as_ref().map(|u| u.display_name.clone()).unwrap_or_default();
+        let jira_description = issue.rendered_fields
+            .as_ref()
+            .and_then(|rf| rf.description.clone())
+            .unwrap_or_default();
         let db_lock = db.lock().unwrap();
-        match db_lock.update_task_jira_info(&issue.key, &jira_title, &jira_status, &assignee) {
+        match db_lock.update_task_jira_info(&issue.key, &jira_title, &jira_status, &assignee, &jira_description) {
             Ok(count) => updated += count,
             Err(e) => eprintln!("Failed to update JIRA info for {}: {}", issue.key, e),
         }
@@ -1809,6 +1813,7 @@ mod tests {
             jira_title: None,
             jira_status: None,
             jira_assignee: None,
+            jira_description: None,
             project_id: None,
             created_at: 0,
             updated_at: 0,
@@ -1833,6 +1838,7 @@ mod tests {
             jira_title: None,
             jira_status: None,
             jira_assignee: None,
+            jira_description: None,
             project_id: None,
             created_at: 0,
             updated_at: 0,
@@ -1857,6 +1863,7 @@ mod tests {
             jira_title: None,
             jira_status: None,
             jira_assignee: None,
+            jira_description: None,
             project_id: None,
             created_at: 0,
             updated_at: 0,
@@ -1881,6 +1888,7 @@ mod tests {
             jira_title: None,
             jira_status: None,
             jira_assignee: None,
+            jira_description: None,
             project_id: None,
             created_at: 0,
             updated_at: 0,
@@ -1905,6 +1913,7 @@ mod tests {
             jira_title: None,
             jira_status: None,
             jira_assignee: None,
+            jira_description: None,
             project_id: None,
             created_at: 0,
             updated_at: 0,
@@ -1927,6 +1936,7 @@ mod tests {
             jira_title: None,
             jira_status: None,
             jira_assignee: None,
+            jira_description: None,
             project_id: None,
             created_at: 0,
             updated_at: 0,

@@ -18,6 +18,7 @@ pub struct TaskRow {
     pub project_id: Option<String>,
     pub created_at: i64,
     pub updated_at: i64,
+    pub jira_description: Option<String>,
 }
 
 /// Project row from database
@@ -583,6 +584,22 @@ impl Database {
             conn.execute("ALTER TABLE tasks ADD COLUMN jira_title TEXT", [])?;
         }
 
+        // ============================================================================
+        // Migration: Add jira_description column to tasks table
+        // ============================================================================
+        let jira_description_exists: bool = conn.query_row(
+            "SELECT COUNT(*) FROM pragma_table_info('tasks') WHERE name='jira_description'",
+            [],
+            |row| {
+                let count: i64 = row.get(0)?;
+                Ok(count > 0)
+            },
+        )?;
+
+        if !jira_description_exists {
+            conn.execute("ALTER TABLE tasks ADD COLUMN jira_description TEXT", [])?;
+        }
+
         conn.execute(
             "CREATE TABLE IF NOT EXISTS self_review_comments (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -952,7 +969,7 @@ impl Database {
     pub fn get_tasks_for_project(&self, project_id: &str) -> Result<Vec<TaskRow>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT id, title, status, jira_key, jira_title, jira_status, jira_assignee, plan_text, project_id, created_at, updated_at 
+            "SELECT id, title, status, jira_key, jira_title, jira_status, jira_assignee, plan_text, project_id, created_at, updated_at, jira_description 
              FROM tasks WHERE project_id = ?1 ORDER BY updated_at DESC",
         )?;
 
@@ -969,6 +986,7 @@ impl Database {
                 project_id: row.get(8)?,
                 created_at: row.get(9)?,
                 updated_at: row.get(10)?,
+                jira_description: row.get(11)?,
             })
         })?;
 
@@ -1010,8 +1028,8 @@ impl Database {
             .as_secs() as i64;
 
         conn.execute(
-            "INSERT INTO tasks (id, title, status, jira_key, jira_title, jira_status, jira_assignee, plan_text, project_id, created_at, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+            "INSERT INTO tasks (id, title, status, jira_key, jira_title, jira_status, jira_assignee, plan_text, project_id, created_at, updated_at, jira_description)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
             rusqlite::params![
                 &task_id,
                 title,
@@ -1024,6 +1042,7 @@ impl Database {
                 project_id,
                 now,
                 now,
+                None::<String>,
             ],
         )?;
 
@@ -1039,13 +1058,14 @@ impl Database {
             project_id: project_id.map(|s| s.to_string()),
             created_at: now,
             updated_at: now,
+            jira_description: None,
         })
     }
 
     pub fn get_all_tasks(&self) -> Result<Vec<TaskRow>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT id, title, status, jira_key, jira_title, jira_status, jira_assignee, plan_text, project_id, created_at, updated_at 
+            "SELECT id, title, status, jira_key, jira_title, jira_status, jira_assignee, plan_text, project_id, created_at, updated_at, jira_description 
              FROM tasks ORDER BY updated_at DESC"
         )?;
 
@@ -1062,6 +1082,7 @@ impl Database {
                 project_id: row.get(8)?,
                 created_at: row.get(9)?,
                 updated_at: row.get(10)?,
+                jira_description: row.get(11)?,
             })
         })?;
 
@@ -1075,7 +1096,7 @@ impl Database {
     pub fn get_task(&self, id: &str) -> Result<Option<TaskRow>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT id, title, status, jira_key, jira_title, jira_status, jira_assignee, plan_text, project_id, created_at, updated_at 
+            "SELECT id, title, status, jira_key, jira_title, jira_status, jira_assignee, plan_text, project_id, created_at, updated_at, jira_description 
              FROM tasks WHERE id = ?1"
         )?;
         let mut rows = stmt.query([id])?;
@@ -1092,6 +1113,7 @@ impl Database {
                 project_id: row.get(8)?,
                 created_at: row.get(9)?,
                 updated_at: row.get(10)?,
+                jira_description: row.get(11)?,
             }))
         } else {
             Ok(None)
@@ -1173,6 +1195,7 @@ impl Database {
         jira_title: &str,
         jira_status: &str,
         jira_assignee: &str,
+        jira_description: &str,
     ) -> Result<usize> {
         let conn = self.conn.lock().unwrap();
         let now = std::time::SystemTime::now()
@@ -1180,8 +1203,8 @@ impl Database {
             .expect("time went backwards")
             .as_secs() as i64;
         conn.execute(
-            "UPDATE tasks SET jira_title = ?1, jira_status = ?2, jira_assignee = ?3, updated_at = ?4 WHERE jira_key = ?5",
-            rusqlite::params![jira_title, jira_status, jira_assignee, now, jira_key],
+            "UPDATE tasks SET jira_title = ?1, jira_status = ?2, jira_assignee = ?3, jira_description = ?4, updated_at = ?5 WHERE jira_key = ?6",
+            rusqlite::params![jira_title, jira_status, jira_assignee, jira_description, now, jira_key],
         )?;
         Ok(conn.changes() as usize)
     }
@@ -1189,7 +1212,7 @@ impl Database {
     pub fn get_tasks_with_jira_links(&self) -> Result<Vec<TaskRow>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT id, title, status, jira_key, jira_title, jira_status, jira_assignee, plan_text, project_id, created_at, updated_at 
+            "SELECT id, title, status, jira_key, jira_title, jira_status, jira_assignee, plan_text, project_id, created_at, updated_at, jira_description 
              FROM tasks WHERE jira_key IS NOT NULL ORDER BY updated_at DESC"
         )?;
 
@@ -1206,6 +1229,7 @@ impl Database {
                 project_id: row.get(8)?,
                 created_at: row.get(9)?,
                 updated_at: row.get(10)?,
+                jira_description: row.get(11)?,
             })
         })?;
 
@@ -2176,8 +2200,8 @@ mod tests {
         let conn = db.connection();
         let conn = conn.lock().unwrap();
         conn.execute(
-            "INSERT INTO tasks (id, title, status, jira_key, jira_title, jira_status, jira_assignee, plan_text, project_id, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
-            rusqlite::params!["T-100", "Test task", "backlog", "PROJ-100", "Test task summary", "To Do", "alice", None::<String>, None::<String>, 1000, 1000],
+            "INSERT INTO tasks (id, title, status, jira_key, jira_title, jira_status, jira_assignee, plan_text, project_id, created_at, updated_at, jira_description) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+            rusqlite::params!["T-100", "Test task", "backlog", "PROJ-100", "Test task summary", "To Do", "alice", None::<String>, None::<String>, 1000, 1000, None::<String>],
         ).expect("Failed to insert test task");
     }
 
@@ -2649,7 +2673,13 @@ mod tests {
             .expect("create 2 failed");
 
         let updated = db
-            .update_task_jira_info("PROJ-1", "JIRA Title", "In Progress", "bob")
+            .update_task_jira_info(
+                "PROJ-1",
+                "JIRA Title",
+                "In Progress",
+                "bob",
+                "This is a test description",
+            )
             .expect("update jira info failed");
 
         assert_eq!(updated, 1);
@@ -2659,6 +2689,10 @@ mod tests {
         assert_eq!(linked.jira_title, Some("JIRA Title".to_string()));
         assert_eq!(linked.jira_status, Some("In Progress".to_string()));
         assert_eq!(linked.jira_assignee, Some("bob".to_string()));
+        assert_eq!(
+            linked.jira_description,
+            Some("This is a test description".to_string())
+        );
 
         let unlinked = tasks.iter().find(|t| t.jira_key.is_none()).unwrap();
         assert_eq!(unlinked.jira_title, None);
@@ -2880,8 +2914,8 @@ mod tests {
         let conn = db.connection();
         let conn = conn.lock().unwrap();
         conn.execute(
-            "INSERT INTO tasks (id, title, status, jira_key, jira_title, jira_status, jira_assignee, plan_text, project_id, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
-            rusqlite::params!["T-200", "Test task 2", "backlog", "PROJ-200", "Task 2 summary", "To Do", "bob", None::<String>, None::<String>, 1000, 1000],
+            "INSERT INTO tasks (id, title, status, jira_key, jira_title, jira_status, jira_assignee, plan_text, project_id, created_at, updated_at, jira_description) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+            rusqlite::params!["T-200", "Test task 2", "backlog", "PROJ-200", "Task 2 summary", "To Do", "bob", None::<String>, None::<String>, 1000, 1000, None::<String>],
         ).expect("Failed to insert test task T-200");
         drop(conn);
 
@@ -2895,8 +2929,8 @@ mod tests {
         let conn = db.connection();
         let conn = conn.lock().unwrap();
         conn.execute(
-            "INSERT INTO tasks (id, title, status, jira_key, jira_status, jira_assignee, plan_text, project_id, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
-            rusqlite::params!["T-300", "Test task 3", "backlog", "PROJ-300", "To Do", "charlie", None::<String>, None::<String>, 1000, 1000],
+            "INSERT INTO tasks (id, title, status, jira_key, jira_title, jira_status, jira_assignee, plan_text, project_id, created_at, updated_at, jira_description) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+            rusqlite::params!["T-300", "Test task 3", "backlog", "PROJ-300", "Task 3 summary", "To Do", "charlie", None::<String>, None::<String>, 1000, 1000, None::<String>],
         ).expect("Failed to insert test task T-300");
         drop(conn);
 
@@ -3614,6 +3648,48 @@ mod tests {
 
         let nonexistent = db.get_pr_last_polled(999).expect("get nonexistent failed");
         assert_eq!(nonexistent, None);
+
+        drop(db);
+        let _ = fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_jira_description_null_handling() {
+        let (db, path) = make_test_db("jira_desc_null");
+
+        db.create_task("Task with jira", "backlog", Some("PROJ-1"), None)
+            .expect("create task failed");
+
+        let task = db.get_task("T-1").expect("get failed").unwrap();
+        assert_eq!(task.jira_description, None);
+
+        db.update_task_jira_info("PROJ-1", "Title", "To Do", "alice", "")
+            .expect("update with empty desc failed");
+
+        let task = db.get_task("T-1").expect("get failed").unwrap();
+        assert_eq!(task.jira_description, Some("".to_string()));
+
+        db.update_task_jira_info(
+            "PROJ-1",
+            "Title",
+            "In Progress",
+            "bob",
+            "<p>Test description</p>",
+        )
+        .expect("update with html desc failed");
+
+        let task = db.get_task("T-1").expect("get failed").unwrap();
+        assert_eq!(
+            task.jira_description,
+            Some("<p>Test description</p>".to_string())
+        );
+
+        let multiline = "Line 1\nLine 2\nLine 3";
+        db.update_task_jira_info("PROJ-1", "Title", "Done", "charlie", multiline)
+            .expect("update with multiline desc failed");
+
+        let task = db.get_task("T-1").expect("get failed").unwrap();
+        assert_eq!(task.jira_description, Some(multiline.to_string()));
 
         drop(db);
         let _ = fs::remove_file(&path);

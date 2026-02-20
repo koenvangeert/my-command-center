@@ -6,6 +6,7 @@ export interface Task {
   jira_title: string | null;
   jira_status: string | null;
   jira_assignee: string | null;
+  jira_description: string | null;
   plan_text: string | null;
   project_id: string | null;
   created_at: number;
