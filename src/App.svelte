@@ -3,7 +3,7 @@
   import { listen } from '@tauri-apps/api/event'
   import type { UnlistenFn, Event } from '@tauri-apps/api/event'
   import { tasks, selectedTaskId, activeSessions, checkpointNotification, ciFailureNotification, ticketPrs, error, isLoading, projects, activeProjectId, currentView, reviewRequestCount } from './lib/stores'
-  import { getProjects, getTasksForProject, getOpenCodeStatus, getPullRequests, runAction, getSessionStatus, getLatestSession, getLatestSessions, persistSessionStatus } from './lib/ipc'
+  import { getProjects, getTasksForProject, getOpenCodeStatus, getPullRequests, runAction, getSessionStatus, getLatestSession, getLatestSessions, forceGithubSync } from './lib/ipc'
   import type { Task, PullRequestInfo, OpenCodeStatus, AgentEvent } from './lib/types'
   import KanbanBoard from './components/KanbanBoard.svelte'
   import TaskDetailView from './components/TaskDetailView.svelte'
@@ -21,6 +21,7 @@
   let openCodeStatus = $state<OpenCodeStatus | null>(null)
   let unlisteners: UnlistenFn[] = []
   let showAddDialog = $state(false)
+  let isSyncing = $state(false)
   let editingTask = $state<Task | null>(null)
   let dialogMode = $state<'create' | 'edit'>('create')
   let showProjectSetup = $state(false)
@@ -110,6 +111,21 @@
     }
   }
 
+  async function triggerGithubSync() {
+    if (isSyncing) return
+    isSyncing = true
+    try {
+      await forceGithubSync()
+      await loadPullRequests()
+      await loadTasks()
+    } catch (e) {
+      console.error('Failed to sync GitHub:', e)
+      $error = String(e)
+    } finally {
+      isSyncing = false
+    }
+  }
+
   async function checkOpenCode() {
     try {
       openCodeStatus = await getOpenCodeStatus()
@@ -157,6 +173,10 @@
         showAddDialog = true
       }
     }
+    if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'R') {
+      e.preventDefault()
+      triggerGithubSync()
+    }
   }
 
   onMount(async () => {
@@ -173,6 +193,24 @@
     )
 
     unlisteners.push(
+      await listen('github-sync-complete', () => {
+        loadPullRequests()
+      })
+    )
+
+    unlisteners.push(
+      await listen('ci-status-changed', () => {
+        loadPullRequests()
+      })
+    )
+
+    unlisteners.push(
+      await listen('review-status-changed', () => {
+        loadPullRequests()
+      })
+    )
+
+    unlisteners.push(
       await listen<{ task_id: string }>('action-complete', (event: Event<{ task_id: string }>) => {
         const taskId = event.payload.task_id
         const session = $activeSessions.get(taskId)
@@ -181,9 +219,6 @@
           updated.set(taskId, { ...session, status: 'completed' })
           $activeSessions = updated
         }
-        persistSessionStatus(taskId, 'completed', null).catch(e =>
-          console.error('[session] Failed to persist completed status:', e)
-        )
         if ($checkpointNotification?.ticketId === taskId) {
           $checkpointNotification = null
         }
@@ -200,9 +235,6 @@
           updated.set(taskId, { ...session, status: 'failed', error_message: event.payload.error })
           $activeSessions = updated
         }
-        persistSessionStatus(taskId, 'failed', event.payload.error).catch(e =>
-          console.error('[session] Failed to persist failed status:', e)
-        )
         if ($checkpointNotification?.ticketId === taskId) {
           $checkpointNotification = null
         }
@@ -278,9 +310,6 @@
               const updated = new Map($activeSessions)
               updated.set(taskId, { ...session, status: 'running', checkpoint_data: null })
               $activeSessions = updated
-              persistSessionStatus(taskId, 'running', null, null).catch(e =>
-                console.error('[session] Failed to persist running status:', e)
-              )
               if ($checkpointNotification?.ticketId === taskId) {
                 $checkpointNotification = null
               }
@@ -289,9 +318,6 @@
               const updated = new Map($activeSessions)
               updated.set(taskId, { ...session, status: 'running', checkpoint_data: null })
               $activeSessions = updated
-              persistSessionStatus(taskId, 'running', null, null).catch(e =>
-                console.error('[session] Failed to persist running status:', e)
-              )
               if ($checkpointNotification?.ticketId === taskId) {
                 $checkpointNotification = null
               }
@@ -318,9 +344,6 @@
           const updated = new Map($activeSessions)
           updated.set(taskId, { ...session, status: 'paused', checkpoint_data: event.payload.data })
           $activeSessions = updated
-          persistSessionStatus(taskId, 'paused', null, event.payload.data).catch(e =>
-            console.error('[session] Failed to persist paused status:', e)
-          )
           const task = $tasks.find(t => t.id === taskId)
           $checkpointNotification = {
             ticketId: taskId,
@@ -334,9 +357,6 @@
           const updated = new Map($activeSessions)
           updated.set(taskId, { ...session, status: 'running', checkpoint_data: null })
           $activeSessions = updated
-          persistSessionStatus(taskId, 'running', null, null).catch(e =>
-            console.error('[session] Failed to persist running status:', e)
-          )
           if ($checkpointNotification?.ticketId === taskId) {
             $checkpointNotification = null
           }
@@ -482,7 +502,7 @@
             <span>Loading tasks...</span>
           </div>
         {:else}
-          <KanbanBoard onRunAction={handleRunAction} />
+          <KanbanBoard onRunAction={handleRunAction} {isSyncing} onRefresh={triggerGithubSync} />
         {/if}
       </div>
     {/if}

@@ -27,7 +27,9 @@
   let fitAddon: FitAddon | null = null
   let resizeObserver: ResizeObserver | null = null
   let resizeTimeout: ReturnType<typeof setTimeout> | null = null
-  let ptySpawned = $state(false)
+  let visibilityObserver: IntersectionObserver | null = null
+  let ptySpawned = false
+  let expectedPtyInstance: number | null = null
   let terminalMounted = false
   let opencodePort: number | null = null
 
@@ -40,27 +42,22 @@
   $effect(() => {
     if (questionText !== undefined) {
       // Re-fit terminal when banner visibility changes
-      setTimeout(() => fitAddon?.fit(), 50)
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => safeFit())
+      })
     }
   })
 
-  // Auto-spawn PTY when session becomes running and terminal is mounted
-  $effect(() => {
-    if (session && session.status === 'running' && terminalContainer && terminal && !ptySpawned) {
-      spawnPtyForSession()
-    }
-  })
-
-  async function spawnPtyForSession() {
+  // Attach PTY once for the current session. Called from onMount (existing session)
+  // and from the agent-event listener (new session becomes running).
+  async function tryAttachPty() {
     if (ptySpawned) return
-    ptySpawned = true
 
-    const opencodeSessionId = session?.opencode_session_id
-    if (!opencodeSessionId) {
-      console.error('[AgentPanel] No opencode_session_id available for PTY spawn')
-      ptySpawned = false
-      return
-    }
+    const currentSession = $activeSessions.get(taskId)
+    const sessionId = currentSession?.opencode_session_id
+    if (!sessionId) return
+
+    ptySpawned = true  // Set synchronously before any await to prevent duplicate calls
 
     try {
       const worktree = await getWorktreeForTask(taskId)
@@ -72,20 +69,26 @@
       }
       opencodePort = port
 
-      mountTerminal()
       await setupPtyListeners()
-
       const cols = terminal?.cols ?? 80
       const rows = terminal?.rows ?? 24
-      await spawnPty(taskId, port, opencodeSessionId, cols, rows)
-      status = 'running'
+      expectedPtyInstance = await spawnPty(taskId, port, sessionId, cols, rows)
+      terminal?.focus()
+
+      if (currentSession.status === 'running') {
+        status = 'running'
+      }
     } catch (e) {
-      console.error('[AgentPanel] Failed to spawn PTY:', e)
+      console.error('[AgentPanel] Failed to attach PTY:', e)
       ptySpawned = false
     }
   }
 
   async function setupPtyListeners() {
+    // Clean up old listeners before registering new ones (prevents listener leak)
+    if (ptyOutputUnlisten) { ptyOutputUnlisten(); ptyOutputUnlisten = null }
+    if (ptyExitUnlisten) { ptyExitUnlisten(); ptyExitUnlisten = null }
+
     // Listen for PTY output → write to xterm
     ptyOutputUnlisten = await listen<PtyEvent>(`pty-output-${taskId}`, (event) => {
       if (terminal && event.payload.data) {
@@ -93,8 +96,14 @@
       }
     })
 
-    ptyExitUnlisten = await listen<PtyEvent>(`pty-exit-${taskId}`, () => {
+    ptyExitUnlisten = await listen<PtyEvent>(`pty-exit-${taskId}`, (event) => {
+      const exitInstance = event.payload?.instance_id
+      if (exitInstance != null && exitInstance !== expectedPtyInstance) {
+        console.warn(`[AgentPanel] Ignoring stale pty-exit (instance ${exitInstance}, expected ${expectedPtyInstance})`)
+        return
+      }
       ptySpawned = false
+      expectedPtyInstance = null
     })
   }
 
@@ -135,50 +144,40 @@
     } finally {
       loadingHistory = false
     }
-
-    // Re-attach PTY after loadingHistory is false so the terminal-wrapper div
-    // is in the DOM and mountTerminal() can open xterm into it.
-    const reattachSession = $activeSessions.get(taskId)
-    if (reattachSession?.opencode_session_id) {
-      try {
-        const worktree = await getWorktreeForTask(taskId)
-        if (worktree?.opencode_port) {
-          opencodePort = worktree.opencode_port
-          await setupPtyListeners()
-          const cols = terminal?.cols ?? 80
-          const rows = terminal?.rows ?? 24
-          await spawnPty(taskId, worktree.opencode_port, reattachSession.opencode_session_id, cols, rows)
-          ptySpawned = true
-        }
-      } catch (e) {
-        console.error('[AgentPanel] Failed to re-attach PTY for completed session:', e)
-      }
-    }
   }
 
-  function mountTerminal() {
-    if (terminalMounted || !terminal || !terminalContainer) return
-    terminal.open(terminalContainer)
-    terminalMounted = true
-    fitAddon?.fit()
+  function safeFit(): void {
+    if (!fitAddon || !terminalContainer) return
+    if (terminalContainer.clientWidth === 0 || terminalContainer.clientHeight === 0) return
+    const proposed = fitAddon.proposeDimensions()
+    if (!proposed || isNaN(proposed.cols) || isNaN(proposed.rows)) return
+    fitAddon.fit()
+  }
 
-    resizeObserver = new ResizeObserver(() => {
+  async function mountTerminal(): Promise<void> {
+    if (terminalMounted || !terminal || !terminalContainer) return
+
+    // Wait for fonts to load so CharSizeService measures correctly
+    await Promise.race([
+      document.fonts.ready,
+      new Promise<void>(resolve => setTimeout(resolve, 3000))
+    ])
+
+    terminal.open(terminalContainer)
+    terminal.focus()
+    terminalMounted = true
+    requestAnimationFrame(() => {
+      safeFit()
+    })
+
+    resizeObserver = new ResizeObserver((entries) => {
       if (!terminal || !terminalContainer) return
-      if (!resizeTimeout) {
-        // Leading edge: fire immediately on first resize event
-        fitAddon?.fit()
-        if (terminal && ptySpawned) {
-          resizePty(taskId, terminal.cols, terminal.rows).catch((e) => {
-            console.error('[AgentPanel] Failed to resize PTY:', e)
-          })
-        }
-      } else {
-        clearTimeout(resizeTimeout)
-      }
+      const { width, height } = entries[0].contentRect
+      if (width === 0 || height === 0) return
+      if (resizeTimeout) clearTimeout(resizeTimeout)
       resizeTimeout = setTimeout(() => {
         resizeTimeout = null
-        // Trailing edge: fire once more to catch final size
-        fitAddon?.fit()
+        safeFit()
         if (terminal && ptySpawned) {
           resizePty(taskId, terminal.cols, terminal.rows).catch((e) => {
             console.error('[AgentPanel] Failed to resize PTY:', e)
@@ -187,6 +186,19 @@
       }, 100)
     })
     resizeObserver.observe(terminalContainer)
+
+    // Re-fit and refresh terminal when it becomes visible (e.g., after tab/view switch)
+    visibilityObserver = new IntersectionObserver((entries) => {
+      const entry = entries[entries.length - 1]
+      if (entry.isIntersecting) {
+        requestAnimationFrame(() => {
+          safeFit()
+          terminal?.refresh(0, (terminal?.rows ?? 1) - 1)
+          terminal?.focus()
+        })
+      }
+    }, { threshold: 0 })
+    visibilityObserver.observe(terminalContainer)
 
     terminal.onData((data) => {
       if (ptySpawned) {
@@ -238,9 +250,12 @@
 
     // Mount terminal immediately — by onMount time, bind:this has set terminalContainer.
     // In Svelte 5, $effect won't track plain let variables, so we mount directly here.
-    mountTerminal()
+    await mountTerminal()
 
     await loadSessionHistory()
+
+    // Attach PTY once for whatever session exists at panel open
+    await tryAttachPty()
 
     unlisten = await listen<AgentEvent>('agent-event', (event) => {
       if (event.payload.task_id !== taskId) return
@@ -257,11 +272,11 @@
           if (statusType === 'idle') {
             status = 'complete'
           } else if (statusType === 'busy') {
-            console.log('[AgentPanel] Session status busy (running) for task:', taskId)
             status = 'running'
+            tryAttachPty()
           } else if (statusType === 'retry') {
-            console.log('[AgentPanel] Session status retry (running) for task:', taskId)
             status = 'running'
+            tryAttachPty()
           }
         } catch { /* ignore parse errors */ }
       } else if (eventType === 'session.error') {
@@ -277,12 +292,14 @@
     if (ptyExitUnlisten) ptyExitUnlisten()
     if (resizeTimeout) clearTimeout(resizeTimeout)
     if (resizeObserver) resizeObserver.disconnect()
+    if (visibilityObserver) visibilityObserver.disconnect()
     const isSessionRunning = session?.status === 'running'
     if (ptySpawned && !isSessionRunning) {
       killPty(taskId).catch((e) => {
         console.error('[AgentPanel] Failed to kill PTY on destroy:', e)
       })
     }
+    expectedPtyInstance = null
     if (terminal) terminal.dispose()
   })
 
@@ -365,7 +382,7 @@
     </div>
     <div class="flex items-center gap-3">
       {#if status === 'running'}
-        <button class="btn btn-error btn-sm uppercase tracking-wide" onclick={handleAbort}>
+        <button class="btn btn-error btn-sm uppercase tracking-wide shadow-sm hover:shadow-md transition-shadow" onclick={handleAbort}>
           Abort
         </button>
       {/if}
@@ -382,12 +399,12 @@
   <div class="flex-1 overflow-hidden min-h-0 bg-base-100 border border-base-300 rounded-md relative">
     <div class="terminal-wrapper" bind:this={terminalContainer}></div>
     {#if loadingHistory}
-      <div class="absolute inset-0 flex flex-col items-center justify-center p-16 gap-4 bg-base-100 z-[1]">
+      <div class="absolute inset-0 flex flex-col items-center justify-center p-16 gap-4 bg-base-100 z-[1] pointer-events-none">
         <span class="loading loading-spinner loading-md text-primary"></span>
         <div class="text-base font-semibold text-base-content">Loading session output...</div>
       </div>
     {:else if !session && status === 'idle'}
-      <div class="absolute inset-0 flex flex-col items-center justify-center p-16 gap-4 bg-base-100 z-[1]">
+      <div class="absolute inset-0 flex flex-col items-center justify-center p-16 gap-4 bg-base-100 z-[1] pointer-events-none">
         <svg class="w-16 h-16 text-base-content/40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -414,15 +431,15 @@
   }
 
   :global(.terminal-wrapper .xterm-viewport::-webkit-scrollbar-track) {
-    background: oklch(var(--color-base-200));
+    background: var(--color-base-200);
   }
 
   :global(.terminal-wrapper .xterm-viewport::-webkit-scrollbar-thumb) {
-    background: oklch(var(--color-base-300));
+    background: var(--color-base-300);
     border-radius: 3px;
   }
 
   :global(.terminal-wrapper .xterm-viewport::-webkit-scrollbar-thumb:hover) {
-    background: oklch(var(--color-base-content) / 0.4);
+    background: color-mix(in oklch, var(--color-base-content) 40%, transparent);
   }
 </style>

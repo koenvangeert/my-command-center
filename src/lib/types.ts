@@ -71,6 +71,14 @@ export interface PullRequestInfo {
   updated_at: number;
 }
 
+export interface PollResult {
+  new_comments: number;
+  ci_changes: number;
+  review_changes: number;
+  pr_changes: number;
+  errors: number;
+}
+
 /** Check if a PR is ready to merge (open + CI green + approved) */
 export function isReadyToMerge(pr: PullRequestInfo): boolean {
   return pr.state === 'open'
@@ -184,6 +192,8 @@ export interface PrFileDiff {
   changes: number;
   patch: string | null;
   previous_filename: string | null;
+  is_truncated: boolean;
+  patch_line_count: number | null;
 }
 
 /** Inline review comment from GitHub PR */
@@ -243,6 +253,7 @@ export interface PtySpawnRequest {
 export interface PtyEvent {
   task_id: string;
   data: string;
+  instance_id?: number;
 }
 
 

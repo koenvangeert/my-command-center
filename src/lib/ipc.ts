@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Task, AgentSession, AgentLog, PrComment, PullRequestInfo, OpenCodeStatus, AgentInfo, Project, WorktreeInfo, ImplementationStatus, ReviewPullRequest, PrFileDiff, ReviewComment, ReviewSubmissionComment, SelfReviewComment } from "./types";
+import type { Task, AgentSession, AgentLog, PrComment, PollResult, PullRequestInfo, OpenCodeStatus, AgentInfo, Project, WorktreeInfo, ImplementationStatus, ReviewPullRequest, PrFileDiff, ReviewComment, ReviewSubmissionComment, SelfReviewComment } from "./types";
 
 export async function createTask(title: string, status: string, jiraKey: string | null, projectId: string | null): Promise<Task> {
   return invoke<Task>("create_task", { title, status, jiraKey, projectId });
@@ -88,8 +88,8 @@ export async function getAgentLogs(sessionId: string): Promise<AgentLog[]> {
   return invoke<AgentLog[]>("get_agent_logs", { sessionId });
 }
 
-export async function pollPrCommentsNow(): Promise<number> {
-  return invoke<number>("poll_pr_comments_now");
+export async function forceGithubSync(): Promise<PollResult> {
+  return invoke<PollResult>("force_github_sync");
 }
 
 export async function getPullRequests(): Promise<PullRequestInfo[]> {
@@ -122,10 +122,6 @@ export async function setConfig(key: string, value: string): Promise<void> {
 
 export async function getTaskDetail(taskId: string): Promise<Task> {
   return invoke<Task>("get_task_detail", { taskId });
-}
-
-export async function persistSessionStatus(taskId: string, status: string, errorMessage: string | null, checkpointData?: string | null): Promise<void> {
-  return invoke("persist_session_status", { taskId, status, errorMessage, checkpointData });
 }
 
 export async function getLatestSession(taskId: string): Promise<AgentSession | null> {
@@ -172,8 +168,8 @@ export async function submitPrReview(owner: string, repo: string, prNumber: numb
   return invoke<void>("submit_pr_review", { owner, repo, prNumber, event, body, comments, commitId });
 }
 
-export async function spawnPty(taskId: string, serverPort: number, opencodeSessionId: string, cols: number, rows: number): Promise<void> {
-  return invoke("pty_spawn", { taskId, serverPort, opencodeSessionId, cols, rows });
+export async function spawnPty(taskId: string, serverPort: number, opencodeSessionId: string, cols: number, rows: number): Promise<number> {
+  return invoke<number>("pty_spawn", { taskId, serverPort, opencodeSessionId, cols, rows });
 }
 
 export async function writePty(taskId: string, data: string): Promise<void> {
