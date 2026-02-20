@@ -37,7 +37,7 @@
 </script>
 
 <Card
-  class="block px-3 py-2.5 {statusClass === 'running' ? 'running' : ''} {statusClass === 'paused' ? 'paused' : ''} {statusClass === 'failed' ? 'failed' : ''} {statusClass === 'interrupted' ? 'interrupted' : ''} {statusClass === 'completed' ? 'completed' : ''} {needsInput ? 'needs-input' : ''}"
+  class="block px-3 py-2.5 {statusClass === 'running' ? 'running' : ''} {statusClass === 'paused' && !needsInput ? 'paused' : ''} {statusClass === 'failed' ? 'failed' : ''} {statusClass === 'interrupted' ? 'interrupted' : ''} {statusClass === 'completed' ? 'completed' : ''} {needsInput ? 'needs-input' : ''}"
   onclick={handleClick}
 >
   <div class="flex items-center justify-between mb-1">
@@ -130,8 +130,10 @@
 <style>
   /* Status border-left indicators — use daisyUI theme color vars */
   :global(.running) {
-    border-left: 3px solid oklch(var(--color-success));
+    border: 2px solid oklch(var(--color-success));
+    background-color: oklch(var(--color-base-100));
     background-image: linear-gradient(to right, oklch(var(--color-success) / 0.05), transparent 40%);
+    animation: border-pulse-success 2s ease-in-out infinite;
   }
   :global(.completed) {
     border-left: 3px solid oklch(var(--color-primary));
@@ -151,13 +153,28 @@
   }
   :global(.needs-input) {
     border: 2px solid oklch(var(--color-warning));
-    background: oklch(var(--color-warning) / 0.08);
-    box-shadow: 0 0 12px oklch(var(--color-warning) / 0.15);
-    animation: needs-input-pulse 2s ease-in-out infinite;
+    background-color: oklch(var(--color-base-100));
+    animation: border-pulse-warning 2s ease-in-out infinite;
   }
-  @keyframes needs-input-pulse {
-    0%, 100% { box-shadow: 0 0 12px oklch(var(--color-warning) / 0.15); }
-    50% { box-shadow: 0 0 20px oklch(var(--color-warning) / 0.3); }
+  @keyframes border-pulse-success {
+    0%, 100% {
+      border-color: oklch(var(--color-success));
+      box-shadow: 0 0 8px oklch(var(--color-success) / 0.3);
+    }
+    50% {
+      border-color: oklch(var(--color-success) / 0.4);
+      box-shadow: 0 0 3px oklch(var(--color-success) / 0.1);
+    }
+  }
+  @keyframes border-pulse-warning {
+    0%, 100% {
+      border-color: oklch(var(--color-warning));
+      box-shadow: 0 0 8px oklch(var(--color-warning) / 0.3);
+    }
+    50% {
+      border-color: oklch(var(--color-warning) / 0.4);
+      box-shadow: 0 0 3px oklch(var(--color-warning) / 0.1);
+    }
   }
   @keyframes badge-pulse {
     0%, 100% { opacity: 1; }
