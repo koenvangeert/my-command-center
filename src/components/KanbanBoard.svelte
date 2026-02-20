@@ -2,7 +2,7 @@
   import type { Task, AgentSession, KanbanColumn, Action } from '../lib/types'
   import { COLUMNS, COLUMN_LABELS } from '../lib/types'
   import { tasks, selectedTaskId, activeSessions, ticketPrs, error, activeProjectId, searchQuery } from '../lib/stores'
-  import { updateTaskStatus, deleteTask } from '../lib/ipc'
+  import { updateTaskStatus, deleteTask, clearDoneTasks } from '../lib/ipc'
   import { loadActions, getEnabledActions } from '../lib/actions'
   import TaskCard from './TaskCard.svelte'
 
@@ -101,6 +101,21 @@
     }
   }
 
+  let isClearing = $state(false)
+
+  async function handleClearDone() {
+    if (!$activeProjectId) return
+    isClearing = true
+    try {
+      await clearDoneTasks($activeProjectId)
+    } catch (err: unknown) {
+      console.error('Failed to clear done tasks:', err)
+      $error = String(err)
+    } finally {
+      isClearing = false
+    }
+  }
+
   function handleGlobalKeydown(e: KeyboardEvent) {
     if (e.metaKey && e.key === '/') {
       e.preventDefault()
@@ -160,9 +175,23 @@
     <div class="flex-1 min-w-0 flex flex-col bg-base-200 rounded-lg border border-base-300">
        <div class="flex items-center justify-between px-3.5 py-3 border-b border-base-300">
          <span class="text-xs font-semibold text-base-content uppercase tracking-wider">{COLUMN_LABELS[column]}</span>
-         <div class="flex items-center gap-2">
-           <span class="badge badge-ghost badge-sm">{columnTasks.length}</span>
-         </div>
+          <div class="flex items-center gap-2">
+            {#if column === 'done' && columnTasks.length > 0}
+              <button
+                class="btn btn-ghost btn-xs text-base-content/50 hover:text-error"
+                onclick={handleClearDone}
+                disabled={isClearing}
+                title="Clear all done tasks"
+              >
+                {#if isClearing}
+                  <span class="loading loading-spinner loading-xs"></span>
+                {:else}
+                  Clear
+                {/if}
+              </button>
+            {/if}
+            <span class="badge badge-ghost badge-sm">{columnTasks.length}</span>
+          </div>
        </div>
       <div class="flex-1 p-2 flex flex-col gap-2 overflow-y-auto">
         {#each columnTasks as task (task.id)}
