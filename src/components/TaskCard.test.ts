@@ -28,6 +28,8 @@ const basePr: PullRequestInfo = {
   head_sha: 'abc123',
   ci_status: null,
   ci_check_runs: null,
+  review_status: null,
+  merged_at: null,
   created_at: 1000,
   updated_at: 2000,
 }
@@ -307,6 +309,49 @@ describe('TaskCard', () => {
     expect(screen.queryByText('Passed')).toBeNull()
     expect(screen.queryByText('Failed')).toBeNull()
     expect(screen.queryByText('Pending')).toBeNull()
+  })
+
+  it('renders CI status text for failure', () => {
+    const pr = { ...basePr, ci_status: 'failure' }
+    render(TaskCard, { props: { task: baseTask, pullRequests: [pr] } })
+    expect(screen.getByText('Failed')).toBeTruthy()
+  })
+
+  it('renders CI status text for pending', () => {
+    const pr = { ...basePr, ci_status: 'pending' }
+    render(TaskCard, { props: { task: baseTask, pullRequests: [pr] } })
+    expect(screen.getByText('Pending')).toBeTruthy()
+  })
+
+  it('renders review status text for approved', () => {
+    const pr = { ...basePr, review_status: 'approved' }
+    render(TaskCard, { props: { task: baseTask, pullRequests: [pr] } })
+    expect(screen.getByText('Approved')).toBeTruthy()
+  })
+
+  it('renders review status text for changes requested', () => {
+    const pr = { ...basePr, review_status: 'changes_requested' }
+    render(TaskCard, { props: { task: baseTask, pullRequests: [pr] } })
+    expect(screen.getByText('Changes req.')).toBeTruthy()
+  })
+
+  it('renders review status text for review required', () => {
+    const pr = { ...basePr, review_status: 'review_required' }
+    render(TaskCard, { props: { task: baseTask, pullRequests: [pr] } })
+    expect(screen.getByText('Needs review')).toBeTruthy()
+  })
+
+  it('no review text when review_status is null', () => {
+    render(TaskCard, { props: { task: baseTask, pullRequests: [basePr] } })
+    expect(screen.queryByText('Approved')).toBeNull()
+    expect(screen.queryByText('Changes req.')).toBeNull()
+    expect(screen.queryByText('Needs review')).toBeNull()
+  })
+
+  it('no review text when PR is closed', () => {
+    const pr = { ...basePr, review_status: 'approved', state: 'closed' }
+    render(TaskCard, { props: { task: baseTask, pullRequests: [pr] } })
+    expect(screen.queryByText('Approved')).toBeNull()
   })
 
   it('applies ci-failed class when open PR has ci_status failure', () => {
