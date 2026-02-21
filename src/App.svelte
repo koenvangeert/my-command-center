@@ -3,11 +3,12 @@
   import { listen } from '@tauri-apps/api/event'
   import type { UnlistenFn, Event } from '@tauri-apps/api/event'
   import { tasks, selectedTaskId, activeSessions, checkpointNotification, ciFailureNotification, ticketPrs, error, isLoading, projects, activeProjectId, currentView, reviewRequestCount } from './lib/stores'
-  import { getProjects, getTasksForProject, getOpenCodeStatus, getPullRequests, runAction, getSessionStatus, getLatestSession, getLatestSessions, forceGithubSync } from './lib/ipc'
+   import { getProjects, getTasksForProject, getOpenCodeStatus, getPullRequests, runAction, getSessionStatus, getLatestSession, getLatestSessions, forceGithubSync, createTask, updateTask } from './lib/ipc'
   import type { Task, PullRequestInfo, OpenCodeStatus, AgentEvent } from './lib/types'
   import KanbanBoard from './components/KanbanBoard.svelte'
   import TaskDetailView from './components/TaskDetailView.svelte'
-  import AddTaskDialog from './components/AddTaskDialog.svelte'
+   import PromptInput from './components/PromptInput.svelte'
+  import Modal from './components/Modal.svelte'
   import SettingsPanel from './components/SettingsPanel.svelte'
   import GlobalSettingsPanel from './components/GlobalSettingsPanel.svelte'
   import PrReviewView from './components/PrReviewView.svelte'
@@ -23,7 +24,6 @@
   let showAddDialog = $state(false)
   let isSyncing = $state(false)
   let editingTask = $state<Task | null>(null)
-  let dialogMode = $state<'create' | 'edit'>('create')
   let showProjectSetup = $state(false)
 
   let selectedTask = $derived($tasks.find(t => t.id === $selectedTaskId) || null)
@@ -168,7 +168,6 @@
     if (e.metaKey && e.key === 't') {
       e.preventDefault()
       if (!showAddDialog) {
-        dialogMode = 'create'
         editingTask = null
         showAddDialog = true
       }
@@ -414,7 +413,6 @@
         type="button"
         class="btn btn-primary btn-sm"
         onclick={() => {
-          dialogMode = 'create'
           editingTask = null
           showAddDialog = true
         }}
@@ -507,8 +505,36 @@
       </div>
     {/if}
 
-    {#if showAddDialog}
-      <AddTaskDialog mode={dialogMode} task={editingTask} onClose={() => { showAddDialog = false; editingTask = null }} onTaskSaved={() => { showAddDialog = false; editingTask = null; loadTasks() }} />
+    {#if showAddDialog && $activeProjectId}
+      <Modal onClose={() => { showAddDialog = false; editingTask = null }} maxWidth="640px" overflowVisible>
+        {#snippet header()}
+          <h2 class="text-[0.95rem] font-semibold text-base-content m-0">{editingTask ? 'Edit Task' : 'Create Task'}</h2>
+        {/snippet}
+        <div class="p-4 overflow-visible">
+          <PromptInput
+            projectId={$activeProjectId}
+            value={editingTask ? editingTask.title : ''}
+            jiraKey={editingTask ? (editingTask.jira_key || '') : ''}
+            autofocus={true}
+            onSubmit={async (prompt, jiraKey) => {
+              try {
+                if (editingTask) {
+                  await updateTask(editingTask.id, prompt, jiraKey)
+                } else {
+                  await createTask(prompt, 'backlog', jiraKey, $activeProjectId)
+                }
+                showAddDialog = false
+                editingTask = null
+                await loadTasks()
+              } catch (e) {
+                console.error('Failed to save task:', e)
+                $error = String(e)
+              }
+            }}
+            onCancel={() => { showAddDialog = false; editingTask = null }}
+          />
+        </div>
+      </Modal>
     {/if}
 
     {#if showProjectSetup}

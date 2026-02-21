@@ -4,11 +4,12 @@
   interface Props {
     onClose: () => void
     maxWidth?: string
+    overflowVisible?: boolean
     header?: Snippet
     children: Snippet
   }
 
-  let { onClose, maxWidth = '500px', header, children }: Props = $props()
+  let { onClose, maxWidth = '500px', overflowVisible = false, header, children }: Props = $props()
 
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') {
@@ -25,7 +26,7 @@
 </script>
 
 <div class="modal modal-open" onclick={handleOverlayClick} onkeydown={handleKeydown} role="dialog" aria-modal="true" tabindex="-1">
-  <div class="modal-box bg-base-100 shadow-xl p-0 flex flex-col max-h-[90vh]" style="max-width: {maxWidth}">
+  <div class="modal-box bg-base-100 shadow-xl p-0 flex flex-col max-h-[90vh] {overflowVisible ? 'overflow-visible' : ''}" style="max-width: {maxWidth}">
     <div class="flex items-center justify-between px-5 py-4 border-b border-base-300">
       {#if header}
         {@render header()}

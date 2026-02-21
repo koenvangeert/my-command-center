@@ -259,6 +259,9 @@ fn main() {
             commands::self_review::get_archived_self_review_comments,
             commands::self_review::delete_self_review_comment,
             commands::self_review::archive_self_review_comments,
+            commands::opencode::list_opencode_commands,
+            commands::opencode::search_opencode_files,
+            commands::opencode::list_opencode_agents,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
