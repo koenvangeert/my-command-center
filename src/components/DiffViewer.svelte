@@ -8,6 +8,7 @@
   import { toGitDiffViewData, isTruncated, getTruncationStats, type FileContents } from '../lib/diffAdapter'
   import { buildExtendData, type CommentDisplayData } from '../lib/diffComments'
   import { diffHighlighter } from '../lib/diffHighlighter'
+  import { createDiffSearch } from '../lib/useDiffSearch.svelte'
 
   setEnableFastDiffTemplate(true)
 
@@ -29,7 +30,12 @@
   let fileContentsMap = $state<Map<string, FileContents>>(new Map())
   let collapsedFiles = $state(new Set<string>())
 
-  // Auto-collapse large files on initial load (plain let, not $state — only a guard)
+  const search = createDiffSearch({
+    getDiffViewMode: () => diffViewMode,
+    getDiffViewWrap: () => diffViewWrap,
+    getCollapsedFiles: () => collapsedFiles,
+  })
+
   let hasAutoCollapsed = false
 
   function getStatusIcon(status: string): string {
@@ -122,9 +128,15 @@
   const totalFiles = $derived(files.length)
   const collapsedCount = $derived(collapsedFiles.size)
   const showLargeDiffWarning = $derived(totalChanges > 5000)
+
 </script>
 
-<div class="flex flex-col flex-1 min-w-0 h-full overflow-hidden">
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+<div
+  class="flex flex-col flex-1 min-w-0 h-full overflow-hidden"
+  tabindex="-1"
+  onkeydown={search.handleRootKeydown}
+>
   <div class="flex items-center gap-1 px-3 py-2 bg-base-200 border-b border-base-300">
     {#if onToggleFileTree}
       <button
@@ -156,9 +168,50 @@
     >
       Wrap
     </button>
+    <div class="w-px h-5 bg-base-300 mx-1 self-center"></div>
+    <button
+      class="btn btn-ghost btn-xs text-base-content/50"
+      onclick={search.open}
+      title="Search (⌘F)"
+    >🔍</button>
+    {#if search.visible}
+      <input
+        type="text"
+        class="input input-xs input-bordered w-40"
+        placeholder="Search diff..."
+        value={search.query}
+        oninput={(e: Event) => search.setQuery((e.target as HTMLInputElement).value)}
+        bind:this={search.inputEl}
+        onkeydown={search.handleKeydown}
+      />
+      <span class="text-xs text-base-content/50 tabular-nums">
+        {#if search.query && search.matchCount === 0}
+          0 results
+        {:else if search.matchCount > 0}
+          {search.currentIndex + 1} of {search.matchCount}
+        {/if}
+      </span>
+      <button
+        class="btn btn-ghost btn-xs"
+        onclick={search.goToPrev}
+        disabled={search.matchCount === 0}
+        title="Previous match (Shift+Enter)"
+      >▲</button>
+      <button
+        class="btn btn-ghost btn-xs"
+        onclick={search.goToNext}
+        disabled={search.matchCount === 0}
+        title="Next match (Enter)"
+      >▼</button>
+      <button
+        class="btn btn-ghost btn-xs"
+        onclick={search.close}
+        title="Close search (Escape)"
+      >✕</button>
+    {/if}
   </div>
 
-  <div class="flex-1 overflow-y-auto overflow-x-hidden bg-base-100">
+  <div class="flex-1 overflow-y-auto overflow-x-hidden bg-base-100" bind:this={search.scrollContainer} ondblclick={search.handleDoubleClick} onclick={search.handleContainerClick}>
     {#if files.length === 0}
       <div class="flex items-center justify-center h-full text-base-content/50 text-sm">No files to display</div>
     {:else}
