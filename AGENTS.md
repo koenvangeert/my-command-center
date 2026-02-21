@@ -180,10 +180,10 @@ async function loadTickets() {
 
 daisyUI v5 component classes + Tailwind CSS v4 utilities in markup. No component-scoped
 `<style>` blocks (except for custom `@keyframes` animations and xterm-specific CSS).
-Light "corporate" theme configured in `src/app.css` via `@plugin "daisyui"`.
+Light "light" theme configured in `src/app.css` via `@plugin "daisyui"`.
 No `tailwind.config.js` — Tailwind v4 uses CSS-first configuration.
 
-**Theme**: `corporate` (light, flat with `--depth: 0`). Set via `data-theme="corporate"` on `<html>`.
+**Theme**: `light` (daisyUI default light theme). Set via `data-theme="light"` on `<html>`.
 Add explicit `shadow-*` utilities where visual depth is needed.
 
 **Color mapping** (daisyUI semantic colors):
