@@ -204,6 +204,16 @@ export async function getTaskFileContents(taskId: string, path: string, oldPath:
   return invoke<[string, string]>("get_task_file_contents", { taskId, path, oldPath, status, includeUncommitted });
 }
 
+export interface FileContentRequest {
+  path: string;
+  oldPath: string | null;
+  status: string;
+}
+
+export async function getTaskBatchFileContents(taskId: string, files: FileContentRequest[], includeUncommitted: boolean): Promise<[string, string][]> {
+  return invoke<[string, string][]>("get_task_batch_file_contents", { taskId, files: files.map(f => ({ path: f.path, old_path: f.oldPath, status: f.status })), includeUncommitted });
+}
+
 export async function addSelfReviewComment(taskId: string, commentType: string, filePath: string | null, lineNumber: number | null, body: string): Promise<number> {
   return invoke<number>("add_self_review_comment", { taskId, commentType, filePath, lineNumber, body });
 }

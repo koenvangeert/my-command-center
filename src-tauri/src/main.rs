@@ -261,6 +261,7 @@ fn main() {
             commands::pty::pty_kill,
             commands::self_review::get_task_diff,
             commands::self_review::get_task_file_contents,
+            commands::self_review::get_task_batch_file_contents,
             commands::self_review::add_self_review_comment,
             commands::self_review::get_active_self_review_comments,
             commands::self_review::get_archived_self_review_comments,

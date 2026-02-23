@@ -42,7 +42,12 @@
     return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
   }
 
-  async function loadComments() {
+  async function loadComments(force = false) {
+    // Skip IPC calls if stores already have data (unless forced)
+    if (!force && ($selfReviewGeneralComments.length > 0 || $selfReviewArchivedComments.length > 0)) {
+      return
+    }
+
     loadError = null
     try {
       const [active, archived] = await Promise.all([
@@ -67,8 +72,8 @@
       await addSelfReviewComment(taskId, 'general', null, null, body)
       newCommentBody = ''
       // Re-fetch to get the full comment object with id, round, created_at
-      const active = await getActiveSelfReviewComments(taskId)
-      $selfReviewGeneralComments = active.filter((c: SelfReviewComment) => c.comment_type === 'general')
+      // Force reload to bypass the guard
+      await loadComments(true)
     } catch (e) {
       console.error('Failed to add comment:', e)
       addError = String(e)

@@ -1,4 +1,5 @@
 use std::sync::Mutex;
+use serde::Deserialize;
 use tauri::State;
 use crate::{db, diff_parser};
 
@@ -122,6 +123,66 @@ pub async fn get_task_diff(
     Ok(diffs)
 }
 
+// ============================================================================
+// File content helpers
+// ============================================================================
+
+async fn fetch_file_contents(
+    worktree_path: &str,
+    merge_base: &str,
+    path: &str,
+    old_path: Option<&str>,
+    status: &str,
+    include_uncommitted: bool,
+) -> Result<(String, String), String> {
+    let old_content = if status == "added" {
+        String::new()
+    } else {
+        let old_file_path = old_path.unwrap_or(path);
+        let old_output = tokio::process::Command::new("git")
+            .arg("-C")
+            .arg(worktree_path)
+            .args(["show", &format!("{}:{}", merge_base, old_file_path)])
+            .output()
+            .await
+            .map_err(|e| format!("Failed to run git show: {}", e))?;
+
+        if old_output.status.success() {
+            String::from_utf8_lossy(&old_output.stdout).to_string()
+        } else {
+            String::new()
+        }
+    };
+
+    let new_content = if status == "deleted" {
+        String::new()
+    } else if include_uncommitted {
+        let full_path = std::path::Path::new(worktree_path).join(path);
+        tokio::fs::read_to_string(&full_path)
+            .await
+            .unwrap_or_default()
+    } else {
+        let new_output = tokio::process::Command::new("git")
+            .arg("-C")
+            .arg(worktree_path)
+            .args(["show", &format!("HEAD:{}", path)])
+            .output()
+            .await
+            .map_err(|e| format!("Failed to run git show: {}", e))?;
+        if new_output.status.success() {
+            String::from_utf8_lossy(&new_output.stdout).to_string()
+        } else {
+            String::new()
+        }
+    };
+
+    Ok((old_content, new_content))
+}
+
+// ============================================================================
+// Single-file command
+// ============================================================================
+
 #[tauri::command]
 pub async fn get_task_file_contents(
     task_id: String,
@@ -157,48 +218,78 @@ pub async fn get_task_file_contents(
         .trim()
         .to_string();
 
-    let old_content = if status == "added" {
-        String::new()
-    } else {
-        let old_file_path = old_path.as_deref().unwrap_or(&path);
-        let old_output = tokio::process::Command::new("git")
-            .arg("-C")
-            .arg(&worktree_path)
-            .args(["show", &format!("{}:{}", merge_base, old_file_path)])
-            .output()
-            .await
-            .map_err(|e| format!("Failed to run git show: {}", e))?;
+    fetch_file_contents(
+        &worktree_path,
+        &merge_base,
+        &path,
+        old_path.as_deref(),
+        &status,
+        include_uncommitted,
+    )
+    .await
+}
 
-        if old_output.status.success() {
-            String::from_utf8_lossy(&old_output.stdout).to_string()
-        } else {
-            String::new()
-        }
+// ============================================================================
+// Batch command — computes merge-base ONCE, then fetches N files
+// ============================================================================
+
+#[derive(Debug, Deserialize)]
+pub struct FileContentRequest {
+    pub path: String,
+    pub old_path: Option<String>,
+    pub status: String,
+}
+
+#[tauri::command]
+pub async fn get_task_batch_file_contents(
+    task_id: String,
+    files: Vec<FileContentRequest>,
+    include_uncommitted: bool,
+    db: State<'_, Mutex<db::Database>>,
+) -> Result<Vec<(String, String)>, String> {
+    let worktree_path = {
+        let db = db.lock().unwrap();
+        let row = db
+            .get_worktree_for_task(&task_id)
+            .map_err(|e| format!("Failed to get worktree for task: {}", e))?;
+        row.ok_or_else(|| format!("No worktree found for task {}", task_id))?
+            .worktree_path
     };
 
-    let new_content = if status == "deleted" {
-        String::new()
-    } else if include_uncommitted {
-        let full_path = std::path::Path::new(&worktree_path).join(&path);
-        tokio::fs::read_to_string(&full_path)
-            .await
-            .unwrap_or_default()
-    } else {
-        let new_output = tokio::process::Command::new("git")
-            .arg("-C")
-            .arg(&worktree_path)
-            .args(["show", &format!("HEAD:{}", path)])
-            .output()
-            .await
-            .map_err(|e| format!("Failed to run git show: {}", e))?;
-        if new_output.status.success() {
-            String::from_utf8_lossy(&new_output.stdout).to_string()
-        } else {
-            String::new()
-        }
-    };
+    // Compute merge-base ONCE for the entire batch.
+    let merge_base_output = tokio::process::Command::new("git")
+        .arg("-C")
+        .arg(&worktree_path)
+        .args(["merge-base", "origin/main", "HEAD"])
+        .output()
+        .await
+        .map_err(|e| format!("Failed to run git merge-base: {}", e))?;
 
-    Ok((old_content, new_content))
+    if !merge_base_output.status.success() {
+        let stderr = String::from_utf8_lossy(&merge_base_output.stderr);
+        return Err(format!("git merge-base failed: {}", stderr));
+    }
+
+    let merge_base = String::from_utf8_lossy(&merge_base_output.stdout)
+        .trim()
+        .to_string();
+
+    // Fetch each file using the single pre-computed merge-base.
+    let mut results = Vec::with_capacity(files.len());
+    for file in &files {
+        let contents = fetch_file_contents(
+            &worktree_path,
+            &merge_base,
+            &file.path,
+            file.old_path.as_deref(),
+            &file.status,
+            include_uncommitted,
+        )
+        .await?;
+        results.push(contents);
+    }
+
+    Ok(results)
 }
 
 #[tauri::command]
@@ -259,4 +350,44 @@ pub async fn archive_self_review_comments(
     let db = db.lock().unwrap();
     db.archive_self_review_comments(&task_id)
         .map_err(|e| format!("Failed to archive self review comments: {}", e))
+}
+
+// ============================================================================
+// Tests
+// ============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_file_content_request_deserialize() {
+        let json = r#"{"path":"src/main.rs","old_path":null,"status":"modified"}"#;
+        let req: FileContentRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(req.path, "src/main.rs");
+        assert!(req.old_path.is_none());
+        assert_eq!(req.status, "modified");
+    }
+
+    #[test]
+    fn test_file_content_request_deserialize_with_old_path() {
+        let json = r#"{"path":"new/path.rs","old_path":"old/path.rs","status":"renamed"}"#;
+        let req: FileContentRequest = serde_json::from_str(json).unwrap();
+        assert_eq!(req.path, "new/path.rs");
+        assert_eq!(req.old_path.as_deref(), Some("old/path.rs"));
+        assert_eq!(req.status, "renamed");
+    }
+
+    #[test]
+    fn test_batch_request_produces_parallel_results_structure() {
+        let files = vec![
+            FileContentRequest { path: "a.rs".into(), old_path: None, status: "added".into() },
+            FileContentRequest { path: "b.rs".into(), old_path: None, status: "modified".into() },
+            FileContentRequest { path: "c.rs".into(), old_path: Some("old_c.rs".into()), status: "renamed".into() },
+        ];
+
+        assert_eq!(files.len(), 3);
+        let paths: Vec<&str> = files.iter().map(|f| f.path.as_str()).collect();
+        assert_eq!(paths, vec!["a.rs", "b.rs", "c.rs"]);
+    }
 }
