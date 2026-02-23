@@ -14,9 +14,11 @@ vi.mock('../lib/stores', () => ({
 vi.mock('../lib/ipc', () => ({
   getTaskDiff: vi.fn().mockResolvedValue([]),
   getTaskFileContents: vi.fn().mockResolvedValue(['', '']),
+  getTaskBatchFileContents: vi.fn().mockResolvedValue([['', '']]),
   getActiveSelfReviewComments: vi.fn().mockResolvedValue([]),
   getArchivedSelfReviewComments: vi.fn().mockResolvedValue([]),
   getPrComments: vi.fn().mockResolvedValue([]),
+  markCommentAddressed: vi.fn().mockResolvedValue(undefined),
   openUrl: vi.fn(),
   addSelfReviewComment: vi.fn().mockResolvedValue(undefined),
   deleteSelfReviewComment: vi.fn().mockResolvedValue(undefined),
@@ -37,7 +39,7 @@ beforeAll(() => {
   })
 })
 import { selfReviewDiffFiles, selfReviewGeneralComments, selfReviewArchivedComments, pendingManualComments, ticketPrs } from '../lib/stores'
-import { getTaskDiff } from '../lib/ipc'
+import { getTaskDiff, getActiveSelfReviewComments, getTaskBatchFileContents } from '../lib/ipc'
 
 const baseTask: Task = {
   id: 'task-1',
@@ -155,3 +157,63 @@ describe('SelfReviewView uncommitted toggle', () => {
     })
   })
 })
+
+describe('SelfReviewView integration — performance fixes', () => {
+  beforeEach(() => {
+    selfReviewDiffFiles.set([])
+    selfReviewGeneralComments.set([])
+    selfReviewArchivedComments.set([])
+    pendingManualComments.set([])
+    ticketPrs.set(new Map())
+    vi.clearAllMocks()
+  })
+
+  it('getTaskDiff called exactly once on mount', async () => {
+    const mockGetTaskDiff = vi.mocked(getTaskDiff).mockResolvedValue([baseDiff])
+
+    render(SelfReviewView, {
+      props: { task: baseTask, agentStatus: null, onSendToAgent: vi.fn() },
+    })
+
+    await waitFor(() => {
+      expect(mockGetTaskDiff).toHaveBeenCalledTimes(1)
+      expect(mockGetTaskDiff).toHaveBeenCalledWith('task-1', false)
+    })
+  })
+
+  it('getActiveSelfReviewComments called exactly once on mount', async () => {
+    vi.mocked(getTaskDiff).mockResolvedValue([baseDiff])
+    const mockGetActiveComments = vi.mocked(getActiveSelfReviewComments)
+
+    render(SelfReviewView, {
+      props: { task: baseTask, agentStatus: null, onSendToAgent: vi.fn() },
+    })
+
+    await waitFor(() => {
+      expect(mockGetActiveComments).toHaveBeenCalledTimes(1)
+      expect(mockGetActiveComments).toHaveBeenCalledWith('task-1')
+    })
+  })
+
+  it('DiffViewer toolbar visible after toggle (DiffViewer successfully re-mounted)', async () => {
+    vi.mocked(getTaskDiff).mockResolvedValue([baseDiff])
+    vi.mocked(getTaskBatchFileContents).mockResolvedValue([['', '']])
+
+    render(SelfReviewView, {
+      props: { task: baseTask, agentStatus: null, onSendToAgent: vi.fn() },
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTitle('Search (\u2318F)')).toBeTruthy()
+    })
+
+    const cb = screen.getByRole('checkbox') as HTMLInputElement
+    cb.click()
+    cb.dispatchEvent(new Event('change', { bubbles: true }))
+
+    await waitFor(() => {
+      expect(screen.getByTitle('Search (\u2318F)')).toBeTruthy()
+    }, { timeout: 2000 })
+  })
+})
+

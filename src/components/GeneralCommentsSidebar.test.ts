@@ -4,18 +4,24 @@ import { get } from 'svelte/store'
 import GeneralCommentsSidebar from './GeneralCommentsSidebar.svelte'
 import { selfReviewGeneralComments, selfReviewArchivedComments } from '../lib/stores'
 import type { SelfReviewComment } from '../lib/types'
+import {
+  getActiveSelfReviewComments,
+  getArchivedSelfReviewComments,
+  addSelfReviewComment,
+} from '../lib/ipc'
 
-const mockGetActiveSelfReviewComments = vi.fn()
-const mockGetArchivedSelfReviewComments = vi.fn()
-const mockAddSelfReviewComment = vi.fn()
-const mockDeleteSelfReviewComment = vi.fn()
-
+// Use vi.fn() directly in factory to avoid hoisting ReferenceError
 vi.mock('../lib/ipc', () => ({
-  getActiveSelfReviewComments: mockGetActiveSelfReviewComments,
-  getArchivedSelfReviewComments: mockGetArchivedSelfReviewComments,
-  addSelfReviewComment: mockAddSelfReviewComment,
-  deleteSelfReviewComment: mockDeleteSelfReviewComment
+  getActiveSelfReviewComments: vi.fn(),
+  getArchivedSelfReviewComments: vi.fn(),
+  addSelfReviewComment: vi.fn(),
+  deleteSelfReviewComment: vi.fn(),
 }))
+
+// Typed aliases — evaluated after vi.mock is hoisted and imports are resolved
+const mockGetActiveSelfReviewComments = vi.mocked(getActiveSelfReviewComments)
+const mockGetArchivedSelfReviewComments = vi.mocked(getArchivedSelfReviewComments)
+const mockAddSelfReviewComment = vi.mocked(addSelfReviewComment)
 
 const mockComment: SelfReviewComment = {
   id: 1,
@@ -25,7 +31,8 @@ const mockComment: SelfReviewComment = {
   line_number: null,
   body: 'Test comment',
   created_at: Math.floor(Date.now() / 1000),
-  round: 1
+  round: 1,
+  archived_at: null,
 }
 
 const mockArchivedComment: SelfReviewComment = {
@@ -36,7 +43,8 @@ const mockArchivedComment: SelfReviewComment = {
   line_number: null,
   body: 'Archived comment',
   created_at: Math.floor(Date.now() / 1000) - 86400,
-  round: 0
+  round: 0,
+  archived_at: null,
 }
 
 describe('GeneralCommentsSidebar', () => {
@@ -79,12 +87,16 @@ describe('GeneralCommentsSidebar', () => {
   it('forces reload when add comment is clicked', async () => {
     mockGetActiveSelfReviewComments.mockResolvedValue([mockComment])
     mockGetArchivedSelfReviewComments.mockResolvedValue([mockArchivedComment])
-    mockAddSelfReviewComment.mockResolvedValue(undefined)
+    mockAddSelfReviewComment.mockResolvedValue(1)
 
     selfReviewGeneralComments.set([mockComment])
     selfReviewArchivedComments.set([mockArchivedComment])
 
     vi.clearAllMocks()
+
+    mockGetActiveSelfReviewComments.mockResolvedValue([mockComment])
+    mockGetArchivedSelfReviewComments.mockResolvedValue([mockArchivedComment])
+    mockAddSelfReviewComment.mockResolvedValue(1)
 
     render(GeneralCommentsSidebar, { props: { taskId: 'task-1' } })
 
@@ -92,8 +104,9 @@ describe('GeneralCommentsSidebar', () => {
 
     expect(mockGetActiveSelfReviewComments).not.toHaveBeenCalled()
 
-    const textarea = screen.getByPlaceholderText('Add a testing note… (Cmd+Enter to submit)')
-    await fireEvent.change(textarea, { target: { value: 'New comment' } })
+    const textarea = screen.getByPlaceholderText('Add a testing note… (Cmd+Enter to submit)') as HTMLTextAreaElement
+    textarea.value = 'New comment'
+    await fireEvent.input(textarea)
 
     const addButton = screen.getByText('Add')
     await fireEvent.click(addButton)
@@ -104,14 +117,14 @@ describe('GeneralCommentsSidebar', () => {
     expect(mockGetArchivedSelfReviewComments).toHaveBeenCalled()
   })
 
-  it('renders empty state when no comments', async () => {
+  it('renders empty state when no active comments', async () => {
     mockGetActiveSelfReviewComments.mockResolvedValue([])
-    mockGetArchivedSelfReviewComments.mockResolvedValue([])
+    // Non-empty archived list so store guard stops the reactive re-run loop
+    mockGetArchivedSelfReviewComments.mockResolvedValue([mockArchivedComment])
 
     render(GeneralCommentsSidebar, { props: { taskId: 'task-1' } })
 
     await new Promise((r) => setTimeout(r, 100))
-
     expect(screen.getByText('No comments yet. Add notes from manual testing.')).toBeTruthy()
   })
 
