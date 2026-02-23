@@ -22,10 +22,11 @@
     fileTreeVisible?: boolean
     onToggleFileTree?: () => void
     fetchFileContents?: (file: PrFileDiff) => Promise<FileContents>
+    batchFetchFileContents?: (files: PrFileDiff[]) => Promise<Map<string, FileContents>>
     toolbarExtra?: Snippet
   }
 
-  let { files = [], existingComments = [], repoOwner: _repoOwner = '', repoName: _repoName = '', fileTreeVisible = true, onToggleFileTree, fetchFileContents, toolbarExtra }: Props = $props()
+  let { files = [], existingComments = [], repoOwner: _repoOwner = '', repoName: _repoName = '', fileTreeVisible = true, onToggleFileTree, fetchFileContents, batchFetchFileContents, toolbarExtra }: Props = $props()
 
   let diffViewMode = $state<DiffModeEnum>(DiffModeEnum.Split)
   let diffViewWrap = $state(false)
@@ -98,20 +99,45 @@
 
   // Fetch file contents for all files with patches
   let fetchedKeys = new Set<string>()
-
+  let fetchGeneration = 0
   $effect(() => {
-    if (!fetchFileContents || files.length === 0) return
+    const hasFetcher = batchFetchFileContents || fetchFileContents
+    if (!hasFetcher || files.length === 0) return
 
-    const fetcher = fetchFileContents
-    for (const file of files) {
-      if (!file.patch || fetchedKeys.has(file.filename)) continue
-      fetchedKeys.add(file.filename)
+    const pendingFiles = files.filter(f => f.patch && !fetchedKeys.has(f.filename))
+    if (pendingFiles.length === 0) return
 
-      fetcher(file).then(contents => {
-        fileContentsMap = new Map(fileContentsMap).set(file.filename, contents)
+    const thisGeneration = ++fetchGeneration
+
+    if (batchFetchFileContents) {
+      // ===========================================================================
+      // Batch mode: single IPC call → single Map update → single re-render
+      // ===========================================================================
+      const batchFetcher = batchFetchFileContents
+      batchFetcher(pendingFiles).then(results => {
+        if (thisGeneration !== fetchGeneration) return // stale, discard
+        const next = new Map(fileContentsMap)
+        for (const [filename, contents] of results) {
+          next.set(filename, contents)
+          fetchedKeys.add(filename)
+        }
+        fileContentsMap = next
       }).catch(err => {
-        console.error(`Failed to fetch content for ${file.filename}:`, err)
+        console.error('Failed to batch-fetch file contents:', err)
       })
+    } else {
+      // ===========================================================================
+      // Fallback: per-file fetching (used by PrReviewView)
+      // ===========================================================================
+      const fetcher = fetchFileContents!
+      for (const file of pendingFiles) {
+        fetchedKeys.add(file.filename)
+        fetcher(file).then(contents => {
+          fileContentsMap = new Map(fileContentsMap).set(file.filename, contents)
+        }).catch(err => {
+          console.error(`Failed to fetch content for ${file.filename}:`, err)
+        })
+      }
     }
   })
 

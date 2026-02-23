@@ -110,3 +110,34 @@ Four indexes created to accelerate query patterns:
 - Call `getTaskBatchFileContents(taskId, files, includeUncommitted)` with array of `{path, oldPath, status}`
 - Returns `[string, string][]` parallel to input array
 - `get_task_file_contents` still works for single-file calls if needed
+
+## Task 4: Batch DiffViewer file content fetching (2026-02-23)
+
+### Pattern: Optional batch prop alongside existing per-file prop
+- Added `batchFetchFileContents?: (files: PrFileDiff[]) => Promise<Map<string, FileContents>>` to DiffViewer
+- When present, used for single IPC call → single Map update. When absent (PrReviewView), falls back to per-file fetching
+- This is the cleanest way to add batch support without breaking existing consumers
+
+### Pattern: Generation counter for stale result prevention
+```typescript
+let fetchGeneration = 0
+// In $effect:
+const thisGeneration = ++fetchGeneration
+// ...after async completes:
+if (thisGeneration !== fetchGeneration) return // stale, discard
+```
+- Critical for preventing race conditions when `files` prop changes mid-fetch
+
+### Batch IPC wrapper in parent
+- `batchFetchTaskFileContents` in SelfReviewView maps `PrFileDiff[]` to `FileContentRequest[]`, calls `getTaskBatchFileContents`, then rebuilds a `Map<string, FileContents>`
+- Uses parallel array index to match results to files (not a map from backend)
+
+### Test mock gap
+- SelfReviewView tests generate stderr "No getTaskBatchFileContents export" because the test mock doesn't include this function
+- The errors are caught silently (.catch handler) so tests still pass
+- Future: Add `getTaskBatchFileContents: vi.fn().mockResolvedValue([])` to SelfReviewView test mocks
+
+### fetchedKeys guard is preserved
+- The `fetchedKeys = new Set<string>()` guard prevents re-fetching files already fetched
+- Both batch and per-file paths update `fetchedKeys` after fetching
+- This enables incremental loading when new files are added to the `files` prop

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte'
   import { selfReviewDiffFiles, selfReviewGeneralComments, selfReviewArchivedComments, pendingManualComments, ticketPrs } from '../lib/stores'
-  import { getTaskDiff, getTaskFileContents, getActiveSelfReviewComments, getArchivedSelfReviewComments, getPrComments, markCommentAddressed, openUrl } from '../lib/ipc'
+  import { getTaskDiff, getTaskFileContents, getTaskBatchFileContents, getActiveSelfReviewComments, getArchivedSelfReviewComments, getPrComments, markCommentAddressed, openUrl } from '../lib/ipc'
   import type { Task, PullRequestInfo, PrComment, PrFileDiff } from '../lib/types'
   import type { FileContents } from '../lib/diffAdapter'
   import FileTree from './FileTree.svelte'
@@ -119,6 +119,17 @@
     return { oldContent, newContent }
   }
 
+  async function batchFetchTaskFileContents(files: PrFileDiff[]): Promise<Map<string, FileContents>> {
+    const requests = files.map(f => ({ path: f.filename, oldPath: f.previous_filename ?? null, status: f.status }))
+    const results = await getTaskBatchFileContents(task.id, requests, includeUncommitted)
+    const map = new Map<string, FileContents>()
+    files.forEach((file, i) => {
+      const [oldContent, newContent] = results[i]
+      map.set(file.filename, { oldContent, newContent })
+    })
+    return map
+  }
+
   onMount(async () => {
     isLoading = true
     error = null
@@ -207,6 +218,7 @@
             {fileTreeVisible}
             onToggleFileTree={() => { fileTreeVisible = !fileTreeVisible }}
             fetchFileContents={fetchTaskFileContents}
+            batchFetchFileContents={batchFetchTaskFileContents}
           >
             {#snippet toolbarExtra()}
               <div class="w-px h-5 bg-base-300 mx-1 self-center"></div>
