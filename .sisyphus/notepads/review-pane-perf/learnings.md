@@ -141,3 +141,99 @@ if (thisGeneration !== fetchGeneration) return // stale, discard
 - The `fetchedKeys = new Set<string>()` guard prevents re-fetching files already fetched
 - Both batch and per-file paths update `fetchedKeys` after fetching
 - This enables incremental loading when new files are added to the `files` prop
+
+
+## Task 6: Guard activeSessions Map Recreation on Redundant SSE Status Updates (2026-02-23)
+
+### Problem
+ Every SSE `agent-event` was creating `new Map($activeSessions)` even when status hadn't changed
+ Redundant Map creation triggered unnecessary Svelte reactivity cascades
+ Example: Multiple `session.status { type: 'busy' }` events in quick succession all created new Maps
+
+### Solution: Guard Pattern
+ Added early-return guard checks before every `new Map($activeSessions)` assignment
+ Guard compares incoming status against current `session.status` and returns if they match
+ Pattern: `if (session.status === '<target-status>') return`
+ Only prevents SAME-value updates; actual status changes still propagate correctly
+
+### Implementation Details
+ **8 guard locations** in `src/App.svelte`:
+  1. `action-complete` handler: Guard with `'completed'`
+  2. `implementation-failed` handler: Guard with `'failed'`
+  3. `session.idle` / `statusType === 'idle'`: Guard with `'completed'`
+  4. `statusType === 'busy'`: Guard with `'running'`
+  5. `statusType === 'retry'`: Guard with `'running'`
+  6. `session.error`: Guard with `'failed'`
+  7. `permission.updated` / `question.asked`: Guard with `'paused'`
+  8. `permission.replied` / `question.answered`: Guard with `'running'`
+
+### Key Insight
+ Svelte writable stores only trigger subscribers on **assignment**, not mutation
+ Therefore: `$activeSessions = new Map(...)` always triggers reactivity, even if Map contents are identical
+ Guard prevents the assignment entirely when status is already correct
+ This is simpler and more efficient than debouncing or throttling
+
+### Why Not Debounce/Throttle?
+ Debouncing would delay legitimate status changes (bad UX)
+ Throttling would still create redundant Maps during the throttle window
+ Guard check is O(1) and prevents the problem at the source
+
+### Testing Strategy
+ No new tests needed: guards are transparent to existing event flow
+ Existing tests still pass because guards only prevent redundant updates
+ Build verification: `pnpm build` ✓ (427 modules, no errors)
+
+### Constraints Honored
+ ✓ Did NOT convert `activeSessions` from `writable()` to Svelte 5 runes (separate migration)
+ ✓ Did NOT change SSE event parsing in `sse_bridge.rs` (backend out of scope)
+ ✓ Did NOT debounce or throttle (guard check is sufficient)
+ ✓ Did NOT touch KanbanBoard rendering (separate view, separate task)
+ ✓ Did NOT mutate Map in-place (always use assignment)
+ ✓ Did NOT modify files other than `src/App.svelte`
+
+### Performance Impact
+ **Reduces**: Unnecessary Map recreations on redundant SSE events
+ **Prevents**: Cascading Svelte reactivity updates when status hasn't changed
+ **Maintains**: Correct status propagation for actual state changes
+ **Zero regression**: Pure optimization, no breaking changes
+
+### Key Learnings
+1. **Guard Pattern**: Simple early-return checks prevent unnecessary state updates
+2. **Svelte Reactivity**: Assignment always triggers subscribers, even with identical content
+3. **Event Deduplication**: Guards at the event handler level are simpler than debouncing
+4. **Status Mapping**: OpenCode events map to app statuses (busy→running, idle→completed, etc.)
+5. **Consistency**: All 8 guards follow the same pattern for maintainability
+
+## Task 7: Integration QA and Regression Tests (2026-02-23)
+
+### GeneralCommentsSidebar.test.ts — Fixes Applied
+ **vi.mock hoisting**: `vi.mock` is hoisted before variable declarations. Never reference external `const` variables in the factory. Use `vi.fn()` directly in factory, then `vi.mocked()` for typed aliases after import.
+ **Reactive loop in empty-state test**: `loadComments()` `$effect` tracks store reads. When both stores return `[]`, `filter()` produces new array references each time → infinite re-run. Fix: ensure at least one mock returns non-empty data so the guard breaks the loop.
+ **`fireEvent.change` vs `fireEvent.input`**: Svelte 5 `bind:value` on textarea responds to `input` events, not `change` events.
+
+### SelfReviewView.test.ts — Extensions Added
+ Added `getTaskBatchFileContents` and `markCommentAddressed` to ipc mock (were missing, caused silent errors).
+ 3 new integration tests: `getTaskDiff called exactly once on mount`, `getActiveSelfReviewComments called exactly once on mount`, `DiffViewer toolbar visible after toggle`.
+ Total: 4 → 7 tests.
+
+### DiffViewer.test.ts — Extensions Added
+ **DiffView mock**: Existing tests used `DiffView: {}` (object). New tests render files with patches, which hits the `<DiffView>` render path. Fixed mock to `DiffView: vi.fn().mockReturnValue(null)` so it's callable.
+ **`waitFor` import**: Added to `@testing-library/svelte` import for async assertions.
+ **`PrFileDiff` type import**: Added for typed test fixtures.
+ 6 new integration tests in `DiffViewer file content fetching` describe block:
+  1. `batch fetch is called with files that have patches`
+  2. `batch fetch is preferred over per-file fetch when both are provided`
+  3. `per-file fetch is used when no batch fetch is provided`
+  4. `files without patches are not passed to batch fetch`
+  5. `re-fetches when includeUncommitted prop changes`
+  6. `batch fetch called once for multiple files in a single render`
+ Total: 18 → 24 tests.
+
+### Pre-existing Failures (NOT introduced by this work)
+ `TaskDetailView.test.ts > renders status badge with status label` — fails on baseline too
+ `diff_parser::tests::test_multi_file_mixed_truncation` — fails on baseline too
+ `diff_parser::tests::test_truncation_large_patch` — fails on baseline too
+
+### Commit History
+ `b2e2109`: `test: fix test mocks for review pane performance changes` — GeneralCommentsSidebar + SelfReviewView
+ `b070f0d`: `test: add integration tests for review pane performance fixes` — DiffViewer
