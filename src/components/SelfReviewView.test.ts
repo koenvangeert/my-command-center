@@ -23,10 +23,6 @@ vi.mock('../lib/ipc', () => ({
   archiveSelfReviewComments: vi.fn().mockResolvedValue(undefined),
 }))
 
-vi.mock('@tauri-apps/api/event', () => ({
-  listen: vi.fn().mockResolvedValue(() => {}),
-}))
-
 import SelfReviewView from './SelfReviewView.svelte'
 
 beforeAll(() => {
