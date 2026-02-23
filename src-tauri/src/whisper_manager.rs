@@ -299,16 +299,18 @@ impl WhisperManager {
     /// Download the Whisper model file with SHA1 verification.
     ///
     /// Emits `whisper-download-progress` Tauri events throughout the download.
-    /// On completion, verifies the SHA1 hash and saves the path to the config DB.
+    /// On completion, verifies the SHA1 hash and returns the path to the downloaded model.
     ///
     /// # Arguments
     /// * `app` — Tauri `AppHandle` used to emit progress events.
-    /// * `db` — Database handle for persisting the model path after download.
+    ///
+    /// # Returns
+    /// The absolute path to the downloaded model file on success.
     ///
     /// # Errors
     /// - `WhisperError::ModelDownloadFailed` on network or I/O errors.
     /// - `WhisperError::HashMismatch` if the downloaded file's SHA1 differs from expected.
-    pub async fn download_model(&self, app: AppHandle, db: &Database) -> Result<(), WhisperError> {
+    pub async fn download_model(&self, app: AppHandle) -> Result<String, WhisperError> {
         // Determine the target path and ensure parent directories exist.
         let dest_path = Self::model_file_path().ok_or_else(|| {
             WhisperError::ModelDownloadFailed("Cannot resolve data directory".to_string())
@@ -391,13 +393,9 @@ impl WhisperManager {
             WhisperError::ModelDownloadFailed(format!("rename temp to dest: {}", e))
         })?;
 
-        // Persist model path to config DB.
         let path_str = dest_path.to_string_lossy().to_string();
-        db.set_config(CONFIG_KEY, &path_str)
-            .map_err(|e| WhisperError::ModelDownloadFailed(format!("save config: {}", e)))?;
-
         println!("[whisper] Model downloaded and verified: {}", path_str);
-        Ok(())
+        Ok(path_str)
     }
 }
 

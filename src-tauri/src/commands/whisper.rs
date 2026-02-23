@@ -24,7 +24,12 @@ pub async fn download_whisper_model(
     app: tauri::AppHandle,
     db: State<'_, Mutex<db::Database>>,
 ) -> Result<(), String> {
+    let path = whisper.download_model(app).await
+        .map_err(|e| format!("Model download failed: {}", e))?;
+    
     let db = db.lock().unwrap();
-    whisper.download_model(app, &db).await
-        .map_err(|e| format!("Model download failed: {}", e))
+    db.set_config("whisper_model_path", &path)
+        .map_err(|e| format!("Failed to save model path to config: {}", e))?;
+    
+    Ok(())
 }

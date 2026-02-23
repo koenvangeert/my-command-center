@@ -22,6 +22,7 @@ use jira_client::JiraClient;
 use github_client::GitHubClient;
 use opencode_client::OpenCodeClient;
 use pty_manager::PtyManager;
+use whisper_manager::WhisperManager;
 
 // ============================================================================
 // Startup: Resume OpenCode Servers
@@ -161,6 +162,7 @@ fn main() {
             let server_manager = server_manager::ServerManager::new();
             let sse_bridge_manager = sse_bridge::SseBridgeManager::new();
             let pty_manager = PtyManager::new();
+            let whisper_manager = WhisperManager::new();
 
             app.manage(opencode_client);
             app.manage(jira_client);
@@ -168,6 +170,7 @@ fn main() {
             app.manage(server_manager);
             app.manage(sse_bridge_manager);
             app.manage(pty_manager);
+            app.manage(whisper_manager);
 
             if let Err(e) = server_manager::ServerManager::new().cleanup_stale_pids() {
                 eprintln!("Failed to cleanup stale server PIDs: {}", e);
@@ -262,6 +265,9 @@ fn main() {
             commands::self_review::archive_self_review_comments,
             commands::opencode::list_opencode_commands,
             commands::opencode::search_opencode_files,
+            commands::whisper::transcribe_audio,
+            commands::whisper::get_whisper_model_status,
+            commands::whisper::download_whisper_model,
             commands::opencode::list_opencode_agents,
         ])
         .run(tauri::generate_context!())
