@@ -114,4 +114,19 @@ describe('ReviewPrCard', () => {
     const card = screen.getByRole('button')
     expect(card.classList.contains('selected')).toBe(false)
   })
+
+  it('applies viewed styling when viewed_at is set', () => {
+    const viewedPr = { ...basePr, viewed_at: 1234567890, viewed_head_sha: 'abc123' }
+    const onClick = () => {}
+    render(ReviewPrCard, { props: { pr: viewedPr, selected: false, onClick } })
+    const card = screen.getByRole('button')
+    expect(card.classList.contains('opacity-50')).toBe(true)
+  })
+
+  it('does not apply viewed styling when viewed_at is null', () => {
+    const onClick = () => {}
+    render(ReviewPrCard, { props: { pr: basePr, selected: false, onClick } })
+    const card = screen.getByRole('button')
+    expect(card.classList.contains('opacity-50')).toBe(false)
+  })
 })
