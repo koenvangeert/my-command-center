@@ -10,6 +10,7 @@
   import { diffHighlighter } from '../lib/diffHighlighter'
   import { createDiffSearch } from '../lib/useDiffSearch.svelte'
   import { sortFilesAsTree } from '../lib/fileSort'
+  import { getFileStatusIcon, getFileStatusColor, getFileStatusLabel } from '../lib/fileStatus'
   import type { Snippet } from 'svelte'
 
   setEnableFastDiffTemplate(true)
@@ -45,36 +46,6 @@
   })
 
   let hasAutoCollapsed = false
-
-  function getStatusIcon(status: string): string {
-    switch (status) {
-      case 'added': return '+'
-      case 'removed': return '−'
-      case 'modified': return '±'
-      case 'renamed': return '→'
-      default: return '•'
-    }
-  }
-
-  function getStatusColor(status: string): string {
-    switch (status) {
-      case 'added': return 'var(--success)'
-      case 'removed': return 'var(--error)'
-      case 'modified': return 'var(--warning)'
-      case 'renamed': return 'var(--accent)'
-      default: return 'var(--text-secondary)'
-    }
-  }
-
-  function getStatusLabel(status: string): string {
-    switch (status) {
-      case 'added': return 'Added'
-      case 'removed': return 'Deleted'
-      case 'modified': return 'Modified'
-      case 'renamed': return 'Renamed'
-      default: return status
-    }
-  }
 
   function getStableDiffData(file: PrFileDiff): DiffViewData {
     const contents = fileContentsMap.get(file.filename)
@@ -294,8 +265,8 @@
         <div data-diff-file={file.filename} class="border border-base-300 rounded-md overflow-hidden mb-3">
           <button class="w-full flex items-center gap-2 px-4 py-3 bg-base-200 hover:bg-base-300 transition-colors cursor-pointer border-b border-base-300" onclick={() => toggleCollapse(file.filename)}>
             <span class="text-xs text-base-content/50 flex-shrink-0">{collapsedFiles.has(file.filename) ? '▶' : '▼'}</span>
-            <span class="font-bold text-sm" style="color: {getStatusColor(file.status)}">
-              {getStatusIcon(file.status)}
+            <span class="font-bold text-sm" style="color: {getFileStatusColor(file.status)}">
+              {getFileStatusIcon(file.status)}
             </span>
             <span class="flex-1 overflow-hidden text-ellipsis whitespace-nowrap font-mono text-xs text-base-content" title={file.filename}>
               {#if file.previous_filename}
@@ -304,7 +275,7 @@
               {/if}
               {file.filename}
             </span>
-            <span class="text-xs font-semibold uppercase tracking-wider flex-shrink-0" style="color: {getStatusColor(file.status)}">{getStatusLabel(file.status)}</span>
+            <span class="text-xs font-semibold uppercase tracking-wider flex-shrink-0" style="color: {getFileStatusColor(file.status)}">{getFileStatusLabel(file.status)}</span>
             <span class="flex gap-2 text-xs flex-shrink-0">
               {#if file.additions > 0}<span class="text-success">+{file.additions}</span>{/if}
               {#if file.deletions > 0}<span class="text-error">−{file.deletions}</span>{/if}

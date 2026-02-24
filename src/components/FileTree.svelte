@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { PrFileDiff } from '../lib/types'
+  import { getFileStatusIcon, getFileStatusClass } from '../lib/fileStatus'
 
   interface Props {
     files?: PrFileDiff[]
@@ -69,26 +70,6 @@
     return root
   }
 
-  function getStatusIcon(status: string): string {
-    switch (status) {
-      case 'added': return '+'
-      case 'removed': return '−'
-      case 'modified': return '±'
-      case 'renamed': return '→'
-      default: return '•'
-    }
-  }
-
-  function getStatusClass(status: string): string {
-    switch (status) {
-      case 'added': return 'text-success'
-      case 'removed': return 'text-error'
-      case 'modified': return 'text-warning'
-      case 'renamed': return 'text-primary'
-      default: return 'text-base-content/50'
-    }
-  }
-
   function handleFileClick(file: PrFileDiff) {
     selectedFile = file.filename
     onSelectFile(file.filename)
@@ -149,8 +130,8 @@
           style="padding-left: {selectedFile === node.file.filename ? 10 + depth * 16 : 12 + depth * 16}px"
           onclick={() => node.file && handleFileClick(node.file)}
         >
-          <span class="font-bold text-sm w-4 text-center shrink-0 {getStatusClass(node.file.status)}">
-            {getStatusIcon(node.file.status)}
+          <span class="font-bold text-sm w-4 text-center shrink-0 {getFileStatusClass(node.file.status)}">
+            {getFileStatusIcon(node.file.status)}
           </span>
           <span class="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-left">{node.name}</span>
           <span class="flex gap-2 text-[0.7rem] ml-auto shrink-0">
