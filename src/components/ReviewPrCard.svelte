@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { ReviewPullRequest } from '../lib/types'
   import Card from './Card.svelte'
+  import { timeAgo } from '../lib/timeAgo'
 
   interface Props {
     pr: ReviewPullRequest
@@ -10,16 +11,7 @@
 
   let { pr, selected = false, onClick }: Props = $props()
 
-  function timeAgo(timestamp: number): string {
-    const seconds = Math.floor((Date.now() - timestamp) / 1000)
-    if (seconds < 60) return 'just now'
-    const minutes = Math.floor(seconds / 60)
-    if (minutes < 60) return `${minutes}m ago`
-    const hours = Math.floor(minutes / 60)
-    if (hours < 24) return `${hours}h ago`
-    const days = Math.floor(hours / 24)
-    return `${days}d ago`
-  }
+
 </script>
 
 <Card

@@ -2,6 +2,7 @@
   import { onMount } from 'svelte'
   import { prOverviewComments } from '../lib/stores'
   import { getPrOverviewComments } from '../lib/ipc'
+  import { timeAgo } from '../lib/timeAgo'
   import type { ReviewPullRequest, PrOverviewComment } from '../lib/types'
   import MarkdownContent from './MarkdownContent.svelte'
 
@@ -22,7 +23,7 @@
       $prOverviewComments = comments
     } catch (e) {
       console.error('Failed to load PR overview comments:', e)
-      error = String(e)
+      error = 'Failed to load PR overview.'
     } finally {
       isLoading = false
     }
@@ -37,16 +38,7 @@
     })
   }
 
-  function timeAgo(dateStr: string): string {
-    const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000)
-    if (seconds < 60) return 'just now'
-    const minutes = Math.floor(seconds / 60)
-    if (minutes < 60) return `${minutes}m ago`
-    const hours = Math.floor(minutes / 60)
-    if (hours < 24) return `${hours}h ago`
-    const days = Math.floor(hours / 24)
-    return `${days}d ago`
-  }
+
 
   function commentIcon(comment: PrOverviewComment): string {
     if (comment.comment_type === 'review_comment') return '💬'
@@ -68,7 +60,7 @@
         <div class="flex items-center gap-2 text-sm flex-wrap">
           <span class="font-semibold text-base-content">{pr.user_login}</span>
           <span class="text-base-content/50">opened this pull request</span>
-          <span class="text-base-content/50" title={formatDate(new Date(pr.created_at).toISOString())}>{timeAgo(new Date(pr.created_at).toISOString())}</span>
+          <span class="text-base-content/50" title={formatDate(new Date(pr.created_at).toISOString())}>{timeAgo(new Date(pr.created_at).getTime())}</span>
         </div>
       </div>
       <div class="px-5 py-4">
@@ -116,7 +108,7 @@
               <div class="flex items-center gap-2 text-sm flex-wrap flex-1 min-w-0">
                 <span class="font-semibold text-base-content">{comment.author}</span>
                 <span class="text-base-content/50">commented</span>
-                <span class="text-base-content/50" title={formatDate(comment.created_at)}>{timeAgo(comment.created_at)}</span>
+                <span class="text-base-content/50" title={formatDate(comment.created_at)}>{timeAgo(new Date(comment.created_at).getTime())}</span>
               </div>
               <span class="text-xs shrink-0" title={comment.comment_type === 'review_comment' ? 'Code review comment' : 'General comment'}>
                 {commentIcon(comment)}

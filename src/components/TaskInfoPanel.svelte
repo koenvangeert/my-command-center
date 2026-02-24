@@ -3,6 +3,7 @@
   import { parseCheckRuns, isReadyToMerge } from '../lib/types'
   import { ticketPrs } from '../lib/stores'
   import { getPrComments, markCommentAddressed, openUrl } from '../lib/ipc'
+  import { timeAgo } from '../lib/timeAgo'
   import MarkdownContent from './MarkdownContent.svelte'
   import CopyButton from './CopyButton.svelte'
 
@@ -54,16 +55,7 @@
     return new Date(timestamp * 1000).toLocaleDateString()
   }
 
-  function timeAgo(timestamp: number): string {
-    const seconds = Math.floor((Date.now() / 1000) - timestamp)
-    if (seconds < 60) return 'just now'
-    const minutes = Math.floor(seconds / 60)
-    if (minutes < 60) return `${minutes}m ago`
-    const hours = Math.floor(minutes / 60)
-    if (hours < 24) return `${hours}h ago`
-    const days = Math.floor(hours / 24)
-    return `${days}d ago`
-  }
+
 
   let taskPrs = $derived($ticketPrs.get(task.id) || [])
 </script>
@@ -223,7 +215,7 @@
                       {comment.author.charAt(0).toUpperCase()}
                     </div>
                     <span class="text-xs font-semibold text-base-content">@{comment.author}</span>
-                    <span class="text-[0.65rem] text-base-content/40 ml-auto">{timeAgo(comment.created_at)}</span>
+                    <span class="text-[0.65rem] text-base-content/40 ml-auto">{timeAgo(comment.created_at * 1000)}</span>
                   </div>
                   {#if comment.file_path}
                     <div class="px-3 py-1 bg-base-200/50 border-b border-base-300 text-[0.65rem] font-mono text-base-content/50">

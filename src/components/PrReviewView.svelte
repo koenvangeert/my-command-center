@@ -2,6 +2,7 @@
   import { onMount } from 'svelte'
   import { reviewPrs, selectedReviewPr, prFileDiffs, reviewRequestCount, reviewComments, pendingManualComments, prOverviewComments } from '../lib/stores'
   import { fetchReviewPrs, getReviewPrs, getPrFileDiffs, openUrl, getReviewComments, getFileContent, getFileAtRef, markReviewPrViewed } from '../lib/ipc'
+  import { timeAgo } from '../lib/timeAgo'
   import ReviewPrCard from './ReviewPrCard.svelte'
   import FileTree from './FileTree.svelte'
   import DiffViewer from './DiffViewer.svelte'
@@ -40,7 +41,7 @@
       $reviewRequestCount = prs.filter(p => p.viewed_at === null).length
     } catch (e) {
       console.error('Failed to load PRs:', e)
-      error = String(e)
+      error = 'Failed to load pull requests. Please try again.'
     } finally {
       isLoading = false
     }
@@ -55,7 +56,7 @@
       $reviewRequestCount = prs.filter(p => p.viewed_at === null).length
     } catch (e) {
       console.error('Failed to refresh PRs:', e)
-      error = String(e)
+      error = 'Failed to refresh pull requests. Please try again.'
     } finally {
       isLoading = false
     }
@@ -78,7 +79,7 @@
       $reviewComments = comments
     } catch (e) {
       console.error('Failed to load PR diffs:', e)
-      error = String(e)
+      error = 'Failed to load pull request details.'
     } finally {
       isLoading = false
     }
@@ -105,16 +106,7 @@
     }
   }
 
-  function timeAgo(timestamp: number): string {
-    const seconds = Math.floor((Date.now() - timestamp) / 1000)
-    if (seconds < 60) return 'just now'
-    const minutes = Math.floor(seconds / 60)
-    if (minutes < 60) return `${minutes}m ago`
-    const hours = Math.floor(minutes / 60)
-    if (hours < 24) return `${hours}h ago`
-    const days = Math.floor(hours / 24)
-    return `${days}d ago`
-  }
+
 
   async function fetchPrFileContents(file: PrFileDiff): Promise<FileContents> {
     const pr = $selectedReviewPr!

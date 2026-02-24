@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from 'svelte'
   import { selfReviewDiffFiles, selfReviewGeneralComments, selfReviewArchivedComments, pendingManualComments, ticketPrs } from '../lib/stores'
   import { getTaskDiff, getTaskFileContents, getTaskBatchFileContents, getActiveSelfReviewComments, getArchivedSelfReviewComments, getPrComments, markCommentAddressed, openUrl } from '../lib/ipc'
+  import { timeAgo } from '../lib/timeAgo'
   import type { Task, PullRequestInfo, PrComment, PrFileDiff } from '../lib/types'
   import type { FileContents } from '../lib/diffAdapter'
   import FileTree from './FileTree.svelte'
@@ -44,16 +45,7 @@
     }
   })
 
-  function timeAgo(timestamp: number): string {
-    const seconds = Math.floor((Date.now() / 1000) - timestamp)
-    if (seconds < 60) return 'just now'
-    const minutes = Math.floor(seconds / 60)
-    if (minutes < 60) return `${minutes}m ago`
-    const hours = Math.floor(minutes / 60)
-    if (hours < 24) return `${hours}h ago`
-    const days = Math.floor(hours / 24)
-    return `${days}d ago`
-  }
+
 
   async function handleMarkAddressed(commentId: number) {
     try {
@@ -287,7 +279,7 @@
                                 {comment.author.charAt(0).toUpperCase()}
                               </div>
                               <span class="text-xs font-semibold text-base-content">@{comment.author}</span>
-                              <span class="text-[0.65rem] text-base-content/40 ml-auto">{timeAgo(comment.created_at)}</span>
+                              <span class="text-[0.65rem] text-base-content/40 ml-auto">{timeAgo(comment.created_at * 1000)}</span>
                             </div>
                             {#if comment.file_path}
                               <div class="flex items-center gap-1 mb-1.5">
