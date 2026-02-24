@@ -501,6 +501,39 @@ Strict mode enabled. Key settings: `noUnusedLocals`, `noUnusedParameters`,
 Tailwind CSS v4 + daisyUI v5. Configuration in `src/app.css` (CSS-first, no JS config files).
 Vite plugin: `@tailwindcss/vite` — must be listed BEFORE `svelte()` in `vite.config.ts` plugins.
 
+### Accessibility
+
+New components must meet these baseline requirements. This is not a full WCAG guide, just the structural conventions the codebase follows.
+
+**Semantic HTML** -- use the right element for the job:
+- `<button>` for clickable actions, `<a>` for navigation links, `<nav>` for navigation groups
+- `<header>` and `<main>` for page-level structure
+- Never use `<div>` or `<span>` as interactive elements without explicit ARIA roles
+
+**Keyboard navigation** -- all interactive elements must be reachable and operable without a mouse:
+- Tab moves focus to every interactive element; Enter/Space activates it
+- Escape closes modals, popovers, and dropdowns
+
+**ARIA attributes** -- required for dynamic and custom UI patterns:
+- Modals: `role="dialog"`, `aria-modal="true"`, `aria-labelledby` pointing to the modal header element
+- Listboxes/autocomplete: `role="listbox"` on the container, `role="option"` on each item, `aria-selected` on the active item
+- Async status updates (toasts, loading states): `aria-live="polite"` so screen readers announce changes without interrupting
+
+See `AutocompletePopover.svelte` for the listbox pattern and `Modal.svelte` for dialog semantics.
+
+**Focus management** -- focus must be predictable:
+- Modals trap focus: Tab cycles within the modal, not behind it
+- When a modal or dialog closes, focus returns to the element that triggered it
+- Auto-focus the primary input when a dialog opens
+
+**Labels** -- every form input needs a label:
+- Prefer a visible `<label>` element associated via `for`/`id`
+- Use `aria-label` when a visible label isn't practical (icon-only buttons, search inputs)
+
+**External links** -- follow the existing External Links convention:
+- Use the `openUrl()` IPC wrapper (never plain `<a target="_blank">`)
+- Add descriptive text or a `title` attribute so the link destination is clear
+
 ## Rust Conventions
 
 ### Module Organization
