@@ -58,7 +58,7 @@
       $selfReviewArchivedComments = archived.filter((c: SelfReviewComment) => c.comment_type === 'general')
     } catch (e) {
       console.error('Failed to load self-review comments:', e)
-      loadError = String(e)
+      loadError = 'Failed to load comments.'
     }
   }
 
@@ -76,7 +76,7 @@
       await loadComments(true)
     } catch (e) {
       console.error('Failed to add comment:', e)
-      addError = String(e)
+      addError = 'Failed to save comment.'
     } finally {
       isAdding = false
     }

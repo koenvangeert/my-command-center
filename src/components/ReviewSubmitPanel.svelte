@@ -48,7 +48,7 @@
       }, 3000)
     } catch (e) {
       console.error('Failed to submit review:', e)
-      error = String(e)
+      error = 'Failed to submit review. Please try again.'
     } finally {
       isSubmitting = false
     }

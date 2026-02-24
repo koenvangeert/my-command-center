@@ -75,7 +75,7 @@
       onTranscription(result.text)
       voiceState = 'idle'
     } catch (e) {
-      showError(String(e))
+      showError('Voice transcription failed.')
     }
   }
 
@@ -113,7 +113,7 @@
     } catch (e) {
       recorder = null
       clearDurationInterval()
-      showError(String(e))
+      showError('Failed to start voice recording. Check microphone permissions.')
     }
   }
 

@@ -68,7 +68,7 @@
       onSendComplete?.()
     } catch (e) {
       console.error('Failed to send to agent:', e)
-      error = String(e)
+      error = 'Failed to send to agent. Please try again.'
     } finally {
       isSending = false
     }

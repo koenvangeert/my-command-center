@@ -44,8 +44,8 @@
       }
     } catch (e) {
       status = 'error'
-      errorMessage = String(e)
-      onError?.(String(e))
+      errorMessage = 'Failed to download model. Please try again.'
+      onError?.('Failed to download model. Please try again.')
     }
   }
 

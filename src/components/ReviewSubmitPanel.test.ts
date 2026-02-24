@@ -253,7 +253,7 @@ describe('ReviewSubmitPanel', () => {
     await fireEvent.click(commentBtn)
 
     await waitFor(() => {
-      expect(screen.getByText('Error: Network error')).toBeTruthy()
+      expect(screen.getByText('Failed to submit review. Please try again.')).toBeTruthy()
     })
   })
 
