@@ -1479,7 +1479,24 @@ pub fn aggregate_ci_status(
         return "none".to_string();
     }
 
-    // Only treat actual pipeline failures as "failure"
+    // Check for any in-progress or pending checks FIRST.
+    // If anything is still running, report "pending" even if some checks
+    // have already failed. This prevents red flash while CI is still in progress.
+    for check_run in &check_runs.check_runs {
+        if check_run.status != "completed" {
+            return "pending".to_string();
+        }
+        if let Some(conclusion) = &check_run.conclusion {
+            if conclusion == "action_required" {
+                return "pending".to_string();
+            }
+        }
+    }
+    if commit_status.state == "pending" && !commit_status.statuses.is_empty() {
+        return "pending".to_string();
+    }
+
+    // All checks completed — now check for failures
     for check_run in &check_runs.check_runs {
         if let Some(conclusion) = &check_run.conclusion {
             match conclusion.as_str() {
@@ -1492,23 +1509,6 @@ pub fn aggregate_ci_status(
     }
     if commit_status.state == "failure" || commit_status.state == "error" {
         return "failure".to_string();
-    }
-
-    // Treat action_required as pending (e.g., workflow approval needed)
-    // Also treat in-progress checks as pending
-    for check_run in &check_runs.check_runs {
-        if check_run.status != "completed" {
-            return "pending".to_string();
-        }
-        if let Some(conclusion) = &check_run.conclusion {
-            if conclusion == "action_required" {
-                return "pending".to_string();
-            }
-        }
-    }
-
-    if commit_status.state == "pending" && !commit_status.statuses.is_empty() {
-        return "pending".to_string();
     }
 
     "success".to_string()
@@ -2395,6 +2395,23 @@ mod tests {
 
         let null_conclusion_runs = make_check_runs(vec![("build", "completed", None)]);
         assert_eq!(aggregate_ci_status(&null_conclusion_runs, &empty_combined), "success");
+
+        // If some checks failed but others are still running, report "pending" (not "failure")
+        // to prevent the red flash while CI pipeline is still in progress.
+        let mixed_failure_pending = make_check_runs(vec![
+            ("build", "completed", Some("failure")),
+            ("test", "in_progress", None),
+        ]);
+        assert_eq!(aggregate_ci_status(&mixed_failure_pending, &empty_combined), "pending");
+
+        // Commit status pending + check runs all completed with failure:
+        // check runs are done so their failure is reported (commit status pending
+        // alone doesn't block when all check_runs already completed).
+        let all_done_failure_runs = make_check_runs(vec![
+            ("build", "completed", Some("failure")),
+        ]);
+        let pending_combined_with_statuses = make_combined("pending", vec!["pending"]);
+        assert_eq!(aggregate_ci_status(&all_done_failure_runs, &pending_combined_with_statuses), "pending");
     }
 
     // ========================================================================

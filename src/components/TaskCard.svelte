@@ -30,13 +30,14 @@
   let needsInput = $derived(session?.status === 'paused' && session?.checkpoint_data !== null)
   let hasVisibleStatus = $derived(session !== null && ['running', 'completed', 'paused', 'failed', 'interrupted'].includes(session?.status ?? ''))
   let hasCiFailure = $derived(pullRequests.some(pr => pr.ci_status === 'failure' && pr.state === 'open'))
+  let hasPendingCi = $derived(pullRequests.some(pr => pr.ci_status === 'pending' && pr.state === 'open'))
   let totalUnaddressed = $derived(
     pullRequests.reduce((sum, pr) => sum + (pr.unaddressed_comment_count || 0), 0)
   )
 </script>
 
 <Card
-  class="block px-3.5 py-3 {hasCiFailure && statusClass !== 'running' && !needsInput ? 'ci-failed' : ''} {statusClass === 'running' ? 'running' : ''} {statusClass === 'paused' && !needsInput ? 'paused' : ''} {statusClass === 'failed' ? 'failed' : ''} {statusClass === 'interrupted' ? 'interrupted' : ''} {statusClass === 'completed' ? 'completed' : ''} {needsInput ? 'needs-input' : ''}"
+  class="block px-3.5 py-3 {hasCiFailure && !hasPendingCi && statusClass !== 'running' && !needsInput ? 'ci-failed' : ''} {statusClass === 'running' ? 'running' : ''} {statusClass === 'paused' && !needsInput ? 'paused' : ''} {statusClass === 'failed' ? 'failed' : ''} {statusClass === 'interrupted' ? 'interrupted' : ''} {statusClass === 'completed' ? 'completed' : ''} {needsInput ? 'needs-input' : ''}"
   onclick={handleClick}
 >
   <div class="flex items-center justify-between mb-1">

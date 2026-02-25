@@ -305,12 +305,17 @@
     unlisteners.push(
       await listen<{ task_id: string, pr_id: number, pr_title: string, ci_status: string, timestamp: number }>('ci-status-changed', (event) => {
         if (event.payload.ci_status === 'failure') {
-          $ciFailureNotification = {
-            task_id: event.payload.task_id,
-            pr_id: event.payload.pr_id,
-            pr_title: event.payload.pr_title,
-            ci_status: event.payload.ci_status,
-            timestamp: event.payload.timestamp,
+          // Suppress CI failure toast when the task's agent is still running —
+          // the agent may push more code that fixes CI.
+          const session = $activeSessions.get(event.payload.task_id)
+          if (!session || session.status !== 'running') {
+            $ciFailureNotification = {
+              task_id: event.payload.task_id,
+              pr_id: event.payload.pr_id,
+              pr_title: event.payload.pr_title,
+              ci_status: event.payload.ci_status,
+              timestamp: event.payload.timestamp,
+            }
           }
         }
         // Always refresh PR data to update CI dots on cards
