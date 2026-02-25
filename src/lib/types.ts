@@ -23,6 +23,15 @@ export interface AgentSession {
   error_message: string | null;
   created_at: number;
   updated_at: number;
+  provider: string;
+  claude_session_id: string | null;
+}
+
+export interface ClaudeInstallStatus {
+  installed: boolean;
+  path: string | null;
+  version: string | null;
+  authenticated: boolean;
 }
 
 export interface AgentLog {
