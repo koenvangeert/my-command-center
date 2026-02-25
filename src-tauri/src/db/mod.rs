@@ -315,7 +315,46 @@ INSERT OR IGNORE INTO config (key, value) VALUES ('next_project_id', '1')
                 Ok(())
             },
         ),
+        M::up_with_hook(
+            r#"
+            "#,
+            |tx| {
+                // Only add columns if the table exists (for fresh databases)
+                let table_exists: bool = tx.query_row(
+                    "SELECT COUNT(*) > 0 FROM sqlite_master WHERE type='table' AND name='agent_sessions'",
+                    [],
+                    |r| r.get(0),
+                ).unwrap_or(false);
+                
+                if table_exists {
+                    tx.execute(
+                        "ALTER TABLE agent_sessions ADD COLUMN provider TEXT NOT NULL DEFAULT 'opencode'",
+                        [],
+                    ).ok();
+                    tx.execute(
+                        "ALTER TABLE agent_sessions ADD COLUMN claude_session_id TEXT",
+                        [],
+                    ).ok();
+                }
+                
+                // Only insert config if the table exists
+                let config_exists: bool = tx.query_row(
+                    "SELECT COUNT(*) > 0 FROM sqlite_master WHERE type='table' AND name='config'",
+                    [],
+                    |r| r.get(0),
+                ).unwrap_or(false);
+                
+                if config_exists {
+                    tx.execute(
+                        "INSERT OR IGNORE INTO config (key, value) VALUES ('ai_provider', 'opencode')",
+                        [],
+                    ).ok();
+                }
+                Ok(())
+            },
+        ),
     ])
+
 }
 #[cfg(test)]
 pub mod test_helpers {
@@ -375,8 +414,8 @@ mod tests {
             .expect("Failed to count config rows");
 
         assert_eq!(
-            config_count, 15,
-            "All 15 default config values should be inserted"
+            config_count, 16,
+            "All 16 default config values should be inserted"
         );
 
         // Clean up
@@ -559,7 +598,7 @@ mod tests {
         let conn = db.connection();
         let conn = conn.lock().unwrap();
         let uv: i32 = conn.query_row("PRAGMA user_version", [], |r| r.get(0)).unwrap();
-        assert_eq!(uv, 1, "Fresh DB should have user_version=1 after migrations, got {}", uv);
+        assert_eq!(uv, 2, "Fresh DB should have user_version=2 after migrations, got {}", uv);
 
         drop(conn);
         drop(db);

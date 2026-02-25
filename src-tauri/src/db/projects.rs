@@ -375,7 +375,7 @@ mod tests {
         let task1 = db
             .create_task("Doing task 1", "doing", None, Some(&project.id), None)
             .expect("create task failed");
-        db.create_agent_session("ses-1", &task1.id, None, "implement", "paused")
+        db.create_agent_session("ses-1", &task1.id, None, "implement", "paused", "opencode")
             .expect("create session failed");
         db.update_agent_session("ses-1", "implement", "paused", Some("{\"q\":\"approve?\"}"), None)
             .expect("update session failed");
@@ -384,14 +384,14 @@ mod tests {
         let task2 = db
             .create_task("Doing task 2", "doing", None, Some(&project.id), None)
             .expect("create task failed");
-        db.create_agent_session("ses-2", &task2.id, None, "implement", "running")
+        db.create_agent_session("ses-2", &task2.id, None, "implement", "running", "opencode")
             .expect("create session failed");
 
         // Create a doing task with a completed agent (needs review/move)
         let task4 = db
             .create_task("Doing task 4", "doing", None, Some(&project.id), None)
             .expect("create task failed");
-        db.create_agent_session("ses-4", &task4.id, None, "implement", "completed")
+        db.create_agent_session("ses-4", &task4.id, None, "implement", "completed", "opencode")
             .expect("create session failed");
 
         // Create a doing task with an open PR that has CI failure + unaddressed comment
