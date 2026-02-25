@@ -194,6 +194,62 @@ impl super::Database {
         Ok(result)
     }
 
+    pub fn get_sessions_by_provider(&self, provider: &str) -> Result<Vec<AgentSessionRow>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, ticket_id, opencode_session_id, stage, status, checkpoint_data, error_message, created_at, updated_at, provider, claude_session_id
+             FROM agent_sessions WHERE provider = ?1 ORDER BY created_at DESC",
+        )?;
+        let rows = stmt.query_map([provider], |row| {
+            Ok(AgentSessionRow {
+                id: row.get(0)?,
+                ticket_id: row.get(1)?,
+                opencode_session_id: row.get(2)?,
+                stage: row.get(3)?,
+                status: row.get(4)?,
+                checkpoint_data: row.get(5)?,
+                error_message: row.get(6)?,
+                created_at: row.get(7)?,
+                updated_at: row.get(8)?,
+                provider: row.get(9)?,
+                claude_session_id: row.get(10)?,
+            })
+        })?;
+        let mut result = Vec::new();
+        for row in rows {
+            result.push(row?);
+        }
+        Ok(result)
+    }
+
+    pub fn get_running_claude_sessions(&self) -> Result<Vec<AgentSessionRow>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, ticket_id, opencode_session_id, stage, status, checkpoint_data, error_message, created_at, updated_at, provider, claude_session_id
+             FROM agent_sessions WHERE provider = 'claude-code' AND status = 'running' ORDER BY created_at DESC",
+        )?;
+        let rows = stmt.query_map([], |row| {
+            Ok(AgentSessionRow {
+                id: row.get(0)?,
+                ticket_id: row.get(1)?,
+                opencode_session_id: row.get(2)?,
+                stage: row.get(3)?,
+                status: row.get(4)?,
+                checkpoint_data: row.get(5)?,
+                error_message: row.get(6)?,
+                created_at: row.get(7)?,
+                updated_at: row.get(8)?,
+                provider: row.get(9)?,
+                claude_session_id: row.get(10)?,
+            })
+        })?;
+        let mut result = Vec::new();
+        for row in rows {
+            result.push(row?);
+        }
+        Ok(result)
+    }
+
     pub fn insert_agent_log(&self, session_id: &str, log_type: &str, content: &str) -> Result<()> {
         let conn = self.conn.lock().unwrap();
         let now = std::time::SystemTime::now()
@@ -440,6 +496,55 @@ mod tests {
         
         let session = db.get_agent_session("ses-claude").expect("get failed").expect("not found");
         assert_eq!(session.claude_session_id, Some("claude-ses-123".to_string()));
+        
+        drop(db);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_get_sessions_by_provider() {
+        let (db, path) = make_test_db("sessions_by_provider");
+        insert_test_task(&db);
+        
+        db.create_agent_session("ses-oc1", "T-100", None, "implement", "running", "opencode")
+            .expect("create opencode 1 failed");
+        db.create_agent_session("ses-oc2", "T-100", None, "implement", "completed", "opencode")
+            .expect("create opencode 2 failed");
+        db.create_agent_session("ses-cc1", "T-100", None, "implement", "running", "claude-code")
+            .expect("create claude 1 failed");
+        
+        let opencode_sessions = db.get_sessions_by_provider("opencode").expect("get opencode failed");
+        assert_eq!(opencode_sessions.len(), 2);
+        assert!(opencode_sessions.iter().all(|s| s.provider == "opencode"));
+        
+        let claude_sessions = db.get_sessions_by_provider("claude-code").expect("get claude failed");
+        assert_eq!(claude_sessions.len(), 1);
+        assert_eq!(claude_sessions[0].provider, "claude-code");
+        
+        let none_sessions = db.get_sessions_by_provider("nonexistent").expect("get none failed");
+        assert_eq!(none_sessions.len(), 0);
+        
+        drop(db);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_get_running_claude_sessions() {
+        let (db, path) = make_test_db("running_claude_sessions");
+        insert_test_task(&db);
+        
+        db.create_agent_session("ses-cc-run", "T-100", None, "implement", "running", "claude-code")
+            .expect("create running claude failed");
+        db.create_agent_session("ses-cc-done", "T-100", None, "implement", "completed", "claude-code")
+            .expect("create completed claude failed");
+        db.create_agent_session("ses-oc-run", "T-100", None, "implement", "running", "opencode")
+            .expect("create running opencode failed");
+        
+        let running = db.get_running_claude_sessions().expect("get running failed");
+        assert_eq!(running.len(), 1);
+        assert_eq!(running[0].id, "ses-cc-run");
+        assert_eq!(running[0].provider, "claude-code");
+        assert_eq!(running[0].status, "running");
         
         drop(db);
         let _ = std::fs::remove_file(&path);
