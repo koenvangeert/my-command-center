@@ -443,7 +443,7 @@ mod tests {
     fn test_update_task_jira_info() {
         let (db, path) = make_test_db("update_jira_info");
 
-        db.create_task("Linked task", "backlog", Some("PROJ-1"), None)
+        db.create_task("Linked task", "backlog", Some("PROJ-1"), None, None)
             .expect("create 1 failed");
         db.create_task("Unlinked task", "backlog", None, None, None)
             .expect("create 2 failed");
@@ -482,9 +482,9 @@ mod tests {
     fn test_get_tasks_with_jira_links() {
         let (db, path) = make_test_db("tasks_with_jira");
 
-        db.create_task("Task 1", "backlog", Some("PROJ-1"), None)
+        db.create_task("Task 1", "backlog", Some("PROJ-1"), None, None)
             .expect("create 1 failed");
-        db.create_task("Task 2", "backlog", Some("PROJ-2"), None)
+        db.create_task("Task 2", "backlog", Some("PROJ-2"), None, None)
             .expect("create 2 failed");
         db.create_task("Task 3", "backlog", None, None, None)
             .expect("create 3 failed");
@@ -500,7 +500,7 @@ mod tests {
     fn test_jira_description_null_handling() {
         let (db, path) = make_test_db("jira_desc_null");
 
-        db.create_task("Task with jira", "backlog", Some("PROJ-1"), None)
+        db.create_task("Task with jira", "backlog", Some("PROJ-1"), None, None)
             .expect("create task failed");
 
         let task = db.get_task("T-1").expect("get failed").unwrap();
