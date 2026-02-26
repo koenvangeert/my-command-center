@@ -399,26 +399,15 @@ async fn sync_open_prs(
         .await
         .map_err(|e| format!("Failed to list open PRs: {}", e))?;
 
-    let task_data: Vec<(String, Option<String>)> = {
+    let task_ids: Vec<String> = {
         let db_lock = db.lock().unwrap();
         db_lock
             .get_tasks_for_project(&config.project_id)
             .map_err(|e| format!("Failed to get task data: {}", e))?
             .into_iter()
-            .map(|task| (task.id, task.jira_key))
+            .map(|task| task.id)
             .collect()
     };
-
-    let mut jira_key_map: HashMap<String, Vec<String>> = HashMap::new();
-    let task_ids: Vec<String> = task_data.iter().map(|(id, _)| id.clone()).collect();
-    for (task_id, jira_key) in &task_data {
-        if let Some(key) = jira_key {
-            jira_key_map
-                .entry(key.clone())
-                .or_default()
-                .push(task_id.clone());
-        }
-    }
 
     let open_pr_ids: Vec<i64> = github_prs.iter().map(|pr| pr.number).collect();
 
@@ -515,7 +504,7 @@ async fn sync_open_prs(
     let mut synced = 0;
     for pr in &github_prs {
         let matched_tasks =
-            find_matching_task_ids(&pr.title, &pr.head.ref_name, &task_ids, &jira_key_map);
+            find_matching_task_ids(&pr.title, &pr.head.ref_name, &task_ids);
         for task_id in matched_tasks {
             let db_lock = db.lock().unwrap();
             let _ = db_lock.insert_pull_request(
@@ -538,32 +527,42 @@ async fn sync_open_prs(
     Ok(synced)
 }
 
+fn contains_task_id(text: &str, task_id: &str) -> bool {
+    let bytes = text.as_bytes();
+    let pattern = task_id.as_bytes();
+    let pat_len = pattern.len();
+    if pat_len > bytes.len() {
+        return false;
+    }
+    for i in 0..=(bytes.len() - pat_len) {
+        if &bytes[i..i + pat_len] == pattern {
+            // Check left boundary: must be start-of-string or non-alphanumeric
+            if i > 0 && (bytes[i - 1] as char).is_alphanumeric() {
+                continue;
+            }
+            // Check right boundary: must be end-of-string or non-digit
+            let after = i + pat_len;
+            if after < bytes.len() && (bytes[after] as char).is_ascii_digit() {
+                continue;
+            }
+            return true;
+        }
+    }
+    false
+}
+
 pub fn find_matching_task_ids(
     pr_title: &str,
     pr_branch: &str,
     task_ids: &[String],
-    jira_key_map: &HashMap<String, Vec<String>>,
 ) -> Vec<String> {
     let mut matched = Vec::new();
     let mut seen = HashSet::new();
 
     for task_id in task_ids {
-        if pr_title.contains(task_id.as_str()) || pr_branch.contains(task_id.as_str()) {
+        if contains_task_id(pr_title, task_id.as_str()) || contains_task_id(pr_branch, task_id.as_str()) {
             if seen.insert(task_id.clone()) {
                 matched.push(task_id.clone());
-            }
-        }
-    }
-
-    let jira_keys_found = extract_jira_keys(pr_title)
-        .into_iter()
-        .chain(extract_jira_keys(pr_branch));
-    for key in jira_keys_found {
-        if let Some(task_ids_for_key) = jira_key_map.get(&key) {
-            for task_id in task_ids_for_key {
-                if seen.insert(task_id.clone()) {
-                    matched.push(task_id.clone());
-                }
             }
         }
     }
@@ -571,36 +570,7 @@ pub fn find_matching_task_ids(
     matched
 }
 
-fn extract_jira_keys(text: &str) -> Vec<String> {
-    let mut keys = Vec::new();
-    let chars: Vec<char> = text.chars().collect();
-    let len = chars.len();
-    let mut i = 0;
 
-    while i < len {
-        if chars[i].is_ascii_uppercase() {
-            let start = i;
-            while i < len && chars[i].is_ascii_uppercase() {
-                i += 1;
-            }
-            if i < len && chars[i] == '-' && i > start {
-                i += 1;
-                let digit_start = i;
-                while i < len && chars[i].is_ascii_digit() {
-                    i += 1;
-                }
-                if i > digit_start {
-                    let key: String = chars[start..i].iter().collect();
-                    keys.push(key);
-                }
-            }
-        } else {
-            i += 1;
-        }
-    }
-
-    keys
-}
 
 struct PollSinglePrResult {
     pr_id: i64,
@@ -1075,9 +1045,8 @@ mod tests {
         let pr_title = "Fix bug T-42";
         let pr_branch = "main";
         let task_ids = vec!["T-42".to_string(), "T-99".to_string()];
-        let jira_map = HashMap::new();
 
-        let matched = find_matching_task_ids(pr_title, pr_branch, &task_ids, &jira_map);
+        let matched = find_matching_task_ids(pr_title, pr_branch, &task_ids);
         assert_eq!(matched.len(), 1);
         assert_eq!(matched[0], "T-42");
     }
@@ -1087,52 +1056,18 @@ mod tests {
         let pr_title = "Fix authentication";
         let pr_branch = "feature/T-99-auth";
         let task_ids = vec!["T-42".to_string(), "T-99".to_string()];
-        let jira_map = HashMap::new();
 
-        let matched = find_matching_task_ids(pr_title, pr_branch, &task_ids, &jira_map);
+        let matched = find_matching_task_ids(pr_title, pr_branch, &task_ids);
         assert_eq!(matched.len(), 1);
         assert_eq!(matched[0], "T-99");
     }
 
     #[test]
-    fn test_find_matching_task_ids_jira_key_in_title_single_task() {
-        let pr_title = "Implement PROJ-123 feature";
-        let pr_branch = "main";
-        let task_ids = vec!["T-1".to_string()];
-        let mut jira_map = HashMap::new();
-        jira_map.insert("PROJ-123".to_string(), vec!["T-1".to_string()]);
-
-        let matched = find_matching_task_ids(pr_title, pr_branch, &task_ids, &jira_map);
-        assert_eq!(matched.len(), 1);
-        assert_eq!(matched[0], "T-1");
-    }
-
-    #[test]
-    fn test_find_matching_task_ids_jira_key_multiple_tasks() {
-        let pr_title = "Fix PROJ-456 issue";
-        let pr_branch = "main";
-        let task_ids = vec!["T-10".to_string(), "T-20".to_string(), "T-30".to_string()];
-        let mut jira_map = HashMap::new();
-        jira_map.insert(
-            "PROJ-456".to_string(),
-            vec!["T-10".to_string(), "T-20".to_string()],
-        );
-
-        let matched = find_matching_task_ids(pr_title, pr_branch, &task_ids, &jira_map);
-        assert_eq!(matched.len(), 2);
-        assert!(matched.contains(&"T-10".to_string()));
-        assert!(matched.contains(&"T-20".to_string()));
-    }
-
-    #[test]
     fn test_find_matching_task_ids_deduplication() {
-        let pr_title = "T-5 implements PROJ-789";
+        let pr_title = "T-5 implements feature";
         let pr_branch = "feature/T-5";
         let task_ids = vec!["T-5".to_string()];
-        let mut jira_map = HashMap::new();
-        jira_map.insert("PROJ-789".to_string(), vec!["T-5".to_string()]);
-
-        let matched = find_matching_task_ids(pr_title, pr_branch, &task_ids, &jira_map);
+        let matched = find_matching_task_ids(pr_title, pr_branch, &task_ids);
         assert_eq!(matched.len(), 1);
         assert_eq!(matched[0], "T-5");
     }
@@ -1142,23 +1077,52 @@ mod tests {
         let pr_title = "Update documentation";
         let pr_branch = "docs-update";
         let task_ids = vec!["T-100".to_string()];
-        let jira_map = HashMap::new();
 
-        let matched = find_matching_task_ids(pr_title, pr_branch, &task_ids, &jira_map);
+        let matched = find_matching_task_ids(pr_title, pr_branch, &task_ids);
         assert_eq!(matched.len(), 0);
     }
 
     #[test]
-    fn test_find_matching_task_ids_jira_key_in_branch() {
-        let pr_title = "Add feature";
-        let pr_branch = "bugfix/JIRA-999";
-        let task_ids = vec!["T-7".to_string()];
-        let mut jira_map = HashMap::new();
-        jira_map.insert("JIRA-999".to_string(), vec!["T-7".to_string()]);
+    fn test_find_matching_task_ids_no_substring_false_positive() {
+        let pr_title = "Fix T-12 issue";
+        let pr_branch = "feature/T-123";
+        let task_ids = vec!["T-1".to_string(), "T-12".to_string(), "T-123".to_string()];
+        let matched = find_matching_task_ids(pr_title, pr_branch, &task_ids);
+        // T-1 must NOT match (T-12 contains T-1 as substring, but boundary check prevents it)
+        assert!(!matched.contains(&"T-1".to_string()));
+        // T-12 SHOULD match in title
+        assert!(matched.contains(&"T-12".to_string()));
+        // T-123 SHOULD match in branch
+        assert!(matched.contains(&"T-123".to_string()));
+    }
 
-        let matched = find_matching_task_ids(pr_title, pr_branch, &task_ids, &jira_map);
-        assert_eq!(matched.len(), 1);
-        assert_eq!(matched[0], "T-7");
+    #[test]
+    fn test_find_matching_task_ids_boundary_cases() {
+        let task_ids = vec!["T-42".to_string()];
+        
+        // Start of string
+        assert_eq!(find_matching_task_ids("T-42 fix auth", "", &task_ids).len(), 1);
+        // End of string
+        assert_eq!(find_matching_task_ids("fix auth T-42", "", &task_ids).len(), 1);
+        // Slash-delimited
+        assert_eq!(find_matching_task_ids("", "feature/T-42/auth", &task_ids).len(), 1);
+        // Hyphen after number (OK — not a digit)
+        assert_eq!(find_matching_task_ids("", "feature/T-42-auth", &task_ids).len(), 1);
+        // Colon-delimited
+        assert_eq!(find_matching_task_ids("T-42: fix auth", "", &task_ids).len(), 1);
+        // Alphanumeric before T — should NOT match
+        assert_eq!(find_matching_task_ids("fixT-42bug", "", &task_ids).len(), 0);
+    }
+
+    #[test]
+    fn test_find_matching_task_ids_multiple_ids_in_title() {
+        let pr_title = "Fix T-1 and T-2";
+        let pr_branch = "";
+        let task_ids = vec!["T-1".to_string(), "T-2".to_string()];
+        let matched = find_matching_task_ids(pr_title, pr_branch, &task_ids);
+        assert_eq!(matched.len(), 2);
+        assert!(matched.contains(&"T-1".to_string()));
+        assert!(matched.contains(&"T-2".to_string()));
     }
 
     #[test]

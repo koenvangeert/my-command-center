@@ -312,17 +312,6 @@ impl super::Database {
         Ok(result)
     }
 
-    pub fn get_task_ids_and_jira_keys(&self) -> Result<Vec<(String, Option<String>)>> {
-        let conn = self.conn.lock().unwrap();
-        let mut stmt = conn.prepare("SELECT id, jira_key FROM tasks")?;
-        let rows = stmt.query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?;
-        let mut result = Vec::new();
-        for row in rows {
-            result.push(row?);
-        }
-        Ok(result)
-    }
-
     pub fn get_all_task_ids(&self) -> Result<Vec<String>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare("SELECT id FROM tasks")?;
