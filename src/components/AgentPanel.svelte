@@ -4,7 +4,7 @@
   import type { UnlistenFn } from '@tauri-apps/api/event'
   import type { AgentEvent } from '../lib/types'
   import { activeSessions } from '../lib/stores'
-  import { abortImplementation, resizePty } from '../lib/ipc'
+  import { abortImplementation, resizePty, getLatestSession } from '../lib/ipc'
   import '@xterm/xterm/css/xterm.css'
   import { parseCheckpointQuestion } from '../lib/parseCheckpoint'
   import VoiceInput from './VoiceInput.svelte'
@@ -12,6 +12,7 @@
   import { createPtyBridge } from '../lib/usePtyBridge.svelte'
   import { createSessionHistory } from '../lib/useSessionHistory.svelte'
   import type { PtyBridgeHandle } from '../lib/usePtyBridge.svelte'
+  import { formatClaudeEvent } from '../lib/formatClaudeEvent'
 
   interface Props {
     taskId: string
@@ -23,6 +24,7 @@
   let errorMessage = $state<string | null>(null)
   let opencodePort = $state<number | null>(null)
   let unlisten: UnlistenFn | null = null
+  let lastReplayedTimestamp = 0
   let terminalEl: HTMLDivElement
 
   // Declare ptyBridge before termHandle so the onData/onResize closures can reference it.
@@ -79,9 +81,41 @@
 
   async function tryAttachPty(): Promise<void> {
     const currentSession = $activeSessions.get(taskId)
-    const sessionId = currentSession?.opencode_session_id
-    if (!sessionId) return
-    await ptyBridge.attachPty(sessionId)
+    if (!currentSession) return
+
+    if (currentSession.provider === 'claude-code') {
+      // For running sessions, bridge events render live — no PTY needed
+      if (currentSession.status === 'running') {
+        status = 'running'
+        return
+      }
+
+      // Legacy fallback: no stored events, try PTY resume
+      let claudeId = currentSession.claude_session_id
+      if (!claudeId) {
+        // claude_session_id may not be in the store yet (set async by bridge on system.init).
+        // Re-fetch from DB to get the latest value.
+        const freshSession = await getLatestSession(taskId)
+        claudeId = freshSession?.claude_session_id ?? null
+        if (claudeId && freshSession) {
+          const updated = new Map($activeSessions)
+          updated.set(taskId, { ...currentSession, claude_session_id: claudeId })
+          $activeSessions = updated
+        }
+      }
+      if (!claudeId) return
+      await ptyBridge.attachPty({
+        provider: currentSession.provider,
+        claudeSessionId: claudeId,
+        sessionStatus: currentSession.status,
+      })
+    } else {
+      if (!currentSession.opencode_session_id) return
+      await ptyBridge.attachPty({
+        provider: currentSession.provider,
+        opencodeSessionId: currentSession.opencode_session_id,
+      })
+    }
   }
 
   onMount(async () => {
@@ -89,6 +123,23 @@
     await termHandle.mount()
 
     await sessionHistory.loadSessionHistory()
+
+    // Replay stored events for Claude Code sessions (Task 3)
+    const currentSessionOnMount = $activeSessions.get(taskId)
+    if (currentSessionOnMount?.provider === 'claude-code' && sessionHistory.storedEvents.length > 0) {
+      for (const log of sessionHistory.storedEvents) {
+        const formatted = formatClaudeEvent(log.log_type, log.content)
+        if (formatted) {
+          termHandle.terminal?.write(formatted)
+        }
+      }
+      // Track last replayed timestamp for dedup (Task 5)
+      const lastLog = sessionHistory.storedEvents[sessionHistory.storedEvents.length - 1]
+      if (lastLog) {
+        lastReplayedTimestamp = lastLog.timestamp
+      }
+    }
+
     await tryAttachPty()
 
     unlisten = await listen<AgentEvent>('agent-event', (event) => {
@@ -117,7 +168,34 @@
         status = 'error'
         errorMessage = data
       }
+
+      // Claude Code live event rendering: write formatted events directly to terminal
+      const currentSession = $activeSessions.get(taskId)
+      if (currentSession?.provider === 'claude-code' && !ptyBridge.ptySpawned) {
+        const formatted = formatClaudeEvent(eventType, data)
+        if (formatted) {
+          termHandle.terminal?.write(formatted)
+        }
+      }
     })
+
+    // Listen for action-complete to spawn PTY for post-session viewing (Claude Code)
+    const unlistenComplete = await listen<{ task_id: string }>('action-complete', async (event) => {
+      if (event.payload.task_id !== taskId) return
+      const currentSession = $activeSessions.get(taskId)
+      if (currentSession?.provider === 'claude-code') {
+        status = 'complete'
+        // Spawn PTY for post-session history viewing
+        await tryAttachPty()
+      }
+    })
+
+    // Wrap unlisten to also clean up the action-complete listener
+    const originalUnlisten = unlisten
+    unlisten = () => {
+      originalUnlisten?.()
+      unlistenComplete()
+    }
   })
 
   onDestroy(() => {

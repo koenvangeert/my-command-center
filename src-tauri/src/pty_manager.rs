@@ -368,6 +368,12 @@ impl PtyManager {
         let mut cmd = CommandBuilder::new("claude");
         cmd.arg("--resume");
         cmd.arg(claude_session_id);
+        // Auto-accept file edits and skip workspace trust dialog.
+        // The orchestration process already runs with this permission mode;
+        // applying it to the interactive PTY avoids repeated trust prompts
+        // when attaching to sessions in worktree directories.
+        cmd.arg("--permission-mode");
+        cmd.arg("acceptEdits");
         cmd.cwd(worktree_path);
 
         // Get user environment (especially PATH on macOS)

@@ -3,9 +3,17 @@ import type { UnlistenFn } from '@tauri-apps/api/event'
 import type { PtyEvent } from './types'
 import { getWorktreeForTask, spawnPty, spawnClaudePty, writePty, killPty as killPtyIpc } from './ipc'
 
+export interface AttachPtyContext {
+  provider?: string
+  opencodeSessionId?: string | null
+  claudeSessionId?: string | null
+  /** When set, controls whether a PTY is actually spawned (Claude Code only). */
+  sessionStatus?: string
+}
+
 export interface PtyBridgeHandle {
   readonly ptySpawned: boolean
-  attachPty(sessionId: string): Promise<void>
+  attachPty(context: AttachPtyContext): Promise<void>
   writeToPty(data: string): void
   killPty(): Promise<void>
   dispose(): void
@@ -16,9 +24,6 @@ export function createPtyBridge(deps: {
   getTerminal: () => { cols: number; rows: number; write: (data: string) => void; focus: () => void } | null
   setOpencodePort: (port: number) => void
   onAttached: (sessionStatus?: string) => void
-  provider?: string           // NEW: "opencode" or "claude-code"
-  claudeSessionId?: string    // NEW: Claude session ID for --resume
-  worktreePath?: string       // NEW: worktree path for Claude PTY
 }): PtyBridgeHandle {
   let ptySpawned = false
   let expectedPtyInstance: number | null = null
@@ -48,7 +53,7 @@ export function createPtyBridge(deps: {
     })
   }
 
-  async function attachPty(sessionId: string): Promise<void> {
+  async function attachPty(context: AttachPtyContext): Promise<void> {
     if (ptySpawned) return
     ptySpawned = true
 
@@ -58,12 +63,24 @@ export function createPtyBridge(deps: {
       const cols = term?.cols ?? 80
       const rows = term?.rows ?? 24
 
-      if (deps.provider === 'claude-code') {
-        // Claude Code path: use spawnClaudePty with worktree path and claude session ID
-        const claudeSessionId = deps.claudeSessionId
-        const worktreePath = deps.worktreePath
-        if (!claudeSessionId || !worktreePath) {
-          console.error('[usePtyBridge] Missing claudeSessionId or worktreePath for Claude Code PTY')
+      if (context.provider === 'claude-code') {
+        // Claude Code path: skip PTY when session is still running (bridge events render live)
+        if (context.sessionStatus === 'running') {
+          ptySpawned = false
+          deps.onAttached(context.sessionStatus)
+          return
+        }
+
+        const claudeSessionId = context.claudeSessionId
+        if (!claudeSessionId) {
+          console.error('[usePtyBridge] Missing claudeSessionId for Claude Code PTY')
+          ptySpawned = false
+          return
+        }
+        const worktree = await getWorktreeForTask(deps.taskId)
+        const worktreePath = worktree?.worktree_path
+        if (!worktreePath) {
+          console.error('[usePtyBridge] No worktree_path found for task:', deps.taskId)
           ptySpawned = false
           return
         }
@@ -78,6 +95,12 @@ export function createPtyBridge(deps: {
           return
         }
         deps.setOpencodePort(port)
+        const sessionId = context.opencodeSessionId
+        if (!sessionId) {
+          console.error('[usePtyBridge] Missing opencodeSessionId for OpenCode PTY')
+          ptySpawned = false
+          return
+        }
         expectedPtyInstance = await spawnPty(deps.taskId, port, sessionId, cols, rows)
       }
 
