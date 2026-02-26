@@ -28,6 +28,10 @@ export async function refreshJiraInfo(): Promise<number> {
 export async function getOpenCodeStatus(): Promise<OpenCodeStatus> {
   return invoke<OpenCodeStatus>("get_opencode_status");
 }
+export async function getAppMode(): Promise<string> {
+  return invoke<string>("get_app_mode");
+}
+
 
 export async function getAgents(): Promise<AgentInfo[]> {
   return invoke<AgentInfo[]>("get_agents");

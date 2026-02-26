@@ -124,9 +124,14 @@ fn main() {
                 .app_data_dir()
                 .expect("Failed to get app data directory");
 
-            let db_path = app_data_dir.join("ai_command_center.db");
+            let db_filename = if cfg!(debug_assertions) {
+                "ai_command_center_dev.db"
+            } else {
+                "ai_command_center.db"
+            };
+            let db_path = app_data_dir.join(db_filename);
 
-            println!("Initializing database at: {:?}", db_path);
+            println!("Initializing database at: {:?} (mode: {})", db_path, if cfg!(debug_assertions) { "dev" } else { "prod" });
 
             let database = db::Database::new(db_path).expect("Failed to initialize database");
 
@@ -246,6 +251,7 @@ fn main() {
             commands::config::get_config,
             commands::config::set_config,
             commands::config::check_opencode_installed,
+            commands::config::get_app_mode,
             commands::review::get_github_username,
             commands::review::fetch_review_prs,
             commands::review::get_review_prs,

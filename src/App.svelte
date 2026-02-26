@@ -3,7 +3,7 @@
   import { listen } from '@tauri-apps/api/event'
   import type { UnlistenFn, Event } from '@tauri-apps/api/event'
   import { tasks, selectedTaskId, activeSessions, checkpointNotification, ciFailureNotification, ticketPrs, error, isLoading, projects, activeProjectId, currentView, reviewRequestCount, projectAttention } from './lib/stores'
-  import { getProjects, getTasksForProject, getOpenCodeStatus, getPullRequests, runAction, getSessionStatus, getLatestSession, getLatestSessions, forceGithubSync, createTask, updateTask, getProjectAttention } from './lib/ipc'
+  import { getProjects, getTasksForProject, getOpenCodeStatus, getPullRequests, runAction, getSessionStatus, getLatestSession, getLatestSessions, forceGithubSync, createTask, updateTask, getProjectAttention, getAppMode } from './lib/ipc'
   import type { Task, PullRequestInfo, OpenCodeStatus, AgentEvent, ProjectAttention } from './lib/types'
   import KanbanBoard from './components/KanbanBoard.svelte'
   import TaskDetailView from './components/TaskDetailView.svelte'
@@ -27,6 +27,7 @@
   let isSyncing = $state(false)
   let editingTask = $state<Task | null>(null)
   let showProjectSetup = $state(false)
+  let appMode = $state<string | null>(null)
 
   let selectedTask = $derived($tasks.find(t => t.id === $selectedTaskId) || null)
 
@@ -207,6 +208,13 @@
 
     await loadProjects()
     await checkOpenCode()
+
+    try {
+      appMode = await getAppMode()
+    } catch (e) {
+      console.error('[App] Failed to get app mode:', e)
+      // Graceful degradation: no badge shown if call fails
+    }
     loadProjectAttention()
 
     unlisteners.push(
@@ -462,6 +470,9 @@
   <header class="navbar bg-base-200 border-b border-base-300 px-6 gap-5 min-h-14 shrink-0">
     <div class="flex items-center gap-4 flex-1">
       <h1 class="text-sm font-semibold text-base-content tracking-wide m-0">AI Command Center</h1>
+      {#if appMode === 'dev'}
+        <span class="badge badge-warning badge-sm font-mono">DEV</span>
+      {/if}
       <ProjectSwitcher onNewProject={() => showProjectSetup = true} />
       <button 
         type="button"
