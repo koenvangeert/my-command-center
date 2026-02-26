@@ -64,3 +64,12 @@ pub async fn set_config(
     db_lock.set_config(&key, &value)
         .map_err(|e| format!("Failed to set config: {}", e))
 }
+
+#[tauri::command]
+pub async fn get_app_mode() -> Result<String, String> {
+    if cfg!(debug_assertions) {
+        Ok("dev".to_string())
+    } else {
+        Ok("prod".to_string())
+    }
+}
