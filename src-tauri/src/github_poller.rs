@@ -41,7 +41,7 @@ use futures::future::join_all;
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::time::{sleep, Duration};
@@ -88,7 +88,7 @@ pub struct PollResult {
 /// * `github_client` - Shared GitHub API client (caller owns lifetime)
 pub async fn poll_github_once(app: &AppHandle, github_client: &GitHubClient) -> PollResult {
     let cycle_start = Instant::now();
-    let db = app.state::<Mutex<Database>>();
+    let db = app.state::<Arc<Mutex<Database>>>();
 
     let github_token = {
         let db_lock = db.lock().unwrap();
@@ -261,7 +261,7 @@ pub async fn start_github_poller(app: AppHandle) {
     let github_client = GitHubClient::new();
 
     loop {
-        let db = app.state::<Mutex<Database>>();
+        let db = app.state::<Arc<Mutex<Database>>>();
 
         let poll_interval = {
             let db_lock = db.lock().unwrap();
@@ -487,7 +487,7 @@ async fn sync_open_prs(
         let app_clone = app.clone();
 
         tokio::spawn(async move {
-            let db_state = app_clone.state::<Mutex<Database>>();
+            let db_state = app_clone.state::<Arc<Mutex<Database>>>();
             if let Err(e) = cleanup_worktree_for_task(&db_state, &app_clone, &task_id).await {
                 eprintln!(
                     "[GitHub Poller] Failed to cleanup worktree for task {}: {}",

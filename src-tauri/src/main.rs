@@ -32,7 +32,7 @@ use whisper_manager::{WhisperManager, WhisperModelSize};
 
 async fn resume_task_servers(app: tauri::AppHandle) {
     let worktrees = {
-        let db = app.state::<Mutex<db::Database>>();
+        let db = app.state::<Arc<Mutex<db::Database>>>();
         let db_lock = db.lock().unwrap();
         match db_lock.get_resumable_worktrees() {
             Ok(wts) => wts,
@@ -65,7 +65,7 @@ async fn resume_task_servers(app: tauri::AppHandle) {
         match server_mgr.spawn_server(&worktree.task_id, worktree_path).await {
             Ok(port) => {
                 {
-                    let db = app.state::<Mutex<db::Database>>();
+                    let db = app.state::<Arc<Mutex<db::Database>>>();
                     let db_lock = db.lock().unwrap();
                     if let Err(e) = db_lock.update_worktree_server(&worktree.task_id, port as i64, 0) {
                         eprintln!(
@@ -157,9 +157,9 @@ fn main() {
                 }
             }
 
-            // Install global OpenCode plugin for spawning tasks
-            if let Err(e) = plugin_installer::install_spawn_task_plugin() {
-                eprintln!("[startup] Failed to install spawn-task plugin: {}", e);
+            // Install global OpenCode plugin for creating tasks
+            if let Err(e) = plugin_installer::install_create_task_plugin() {
+                eprintln!("[startup] Failed to install create-task plugin: {}", e);
             }
             let whisper_model_pref = database.get_config("whisper_model_size")
                 .ok()

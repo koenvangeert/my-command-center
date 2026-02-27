@@ -71,7 +71,7 @@ pub struct FailurePayload {
 // ============================================================================
 
 fn persist_session_completed(app: &AppHandle, task_id: &str) {
-    let db = app.state::<std::sync::Mutex<db::Database>>();
+    let db = app.state::<Arc<std::sync::Mutex<db::Database>>>();
     if let Ok(db_lock) = db.lock() {
         if let Ok(Some(session)) = db_lock.get_latest_session_for_ticket(task_id) {
             if let Err(e) = db_lock.update_agent_session(&session.id, &session.stage, "completed", None, None) {
@@ -361,7 +361,7 @@ impl SseBridgeManager {
                                 };
 
                                 if let Some(new_status) = new_session_status {
-                                    let db = app_clone.state::<std::sync::Mutex<db::Database>>();
+                                    let db = app_clone.state::<Arc<std::sync::Mutex<db::Database>>>();
                                     let lock_result = db.lock();
                                     if let Ok(db_lock) = lock_result {
                                         if let Ok(Some(session)) = db_lock.get_latest_session_for_ticket(&task_id) {

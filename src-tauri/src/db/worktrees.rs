@@ -189,6 +189,21 @@ impl super::Database {
         )?;
         Ok(conn.changes() as usize)
     }
+
+    /// Get project_id for a given worktree path.
+    /// Used by create_task to deduce the project when an agent creates a subtask.
+    pub fn get_project_for_worktree(&self, worktree_path: &str) -> Result<Option<String>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT project_id FROM worktrees WHERE worktree_path = ?1 LIMIT 1",
+        )?;
+        let mut rows = stmt.query([worktree_path])?;
+        if let Some(row) = rows.next()? {
+            Ok(Some(row.get(0)?))
+        } else {
+            Ok(None)
+        }
+    }
 }
 
 #[cfg(test)]

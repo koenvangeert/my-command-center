@@ -20,7 +20,7 @@
 use crate::db::Database;
 use crate::jira_client::JiraClient;
 use std::collections::HashSet;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::time::{sleep, Duration};
 
@@ -41,7 +41,7 @@ pub async fn start_jira_sync(app: AppHandle) {
     let jira_client = JiraClient::new();
 
     loop {
-        let db = app.state::<Mutex<Database>>();
+        let db = app.state::<Arc<Mutex<Database>>>();
         
         let poll_interval = {
             let db_lock = db.lock().unwrap();
