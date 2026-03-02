@@ -17,9 +17,8 @@ mod whisper_manager;
 mod http_server;
 mod plugin_installer;
 mod commands;
-mod claude_process_manager;
-
-mod claude_bridge;
+mod claude_sdk_protocol;
+mod claude_sdk_manager;
 use std::sync::{Mutex, Arc};
 use tauri::{Manager, Emitter};
 use jira_client::JiraClient;
@@ -219,8 +218,7 @@ fn main() {
             let sse_bridge_manager = sse_bridge::SseBridgeManager::new();
             let pty_manager = PtyManager::new();
             let whisper_manager = WhisperManager::with_active_model(whisper_model_pref);
-            let claude_process_manager = claude_process_manager::ClaudeProcessManager::new();
-            let claude_bridge_manager = claude_bridge::ClaudeBridgeManager::new();
+            let claude_sdk_manager = claude_sdk_manager::ClaudeSdkManager::new();
 
             app.manage(opencode_client);
             app.manage(jira_client);
@@ -229,8 +227,7 @@ fn main() {
             app.manage(sse_bridge_manager);
             app.manage(pty_manager);
             app.manage(whisper_manager);
-            app.manage(claude_process_manager);
-            app.manage(claude_bridge_manager);
+            app.manage(claude_sdk_manager);
 
             if let Err(e) = server_manager::ServerManager::new().cleanup_stale_pids() {
                 eprintln!("Failed to cleanup stale server PIDs: {}", e);
@@ -240,9 +237,10 @@ fn main() {
                 eprintln!("Failed to cleanup stale PTY PIDs: {}", e);
             }
 
-            if let Err(e) = claude_process_manager::ClaudeProcessManager::new().cleanup_stale_pids() {
-                eprintln!("Failed to cleanup stale Claude PIDs: {}", e);
+            if let Err(e) = claude_sdk_manager::ClaudeSdkManager::new().cleanup_stale_pids() {
+                eprintln!("Failed to cleanup stale Claude SDK PIDs: {}", e);
             }
+
 
             println!("Server manager initialized");
 
@@ -321,7 +319,6 @@ fn main() {
             commands::review::submit_pr_review,
             commands::review::mark_review_pr_viewed,
             commands::pty::pty_spawn,
-            commands::pty::pty_spawn_claude,
             commands::pty::pty_write,
             commands::pty::pty_resize,
             commands::pty::pty_kill,
@@ -341,6 +338,10 @@ fn main() {
             commands::whisper::get_all_whisper_model_statuses,
             commands::whisper::set_whisper_model,
             commands::opencode::list_opencode_agents,
+            commands::claude_sdk::send_claude_input,
+            commands::claude_sdk::interrupt_claude_session,
+            commands::claude_sdk::resume_claude_sdk_session,
+            commands::claude_sdk::respond_tool_approval,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
@@ -358,22 +359,20 @@ fn main() {
             let sse_mgr = app_handle.state::<sse_bridge::SseBridgeManager>();
             let server_mgr = app_handle.state::<server_manager::ServerManager>();
             let pty_mgr = app_handle.state::<pty_manager::PtyManager>();
-            let claude_bridge_mgr = app_handle.state::<claude_bridge::ClaudeBridgeManager>();
-            let claude_process_mgr = app_handle.state::<claude_process_manager::ClaudeProcessManager>();
+            let sdk_mgr = app_handle.state::<claude_sdk_manager::ClaudeSdkManager>();
 
             tauri::async_runtime::block_on(async {
-                // Order matters: PTY → SSE → Server
+                // Order matters: SDK → PTY → SSE → Server
+                println!("[shutdown] Stopping all Claude SDK sessions...");
+                let _ = sdk_mgr.stop_all().await;
+
                 println!("[shutdown] Killing all PTY sessions...");
+
                 pty_mgr.kill_all().await;
 
                 println!("[shutdown] Stopping all SSE bridges...");
                 sse_mgr.stop_all().await;
 
-                println!("[shutdown] Stopping all Claude bridges...");
-                claude_bridge_mgr.stop_all().await;
-
-                println!("[shutdown] Killing all Claude processes...");
-                let _ = claude_process_mgr.kill_all().await;
 
                 println!("[shutdown] Stopping all OpenCode servers...");
                 if let Err(e) = server_mgr.stop_all().await {
