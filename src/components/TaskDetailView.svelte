@@ -3,6 +3,7 @@
   import type { Task, Action } from '../lib/types'
   import { selectedTaskId, activeSessions, activeProjectId } from '../lib/stores'
   import { getWorktreeForTask, updateTaskStatus, openUrl, getConfig } from '../lib/ipc'
+  import { navigateBack } from '../lib/navigation'
   import { loadActions, getEnabledActions } from '../lib/actions'
   import AgentPanel from './AgentPanel.svelte'
   import TaskInfoPanel from './TaskInfoPanel.svelte'
@@ -50,7 +51,9 @@
   })
 
   function handleBack() {
-    $selectedTaskId = null
+    if (!navigateBack()) {
+      $selectedTaskId = null
+    }
   }
 
   async function handleStatusChange(newStatus: string) {

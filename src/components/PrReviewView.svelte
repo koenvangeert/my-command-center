@@ -2,6 +2,7 @@
   import { onMount } from 'svelte'
   import { reviewPrs, selectedReviewPr, prFileDiffs, reviewRequestCount, reviewComments, pendingManualComments, prOverviewComments } from '../lib/stores'
   import { fetchReviewPrs, getReviewPrs, getPrFileDiffs, openUrl, getReviewComments, getFileContent, getFileAtRef, markReviewPrViewed } from '../lib/ipc'
+  import { pushNavState, navigateBack } from '../lib/navigation'
   import { timeAgo } from '../lib/timeAgo'
   import ReviewPrCard from './ReviewPrCard.svelte'
   import FileTree from './FileTree.svelte'
@@ -63,7 +64,7 @@
   }
 
   async function selectPr(pr: ReviewPullRequest) {
-    // Optimistic update: mark as viewed immediately
+    pushNavState()
     const now = Math.floor(Date.now() / 1000)
     const updatedPr = { ...pr, viewed_at: now, viewed_head_sha: pr.head_sha }
     $selectedReviewPr = updatedPr
@@ -86,11 +87,13 @@
   }
 
   function backToList() {
-    $selectedReviewPr = null
-    $prFileDiffs = []
-    $reviewComments = []
-    $pendingManualComments = []
-    $prOverviewComments = []
+    if (!navigateBack()) {
+      $selectedReviewPr = null
+      $prFileDiffs = []
+      $reviewComments = []
+      $pendingManualComments = []
+      $prOverviewComments = []
+    }
     activeTab = 'overview'
   }
 
