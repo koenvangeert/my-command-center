@@ -2,6 +2,7 @@
   import { onDestroy } from 'svelte'
   import type { CiFailureNotification } from '../lib/types'
   import { ciFailureNotification, selectedTaskId } from '../lib/stores'
+  import { pushNavState } from '../lib/navigation'
 
   let visible = $state(false)
   let timer: ReturnType<typeof setTimeout>
@@ -12,6 +13,7 @@
 
   function handleClick() {
     if ($ciFailureNotification) {
+      pushNavState()
       $selectedTaskId = $ciFailureNotification.task_id
       dismiss()
     }

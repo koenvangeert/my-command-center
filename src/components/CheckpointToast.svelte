@@ -2,6 +2,7 @@
   import { onDestroy } from 'svelte'
   import type { CheckpointNotification } from '../lib/types'
   import { checkpointNotification, selectedTaskId } from '../lib/stores'
+  import { pushNavState } from '../lib/navigation'
 
   let visible = $state(false)
   let timer: ReturnType<typeof setTimeout>
@@ -12,6 +13,7 @@
 
   function handleClick() {
     if ($checkpointNotification) {
+      pushNavState()
       $selectedTaskId = $checkpointNotification.ticketId
       dismiss()
     }
