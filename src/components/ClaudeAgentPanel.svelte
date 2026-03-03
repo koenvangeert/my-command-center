@@ -1,7 +1,5 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte'
-  import { listen } from '@tauri-apps/api/event'
-  import type { UnlistenFn } from '@tauri-apps/api/event'
   import { activeSessions } from '../lib/stores'
   import { writePty, killPty, abortImplementation } from '../lib/ipc'
   import '@xterm/xterm/css/xterm.css'
@@ -15,7 +13,6 @@
   let { taskId }: Props = $props()
 
   let terminalEl: HTMLDivElement
-  let unlisteners: UnlistenFn[] = []
   let poolEntry: PoolEntry | null = null
   let ptyActive = $state(false)
   let status = $state<'idle' | 'running' | 'complete' | 'error'>('idle')
@@ -23,40 +20,29 @@
   // Derived state from activeSessions store
   let session = $derived($activeSessions.get(taskId) || null)
 
+  // Reactively sync local status from session store so that continuing a
+  // completed session immediately shows "running" without waiting for hooks.
+  $effect(() => {
+    if (!session) return
+    if (session.status === 'running') {
+      status = 'running'
+      ptyActive = true
+    } else if (session.status === 'completed') {
+      status = 'complete'
+    } else if (session.status === 'failed' || session.status === 'interrupted') {
+      status = 'error'
+    }
+  })
+
   onMount(async () => {
     poolEntry = await acquire(taskId)
     attach(poolEntry, terminalEl)
 
     // Sync local ptyActive from pool entry
     ptyActive = poolEntry.ptyActive
-
-    // If session already exists and is running, PTY is already spawned
-    if (session?.status === 'running') {
-      status = 'running'
-      ptyActive = true
-    } else if (session?.status === 'completed') {
-      status = 'complete'
-    } else if (session?.status === 'failed') {
-      status = 'error'
-    }
-
-    // Listen for agent-status-changed events (App.svelte also updates activeSessions store)
-    unlisteners.push(await listen<{ task_id: string; status: string }>('agent-status-changed', (event) => {
-      if (event.payload.task_id !== taskId) return
-      const s = event.payload.status
-      if (s === 'running') {
-        status = 'running'
-        ptyActive = true
-      } else if (s === 'completed') {
-        status = 'complete'
-      } else if (s === 'failed' || s === 'interrupted') {
-        status = 'error'
-      }
-    }))
   })
 
   onDestroy(() => {
-    unlisteners.forEach(fn => fn())
     if (poolEntry) {
       detach(poolEntry)
     }

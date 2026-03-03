@@ -63,6 +63,20 @@
   })
 
   let session = $derived($activeSessions.get(taskId) || null)
+
+  // Reactively sync local status from session store so that continuing a
+  // completed session immediately shows "running" without waiting for SSE events.
+  $effect(() => {
+    if (!session) return
+    if (session.status === 'running') {
+      status = 'running'
+    } else if (session.status === 'completed') {
+      status = 'complete'
+    } else if (session.status === 'failed' || session.status === 'interrupted') {
+      status = 'error'
+    }
+  })
+
   let attachCommand = $derived(session?.opencode_session_id && opencodePort
     ? `opencode attach http://127.0.0.1:${opencodePort} -s ${session.opencode_session_id}`
     : null)
