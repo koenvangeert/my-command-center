@@ -9,6 +9,40 @@ use portable_pty::{CommandBuilder, PtySize, native_pty_system};
 use tauri::Emitter;
 
 // ============================================================================
+// Ring Buffer
+// ============================================================================
+
+const CLAUDE_BUFFER_CAPACITY: usize = 51200; // 50KB
+
+struct RingBuffer {
+    data: Vec<u8>,
+    capacity: usize,
+}
+
+impl RingBuffer {
+    fn new(capacity: usize) -> Self {
+        Self {
+            data: Vec::with_capacity(capacity),
+            capacity,
+        }
+    }
+
+    fn push(&mut self, bytes: &[u8]) {
+        self.data.extend_from_slice(bytes);
+        if self.data.len() > self.capacity {
+            let excess = self.data.len() - self.capacity;
+            self.data.drain(0..excess);
+        }
+    }
+
+    fn drain(&mut self) -> String {
+        let result = String::from_utf8_lossy(&self.data).to_string();
+        self.data.clear();
+        result
+    }
+}
+
+// ============================================================================
 // Instance ID Generator
 // ============================================================================
 
@@ -67,6 +101,7 @@ pub struct PtyManager {
     sessions: Arc<Mutex<HashMap<String, PtySession>>>,
     pid_dir_override: Option<PathBuf>,
     claude_last_output: Arc<Mutex<HashMap<String, Arc<AtomicU64>>>>,
+    claude_output_buffers: Arc<Mutex<HashMap<String, Arc<std::sync::Mutex<RingBuffer>>>>>,
 }
 
 impl PtyManager {
@@ -75,6 +110,7 @@ impl PtyManager {
             sessions: Arc::new(Mutex::new(HashMap::new())),
             pid_dir_override: None,
             claude_last_output: Arc::new(Mutex::new(HashMap::new())),
+            claude_output_buffers: Arc::new(Mutex::new(HashMap::new())),
         }
     }
     /// Spawns a new PTY process for the given task_id.
@@ -437,6 +473,13 @@ impl PtyManager {
         }
         let last_output_time_reader = Arc::clone(&last_output_time);
 
+        let ring_buffer = Arc::new(std::sync::Mutex::new(RingBuffer::new(CLAUDE_BUFFER_CAPACITY)));
+        {
+            let mut buffers = self.claude_output_buffers.lock().await;
+            buffers.insert(task_id.to_string(), Arc::clone(&ring_buffer));
+        }
+        let ring_buffer_emitter = Arc::clone(&ring_buffer);
+
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<Option<String>>();
 
         let task_id_reader = task_id.to_string();
@@ -508,6 +551,9 @@ impl PtyManager {
                                 buffer.push_str(&text);
                                 if buffer.len() >= MAX_BUFFER_SIZE {
                                     if !buffer.is_empty() {
+                                        if let Ok(mut buf) = ring_buffer_emitter.lock() {
+                                            buf.push(buffer.as_bytes());
+                                        }
                                         let event_name = format!("pty-output-{}", task_id_emitter);
                                         let payload = serde_json::json!({ "task_id": &task_id_emitter, "data": &buffer });
                                         if let Err(e) = app_handle.emit(&event_name, &payload) {
@@ -519,6 +565,9 @@ impl PtyManager {
                             }
                             Some(None) | None => {
                                 if !buffer.is_empty() {
+                                    if let Ok(mut buf) = ring_buffer_emitter.lock() {
+                                        buf.push(buffer.as_bytes());
+                                    }
                                     let event_name = format!("pty-output-{}", task_id_emitter);
                                     let payload = serde_json::json!({ "task_id": &task_id_emitter, "data": &buffer });
                                     if let Err(e) = app_handle.emit(&event_name, &payload) {
@@ -534,6 +583,9 @@ impl PtyManager {
                     }
                     _ = interval.tick() => {
                         if !buffer.is_empty() {
+                            if let Ok(mut buf) = ring_buffer_emitter.lock() {
+                                buf.push(buffer.as_bytes());
+                            }
                             let event_name = format!("pty-output-{}", task_id_emitter);
                             let payload = serde_json::json!({ "task_id": &task_id_emitter, "data": &buffer });
                             if let Err(e) = app_handle.emit(&event_name, &payload) {
@@ -674,6 +726,13 @@ impl PtyManager {
             .as_millis() as u64;
 
         frozen_seconds(last_output_ms, now_ms)
+    }
+
+    pub async fn get_claude_pty_buffer(&self, task_id: &str) -> Option<String> {
+        let buffers = self.claude_output_buffers.lock().await;
+        let buffer = buffers.get(task_id)?;
+        let mut buf = buffer.lock().unwrap();
+        Some(buf.drain())
     }
 
     /// Cleans up stale PID files for processes that are no longer running
@@ -933,6 +992,47 @@ pub(crate) fn build_claude_args(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_ring_buffer_push_within_capacity() {
+        let mut buf = RingBuffer::new(100);
+        buf.push(b"hello");
+        buf.push(b" world");
+        assert_eq!(buf.drain(), "hello world");
+    }
+
+    #[test]
+    fn test_ring_buffer_push_exceeds_capacity() {
+        let mut buf = RingBuffer::new(5);
+        buf.push(b"hello");
+        buf.push(b"world");
+        let result = buf.drain();
+        assert_eq!(result.len(), 5);
+        assert_eq!(result, "world");
+    }
+
+    #[test]
+    fn test_ring_buffer_drain_clears() {
+        let mut buf = RingBuffer::new(100);
+        buf.push(b"data");
+        let first = buf.drain();
+        assert_eq!(first, "data");
+        let second = buf.drain();
+        assert_eq!(second, "");
+    }
+
+    #[test]
+    fn test_ring_buffer_empty_drain() {
+        let mut buf = RingBuffer::new(100);
+        assert_eq!(buf.drain(), "");
+    }
+
+    #[tokio::test]
+    async fn test_get_claude_pty_buffer_not_found() {
+        let manager = PtyManager::new();
+        let result = manager.get_claude_pty_buffer("nonexistent-task").await;
+        assert!(result.is_none());
+    }
 
     #[test]
     fn test_pty_error_display() {

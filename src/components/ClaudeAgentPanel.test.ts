@@ -41,6 +41,7 @@ vi.mock('../lib/ipc', () => ({
   transcribeAudio: vi.fn(),
   getWhisperModelStatus: vi.fn(),
   downloadWhisperModel: vi.fn(),
+  getClaudePtyBuffer: vi.fn().mockResolvedValue(null),
 }))
 
 vi.mock('@tauri-apps/api/event', () => ({
@@ -66,6 +67,7 @@ vi.mock('../lib/useTerminal.svelte', () => ({
 
 import ClaudeAgentPanel from './ClaudeAgentPanel.svelte'
 import { activeSessions } from '../lib/stores'
+import * as ipc from '../lib/ipc'
 
 const baseSession: AgentSession = {
   id: 'ses-1',
@@ -168,5 +170,16 @@ describe('ClaudeAgentPanel', () => {
 
     render(ClaudeAgentPanel, { props: { taskId: 'T-1' } })
     expect(screen.queryByText('No active agent session')).toBeNull()
+  })
+
+  it('calls getClaudePtyBuffer on mount when session exists', async () => {
+    const sessions = new Map<string, AgentSession>()
+    sessions.set('T-1', baseSession)
+    activeSessions.set(sessions)
+
+    render(ClaudeAgentPanel, { props: { taskId: 'T-1' } })
+    await vi.waitFor(() => {
+      expect(ipc.getClaudePtyBuffer).toHaveBeenCalledWith('T-1')
+    })
   })
 })

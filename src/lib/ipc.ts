@@ -209,6 +209,10 @@ export async function killPty(taskId: string): Promise<void> {
   return invoke("pty_kill", { taskId });
 }
 
+export async function getClaudePtyBuffer(taskId: string): Promise<string | null> {
+  return invoke<string | null>("get_claude_pty_buffer", { taskId });
+}
+
 export async function getTaskDiff(taskId: string, includeUncommitted: boolean): Promise<PrFileDiff[]> {
   return invoke<PrFileDiff[]>("get_task_diff", { taskId, includeUncommitted });
 }

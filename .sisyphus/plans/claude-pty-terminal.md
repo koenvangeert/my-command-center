@@ -930,7 +930,7 @@ Max Concurrent: 4 (Waves 1)
   - Files: `src/components/AgentPanel.svelte` (or equivalent)
   - Pre-commit: `pnpm build`
 
-- [ ] 11. Terminal Persistence (Buffer + Reconnect)
+- [x] 11. Terminal Persistence (Buffer + Reconnect)
 
   **What to do**:
   - RED: Write tests — when user navigates away from a task, PTY stays alive and output is buffered; when user returns, buffered output is flushed to terminal; when process exits while away, status updates correctly

@@ -4,7 +4,7 @@
   import type { UnlistenFn } from '@tauri-apps/api/event'
   import type { PtyEvent } from '../lib/types'
   import { activeSessions } from '../lib/stores'
-  import { writePty, resizePty, killPty, abortImplementation } from '../lib/ipc'
+  import { writePty, resizePty, killPty, abortImplementation, getClaudePtyBuffer } from '../lib/ipc'
   import '@xterm/xterm/css/xterm.css'
   import { createTerminal } from '../lib/useTerminal.svelte'
   import VoiceInput from './VoiceInput.svelte'
@@ -44,6 +44,19 @@
       status = 'complete'
     } else if (session?.status === 'failed') {
       status = 'error'
+    }
+
+    // Reconnect: flush buffered PTY output if session exists
+    if (session) {
+      try {
+        const buffered = await getClaudePtyBuffer(taskId)
+        if (buffered) {
+          termHandle.terminal?.write(buffered)
+          ptyActive = true
+        }
+      } catch (e) {
+        console.error('[ClaudeAgentPanel] Failed to get PTY buffer:', e)
+      }
     }
 
     // Listen for PTY output — backend spawns Claude PTY and emits pty-output-{taskId}
