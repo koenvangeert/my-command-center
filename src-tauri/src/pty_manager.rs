@@ -1,12 +1,46 @@
 use std::collections::HashMap;
 use std::fmt;
 use std::io::{self, Read, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::sync::Mutex;
 use portable_pty::{CommandBuilder, PtySize, native_pty_system};
 use tauri::Emitter;
+
+// ============================================================================
+// Ring Buffer
+// ============================================================================
+
+const CLAUDE_BUFFER_CAPACITY: usize = 51200; // 50KB
+
+struct RingBuffer {
+    data: Vec<u8>,
+    capacity: usize,
+}
+
+impl RingBuffer {
+    fn new(capacity: usize) -> Self {
+        Self {
+            data: Vec::with_capacity(capacity),
+            capacity,
+        }
+    }
+
+    fn push(&mut self, bytes: &[u8]) {
+        self.data.extend_from_slice(bytes);
+        if self.data.len() > self.capacity {
+            let excess = self.data.len() - self.capacity;
+            self.data.drain(0..excess);
+        }
+    }
+
+    fn drain(&mut self) -> String {
+        let result = String::from_utf8_lossy(&self.data).to_string();
+        self.data.clear();
+        result
+    }
+}
 
 // ============================================================================
 // Instance ID Generator
@@ -66,14 +100,17 @@ struct PtySession {
 pub struct PtyManager {
     sessions: Arc<Mutex<HashMap<String, PtySession>>>,
     pid_dir_override: Option<PathBuf>,
+    claude_last_output: Arc<Mutex<HashMap<String, Arc<AtomicU64>>>>,
+    claude_output_buffers: Arc<Mutex<HashMap<String, Arc<std::sync::Mutex<RingBuffer>>>>>,
 }
 
 impl PtyManager {
-    /// Creates a new PtyManager with an empty session map
     pub fn new() -> Self {
         Self {
             sessions: Arc::new(Mutex::new(HashMap::new())),
             pid_dir_override: None,
+            claude_last_output: Arc::new(Mutex::new(HashMap::new())),
+            claude_output_buffers: Arc::new(Mutex::new(HashMap::new())),
         }
     }
     /// Spawns a new PTY process for the given task_id.
@@ -315,11 +352,261 @@ impl PtyManager {
         Ok(instance_id)
     }
 
-    /// Writes data to the PTY for the given task_id
+    /// Spawns a Claude CLI process in a PTY for the given task_id.
+    /// Runs `claude "prompt"` for new sessions or `claude --resume <id> "prompt"` for resuming.
+    /// Always passes `--settings <hooks_settings_path>` to load the Claude hooks config.
     ///
     /// # Arguments
-    /// * `task_id` - Unique identifier for the task
-    /// * `data` - Bytes to write to the PTY
+    /// * `task_id` - Unique identifier for the task (used for events and PID tracking)
+    /// * `cwd` - Working directory for the Claude process (task's worktree path)
+    /// * `prompt` - The prompt to send to Claude
+    /// * `resume_session_id` - If Some, resumes an existing Claude session with `--resume <id>`
+    /// * `hooks_settings_path` - Path to the hooks settings JSON file
+    /// * `cols` - Terminal width in columns
+    /// * `rows` - Terminal height in rows
+    /// * `app_handle` - Tauri app handle for emitting PTY output events
+    ///
+    /// # Returns
+    /// The unique instance ID for this PTY session
+    pub async fn spawn_claude_pty(
+        &self,
+        task_id: &str,
+        cwd: &Path,
+        prompt: &str,
+        resume_session_id: Option<&str>,
+        hooks_settings_path: &Path,
+        cols: u16,
+        rows: u16,
+        app_handle: tauri::AppHandle,
+    ) -> Result<u64, PtyError> {
+        let mut sessions = self.sessions.lock().await;
+
+        if sessions.contains_key(task_id) {
+            println!("[PTY] Replacing existing PTY for task {}", task_id);
+            if let Some(mut old_session) = sessions.remove(task_id) {
+                let _ = old_session.child.kill();
+            }
+            if let Ok(pid_dir) = self.get_pid_dir() {
+                let _ = std::fs::remove_file(pid_dir.join(format!("{}-pty.pid", task_id)));
+                let _ = std::fs::remove_file(pid_dir.join(format!("{}-claude.pid", task_id)));
+            }
+        }
+
+        // Pre-approve workspace trust so the "Do you trust this folder?" dialog is skipped
+        if let Err(e) = crate::claude_hooks::ensure_workspace_trusted(cwd) {
+            println!("[PTY] Warning: Failed to pre-approve workspace trust: {}", e);
+            // Non-fatal — Claude will just show the trust dialog
+        }
+
+        println!("Spawning Claude PTY for task {} ({}x{})", task_id, cols, rows);
+
+        let pty_system = native_pty_system();
+        let size = PtySize {
+            rows,
+            cols,
+            pixel_width: 0,
+            pixel_height: 0,
+        };
+
+        let pair = pty_system
+            .openpty(size)
+            .map_err(|e| PtyError::SpawnFailed(format!("Failed to create PTY pair: {}", e)))?;
+
+        let mut cmd = CommandBuilder::new("claude");
+        for arg in build_claude_args(prompt, resume_session_id, hooks_settings_path) {
+            cmd.arg(arg);
+        }
+        cmd.cwd(cwd);
+
+        let user_env = get_user_environment();
+        for (key, value) in user_env {
+            cmd.env(key, value);
+        }
+
+        cmd.env("TERM", "xterm-256color");
+        cmd.env("COLORTERM", "truecolor");
+        cmd.env("TERM_PROGRAM", "vscode");
+        cmd.env("CLAUDE_TASK_ID", task_id);
+
+        let child = pair
+            .slave
+            .spawn_command(cmd)
+            .map_err(|e| PtyError::SpawnFailed(format!("Failed to spawn command: {}", e)))?;
+
+        drop(pair.slave);
+
+        let pid = child.process_id().unwrap_or(0);
+        println!("Claude PTY for task {} started (PID: {})", task_id, pid);
+
+        let instance_id = NEXT_INSTANCE_ID.fetch_add(1, Ordering::Relaxed);
+
+        let reader = pair
+            .master
+            .try_clone_reader()
+            .map_err(|e| PtyError::SpawnFailed(format!("Failed to clone reader: {}", e)))?;
+
+        let writer = pair
+            .master
+            .take_writer()
+            .map_err(|e| PtyError::SpawnFailed(format!("Failed to take writer: {}", e)))?;
+
+        sessions.insert(
+            task_id.to_string(),
+            PtySession {
+                instance_id,
+                child,
+                master: pair.master,
+                writer,
+            },
+        );
+
+        drop(sessions);
+
+        #[cfg(target_os = "macos")]
+        {
+            tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+        }
+
+        let pid_dir = self.get_pid_dir()?;
+        std::fs::create_dir_all(&pid_dir)?;
+        let pid_file = pid_dir.join(format!("{}-claude.pid", task_id));
+        std::fs::write(&pid_file, pid.to_string())?;
+
+        let last_output_time = Arc::new(AtomicU64::new(0));
+        {
+            let mut times = self.claude_last_output.lock().await;
+            times.insert(task_id.to_string(), Arc::clone(&last_output_time));
+        }
+        let last_output_time_reader = Arc::clone(&last_output_time);
+
+        let ring_buffer = Arc::new(std::sync::Mutex::new(RingBuffer::new(CLAUDE_BUFFER_CAPACITY)));
+        {
+            let mut buffers = self.claude_output_buffers.lock().await;
+            buffers.insert(task_id.to_string(), Arc::clone(&ring_buffer));
+        }
+        let ring_buffer_emitter = Arc::clone(&ring_buffer);
+
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<Option<String>>();
+
+        let task_id_reader = task_id.to_string();
+        tokio::task::spawn_blocking(move || {
+            let mut reader = reader;
+            let mut buffer = [0u8; 8192];
+            let mut incomplete_utf8: Vec<u8> = Vec::new();
+
+            loop {
+                match reader.read(&mut buffer) {
+                    Ok(0) => {
+                        println!("[PTY] task={} closed (EOF)", task_id_reader);
+                        let _ = tx.send(None);
+                        break;
+                    }
+                    Ok(n) => {
+                        let now_ms = std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap_or_default()
+                            .as_millis() as u64;
+                        last_output_time_reader.store(now_ms, Ordering::Relaxed);
+
+                        let mut data = if incomplete_utf8.is_empty() {
+                            buffer[..n].to_vec()
+                        } else {
+                            let mut combined = std::mem::take(&mut incomplete_utf8);
+                            combined.extend_from_slice(&buffer[..n]);
+                            combined
+                        };
+
+                        let valid_up_to = find_utf8_boundary(&data);
+                        if valid_up_to < data.len() {
+                            incomplete_utf8 = data[valid_up_to..].to_vec();
+                            data.truncate(valid_up_to);
+                        }
+
+                        if !data.is_empty() {
+                            let text = String::from_utf8_lossy(&data).to_string();
+                            if tx.send(Some(text)).is_err() {
+                                println!("[PTY] task={} channel closed, reader exiting", task_id_reader);
+                                break;
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        println!("[PTY] task={} read error: {}", task_id_reader, e);
+                        let _ = tx.send(None);
+                        break;
+                    }
+                }
+            }
+        });
+
+        const FLUSH_INTERVAL_MS: u64 = 16;
+        const MAX_BUFFER_SIZE: usize = 65536;
+
+        let task_id_emitter = task_id.to_string();
+        let instance_id_emitter = instance_id;
+        tokio::spawn(async move {
+            let mut buffer = String::new();
+            let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(FLUSH_INTERVAL_MS));
+            interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+
+            loop {
+                tokio::select! {
+                    msg = rx.recv() => {
+                        match msg {
+                            Some(Some(text)) => {
+                                buffer.push_str(&text);
+                                if buffer.len() >= MAX_BUFFER_SIZE {
+                                    if !buffer.is_empty() {
+                                        if let Ok(mut buf) = ring_buffer_emitter.lock() {
+                                            buf.push(buffer.as_bytes());
+                                        }
+                                        let event_name = format!("pty-output-{}", task_id_emitter);
+                                        let payload = serde_json::json!({ "task_id": &task_id_emitter, "data": &buffer });
+                                        if let Err(e) = app_handle.emit(&event_name, &payload) {
+                                            eprintln!("[PTY] Failed to emit {}: {}", event_name, e);
+                                        }
+                                        buffer.clear();
+                                    }
+                                }
+                            }
+                            Some(None) | None => {
+                                if !buffer.is_empty() {
+                                    if let Ok(mut buf) = ring_buffer_emitter.lock() {
+                                        buf.push(buffer.as_bytes());
+                                    }
+                                    let event_name = format!("pty-output-{}", task_id_emitter);
+                                    let payload = serde_json::json!({ "task_id": &task_id_emitter, "data": &buffer });
+                                    if let Err(e) = app_handle.emit(&event_name, &payload) {
+                                        eprintln!("[PTY] Failed to emit {}: {}", event_name, e);
+                                    }
+                                    buffer.clear();
+                                }
+                                println!("[PTY] task={} emitter received exit signal", task_id_emitter);
+                                let _ = app_handle.emit(&format!("pty-exit-{}", task_id_emitter), serde_json::json!({"instance_id": instance_id_emitter}));
+                                break;
+                            }
+                        }
+                    }
+                    _ = interval.tick() => {
+                        if !buffer.is_empty() {
+                            if let Ok(mut buf) = ring_buffer_emitter.lock() {
+                                buf.push(buffer.as_bytes());
+                            }
+                            let event_name = format!("pty-output-{}", task_id_emitter);
+                            let payload = serde_json::json!({ "task_id": &task_id_emitter, "data": &buffer });
+                            if let Err(e) = app_handle.emit(&event_name, &payload) {
+                                eprintln!("[PTY] Failed to emit {}: {}", event_name, e);
+                            }
+                            buffer.clear();
+                        }
+                    }
+                }
+            }
+        });
+
+        Ok(instance_id)
+    }
+
     pub async fn write_pty(&self, task_id: &str, data: &[u8]) -> Result<(), PtyError> {
         let mut sessions = self.sessions.lock().await;
 
@@ -403,6 +690,55 @@ impl PtyManager {
                 eprintln!("Failed to kill PTY for task {}: {}", task_id, e);
             }
         }
+    }
+
+    pub async fn interrupt_claude(&self, task_id: &str) -> Result<(), PtyError> {
+        let sessions = self.sessions.lock().await;
+
+        let session = sessions
+            .get(task_id)
+            .ok_or_else(|| PtyError::ProcessNotFound(task_id.to_string()))?;
+
+        let pid = session
+            .child
+            .process_id()
+            .ok_or_else(|| PtyError::ProcessNotFound(task_id.to_string()))?;
+
+        unsafe {
+            libc::kill(pid as i32, libc::SIGINT);
+        }
+
+        Ok(())
+    }
+
+    pub async fn check_claude_frozen(&self, task_id: &str) -> Option<u64> {
+        let pid = {
+            let sessions = self.sessions.lock().await;
+            let session = sessions.get(task_id)?;
+            session.child.process_id()?
+        };
+
+        let is_alive = unsafe { libc::kill(pid as i32, 0) == 0 };
+        if !is_alive {
+            return None;
+        }
+
+        let times = self.claude_last_output.lock().await;
+        let last_output_ms = times.get(task_id)?.load(Ordering::Relaxed);
+
+        let now_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .ok()?
+            .as_millis() as u64;
+
+        frozen_seconds(last_output_ms, now_ms)
+    }
+
+    pub async fn get_claude_pty_buffer(&self, task_id: &str) -> Option<String> {
+        let buffers = self.claude_output_buffers.lock().await;
+        let buffer = buffers.get(task_id)?;
+        let mut buf = buffer.lock().unwrap();
+        Some(buf.drain())
     }
 
     /// Cleans up stale PID files for processes that are no longer running
@@ -516,6 +852,22 @@ impl PtyManager {
 }
 
 // ============================================================================
+// Freeze Detection
+// ============================================================================
+
+fn frozen_seconds(last_output_ms: u64, now_ms: u64) -> Option<u64> {
+    if last_output_ms == 0 {
+        return None;
+    }
+    let elapsed_secs = now_ms.saturating_sub(last_output_ms) / 1000;
+    if elapsed_secs >= 15 {
+        Some(elapsed_secs)
+    } else {
+        None
+    }
+}
+
+// ============================================================================
 // UTF-8 Boundary Detection
 // ============================================================================
 
@@ -623,9 +975,70 @@ fn get_user_environment() -> HashMap<String, String> {
     env_map
 }
 
+// ============================================================================
+// Claude Command Builder
+// ============================================================================
+
+pub(crate) fn build_claude_args(
+    prompt: &str,
+    resume_session_id: Option<&str>,
+    hooks_settings_path: &Path,
+) -> Vec<String> {
+    let mut args = Vec::new();
+    if let Some(session_id) = resume_session_id {
+        args.push("--resume".to_string());
+        args.push(session_id.to_string());
+    }
+    args.push(prompt.to_string());
+    args.push("--settings".to_string());
+    args.push(hooks_settings_path.to_string_lossy().to_string());
+    args
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_ring_buffer_push_within_capacity() {
+        let mut buf = RingBuffer::new(100);
+        buf.push(b"hello");
+        buf.push(b" world");
+        assert_eq!(buf.drain(), "hello world");
+    }
+
+    #[test]
+    fn test_ring_buffer_push_exceeds_capacity() {
+        let mut buf = RingBuffer::new(5);
+        buf.push(b"hello");
+        buf.push(b"world");
+        let result = buf.drain();
+        assert_eq!(result.len(), 5);
+        assert_eq!(result, "world");
+    }
+
+    #[test]
+    fn test_ring_buffer_drain_clears() {
+        let mut buf = RingBuffer::new(100);
+        buf.push(b"data");
+        let first = buf.drain();
+        assert_eq!(first, "data");
+        let second = buf.drain();
+        assert_eq!(second, "");
+    }
+
+    #[test]
+    fn test_ring_buffer_empty_drain() {
+        let mut buf = RingBuffer::new(100);
+        assert_eq!(buf.drain(), "");
+    }
+
+    #[tokio::test]
+    async fn test_get_claude_pty_buffer_not_found() {
+        let manager = PtyManager::new();
+        let result = manager.get_claude_pty_buffer("nonexistent-task").await;
+        assert!(result.is_none());
+    }
 
     #[test]
     fn test_pty_error_display() {
@@ -729,5 +1142,204 @@ mod tests {
         // Verify parent is .ai-command-center
         let parent_name = pid_dir.parent().unwrap().file_name().unwrap().to_str().unwrap();
         assert_eq!(parent_name, ".ai-command-center");
+    }
+
+    #[test]
+    fn test_build_claude_args_new_session() {
+        let settings = Path::new("/home/user/.ai-command-center/claude-hooks-settings.json");
+        let args = build_claude_args("implement the feature", None, settings);
+        assert_eq!(
+            args,
+            vec![
+                "implement the feature",
+                "--settings",
+                "/home/user/.ai-command-center/claude-hooks-settings.json",
+            ]
+        );
+    }
+
+    #[test]
+    fn test_build_claude_args_resume_session() {
+        let settings = Path::new("/path/to/settings.json");
+        let args = build_claude_args("continue work", Some("sess-abc-123"), settings);
+        assert_eq!(
+            args,
+            vec![
+                "--resume",
+                "sess-abc-123",
+                "continue work",
+                "--settings",
+                "/path/to/settings.json",
+            ]
+        );
+    }
+
+    #[test]
+    fn test_build_claude_args_settings_always_present() {
+        let settings = Path::new("/config/hooks.json");
+        let args_new = build_claude_args("prompt", None, settings);
+        let args_resume = build_claude_args("prompt", Some("sid"), settings);
+
+        assert!(args_new.contains(&"--settings".to_string()));
+        assert!(args_resume.contains(&"--settings".to_string()));
+    }
+
+    #[test]
+    fn test_build_claude_args_no_headless_flags() {
+        let settings = Path::new("/config/hooks.json");
+        let args = build_claude_args("prompt", None, settings);
+
+        assert!(!args.contains(&"-p".to_string()));
+        assert!(!args.contains(&"--output-format".to_string()));
+        assert!(!args.contains(&"--input-format".to_string()));
+    }
+
+    #[test]
+    fn test_build_claude_args_resume_flag_before_prompt() {
+        let settings = Path::new("/config/hooks.json");
+        let args = build_claude_args("my prompt", Some("session-xyz"), settings);
+
+        let resume_pos = args.iter().position(|a| a == "--resume").unwrap();
+        let session_pos = args.iter().position(|a| a == "session-xyz").unwrap();
+        let prompt_pos = args.iter().position(|a| a == "my prompt").unwrap();
+
+        assert_eq!(session_pos, resume_pos + 1);
+        assert!(prompt_pos > session_pos);
+    }
+
+    #[test]
+    fn test_claude_pty_args_with_real_hooks_path() {
+        let temp_dir = std::env::temp_dir().join("test_pty_args_real_hooks_home");
+        let _ = std::fs::remove_dir_all(&temp_dir);
+        std::fs::create_dir_all(&temp_dir).unwrap();
+
+        let home_backup = std::env::var("HOME").ok();
+        std::env::set_var("HOME", &temp_dir);
+        let temp_path = crate::claude_hooks::generate_hooks_settings(17422)
+            .expect("generate_hooks_settings should succeed");
+        if let Some(home) = home_backup {
+            std::env::set_var("HOME", home);
+        } else {
+            std::env::remove_var("HOME");
+        }
+
+        let args_new = build_claude_args("fix the bug", None, &temp_path);
+        assert_eq!(args_new[0], "fix the bug");
+        let s_idx = args_new.iter().position(|a| a == "--settings").unwrap();
+        assert_eq!(args_new[s_idx + 1], temp_path.to_string_lossy().to_string());
+        assert!(!args_new.contains(&"-p".to_string()));
+
+        let args_resume = build_claude_args("continue impl", Some("resume-sess-999"), &temp_path);
+        assert_eq!(args_resume[0], "--resume");
+        assert_eq!(args_resume[1], "resume-sess-999");
+        assert_eq!(args_resume[2], "continue impl");
+        let s_idx_r = args_resume.iter().position(|a| a == "--settings").unwrap();
+        assert_eq!(args_resume[s_idx_r + 1], temp_path.to_string_lossy().to_string());
+
+        let content = std::fs::read_to_string(&temp_path).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&content).unwrap();
+        assert!(parsed.get("hooks").is_some());
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_ring_buffer_concurrent_write_and_drain() {
+        use std::sync::{Arc, Mutex as StdMutex};
+        use std::thread;
+
+        let buffer = Arc::new(StdMutex::new(RingBuffer::new(1024)));
+        let mut write_handles = vec![];
+
+        for i in 0..4 {
+            let buf_clone = Arc::clone(&buffer);
+            let handle = thread::spawn(move || {
+                for j in 0..25 {
+                    let data = format!("t{}-c{} ", i, j);
+                    let mut buf = buf_clone.lock().unwrap();
+                    buf.push(data.as_bytes());
+                }
+            });
+            write_handles.push(handle);
+        }
+
+        let buf_drain = Arc::clone(&buffer);
+        let drain_handle = thread::spawn(move || {
+            for _ in 0..5 {
+                let mut buf = buf_drain.lock().unwrap();
+                buf.drain();
+            }
+        });
+
+        for handle in write_handles {
+            handle.join().expect("writer thread panicked");
+        }
+        drain_handle.join().expect("drain thread panicked");
+
+        let mut buf = buffer.lock().unwrap();
+        let remaining = buf.drain();
+        assert!(remaining.len() <= 1024, "Ring buffer must not exceed capacity");
+    }
+
+    #[test]
+    fn test_freeze_detection_with_ring_buffer() {
+        let mut ring_buf = RingBuffer::new(512);
+        ring_buf.push(b"Claude is processing...\n");
+        ring_buf.push(b"Tool call: bash\n");
+
+        let now_ms: u64 = 200_000_000;
+        let last_output_ms = now_ms - 20_000;
+
+        let frozen = frozen_seconds(last_output_ms, now_ms);
+        assert_eq!(frozen, Some(20));
+
+        let buffered = ring_buf.drain();
+        assert!(buffered.contains("Claude is processing"));
+        assert!(buffered.contains("Tool call: bash"));
+
+        assert_eq!(ring_buf.drain(), "", "Ring buffer empty after drain");
+
+        let still_frozen = frozen_seconds(last_output_ms, now_ms);
+        assert_eq!(still_frozen, Some(20), "Freeze detection unaffected by ring buffer drain");
+
+        let recent_output = now_ms - 5_000;
+        assert!(frozen_seconds(recent_output, now_ms).is_none());
+    }
+
+    #[tokio::test]
+    async fn test_interrupt_claude_not_found() {
+        let manager = PtyManager::new();
+        let result = manager.interrupt_claude("nonexistent-task").await;
+        assert!(matches!(result, Err(PtyError::ProcessNotFound(_))));
+    }
+
+    #[tokio::test]
+    async fn test_check_claude_frozen_not_found() {
+        let manager = PtyManager::new();
+        let result = manager.check_claude_frozen("nonexistent-task").await;
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_frozen_seconds_no_output_yet() {
+        assert!(frozen_seconds(0, 100_000_000).is_none());
+    }
+
+    #[test]
+    fn test_frozen_seconds_below_threshold() {
+        let now_ms: u64 = 100_000_000;
+        assert!(frozen_seconds(now_ms - 14_999, now_ms).is_none());
+    }
+
+    #[test]
+    fn test_frozen_seconds_at_threshold() {
+        let now_ms: u64 = 100_000_000;
+        assert_eq!(frozen_seconds(now_ms - 15_000, now_ms), Some(15));
+    }
+
+    #[test]
+    fn test_frozen_seconds_above_threshold() {
+        let now_ms: u64 = 100_000_000;
+        assert_eq!(frozen_seconds(now_ms - 60_000, now_ms), Some(60));
     }
 }

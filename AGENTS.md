@@ -618,6 +618,8 @@ Structs use `#[derive(Debug, Clone, Serialize)]` with public fields for rows. Do
 
 Use `#[serde(flatten)] pub extra: serde_json::Value` on API response types to capture
 unknown fields without failing deserialization. Use `#[serde(default)]` for optional fields.
+Sidecar protocol structs use `#[serde(rename_all = "camelCase")]` — TypeScript sends camelCase,
+Rust keeps snake_case fields.
 
 ### Section Separators
 

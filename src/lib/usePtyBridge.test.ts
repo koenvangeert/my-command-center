@@ -35,10 +35,10 @@ describe('createPtyBridge', () => {
     expect(bridge.ptySpawned).toBe(false)
   })
 
-  it('attachPty does nothing when getWorktreeForTask returns null', async () => {
+  it('attachPty does nothing when getWorktreeForTask returns null (opencode)', async () => {
     vi.mocked(getWorktreeForTask).mockResolvedValue(null)
     const bridge = createPtyBridge({ taskId, getTerminal, setOpencodePort, onAttached })
-    await bridge.attachPty('ses-1')
+    await bridge.attachPty({ opencodeSessionId: 'ses-1' })
     expect(bridge.ptySpawned).toBe(false)
     expect(onAttached).not.toHaveBeenCalled()
   })
@@ -46,7 +46,7 @@ describe('createPtyBridge', () => {
   it('attachPty spawns PTY when worktree has opencode_port', async () => {
     vi.mocked(getWorktreeForTask).mockResolvedValue({ opencode_port: 9000 } as never)
     const bridge = createPtyBridge({ taskId, getTerminal, setOpencodePort, onAttached })
-    await bridge.attachPty('ses-1')
+    await bridge.attachPty({ opencodeSessionId: 'ses-1' })
     expect(bridge.ptySpawned).toBe(true)
     expect(spawnPty).toHaveBeenCalledWith(taskId, 9000, 'ses-1', 80, 24)
     expect(onAttached).toHaveBeenCalled()
@@ -55,22 +55,22 @@ describe('createPtyBridge', () => {
   it('attachPty calls setOpencodePort with discovered port', async () => {
     vi.mocked(getWorktreeForTask).mockResolvedValue({ opencode_port: 9001 } as never)
     const bridge = createPtyBridge({ taskId, getTerminal, setOpencodePort, onAttached })
-    await bridge.attachPty('ses-1')
+    await bridge.attachPty({ opencodeSessionId: 'ses-1' })
     expect(setOpencodePort).toHaveBeenCalledWith(9001)
   })
 
   it('attachPty is idempotent — second call does nothing when already spawned', async () => {
     vi.mocked(getWorktreeForTask).mockResolvedValue({ opencode_port: 9000 } as never)
     const bridge = createPtyBridge({ taskId, getTerminal, setOpencodePort, onAttached })
-    await bridge.attachPty('ses-1')
-    await bridge.attachPty('ses-1')
+    await bridge.attachPty({ opencodeSessionId: 'ses-1' })
+    await bridge.attachPty({ opencodeSessionId: 'ses-1' })
     expect(spawnPty).toHaveBeenCalledTimes(1)
   })
 
   it('killPty calls ipc killPty and sets ptySpawned to false', async () => {
     vi.mocked(getWorktreeForTask).mockResolvedValue({ opencode_port: 9000 } as never)
     const bridge = createPtyBridge({ taskId, getTerminal, setOpencodePort, onAttached })
-    await bridge.attachPty('ses-1')
+    await bridge.attachPty({ opencodeSessionId: 'ses-1' })
     expect(bridge.ptySpawned).toBe(true)
     await bridge.killPty()
     expect(killPty).toHaveBeenCalledWith(taskId)
@@ -86,4 +86,5 @@ describe('createPtyBridge', () => {
     const bridge = createPtyBridge({ taskId, getTerminal, setOpencodePort, onAttached })
     expect(() => bridge.dispose()).not.toThrow()
   })
+
 })

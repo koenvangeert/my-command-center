@@ -23,6 +23,15 @@ export interface AgentSession {
   error_message: string | null;
   created_at: number;
   updated_at: number;
+  provider: string;
+  claude_session_id: string | null;
+}
+
+export interface ClaudeInstallStatus {
+  installed: boolean;
+  path: string | null;
+  version: string | null;
+  authenticated: boolean;
 }
 
 export interface AgentLog {
@@ -366,4 +375,50 @@ export interface WhisperModelStatus {
   disk_size_mb: number;
   ram_usage_mb: number;
   is_active: boolean;
+}
+
+// ============================================================================
+// Claude Code SDK Types
+// ============================================================================
+
+/** Permission mode for Claude Code sessions */
+export type PermissionMode = 'default' | 'acceptEdits' | 'plan' | 'bypassPermissions';
+
+/** A tool call made by Claude during a session */
+export interface SDKToolCall {
+  id: string;
+  toolName: string;
+  input: string;
+  output: string | null;
+  status: 'running' | 'completed' | 'error';
+  duration: number | null;
+}
+
+/** A chat message in a Claude session */
+export interface SDKChatMessage {
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp: number;
+  status: 'streaming' | 'complete' | 'error';
+  toolCalls: SDKToolCall[] | null;
+}
+
+/** A tool approval request pending user decision */
+export interface SDKToolApprovalRequest {
+  id: string;
+  toolName: string;
+  toolInput: string;
+  description: string | null;
+  pending: boolean;
+}
+
+/** Full state of a Claude session */
+export interface ClaudeSessionState {
+  sessionId: string | null;
+  status: 'idle' | 'running' | 'completed' | 'failed' | 'interrupted';
+  messages: SDKChatMessage[];
+  pendingApprovals: SDKToolApprovalRequest[];
+  totalCost: number | null;
+  permissionMode?: PermissionMode;
 }

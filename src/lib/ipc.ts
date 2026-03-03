@@ -124,6 +124,10 @@ export async function checkOpenCodeInstalled(): Promise<{ installed: boolean; pa
   return invoke("check_opencode_installed");
 }
 
+export async function checkClaudeInstalled(): Promise<{ installed: boolean; path: string | null; version: string | null; authenticated: boolean }> {
+  return invoke<{ installed: boolean; path: string | null; version: string | null; authenticated: boolean }>("check_claude_installed");
+}
+
 export async function getConfig(key: string): Promise<string | null> {
   return invoke<string | null>("get_config", { key });
 }
@@ -192,6 +196,7 @@ export async function spawnPty(taskId: string, serverPort: number, opencodeSessi
   return invoke<number>("pty_spawn", { taskId, serverPort, opencodeSessionId, cols, rows });
 }
 
+
 export async function writePty(taskId: string, data: string): Promise<void> {
   return invoke("pty_write", { taskId, data });
 }
@@ -202,6 +207,10 @@ export async function resizePty(taskId: string, cols: number, rows: number): Pro
 
 export async function killPty(taskId: string): Promise<void> {
   return invoke("pty_kill", { taskId });
+}
+
+export async function getClaudePtyBuffer(taskId: string): Promise<string | null> {
+  return invoke<string | null>("get_claude_pty_buffer", { taskId });
 }
 
 export async function getTaskDiff(taskId: string, includeUncommitted: boolean): Promise<PrFileDiff[]> {
@@ -293,3 +302,5 @@ export async function getAllWhisperModelStatuses(): Promise<WhisperModelStatus[]
 export async function setWhisperModel(modelSize: WhisperModelSizeId): Promise<void> {
   return invoke<void>("set_whisper_model", { modelSize });
 }
+
+

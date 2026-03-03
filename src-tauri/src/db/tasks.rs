@@ -551,7 +551,7 @@ mod tests {
         let (db, path) = make_test_db("delete_task_children");
         insert_test_task(&db);
 
-        db.create_agent_session("ses-del", "T-100", None, "implement", "running")
+        db.create_agent_session("ses-del", "T-100", None, "implement", "running", "opencode")
             .expect("create session failed");
         db.insert_agent_log("ses-del", "info", "log entry")
             .expect("add log failed");

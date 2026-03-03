@@ -13,6 +13,8 @@ pub struct AgentSessionRow {
     pub error_message: Option<String>,
     pub created_at: i64,
     pub updated_at: i64,
+    pub provider: String,
+    pub claude_session_id: Option<String>,
 }
 
 /// Agent log row from database
@@ -33,6 +35,7 @@ impl super::Database {
         opencode_session_id: Option<&str>,
         stage: &str,
         status: &str,
+        provider: &str,
     ) -> Result<()> {
         let conn = self.conn.lock().unwrap();
         let now = std::time::SystemTime::now()
@@ -40,9 +43,9 @@ impl super::Database {
             .expect("time went backwards")
             .as_secs() as i64;
         conn.execute(
-            "INSERT INTO agent_sessions (id, ticket_id, opencode_session_id, stage, status, created_at, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-            rusqlite::params![id, ticket_id, opencode_session_id, stage, status, now, now],
+            "INSERT INTO agent_sessions (id, ticket_id, opencode_session_id, stage, status, provider, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            rusqlite::params![id, ticket_id, opencode_session_id, stage, status, provider, now, now],
         )?;
         Ok(())
     }
@@ -76,10 +79,19 @@ impl super::Database {
         Ok(())
     }
 
+    pub fn set_agent_session_claude_id(&self, id: &str, claude_session_id: &str) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "UPDATE agent_sessions SET claude_session_id = ?1 WHERE id = ?2",
+            [claude_session_id, id],
+        )?;
+        Ok(())
+    }
+
     pub fn get_agent_session(&self, id: &str) -> Result<Option<AgentSessionRow>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT id, ticket_id, opencode_session_id, stage, status, checkpoint_data, error_message, created_at, updated_at
+            "SELECT id, ticket_id, opencode_session_id, stage, status, checkpoint_data, error_message, created_at, updated_at, provider, claude_session_id
              FROM agent_sessions WHERE id = ?1",
         )?;
         let mut rows = stmt.query([id])?;
@@ -94,6 +106,8 @@ impl super::Database {
                 error_message: row.get(6)?,
                 created_at: row.get(7)?,
                 updated_at: row.get(8)?,
+                provider: row.get(9)?,
+                claude_session_id: row.get(10)?
             }))
         } else {
             Ok(None)
@@ -106,7 +120,7 @@ impl super::Database {
     ) -> Result<Option<AgentSessionRow>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT id, ticket_id, opencode_session_id, stage, status, checkpoint_data, error_message, created_at, updated_at
+            "SELECT id, ticket_id, opencode_session_id, stage, status, checkpoint_data, error_message, created_at, updated_at, provider, claude_session_id
              FROM agent_sessions WHERE ticket_id = ?1 ORDER BY created_at DESC, rowid DESC LIMIT 1",
         )?;
         let mut rows = stmt.query([ticket_id])?;
@@ -121,6 +135,8 @@ impl super::Database {
                 error_message: row.get(6)?,
                 created_at: row.get(7)?,
                 updated_at: row.get(8)?,
+                provider: row.get(9)?,
+                claude_session_id: row.get(10)?,
             }))
         } else {
             Ok(None)
@@ -141,7 +157,7 @@ impl super::Database {
             .map(|(i, _)| format!("?{}", i + 1))
             .collect();
         let sql = format!(
-            "SELECT s.id, s.ticket_id, s.opencode_session_id, s.stage, s.status, s.checkpoint_data, s.error_message, s.created_at, s.updated_at
+            "SELECT s.id, s.ticket_id, s.opencode_session_id, s.stage, s.status, s.checkpoint_data, s.error_message, s.created_at, s.updated_at, s.provider, s.claude_session_id
              FROM agent_sessions s
              INNER JOIN (
                  SELECT ticket_id, MAX(created_at) as max_created
@@ -167,6 +183,64 @@ impl super::Database {
                 error_message: row.get(6)?,
                 created_at: row.get(7)?,
                 updated_at: row.get(8)?,
+                provider: row.get(9)?,
+                claude_session_id: row.get(10)?,
+            })
+        })?;
+        let mut result = Vec::new();
+        for row in rows {
+            result.push(row?);
+        }
+        Ok(result)
+    }
+
+    pub fn get_sessions_by_provider(&self, provider: &str) -> Result<Vec<AgentSessionRow>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, ticket_id, opencode_session_id, stage, status, checkpoint_data, error_message, created_at, updated_at, provider, claude_session_id
+             FROM agent_sessions WHERE provider = ?1 ORDER BY created_at DESC",
+        )?;
+        let rows = stmt.query_map([provider], |row| {
+            Ok(AgentSessionRow {
+                id: row.get(0)?,
+                ticket_id: row.get(1)?,
+                opencode_session_id: row.get(2)?,
+                stage: row.get(3)?,
+                status: row.get(4)?,
+                checkpoint_data: row.get(5)?,
+                error_message: row.get(6)?,
+                created_at: row.get(7)?,
+                updated_at: row.get(8)?,
+                provider: row.get(9)?,
+                claude_session_id: row.get(10)?,
+            })
+        })?;
+        let mut result = Vec::new();
+        for row in rows {
+            result.push(row?);
+        }
+        Ok(result)
+    }
+
+    pub fn get_running_claude_sessions(&self) -> Result<Vec<AgentSessionRow>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, ticket_id, opencode_session_id, stage, status, checkpoint_data, error_message, created_at, updated_at, provider, claude_session_id
+             FROM agent_sessions WHERE provider = 'claude-code' AND status = 'running' ORDER BY created_at DESC",
+        )?;
+        let rows = stmt.query_map([], |row| {
+            Ok(AgentSessionRow {
+                id: row.get(0)?,
+                ticket_id: row.get(1)?,
+                opencode_session_id: row.get(2)?,
+                stage: row.get(3)?,
+                status: row.get(4)?,
+                checkpoint_data: row.get(5)?,
+                error_message: row.get(6)?,
+                created_at: row.get(7)?,
+                updated_at: row.get(8)?,
+                provider: row.get(9)?,
+                claude_session_id: row.get(10)?,
             })
         })?;
         let mut result = Vec::new();
@@ -234,7 +308,7 @@ mod tests {
         let (db, path) = make_test_db("agent_session_lifecycle");
         insert_test_task(&db);
 
-        db.create_agent_session("ses-1", "T-100", None, "read_ticket", "running")
+        db.create_agent_session("ses-1", "T-100", None, "read_ticket", "running", "opencode")
             .expect("create failed");
 
         let session = db
@@ -284,9 +358,9 @@ mod tests {
         let (db, path) = make_test_db("latest_session");
         insert_test_task(&db);
 
-        db.create_agent_session("ses-old", "T-100", None, "read_ticket", "completed")
+        db.create_agent_session("ses-old", "T-100", None, "read_ticket", "completed", "opencode")
             .expect("create 1 failed");
-        db.create_agent_session("ses-new", "T-100", None, "implement", "running")
+        db.create_agent_session("ses-new", "T-100", None, "implement", "running", "opencode")
             .expect("create 2 failed");
 
         let latest = db
@@ -304,7 +378,7 @@ mod tests {
         let (db, path) = make_test_db("checkpoint_persist");
         insert_test_task(&db);
 
-        db.create_agent_session("ses-cp", "T-100", None, "implement", "running")
+        db.create_agent_session("ses-cp", "T-100", None, "implement", "running", "opencode")
             .expect("create session failed");
 
         db.update_agent_session(
@@ -343,7 +417,7 @@ mod tests {
         let (db, path) = make_test_db("agent_logs");
         insert_test_task(&db);
 
-        db.create_agent_session("ses-log", "T-100", None, "implement", "running")
+        db.create_agent_session("ses-log", "T-100", None, "implement", "running", "opencode")
             .expect("create session failed");
 
         db.insert_agent_log("ses-log", "stdout", "Building project...")
@@ -362,17 +436,73 @@ mod tests {
     }
 
     #[test]
+    fn test_agent_logs_claude_event_types() {
+        let (db, path) = make_test_db("claude_event_types");
+        insert_test_task(&db);
+
+        db.create_agent_session("ses-claude", "T-100", None, "implement", "running", "claude-code")
+            .expect("create session failed");
+
+        // Insert logs with all semantic log_type values used by the Claude bridge
+        db.insert_agent_log("ses-claude", "system.init", r#"{"type":"system","subtype":"init","session_id":"abc"}"#)
+            .expect("insert system.init failed");
+        db.insert_agent_log("ses-claude", "assistant", r#"{"type":"assistant","content":[{"type":"text","text":"Hello"}]}"#)
+            .expect("insert assistant failed");
+        db.insert_agent_log("ses-claude", "tool_use", r#"{"type":"tool_use","name":"Read","input":{"path":"foo.rs"}}"#)
+            .expect("insert tool_use failed");
+        db.insert_agent_log("ses-claude", "tool_result", r#"{"type":"tool_result","content":"file contents"}"#)
+            .expect("insert tool_result failed");
+        db.insert_agent_log("ses-claude", "result.success", r#"{"type":"result","subtype":"success","cost_usd":0.05}"#)
+            .expect("insert result.success failed");
+        db.insert_agent_log("ses-claude", "result.error_max_turns", r#"{"type":"result","subtype":"error_max_turns"}"#)
+            .expect("insert result.error_max_turns failed");
+
+        // Retrieve logs and verify
+        let logs = db.get_agent_logs("ses-claude").expect("get logs failed");
+        assert_eq!(logs.len(), 6);
+
+        // Verify log_type values in order
+        assert_eq!(logs[0].log_type, "system.init");
+        assert_eq!(logs[1].log_type, "assistant");
+        assert_eq!(logs[2].log_type, "tool_use");
+        assert_eq!(logs[3].log_type, "tool_result");
+        assert_eq!(logs[4].log_type, "result.success");
+        assert_eq!(logs[5].log_type, "result.error_max_turns");
+
+        // Verify content values match what was inserted
+        assert_eq!(logs[0].content, r#"{"type":"system","subtype":"init","session_id":"abc"}"#);
+        assert_eq!(logs[1].content, r#"{"type":"assistant","content":[{"type":"text","text":"Hello"}]}"#);
+        assert_eq!(logs[2].content, r#"{"type":"tool_use","name":"Read","input":{"path":"foo.rs"}}"#);
+        assert_eq!(logs[3].content, r#"{"type":"tool_result","content":"file contents"}"#);
+        assert_eq!(logs[4].content, r#"{"type":"result","subtype":"success","cost_usd":0.05}"#);
+        assert_eq!(logs[5].content, r#"{"type":"result","subtype":"error_max_turns"}"#);
+
+        // Verify session_id is correct for all logs
+        for log in &logs {
+            assert_eq!(log.session_id, "ses-claude");
+        }
+
+        // Verify chronological ordering (timestamps are non-decreasing)
+        for i in 0..logs.len() - 1 {
+            assert!(logs[i].timestamp <= logs[i + 1].timestamp, "Logs should be in chronological order");
+        }
+
+        drop(db);
+        let _ = fs::remove_file(&path);
+    }
+
+    #[test]
     fn test_mark_running_sessions_interrupted() {
         let (db, path) = make_test_db("mark_interrupted");
         insert_test_task(&db);
 
-        db.create_agent_session("ses-run1", "T-100", None, "implement", "running")
+        db.create_agent_session("ses-run1", "T-100", None, "implement", "running", "opencode")
             .expect("create running 1 failed");
-        db.create_agent_session("ses-run2", "T-100", None, "implement", "running")
+        db.create_agent_session("ses-run2", "T-100", None, "implement", "running", "opencode")
             .expect("create running 2 failed");
-        db.create_agent_session("ses-done", "T-100", None, "implement", "completed")
+        db.create_agent_session("ses-done", "T-100", None, "implement", "completed", "opencode")
             .expect("create completed failed");
-        db.create_agent_session("ses-fail", "T-100", None, "implement", "failed")
+        db.create_agent_session("ses-fail", "T-100", None, "implement", "failed", "opencode")
             .expect("create failed failed");
 
         let count = db
@@ -403,5 +533,76 @@ mod tests {
 
         drop(db);
         let _ = fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_agent_session_with_claude_provider() {
+        let (db, path) = make_test_db("claude_provider");
+        insert_test_task(&db);
+        
+        db.create_agent_session("ses-claude", "T-100", None, "implement", "running", "claude-code")
+            .expect("create failed");
+        
+        let session = db.get_agent_session("ses-claude").expect("get failed").expect("not found");
+        assert_eq!(session.provider, "claude-code");
+        assert!(session.claude_session_id.is_none());
+        
+        db.set_agent_session_claude_id("ses-claude", "claude-ses-123")
+            .expect("set claude id failed");
+        
+        let session = db.get_agent_session("ses-claude").expect("get failed").expect("not found");
+        assert_eq!(session.claude_session_id, Some("claude-ses-123".to_string()));
+        
+        drop(db);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_get_sessions_by_provider() {
+        let (db, path) = make_test_db("sessions_by_provider");
+        insert_test_task(&db);
+        
+        db.create_agent_session("ses-oc1", "T-100", None, "implement", "running", "opencode")
+            .expect("create opencode 1 failed");
+        db.create_agent_session("ses-oc2", "T-100", None, "implement", "completed", "opencode")
+            .expect("create opencode 2 failed");
+        db.create_agent_session("ses-cc1", "T-100", None, "implement", "running", "claude-code")
+            .expect("create claude 1 failed");
+        
+        let opencode_sessions = db.get_sessions_by_provider("opencode").expect("get opencode failed");
+        assert_eq!(opencode_sessions.len(), 2);
+        assert!(opencode_sessions.iter().all(|s| s.provider == "opencode"));
+        
+        let claude_sessions = db.get_sessions_by_provider("claude-code").expect("get claude failed");
+        assert_eq!(claude_sessions.len(), 1);
+        assert_eq!(claude_sessions[0].provider, "claude-code");
+        
+        let none_sessions = db.get_sessions_by_provider("nonexistent").expect("get none failed");
+        assert_eq!(none_sessions.len(), 0);
+        
+        drop(db);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_get_running_claude_sessions() {
+        let (db, path) = make_test_db("running_claude_sessions");
+        insert_test_task(&db);
+        
+        db.create_agent_session("ses-cc-run", "T-100", None, "implement", "running", "claude-code")
+            .expect("create running claude failed");
+        db.create_agent_session("ses-cc-done", "T-100", None, "implement", "completed", "claude-code")
+            .expect("create completed claude failed");
+        db.create_agent_session("ses-oc-run", "T-100", None, "implement", "running", "opencode")
+            .expect("create running opencode failed");
+        
+        let running = db.get_running_claude_sessions().expect("get running failed");
+        assert_eq!(running.len(), 1);
+        assert_eq!(running[0].id, "ses-cc-run");
+        assert_eq!(running[0].provider, "claude-code");
+        assert_eq!(running[0].status, "running");
+        
+        drop(db);
+        let _ = std::fs::remove_file(&path);
     }
 }

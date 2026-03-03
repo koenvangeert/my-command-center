@@ -18,8 +18,8 @@ mod diff_parser;
 mod whisper_manager;
 mod http_server;
 mod plugin_installer;
+mod claude_hooks;
 mod commands;
-
 use std::sync::{Mutex, Arc};
 use tauri::{Manager, Emitter};
 use jira_client::JiraClient;
@@ -64,6 +64,36 @@ async fn resume_task_servers(app: tauri::AppHandle) {
             continue;
         }
 
+        // Check provider for this task's latest session
+        let latest_session = {
+            let db = app.state::<Mutex<db::Database>>();
+            let db_lock = db.lock().unwrap();
+            db_lock.get_latest_session_for_ticket(&worktree.task_id).ok().flatten()
+        };
+        let provider = latest_session.as_ref().map(|s| s.provider.as_str()).unwrap_or("opencode");
+
+        // Handle Claude Code sessions: mark as interrupted and skip server spawn
+        if provider == "claude-code" {
+            if let Some(ref session) = latest_session {
+                let db = app.state::<Mutex<db::Database>>();
+                let db_lock = db.lock().unwrap();
+                let _ = db_lock.update_agent_session(&session.id, &session.stage, "interrupted", None, Some("App restarted"));
+            }
+            let _ = app.emit(
+                "server-resumed",
+                serde_json::json!({
+                    "task_id": worktree.task_id,
+                    "port": 0,
+                }),
+            );
+            println!(
+                "[startup] Claude Code task {} marked as interrupted (process doesn't survive restart)",
+                worktree.task_id
+            );
+            continue;
+        }
+
+        // OpenCode path: spawn server and start SSE bridge
         match server_mgr.spawn_server(&worktree.task_id, worktree_path).await {
             Ok(port) => {
                 {
@@ -179,6 +209,14 @@ fn main() {
                 }
             });
             println!("HTTP server task started");
+
+            // Generate Claude hooks settings file with the HTTP server port
+            let hooks_port = claude_hooks::get_http_server_port();
+            match claude_hooks::generate_hooks_settings(hooks_port) {
+                Ok(path) => println!("Claude hooks settings generated at: {:?}", path),
+                Err(e) => eprintln!("Failed to generate Claude hooks settings: {}", e),
+            }
+
             app.manage(db_arc.clone());
 
             println!("Database initialized successfully");
@@ -271,6 +309,7 @@ fn main() {
             commands::config::set_config,
             commands::config::check_opencode_installed,
             commands::config::get_app_mode,
+            commands::config::check_claude_installed,
             commands::review::get_github_username,
             commands::review::fetch_review_prs,
             commands::review::get_review_prs,
@@ -285,6 +324,7 @@ fn main() {
             commands::pty::pty_write,
             commands::pty::pty_resize,
             commands::pty::pty_kill,
+            commands::pty::get_claude_pty_buffer,
             commands::self_review::get_task_diff,
             commands::self_review::get_task_file_contents,
             commands::self_review::get_task_batch_file_contents,
@@ -325,12 +365,13 @@ fn main() {
             let pty_mgr = app_handle.state::<pty_manager::PtyManager>();
 
             tauri::async_runtime::block_on(async {
-                // Order matters: PTY → SSE → Server
                 println!("[shutdown] Killing all PTY sessions...");
+
                 pty_mgr.kill_all().await;
 
                 println!("[shutdown] Stopping all SSE bridges...");
                 sse_mgr.stop_all().await;
+
 
                 println!("[shutdown] Stopping all OpenCode servers...");
                 if let Err(e) = server_mgr.stop_all().await {

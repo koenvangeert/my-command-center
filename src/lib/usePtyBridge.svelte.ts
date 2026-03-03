@@ -3,9 +3,14 @@ import type { UnlistenFn } from '@tauri-apps/api/event'
 import type { PtyEvent } from './types'
 import { getWorktreeForTask, spawnPty, writePty, killPty as killPtyIpc } from './ipc'
 
+export interface AttachPtyContext {
+  provider?: string
+  opencodeSessionId?: string | null
+}
+
 export interface PtyBridgeHandle {
   readonly ptySpawned: boolean
-  attachPty(sessionId: string): Promise<void>
+  attachPty(context: AttachPtyContext): Promise<void>
   writeToPty(data: string): void
   killPty(): Promise<void>
   dispose(): void
@@ -45,12 +50,17 @@ export function createPtyBridge(deps: {
     })
   }
 
-  async function attachPty(sessionId: string): Promise<void> {
+  async function attachPty(context: AttachPtyContext): Promise<void> {
     if (ptySpawned) return
-
-    ptySpawned = true  // Set synchronously before any await to prevent duplicate calls
+    ptySpawned = true
 
     try {
+      await setupListeners()
+      const term = deps.getTerminal()
+      const cols = term?.cols ?? 80
+      const rows = term?.rows ?? 24
+
+      // OpenCode path: existing logic unchanged
       const worktree = await getWorktreeForTask(deps.taskId)
       const port = worktree?.opencode_port
       if (!port) {
@@ -59,14 +69,15 @@ export function createPtyBridge(deps: {
         return
       }
       deps.setOpencodePort(port)
-
-      await setupListeners()
-      const term = deps.getTerminal()
-      const cols = term?.cols ?? 80
-      const rows = term?.rows ?? 24
+      const sessionId = context.opencodeSessionId
+      if (!sessionId) {
+        console.error('[usePtyBridge] Missing opencodeSessionId for OpenCode PTY')
+        ptySpawned = false
+        return
+      }
       expectedPtyInstance = await spawnPty(deps.taskId, port, sessionId, cols, rows)
-      term?.focus()
 
+      term?.focus()
       deps.onAttached()
     } catch (e) {
       console.error('[usePtyBridge] Failed to attach PTY:', e)

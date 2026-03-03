@@ -17,6 +17,7 @@ pub async fn pty_spawn(
         .map_err(|e| format!("Failed to spawn PTY: {}", e))
 }
 
+
 #[tauri::command]
 pub async fn pty_write(
     pty_mgr: State<'_, PtyManager>,
@@ -51,4 +52,12 @@ pub async fn pty_kill(
         .kill_pty(&task_id)
         .await
         .map_err(|e| format!("Failed to kill PTY: {}", e))
+}
+
+#[tauri::command]
+pub async fn get_claude_pty_buffer(
+    task_id: String,
+    pty_mgr: State<'_, PtyManager>,
+) -> Result<Option<String>, String> {
+    Ok(pty_mgr.get_claude_pty_buffer(&task_id).await)
 }

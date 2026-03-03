@@ -1,7 +1,8 @@
 {
-  "active_plan": "/Users/koenpersonal/.ai-command-center/worktrees/my-command-center/T-76/.sisyphus/plans/session-spawned-tasks.md",
-  "started_at": "2026-02-26T19:54:26.697Z",
-  "session_ids": ["ses_364951b11ffeoN1ZG1Ms9Rszz4"],
-  "plan_name": "session-spawned-tasks",
-  "agent": "atlas"
+  "active_plan": "/Users/koen.vangeert/.ai-command-center/worktrees/my-command-center/T-392/.sisyphus/plans/claude-pty-terminal.md",
+  "started_at": "2026-03-03T07:26:00.000Z",
+  "session_ids": ["ses_35131d074ffePFn5X6Qk2LJeuC"],
+  "plan_name": "claude-pty-terminal",
+  "agent": "atlas",
+  "worktree_path": "/Users/koen.vangeert/.ai-command-center/worktrees/my-command-center/T-392"
 }

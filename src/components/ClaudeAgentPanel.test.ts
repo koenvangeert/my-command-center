@@ -1,0 +1,238 @@
+import { render, screen } from '@testing-library/svelte'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { writable } from 'svelte/store'
+import type { AgentSession } from '../lib/types'
+
+// Mock xterm.js — provide a minimal Terminal stub
+vi.mock('@xterm/xterm', () => {
+  const Terminal = vi.fn().mockImplementation(() => ({
+    open: vi.fn(),
+    write: vi.fn(),
+    dispose: vi.fn(),
+    onData: vi.fn(),
+    loadAddon: vi.fn(),
+    refresh: vi.fn(),
+    focus: vi.fn(),
+    cols: 80,
+    rows: 24,
+  }))
+  return { Terminal }
+})
+
+vi.mock('@xterm/addon-fit', () => {
+  const FitAddon = vi.fn().mockImplementation(() => ({
+    fit: vi.fn(),
+    proposeDimensions: vi.fn().mockReturnValue({ cols: 80, rows: 24 }),
+  }))
+  return { FitAddon }
+})
+
+vi.mock('@xterm/xterm/css/xterm.css', () => ({}))
+
+vi.mock('../lib/stores', () => ({
+  activeSessions: writable(new Map()),
+}))
+
+vi.mock('../lib/ipc', () => ({
+  abortImplementation: vi.fn().mockResolvedValue(undefined),
+  writePty: vi.fn().mockResolvedValue(undefined),
+  resizePty: vi.fn().mockResolvedValue(undefined),
+  killPty: vi.fn().mockResolvedValue(undefined),
+  transcribeAudio: vi.fn(),
+  getWhisperModelStatus: vi.fn(),
+  downloadWhisperModel: vi.fn(),
+  getClaudePtyBuffer: vi.fn().mockResolvedValue(null),
+}))
+
+vi.mock('@tauri-apps/api/event', () => ({
+  listen: vi.fn().mockResolvedValue(() => {}),
+}))
+
+vi.mock('../lib/audioRecorder', () => ({
+  createAudioRecorder: vi.fn(),
+}))
+
+// Mock useTerminal composable to avoid xterm constructor issues in test environment
+vi.mock('../lib/useTerminal.svelte', () => ({
+  createTerminal: vi.fn(() => ({
+    get terminalEl() { return null },
+    set terminalEl(_el: HTMLDivElement | null) {},
+    get terminal() { return null },
+    get terminalMounted() { return false },
+    mount: vi.fn().mockResolvedValue(undefined),
+    safeFit: vi.fn(),
+    dispose: vi.fn(),
+  })),
+}))
+
+import ClaudeAgentPanel from './ClaudeAgentPanel.svelte'
+import { activeSessions } from '../lib/stores'
+import * as ipc from '../lib/ipc'
+
+const baseSession: AgentSession = {
+  id: 'ses-1',
+  ticket_id: 'T-1',
+  opencode_session_id: null,
+  stage: 'implement',
+  status: 'running',
+  checkpoint_data: null,
+  error_message: null,
+  created_at: 1000,
+  updated_at: 2000,
+  provider: 'claude-code',
+  claude_session_id: 'claude-sess-abc123',
+}
+
+describe('ClaudeAgentPanel', () => {
+  beforeEach(() => {
+    activeSessions.set(new Map())
+  })
+
+  it('renders the terminal container element', async () => {
+    render(ClaudeAgentPanel, { props: { taskId: 'T-1' } })
+    await vi.waitFor(() => {
+      const termWrapper = document.querySelector('.terminal-wrapper')
+      expect(termWrapper).toBeTruthy()
+    })
+  })
+
+  it('shows "No active agent session" when no session exists', async () => {
+    render(ClaudeAgentPanel, { props: { taskId: 'T-1' } })
+    await vi.waitFor(() => {
+      expect(screen.getByText('No active agent session')).toBeTruthy()
+    })
+  })
+
+  it('shows guidance text when no session exists', async () => {
+    render(ClaudeAgentPanel, { props: { taskId: 'T-1' } })
+    await vi.waitFor(() => {
+      expect(screen.getByText('Use the action buttons in the header to get started')).toBeTruthy()
+    })
+  })
+
+  it('shows status badge when session is running', () => {
+    const sessions = new Map<string, AgentSession>()
+    sessions.set('T-1', baseSession)
+    activeSessions.set(sessions)
+
+    render(ClaudeAgentPanel, { props: { taskId: 'T-1' } })
+    expect(screen.getByText('running')).toBeTruthy()
+  })
+
+  it('shows stage label when session is running', () => {
+    const sessions = new Map<string, AgentSession>()
+    sessions.set('T-1', baseSession)
+    activeSessions.set(sessions)
+
+    render(ClaudeAgentPanel, { props: { taskId: 'T-1' } })
+    expect(screen.getByText('Implementing')).toBeTruthy()
+  })
+
+  it('shows completed badge when session is completed', () => {
+    const sessions = new Map<string, AgentSession>()
+    sessions.set('T-1', { ...baseSession, status: 'completed' })
+    activeSessions.set(sessions)
+
+    render(ClaudeAgentPanel, { props: { taskId: 'T-1' } })
+    expect(screen.getByText('completed')).toBeTruthy()
+  })
+
+  it('shows failed badge when session has failed', () => {
+    const sessions = new Map<string, AgentSession>()
+    sessions.set('T-1', { ...baseSession, status: 'failed' })
+    activeSessions.set(sessions)
+
+    render(ClaudeAgentPanel, { props: { taskId: 'T-1' } })
+    expect(screen.getByText('failed')).toBeTruthy()
+  })
+
+  it('shows claude session id when available', () => {
+    const sessions = new Map<string, AgentSession>()
+    sessions.set('T-1', baseSession)
+    activeSessions.set(sessions)
+
+    render(ClaudeAgentPanel, { props: { taskId: 'T-1' } })
+    expect(screen.getByText('claude-sess-abc123')).toBeTruthy()
+  })
+
+  it('renders voice input mic button', async () => {
+    render(ClaudeAgentPanel, { props: { taskId: 'T-1' } })
+    await vi.waitFor(() => {
+      const button = screen.getByRole('button', { name: 'Start voice input' })
+      expect(button).toBeTruthy()
+    })
+  })
+
+  it('hides "No active agent session" when session exists', () => {
+    const sessions = new Map<string, AgentSession>()
+    sessions.set('T-1', baseSession)
+    activeSessions.set(sessions)
+
+    render(ClaudeAgentPanel, { props: { taskId: 'T-1' } })
+    expect(screen.queryByText('No active agent session')).toBeNull()
+  })
+
+  it('calls getClaudePtyBuffer on mount when session exists', async () => {
+    const sessions = new Map<string, AgentSession>()
+    sessions.set('T-1', baseSession)
+    activeSessions.set(sessions)
+
+    render(ClaudeAgentPanel, { props: { taskId: 'T-1' } })
+    await vi.waitFor(() => {
+      expect(ipc.getClaudePtyBuffer).toHaveBeenCalledWith('T-1')
+    })
+  })
+
+  it('test_status_transitions_from_store_updates', async () => {
+    const sessions = new Map<string, AgentSession>()
+    sessions.set('T-1', { ...baseSession, status: 'running' })
+    activeSessions.set(sessions)
+
+    render(ClaudeAgentPanel, { props: { taskId: 'T-1' } })
+    expect(screen.getByText('running')).toBeTruthy()
+
+    const completedSessions = new Map<string, AgentSession>()
+    completedSessions.set('T-1', { ...baseSession, status: 'completed' })
+    activeSessions.set(completedSessions)
+
+    await vi.waitFor(() => {
+      expect(screen.getByText('completed')).toBeTruthy()
+    })
+    expect(screen.queryByText('running')).toBeNull()
+
+    const failedSessions = new Map<string, AgentSession>()
+    failedSessions.set('T-1', { ...baseSession, status: 'failed' })
+    activeSessions.set(failedSessions)
+
+    await vi.waitFor(() => {
+      expect(screen.getByText('failed')).toBeTruthy()
+    })
+    expect(screen.queryByText('completed')).toBeNull()
+  })
+
+  it('test_abort_button_visible_only_when_running', async () => {
+    const runningSessions = new Map<string, AgentSession>()
+    runningSessions.set('T-1', { ...baseSession, status: 'running' })
+    activeSessions.set(runningSessions)
+
+    const { unmount } = render(ClaudeAgentPanel, { props: { taskId: 'T-1' } })
+
+    await vi.waitFor(() => {
+      expect(screen.queryByRole('button', { name: /abort/i })).toBeTruthy()
+    })
+
+    unmount()
+    activeSessions.set(new Map())
+
+    const completedSessions = new Map<string, AgentSession>()
+    completedSessions.set('T-1', { ...baseSession, status: 'completed' })
+    activeSessions.set(completedSessions)
+
+    render(ClaudeAgentPanel, { props: { taskId: 'T-1' } })
+
+    await vi.waitFor(() => {
+      expect(screen.queryByText('completed')).toBeTruthy()
+    })
+    expect(screen.queryByRole('button', { name: /abort/i })).toBeNull()
+  })
+})
