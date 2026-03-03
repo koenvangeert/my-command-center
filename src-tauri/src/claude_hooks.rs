@@ -1,6 +1,6 @@
 use serde_json::{json, Value};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Get the HTTP server port from the AI_COMMAND_CENTER_PORT environment variable.
 /// Defaults to 17422 if not set or invalid.
@@ -24,6 +24,51 @@ pub fn generate_hooks_settings(port: u16) -> Result<PathBuf, Box<dyn std::error:
     fs::write(&settings_path, json_string)?;
 
     Ok(settings_path)
+}
+
+/// Pre-approve workspace trust for a directory in ~/.claude.json.
+/// This sets `hasTrustDialogAccepted: true` for the given path,
+/// which is the same thing Claude does when the user clicks "Yes, proceed"
+/// on the workspace trust dialog. Tool permissions are NOT affected —
+/// the user still approves file edits and bash commands in the terminal.
+pub fn ensure_workspace_trusted(cwd: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    let home = dirs::home_dir().ok_or("Could not determine home directory")?;
+    let claude_json_path = home.join(".claude.json");
+
+    // Read existing ~/.claude.json or start with empty object
+    let mut root: Value = if claude_json_path.exists() {
+        let contents = std::fs::read_to_string(&claude_json_path)?;
+        serde_json::from_str(&contents).unwrap_or_else(|_| json!({}))
+    } else {
+        json!({})
+    };
+
+    let cwd_str = cwd.to_string_lossy().to_string();
+
+    // Check if already trusted
+    if let Some(project) = root.get(&cwd_str) {
+        if project.get("hasTrustDialogAccepted") == Some(&json!(true)) {
+            return Ok(()); // Already trusted, nothing to do
+        }
+    }
+
+    // Ensure the project entry exists and set trust flag
+    let projects = root.as_object_mut().ok_or("Invalid .claude.json format")?;
+    if let Some(project) = projects.get_mut(&cwd_str) {
+        if let Some(obj) = project.as_object_mut() {
+            obj.insert("hasTrustDialogAccepted".to_string(), json!(true));
+        }
+    } else {
+        projects.insert(
+            cwd_str,
+            json!({
+                "hasTrustDialogAccepted": true
+            }),
+        );
+    }
+
+    std::fs::write(&claude_json_path, serde_json::to_string_pretty(&root)?)?;
+    Ok(())
 }
 
 fn build_hooks_json(port: u16) -> Value {
@@ -319,5 +364,42 @@ mod tests {
         assert!(parsed.get("hooks").is_some());
 
         let _ = fs::remove_file(&temp_path);
+    }
+
+    #[test]
+    fn test_ensure_workspace_trusted_new_file() {
+        let mut root = json!({});
+        let cwd_str = "/tmp/test-workspace";
+
+        let projects = root.as_object_mut().unwrap();
+        projects.insert(
+            cwd_str.to_string(),
+            json!({
+                "hasTrustDialogAccepted": true
+            }),
+        );
+
+        assert_eq!(root[cwd_str]["hasTrustDialogAccepted"], json!(true));
+    }
+
+    #[test]
+    fn test_ensure_workspace_trusted_existing_entry() {
+        let mut root = json!({
+            "/tmp/existing": {
+                "allowedTools": [],
+                "hasTrustDialogAccepted": false
+            }
+        });
+
+        let cwd_str = "/tmp/existing";
+        let projects = root.as_object_mut().unwrap();
+        if let Some(project) = projects.get_mut(cwd_str) {
+            if let Some(obj) = project.as_object_mut() {
+                obj.insert("hasTrustDialogAccepted".to_string(), json!(true));
+            }
+        }
+
+        assert_eq!(root[cwd_str]["hasTrustDialogAccepted"], json!(true));
+        assert_eq!(root[cwd_str]["allowedTools"], json!([]));
     }
 }

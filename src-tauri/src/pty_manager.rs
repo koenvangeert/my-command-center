@@ -392,6 +392,12 @@ impl PtyManager {
             }
         }
 
+        // Pre-approve workspace trust so the "Do you trust this folder?" dialog is skipped
+        if let Err(e) = crate::claude_hooks::ensure_workspace_trusted(cwd) {
+            println!("[PTY] Warning: Failed to pre-approve workspace trust: {}", e);
+            // Non-fatal — Claude will just show the trust dialog
+        }
+
         println!("Spawning Claude PTY for task {} ({}x{})", task_id, cols, rows);
 
         let pty_system = native_pty_system();
