@@ -3,7 +3,7 @@ import { FitAddon } from '@xterm/addon-fit'
 import { listen } from '@tauri-apps/api/event'
 import type { UnlistenFn } from '@tauri-apps/api/event'
 import type { PtyEvent } from './types'
-import { writePty, resizePty, getClaudePtyBuffer } from './ipc'
+import { writePty, resizePty, getPtyBuffer } from './ipc'
 
 export interface PoolEntry {
   taskId: string
@@ -105,7 +105,7 @@ export async function acquire(taskId: string): Promise<PoolEntry> {
 
   // Replay buffered output from backend
   try {
-    const buffered = await getClaudePtyBuffer(taskId)
+    const buffered = await getPtyBuffer(taskId)
     if (buffered) {
       terminal.write(buffered)
       entry.ptyActive = true
