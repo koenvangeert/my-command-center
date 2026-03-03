@@ -3,6 +3,7 @@
   import { COLUMNS, COLUMN_LABELS } from '../lib/types'
   import { tasks, selectedTaskId, activeSessions, ticketPrs, error, activeProjectId, searchQuery } from '../lib/stores'
   import { updateTaskStatus, deleteTask, clearDoneTasks } from '../lib/ipc'
+  import { pushNavState } from '../lib/navigation'
   import { loadActions, getEnabledActions } from '../lib/actions'
   import TaskCard from './TaskCard.svelte'
 
@@ -41,6 +42,7 @@
   }
 
   function handleSelect(taskId: string) {
+    pushNavState()
     $selectedTaskId = taskId
   }
 

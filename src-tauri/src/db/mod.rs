@@ -1,8 +1,9 @@
 use rusqlite::{Connection, Result};
-use std::path::PathBuf;
 use rusqlite_migration::{Migrations, M};
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
+mod agent_review;
 mod agents;
 mod config;
 mod projects;
@@ -12,6 +13,7 @@ mod self_review;
 mod tasks;
 mod worktrees;
 
+pub use agent_review::AgentReviewCommentRow;
 pub use agents::{AgentLogRow, AgentSessionRow};
 pub use projects::{ProjectAttentionRow, ProjectRow};
 pub use pull_requests::{PrCommentRow, PrRow};
@@ -53,12 +55,8 @@ impl Database {
             conn: Arc::new(Mutex::new(conn)),
         };
 
-
-
         Ok(db)
     }
-
-
 
     /// Get a reference to the connection for executing queries
     pub fn connection(&self) -> Arc<Mutex<Connection>> {
@@ -292,7 +290,8 @@ INSERT OR IGNORE INTO config (key, value) VALUES ('next_project_id', '1')
                                 tx.execute(
                                     "UPDATE config SET value = ?1 WHERE key = ?2",
                                     rusqlite::params![value, key],
-                                ).map_err(rusqlite_migration::HookError::RusqliteError)?;
+                                )
+                                .map_err(rusqlite_migration::HookError::RusqliteError)?;
                             }
                         }
                     }
@@ -302,7 +301,8 @@ INSERT OR IGNORE INTO config (key, value) VALUES ('next_project_id', '1')
                 tx.execute(
                     "UPDATE tasks SET status = 'backlog' WHERE status = 'todo'",
                     [],
-                ).map_err(rusqlite_migration::HookError::RusqliteError)?;
+                )
+                .map_err(rusqlite_migration::HookError::RusqliteError)?;
                 tx.execute(
                     "UPDATE tasks SET status = 'doing' WHERE status IN ('in_progress', 'in_review', 'testing')",
                     [],
@@ -325,7 +325,7 @@ INSERT OR IGNORE INTO config (key, value) VALUES ('next_project_id', '1')
                     [],
                     |r| r.get(0),
                 ).unwrap_or(false);
-                
+
                 if table_exists {
                     tx.execute(
                         "ALTER TABLE agent_sessions ADD COLUMN provider TEXT NOT NULL DEFAULT 'opencode'",
@@ -334,16 +334,17 @@ INSERT OR IGNORE INTO config (key, value) VALUES ('next_project_id', '1')
                     tx.execute(
                         "ALTER TABLE agent_sessions ADD COLUMN claude_session_id TEXT",
                         [],
-                    ).ok();
+                    )
+                    .ok();
                 }
-                
+
                 // Only insert config if the table exists
                 let config_exists: bool = tx.query_row(
                     "SELECT COUNT(*) > 0 FROM sqlite_master WHERE type='table' AND name='config'",
                     [],
                     |r| r.get(0),
                 ).unwrap_or(false);
-                
+
                 if config_exists {
                     tx.execute(
                         "INSERT OR IGNORE INTO config (key, value) VALUES ('ai_provider', 'opencode')",
@@ -353,8 +354,29 @@ INSERT OR IGNORE INTO config (key, value) VALUES ('next_project_id', '1')
                 Ok(())
             },
         ),
+        M::up(
+            r#"
+CREATE TABLE IF NOT EXISTS agent_review_comments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    review_pr_id INTEGER NOT NULL,
+    review_session_key TEXT NOT NULL,
+    comment_type TEXT NOT NULL,
+    file_path TEXT,
+    line_number INTEGER,
+    side TEXT,
+    body TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    opencode_session_id TEXT,
+    raw_agent_output TEXT,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    FOREIGN KEY (review_pr_id) REFERENCES review_prs(id)
+);
+CREATE INDEX IF NOT EXISTS idx_agent_review_comments_pr ON agent_review_comments(review_pr_id);
+CREATE INDEX IF NOT EXISTS idx_agent_review_comments_session ON agent_review_comments(review_session_key);
+            "#,
+        ),
     ])
-
 }
 #[cfg(test)]
 pub mod test_helpers {
@@ -401,13 +423,13 @@ mod tests {
 
         let table_count: i32 = conn
             .query_row(
-                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name IN ('tasks', 'agent_sessions', 'agent_logs', 'pull_requests', 'pr_comments', 'config', 'projects', 'project_config', 'worktrees', 'review_prs', 'self_review_comments')",
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name IN ('tasks', 'agent_sessions', 'agent_logs', 'pull_requests', 'pr_comments', 'config', 'projects', 'project_config', 'worktrees', 'review_prs', 'self_review_comments', 'agent_review_comments')",
                 [],
                 |row| row.get(0),
             )
             .expect("Failed to count tables");
 
-        assert_eq!(table_count, 11, "All 11 tables should be created");
+        assert_eq!(table_count, 12, "All 12 tables should be created");
 
         let config_count: i32 = conn
             .query_row("SELECT COUNT(*) FROM config", [], |row| row.get(0))
@@ -444,7 +466,8 @@ mod tests {
             conn.execute(
                 "CREATE TABLE config (key TEXT PRIMARY KEY, value TEXT NOT NULL)",
                 [],
-            ).expect("create config table");
+            )
+            .expect("create config table");
             // Insert a project with credentials
             conn.execute(
                 "INSERT INTO projects (id, name, path, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
@@ -453,19 +476,23 @@ mod tests {
             conn.execute(
                 "INSERT INTO project_config (project_id, key, value) VALUES (?, ?, ?)",
                 rusqlite::params!["proj-1", "jira_api_token", "proj-token"],
-            ).expect("insert jira_api_token");
+            )
+            .expect("insert jira_api_token");
             conn.execute(
                 "INSERT INTO project_config (project_id, key, value) VALUES (?, ?, ?)",
                 rusqlite::params!["proj-1", "jira_base_url", "https://test.atlassian.net"],
-            ).expect("insert jira_base_url");
+            )
+            .expect("insert jira_base_url");
             conn.execute(
                 "INSERT INTO project_config (project_id, key, value) VALUES (?, ?, ?)",
                 rusqlite::params!["proj-1", "jira_username", "user@test.com"],
-            ).expect("insert jira_username");
+            )
+            .expect("insert jira_username");
             conn.execute(
                 "INSERT INTO project_config (project_id, key, value) VALUES (?, ?, ?)",
                 rusqlite::params!["proj-1", "github_token", "ghp_testtoken"],
-            ).expect("insert github_token");
+            )
+            .expect("insert github_token");
         }
 
         // Now open with Database::new() which will run the migration hook
@@ -573,7 +600,9 @@ mod tests {
                 "CREATE TABLE tasks (id TEXT PRIMARY KEY, title TEXT NOT NULL, status TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)",
                 [],
             ).expect("create tasks table");
-            let uv: i32 = conn.query_row("PRAGMA user_version", [], |r| r.get(0)).unwrap();
+            let uv: i32 = conn
+                .query_row("PRAGMA user_version", [], |r| r.get(0))
+                .unwrap();
             assert_eq!(uv, 0, "user_version should be 0 before bootstrap");
         }
 
@@ -581,8 +610,14 @@ mod tests {
         let db = Database::new(path.clone()).expect("Database::new on existing db");
         let conn = db.connection();
         let conn = conn.lock().unwrap();
-        let uv: i32 = conn.query_row("PRAGMA user_version", [], |r| r.get(0)).unwrap();
-        assert!(uv >= 1, "user_version should be >= 1 after bootstrap, got {}", uv);
+        let uv: i32 = conn
+            .query_row("PRAGMA user_version", [], |r| r.get(0))
+            .unwrap();
+        assert!(
+            uv >= 1,
+            "user_version should be >= 1 after bootstrap, got {}",
+            uv
+        );
 
         drop(conn);
         drop(db);
@@ -597,12 +632,17 @@ mod tests {
         let db = Database::new(path.clone()).expect("Database::new");
         let conn = db.connection();
         let conn = conn.lock().unwrap();
-        let uv: i32 = conn.query_row("PRAGMA user_version", [], |r| r.get(0)).unwrap();
-        assert_eq!(uv, 2, "Fresh DB should have user_version=2 after migrations, got {}", uv);
+        let uv: i32 = conn
+            .query_row("PRAGMA user_version", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(
+            uv, 2,
+            "Fresh DB should have user_version=2 after migrations, got {}",
+            uv
+        );
 
         drop(conn);
         drop(db);
         let _ = fs::remove_file(&path);
     }
-
 }

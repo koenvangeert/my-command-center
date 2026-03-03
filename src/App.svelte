@@ -21,6 +21,7 @@
 
 
   import { computeDoingStatus } from './lib/doingStatus'
+  import { pushNavState, navigateBack } from './lib/navigation'
 
   let openCodeStatus = $state<OpenCodeStatus | null>(null)
   let unlisteners: UnlistenFn[] = []
@@ -192,6 +193,10 @@
         editingTask = null
         showAddDialog = true
       }
+    }
+    if ((e.metaKey || e.ctrlKey) && e.key === '[') {
+      e.preventDefault()
+      navigateBack()
     }
     if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'R') {
       e.preventDefault()
@@ -501,7 +506,7 @@
       <button 
         class="btn btn-ghost btn-sm"
         class:btn-active={$currentView === 'board'} 
-        onclick={() => $currentView = 'board'}
+        onclick={() => { pushNavState(); $currentView = 'board' }}
       >
         Board
         {#if doingStatus.doingCount > 0}
@@ -522,7 +527,7 @@
       <button 
         class="btn btn-ghost btn-sm"
         class:btn-active={$currentView === 'pr_review'} 
-        onclick={() => $currentView = 'pr_review'}
+        onclick={() => { pushNavState(); $currentView = 'pr_review' }}
       >
         PR Review
         {#if $reviewRequestCount > 0}
@@ -532,7 +537,7 @@
       <button 
         class="btn btn-ghost btn-sm"
         class:btn-active={$currentView === 'settings' || $currentView === 'global_settings'} 
-        onclick={() => { if ($currentView !== 'settings' && $currentView !== 'global_settings') $currentView = 'settings' }}
+        onclick={() => { if ($currentView !== 'settings' && $currentView !== 'global_settings') { pushNavState(); $currentView = 'settings' } }}
       >
         Settings
       </button>
@@ -559,22 +564,22 @@
         <div class="flex bg-base-200 border-b border-base-300 px-6 shrink-0">
           <button
             class="btn btn-ghost btn-sm rounded-none border-b-2 {$currentView === 'settings' ? 'text-primary border-b-primary' : 'border-transparent'}"
-            onclick={() => $currentView = 'settings'}
+            onclick={() => { pushNavState(); $currentView = 'settings' }}
           >
             Project
           </button>
           <button
             class="btn btn-ghost btn-sm rounded-none border-b-2 {$currentView === 'global_settings' ? 'text-primary border-b-primary' : 'border-transparent'}"
-            onclick={() => $currentView = 'global_settings'}
+            onclick={() => { pushNavState(); $currentView = 'global_settings' }}
           >
             Global
           </button>
         </div>
         <div class="flex-1 overflow-hidden">
           {#if $currentView === 'settings'}
-            <SettingsPanel onClose={() => $currentView = 'board'} onProjectDeleted={loadProjects} />
+            <SettingsPanel onClose={() => { pushNavState(); $currentView = 'board' }} onProjectDeleted={loadProjects} />
           {:else}
-            <GlobalSettingsPanel onClose={() => $currentView = 'board'} />
+            <GlobalSettingsPanel onClose={() => { pushNavState(); $currentView = 'board' }} />
           {/if}
         </div>
       </div>
