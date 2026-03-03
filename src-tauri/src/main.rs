@@ -66,7 +66,7 @@ async fn resume_task_servers(app: tauri::AppHandle) {
 
         // Check provider for this task's latest session
         let latest_session = {
-            let db = app.state::<Mutex<db::Database>>();
+            let db = app.state::<Arc<Mutex<db::Database>>>();
             let db_lock = db.lock().unwrap();
             db_lock.get_latest_session_for_ticket(&worktree.task_id).ok().flatten()
         };
@@ -75,7 +75,7 @@ async fn resume_task_servers(app: tauri::AppHandle) {
         // Handle Claude Code sessions: mark as interrupted and skip server spawn
         if provider == "claude-code" {
             if let Some(ref session) = latest_session {
-                let db = app.state::<Mutex<db::Database>>();
+                let db = app.state::<Arc<Mutex<db::Database>>>();
                 let db_lock = db.lock().unwrap();
                 let _ = db_lock.update_agent_session(&session.id, &session.stage, "interrupted", None, Some("App restarted"));
             }
