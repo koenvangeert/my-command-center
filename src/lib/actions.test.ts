@@ -16,22 +16,18 @@ describe('actions module', () => {
   })
 
   describe('DEFAULT_ACTIONS', () => {
-    it('has exactly 3 items', () => {
-      expect(DEFAULT_ACTIONS).toHaveLength(3)
+    it('has exactly 1 item', () => {
+      expect(DEFAULT_ACTIONS).toHaveLength(1)
     })
 
-    it('are all builtin and enabled', () => {
-      DEFAULT_ACTIONS.forEach(action => {
-        expect(action.builtin).toBe(true)
-        expect(action.enabled).toBe(true)
-      })
+    it('is builtin and enabled', () => {
+      expect(DEFAULT_ACTIONS[0].builtin).toBe(true)
+      expect(DEFAULT_ACTIONS[0].enabled).toBe(true)
     })
 
-    it('have expected names', () => {
-      const names = DEFAULT_ACTIONS.map(a => a.name)
-      expect(names).toContain('Start Implementation')
-      expect(names).toContain('Plan/Design')
-      expect(names).toContain('Manual Testing')
+    it('has the "Go" action', () => {
+      expect(DEFAULT_ACTIONS[0].name).toBe('Go')
+      expect(DEFAULT_ACTIONS[0].id).toBe('builtin-go')
     })
   })
 
@@ -41,7 +37,7 @@ describe('actions module', () => {
 
       const result = await loadActions('test-project-id')
 
-      expect(result).toHaveLength(3)
+      expect(result).toHaveLength(1)
       expect(result).toEqual(DEFAULT_ACTIONS)
       expect(setProjectConfig).toHaveBeenCalledWith(
         'test-project-id',
