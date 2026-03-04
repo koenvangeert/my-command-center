@@ -110,7 +110,7 @@
       {#if pr.state === 'merged'}
         <div class="font-mono text-[10px] font-semibold px-2 py-0.5 rounded mt-1 text-center text-secondary">// merged</div>
       {:else if isReadyToMerge(pr)}
-        <div class="font-mono text-[10px] font-semibold px-2 py-0.5 rounded mt-1 text-center text-info bg-info/10 border border-info/30">$ ready to merge</div>
+        <div class="font-mono text-[10px] font-semibold px-2 py-0.5 rounded mt-1 w-fit text-info bg-info/10 border border-info/30">$ ready to merge</div>
       {/if}
     {/each}
   {/if}
