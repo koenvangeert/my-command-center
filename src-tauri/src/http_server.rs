@@ -99,7 +99,7 @@ pub async fn create_task_handler(
 pub(crate) fn map_hook_to_status(event_type: &str, current_status: &str) -> Option<String> {
     match event_type {
         "pre-tool-use" | "post-tool-use" => {
-            if current_status != "running" && current_status != "interrupted" {
+            if current_status != "running" {
                 Some("running".to_string())
             } else {
                 None
@@ -294,18 +294,7 @@ mod tests {
         assert_eq!(map_hook_to_status("pre-tool-use", "paused"), Some("running".to_string()));
         assert_eq!(map_hook_to_status("pre-tool-use", "completed"), Some("running".to_string()));
         assert_eq!(map_hook_to_status("pre-tool-use", "failed"), Some("running".to_string()));
-    }
-
-    #[test]
-    fn test_pre_tool_use_no_op_when_interrupted() {
-        // Interrupted sessions must NOT be re-activated by hooks (e.g. zombie processes after restart)
-        assert_eq!(map_hook_to_status("pre-tool-use", "interrupted"), None);
-    }
-
-    #[test]
-    fn test_post_tool_use_no_op_when_interrupted() {
-        // Interrupted sessions must NOT be re-activated by hooks (e.g. zombie processes after restart)
-        assert_eq!(map_hook_to_status("post-tool-use", "interrupted"), None);
+        assert_eq!(map_hook_to_status("pre-tool-use", "interrupted"), Some("running".to_string()));
     }
 
     #[test]
