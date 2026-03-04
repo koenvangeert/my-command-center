@@ -228,6 +228,13 @@ impl PtyManager {
         // Release the lock before spawning the reader thread
         drop(sessions);
 
+        let ring_buffer = Arc::new(std::sync::Mutex::new(RingBuffer::new(CLAUDE_BUFFER_CAPACITY)));
+        {
+            let mut buffers = self.output_buffers.lock().await;
+            buffers.insert(task_id.to_string(), Arc::clone(&ring_buffer));
+        }
+        let ring_buffer_emitter = Arc::clone(&ring_buffer);
+
         // Sleep on macOS to allow PTY initialization
         #[cfg(target_os = "macos")]
         {
@@ -318,17 +325,22 @@ impl PtyManager {
                                         if let Err(e) = app_handle.emit(&event_name, &payload) {
                                             eprintln!("[PTY] Failed to emit {}: {}", event_name, e);
                                         }
+                                        if let Ok(mut buf) = ring_buffer_emitter.lock() {
+                                            buf.push(buffer.as_bytes());
+                                        }
                                         buffer.clear();
                                     }
                                 }
                             }
                             Some(None) | None => {
-                                // PTY closed (EOF) or channel dropped — flush remaining buffer first
                                 if !buffer.is_empty() {
                                     let event_name = format!("pty-output-{}", task_id_emitter);
                                     let payload = serde_json::json!({ "task_id": &task_id_emitter, "data": &buffer });
                                     if let Err(e) = app_handle.emit(&event_name, &payload) {
                                         eprintln!("[PTY] Failed to emit {}: {}", event_name, e);
+                                    }
+                                    if let Ok(mut buf) = ring_buffer_emitter.lock() {
+                                        buf.push(buffer.as_bytes());
                                     }
                                     buffer.clear();
                                 }
@@ -339,12 +351,14 @@ impl PtyManager {
                         }
                     }
                     _ = interval.tick() => {
-                        // Periodic flush: emit accumulated output at ~60 FPS
                         if !buffer.is_empty() {
                             let event_name = format!("pty-output-{}", task_id_emitter);
                             let payload = serde_json::json!({ "task_id": &task_id_emitter, "data": &buffer });
                             if let Err(e) = app_handle.emit(&event_name, &payload) {
                                 eprintln!("[PTY] Failed to emit {}: {}", event_name, e);
+                            }
+                            if let Ok(mut buf) = ring_buffer_emitter.lock() {
+                                buf.push(buffer.as_bytes());
                             }
                             buffer.clear();
                         }
@@ -1446,5 +1460,26 @@ mod tests {
         }
 
         let _ = std::fs::remove_dir_all(&tmp_dir);
+    }
+
+    #[tokio::test]
+    async fn test_spawn_pty_populates_output_buffer() {
+        let manager = PtyManager::new();
+
+        let ring = Arc::new(std::sync::Mutex::new(RingBuffer::new(CLAUDE_BUFFER_CAPACITY)));
+        {
+            let mut buf = ring.lock().unwrap();
+            buf.push(b"opencode output data");
+        }
+        {
+            let mut buffers = manager.output_buffers.lock().await;
+            buffers.insert("opencode-task-123".to_string(), Arc::clone(&ring));
+        }
+
+        let result = manager.get_pty_buffer("opencode-task-123").await;
+        assert_eq!(result, Some("opencode output data".to_string()));
+
+        let result2 = manager.get_pty_buffer("opencode-task-123").await;
+        assert_eq!(result2, Some("opencode output data".to_string()), "buffer must be replayable on re-attach");
     }
 }
