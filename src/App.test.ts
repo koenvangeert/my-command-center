@@ -41,6 +41,8 @@ vi.mock('./lib/stores', () => ({
   pendingManualComments: writable([]),
   selectedReviewPrDetails: writable(null),
   reviewPullRequestDiff: writable(null),
+  searchQuery: writable(''),
+  selectedSkillName: writable(null),
 }))
 
 vi.mock('./lib/ipc', () => ({
