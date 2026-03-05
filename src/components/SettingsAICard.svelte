@@ -15,11 +15,8 @@
     modelStatuses: WhisperModelStatus[]
     activeModelSize: string | null
     downloadingModel: string | null
-    agentInstructions: string
-    disabled: boolean
     onAiProviderChange: (value: string) => void
     onWhisperModelSelect: (modelSize: string) => void
-    onInstructionsChange: (value: string) => void
     onDownloadModel: (modelSize: string) => void
     onDownloadComplete: () => void
     onDownloadError: () => void
@@ -37,11 +34,8 @@
     modelStatuses,
     activeModelSize,
     downloadingModel,
-    agentInstructions,
-    disabled,
     onAiProviderChange,
     onWhisperModelSelect,
-    onInstructionsChange,
     onDownloadModel,
     onDownloadComplete,
     onDownloadError
@@ -180,17 +174,5 @@
       {/if}
     </p>
     <p class="text-[0.7rem] text-base-content/50">Note: macOS may re-prompt for microphone permission on each app launch (Tauri v2 known issue).</p>
-
-    <!-- Instructions Textarea -->
-    <label class="flex flex-col gap-1">
-      <span class="text-[0.7rem] text-base-content/50">AI Instructions</span>
-      <textarea
-        value={agentInstructions}
-        oninput={(e) => onInstructionsChange((e.currentTarget as HTMLTextAreaElement).value)}
-        placeholder="Optional instructions prepended to the first prompt when starting a new task..."
-        rows="4"
-        class="textarea textarea-bordered w-full text-sm resize-y {disabled ? 'opacity-50 pointer-events-none' : ''}"
-      ></textarea>
-    </label>
   </div>
 </div>

@@ -20,6 +20,7 @@
   import SettingsGeneralCard from './SettingsGeneralCard.svelte'
   import SettingsIntegrationsCard from './SettingsIntegrationsCard.svelte'
   import SettingsAICard from './SettingsAICard.svelte'
+  import SettingsInstructionsCard from './SettingsInstructionsCard.svelte'
   import SettingsCredentialsCard from './SettingsCredentialsCard.svelte'
   import SettingsActionsCard from './SettingsActionsCard.svelte'
 
@@ -268,7 +269,7 @@
       <div class="flex items-center justify-between">
         <div>
           <h1 class="text-lg font-semibold text-base-content m-0">Settings</h1>
-          <p class="text-xs text-base-content/50 mt-1">Manage project and global configuration</p>
+          <p class="text-xs text-base-content/50 mt-1">Configure your workspace and preferences</p>
         </div>
         <button class="btn btn-primary btn-sm" onclick={save} disabled={isSaving}>
           {#if isSaving}
@@ -282,6 +283,11 @@
       </div>
 
       {#if hasProject}
+        <div class="flex items-center gap-3">
+          <div class="text-xs font-semibold text-base-content/40 uppercase tracking-wider">Project Settings</div>
+          <div class="flex-1 border-b border-base-300"></div>
+        </div>
+
         <SettingsGeneralCard
           {projectName}
           {projectPath}
@@ -297,7 +303,30 @@
           onJiraBoardIdChange={(v) => (jiraBoardId = v)}
           onGithubDefaultRepoChange={(v) => (githubDefaultRepo = v)}
         />
+
+        <SettingsInstructionsCard
+          {agentInstructions}
+          disabled={!hasProject}
+          onInstructionsChange={(v) => (agentInstructions = v)}
+        />
+
+        <SettingsActionsCard
+          {actions}
+          availableAgents={availableAgents.map((a) => a.name)}
+          {aiProvider}
+          disabled={!hasProject}
+          onAddAction={addAction}
+          onDeleteAction={removeAction}
+          onToggleAction={toggleAction}
+          onUpdateAction={updateAction}
+          onResetActions={resetActions}
+        />
       {/if}
+
+      <div class="flex items-center gap-3">
+        <div class="text-xs font-semibold text-base-content/40 uppercase tracking-wider">Global Settings</div>
+        <div class="flex-1 border-b border-base-300"></div>
+      </div>
 
       <SettingsAICard
         {aiProvider}
@@ -311,11 +340,8 @@
         {modelStatuses}
         activeModelSize={modelStatuses.find((m) => m.is_active)?.size ?? null}
         {downloadingModel}
-        {agentInstructions}
-        disabled={!hasProject}
         onAiProviderChange={(v) => (aiProvider = v)}
         onWhisperModelSelect={handleModelChange}
-        onInstructionsChange={(v) => (agentInstructions = v)}
         onDownloadModel={handleDownloadModel}
         onDownloadComplete={refreshModelStatuses}
         onDownloadError={() => {
@@ -335,18 +361,6 @@
       />
 
       {#if hasProject}
-        <SettingsActionsCard
-          {actions}
-          availableAgents={availableAgents.map((a) => a.name)}
-          {aiProvider}
-          disabled={!hasProject}
-          onAddAction={addAction}
-          onDeleteAction={removeAction}
-          onToggleAction={toggleAction}
-          onUpdateAction={updateAction}
-          onResetActions={resetActions}
-        />
-
         <div class="bg-base-100 rounded-lg border border-error/30 overflow-hidden">
           <div class="px-5 py-3 border-b border-error/30">
             <h3 class="text-sm font-semibold text-error m-0">Danger Zone</h3>

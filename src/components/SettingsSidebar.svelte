@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Folder, Plug, Brain, KeyRound, Zap } from 'lucide-svelte'
+  import { Folder, Plug, FileText, Zap, Brain, KeyRound } from 'lucide-svelte'
 
   interface Props {
     activeSection: string
@@ -9,12 +9,16 @@
 
   let { activeSection, onNavigate, hasProject }: Props = $props()
 
-  const navItems: { id: string; label: string; Icon: typeof Folder; projectOnly: boolean }[] = [
-    { id: 'general', label: 'General', Icon: Folder, projectOnly: true },
-    { id: 'integrations', label: 'Integrations', Icon: Plug, projectOnly: true },
-    { id: 'ai', label: 'AI', Icon: Brain, projectOnly: false },
-    { id: 'credentials', label: 'Credentials', Icon: KeyRound, projectOnly: false },
-    { id: 'actions', label: 'Actions', Icon: Zap, projectOnly: true },
+  const projectItems: { id: string; label: string; Icon: typeof Folder }[] = [
+    { id: 'general', label: 'General', Icon: Folder },
+    { id: 'integrations', label: 'Integrations', Icon: Plug },
+    { id: 'instructions', label: 'Instructions', Icon: FileText },
+    { id: 'actions', label: 'Actions', Icon: Zap },
+  ]
+
+  const globalItems: { id: string; label: string; Icon: typeof Folder }[] = [
+    { id: 'ai', label: 'AI & Voice', Icon: Brain },
+    { id: 'credentials', label: 'Credentials', Icon: KeyRound },
   ]
 
   function handleNavigate(sectionId: string) {
@@ -28,15 +32,37 @@
   </div>
 
   <nav class="flex flex-col gap-1">
-    {#each navItems as { id, label, Icon, projectOnly }}
+    <div class="text-[0.65rem] font-semibold text-base-content/40 uppercase tracking-wider px-3 mb-1">Project</div>
+    {#each projectItems as { id, label, Icon }}
       {@const isActive = activeSection === id}
-      {@const isDimmed = projectOnly && !hasProject}
+      {@const isDimmed = !hasProject}
       <a
         href="#section-{id}"
         role="link"
         class="flex items-center gap-3 px-3 py-2 rounded transition-colors {isActive
           ? 'border-l-[3px] border-l-primary bg-primary/5 text-primary'
           : 'text-base-content/50'} {isDimmed ? 'opacity-50 pointer-events-none' : ''}"
+        onclick={(e) => {
+          e.preventDefault()
+          handleNavigate(id)
+        }}
+      >
+        <Icon size={20} class="shrink-0" />
+        <span class="text-sm font-medium">{label}</span>
+      </a>
+    {/each}
+
+    <div class="border-b border-base-300 my-2"></div>
+
+    <div class="text-[0.65rem] font-semibold text-base-content/40 uppercase tracking-wider px-3 mb-1">Global</div>
+    {#each globalItems as { id, label, Icon }}
+      {@const isActive = activeSection === id}
+      <a
+        href="#section-{id}"
+        role="link"
+        class="flex items-center gap-3 px-3 py-2 rounded transition-colors {isActive
+          ? 'border-l-[3px] border-l-primary bg-primary/5 text-primary'
+          : 'text-base-content/50'}"
         onclick={(e) => {
           e.preventDefault()
           handleNavigate(id)

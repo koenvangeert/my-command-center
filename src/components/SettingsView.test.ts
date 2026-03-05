@@ -82,6 +82,11 @@ describe('SettingsView', () => {
     expect(screen.queryAllByText(/integrations/i).length).toBeGreaterThan(0)
   })
 
+  it('renders Instructions section', () => {
+    render(SettingsView, { props: defaultProps })
+    expect(screen.queryAllByText(/instructions/i).length).toBeGreaterThan(0)
+  })
+
   it('renders AI section', () => {
     render(SettingsView, { props: defaultProps })
     expect(screen.queryAllByText(/ai/i).length).toBeGreaterThan(0)
@@ -111,11 +116,18 @@ describe('SettingsView', () => {
     expect(texts.some((t) => /integrations/i.test(t))).toBe(true)
   })
 
-  it('renders sidebar nav with AI link', () => {
+  it('renders sidebar nav with Instructions link', () => {
     render(SettingsView, { props: defaultProps })
     const links = screen.getAllByRole('link')
     const texts = links.map((l) => l.textContent ?? '')
-    expect(texts.some((t) => /^ai$/i.test(t.trim()))).toBe(true)
+    expect(texts.some((t) => /instructions/i.test(t))).toBe(true)
+  })
+
+  it('renders sidebar nav with AI & Voice link', () => {
+    render(SettingsView, { props: defaultProps })
+    const links = screen.getAllByRole('link')
+    const texts = links.map((l) => l.textContent ?? '')
+    expect(texts.some((t) => /ai/i.test(t))).toBe(true)
   })
 
   it('renders sidebar nav with Credentials link', () => {
@@ -179,6 +191,36 @@ describe('SettingsView', () => {
   it('renders GitHub PAT field', () => {
     render(SettingsView, { props: defaultProps })
     expect(screen.getByPlaceholderText('ghp_...')).toBeTruthy()
+  })
+
+  it('renders Project Settings section divider when project is active', () => {
+    render(SettingsView, { props: defaultProps })
+    expect(screen.queryAllByText(/project settings/i).length).toBeGreaterThan(0)
+  })
+
+  it('renders Global Settings section divider', () => {
+    render(SettingsView, { props: defaultProps })
+    expect(screen.queryAllByText(/global settings/i).length).toBeGreaterThan(0)
+  })
+
+  it('renders sidebar Project and Global group labels', () => {
+    render(SettingsView, { props: defaultProps })
+    expect(screen.queryAllByText(/^project$/i).length).toBeGreaterThan(0)
+    expect(screen.queryAllByText(/^global$/i).length).toBeGreaterThan(0)
+  })
+
+  it('hides Project Settings divider when no project is active', () => {
+    activeProjectId.set(null)
+    projects.set([])
+    render(SettingsView, { props: defaultProps })
+    expect(screen.queryByText(/project settings/i)).toBeNull()
+  })
+
+  it('still shows Global Settings divider when no project is active', () => {
+    activeProjectId.set(null)
+    projects.set([])
+    render(SettingsView, { props: defaultProps })
+    expect(screen.queryAllByText(/global settings/i).length).toBeGreaterThan(0)
   })
 
   it('renders a single Save Settings button', () => {
