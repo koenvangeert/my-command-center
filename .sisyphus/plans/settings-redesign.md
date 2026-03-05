@@ -731,7 +731,7 @@ Max Concurrent: 6 (Wave 2)
   - Message: `feat(settings): add Actions CRUD card component`
   - Files: `src/components/SettingsActionsCard.svelte`
 
-- [ ] 9. Create SettingsView.svelte — main container with state management and assembly
+- [x] 9. Create SettingsView.svelte — main container with state management and assembly
 
   **What to do**:
   - Create `src/components/SettingsView.svelte` — the main unified settings container
@@ -843,7 +843,7 @@ Max Concurrent: 6 (Wave 2)
   - Files: `src/components/SettingsView.svelte`
   - Pre-commit: None (tests still need wiring in T10)
 
-- [ ] 10. Make SettingsView.test.ts GREEN — wire tests to pass
+- [x] 10. Make SettingsView.test.ts GREEN — wire tests to pass
 
   **What to do**:
   - Update `src/components/SettingsView.test.ts` (created in T2) to make all tests pass

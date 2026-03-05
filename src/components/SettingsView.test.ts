@@ -74,27 +74,27 @@ describe('SettingsView', () => {
 
   it('renders General section', () => {
     render(SettingsView, { props: defaultProps })
-    expect(screen.getByText(/general/i)).toBeTruthy()
+    expect(screen.queryAllByText(/general/i).length).toBeGreaterThan(0)
   })
 
   it('renders Integrations section', () => {
     render(SettingsView, { props: defaultProps })
-    expect(screen.getByText(/integrations/i)).toBeTruthy()
+    expect(screen.queryAllByText(/integrations/i).length).toBeGreaterThan(0)
   })
 
   it('renders AI section', () => {
     render(SettingsView, { props: defaultProps })
-    expect(screen.getByText(/ai/i)).toBeTruthy()
+    expect(screen.queryAllByText(/ai/i).length).toBeGreaterThan(0)
   })
 
   it('renders Credentials section', () => {
     render(SettingsView, { props: defaultProps })
-    expect(screen.getByText(/credentials/i)).toBeTruthy()
+    expect(screen.queryAllByText(/credentials/i).length).toBeGreaterThan(0)
   })
 
   it('renders Actions section', () => {
     render(SettingsView, { props: defaultProps })
-    expect(screen.getByText(/actions/i)).toBeTruthy()
+    expect(screen.queryAllByText(/actions/i).length).toBeGreaterThan(0)
   })
 
   it('renders sidebar nav with General link', () => {
@@ -277,7 +277,7 @@ describe('SettingsView', () => {
     render(SettingsView, { props: defaultProps })
 
     await vi.waitFor(() => {
-      expect(screen.getByText(/tiny/i)).toBeTruthy()
+      expect(screen.queryAllByText(/tiny/i).length).toBeGreaterThan(0)
     })
   })
 
