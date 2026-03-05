@@ -55,7 +55,7 @@
 
     // If PTY is not yet active, spawn the shell
     if (!poolEntry.ptyActive) {
-      await spawnShellPty(taskId + '-shell', worktreePath, poolEntry.terminal.cols, poolEntry.terminal.rows)
+      await spawnShellPty(taskId, worktreePath, poolEntry.terminal.cols, poolEntry.terminal.rows)
       ptyActive = true
     }
 
@@ -79,7 +79,7 @@
       await killPty(taskId + '-shell').catch(e => {
         console.error('[TaskTerminal] Failed to kill PTY on restart:', e)
       })
-      await spawnShellPty(taskId + '-shell', worktreePath, poolEntry.terminal.cols, poolEntry.terminal.rows)
+      await spawnShellPty(taskId, worktreePath, poolEntry.terminal.cols, poolEntry.terminal.rows)
       poolEntry.needsClear = true
       shellExited = false
       ptyActive = true
@@ -93,7 +93,7 @@
   <div class="flex-1 overflow-hidden min-h-0 relative">
     <div class="shell-terminal-wrapper" bind:this={terminalEl}></div>
     {#if shellExited}
-      <div class="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#1C1C1C]/90 z-[1]">
+      <div class="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-neutral/90 z-[1]">
         <span class="text-sm font-mono text-base-content/60">Shell exited</span>
         <button class="btn btn-sm btn-ghost text-primary font-mono" onclick={handleRestart}>
           Restart
@@ -116,15 +116,15 @@
   }
 
   :global(.shell-terminal-wrapper .xterm-viewport::-webkit-scrollbar-track) {
-    background: #2a2a2a;
+    background: var(--color-base-200);
   }
 
   :global(.shell-terminal-wrapper .xterm-viewport::-webkit-scrollbar-thumb) {
-    background: #444;
+    background: var(--color-base-300);
     border-radius: 3px;
   }
 
   :global(.shell-terminal-wrapper .xterm-viewport::-webkit-scrollbar-thumb:hover) {
-    background: #666;
+    background: color-mix(in oklch, var(--color-base-content) 40%, transparent);
   }
 </style>

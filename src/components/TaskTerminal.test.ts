@@ -123,7 +123,7 @@ describe('TaskTerminal', () => {
 
     render(TaskTerminal, { props: { taskId: 'T-1', worktreePath: '/path/to/worktree' } })
     await vi.waitFor(() => {
-      expect(spawnShellPty).toHaveBeenCalledWith('T-1-shell', '/path/to/worktree', 80, 24)
+      expect(spawnShellPty).toHaveBeenCalledWith('T-1', '/path/to/worktree', 80, 24)
     })
   })
 
@@ -198,7 +198,7 @@ describe('TaskTerminal', () => {
     // Verify spawnShellPty was called twice (once on mount, once on restart)
     await vi.waitFor(() => {
       expect(spawnShellPty).toHaveBeenCalledTimes(2)
-      expect(spawnShellPty).toHaveBeenLastCalledWith('T-1-shell', '/path/to/worktree', 80, 24)
+      expect(spawnShellPty).toHaveBeenLastCalledWith('T-1', '/path/to/worktree', 80, 24)
     })
   })
 })
