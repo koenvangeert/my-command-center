@@ -319,7 +319,7 @@ Max Concurrent: 6 (Wave 2)
   - Files: `src/components/SettingsView.test.ts`
   - Pre-commit: None (tests are expected to fail)
 
-- [ ] 3. Create SettingsSidebar.svelte — sidebar navigation component
+- [x] 3. Create SettingsSidebar.svelte — sidebar navigation component
 
   **What to do**:
   - Create `src/components/SettingsSidebar.svelte` — the 220px left sidebar nav
@@ -388,7 +388,7 @@ Max Concurrent: 6 (Wave 2)
   - Message: `feat(settings): add sidebar navigation component`
   - Files: `src/components/SettingsSidebar.svelte`
 
-- [ ] 4. Create SettingsGeneralCard.svelte — project name + path card
+- [x] 4. Create SettingsGeneralCard.svelte — project name + path card
 
   **What to do**:
   - Create `src/components/SettingsGeneralCard.svelte` — the "General" settings card
@@ -452,7 +452,7 @@ Max Concurrent: 6 (Wave 2)
   - Message: `feat(settings): add General settings card component`
   - Files: `src/components/SettingsGeneralCard.svelte`
 
-- [ ] 5. Create SettingsIntegrationsCard.svelte — JIRA board + GitHub repo card
+- [x] 5. Create SettingsIntegrationsCard.svelte — JIRA board + GitHub repo card
 
   **What to do**:
   - Create `src/components/SettingsIntegrationsCard.svelte` — the "Integrations" card
@@ -513,7 +513,7 @@ Max Concurrent: 6 (Wave 2)
   - Message: `feat(settings): add Integrations settings card component`
   - Files: `src/components/SettingsIntegrationsCard.svelte`
 
-- [ ] 6. Create SettingsAICard.svelte — AI provider + Whisper + instructions card
+- [x] 6. Create SettingsAICard.svelte — AI provider + Whisper + instructions card
 
   **What to do**:
   - Create `src/components/SettingsAICard.svelte` — the "AI Configuration" card
@@ -591,7 +591,7 @@ Max Concurrent: 6 (Wave 2)
   - Message: `feat(settings): add AI configuration card component`
   - Files: `src/components/SettingsAICard.svelte`
 
-- [ ] 7. Create SettingsCredentialsCard.svelte — JIRA credentials + GitHub PAT card
+- [x] 7. Create SettingsCredentialsCard.svelte — JIRA credentials + GitHub PAT card
 
   **What to do**:
   - Create `src/components/SettingsCredentialsCard.svelte` — the "Credentials" card (NEW section)
@@ -658,7 +658,7 @@ Max Concurrent: 6 (Wave 2)
   - Message: `feat(settings): add Credentials card component for JIRA/GitHub tokens`
   - Files: `src/components/SettingsCredentialsCard.svelte`
 
-- [ ] 8. Create SettingsActionsCard.svelte — actions CRUD card
+- [x] 8. Create SettingsActionsCard.svelte — actions CRUD card
 
   **What to do**:
   - Create `src/components/SettingsActionsCard.svelte` — the "Actions" card
