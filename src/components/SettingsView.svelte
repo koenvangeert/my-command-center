@@ -264,7 +264,7 @@
   <SettingsSidebar {activeSection} onNavigate={handleNavigate} {hasProject} />
 
   <div class="flex-1 overflow-y-auto bg-base-200">
-    <div class="max-w-4xl mx-auto px-6 py-6 flex flex-col gap-6">
+    <div class="px-6 py-6 flex flex-col gap-6">
       <div class="flex items-center justify-between">
         <div>
           <h1 class="text-lg font-semibold text-base-content m-0">Settings</h1>
