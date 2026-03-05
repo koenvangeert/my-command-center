@@ -1,0 +1,306 @@
+import { render, screen, fireEvent } from '@testing-library/svelte'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { writable } from 'svelte/store'
+
+vi.mock('../lib/ipc', () => ({
+  getProjectConfig: vi.fn(),
+  setProjectConfig: vi.fn(),
+  updateProject: vi.fn(),
+  deleteProject: vi.fn(),
+  getAgents: vi.fn(() => Promise.resolve([{ name: 'build' }, { name: 'oracle' }])),
+  getConfig: vi.fn(() => Promise.resolve(null)),
+  setConfig: vi.fn(() => Promise.resolve(undefined)),
+  checkOpenCodeInstalled: vi.fn(() => Promise.resolve({ installed: false, path: null, version: null })),
+  checkClaudeInstalled: vi.fn(() => Promise.resolve({ installed: false, path: null, version: null, authenticated: false })),
+  getAllWhisperModelStatuses: vi.fn(() => Promise.resolve([])),
+  setWhisperModel: vi.fn(),
+}))
+
+vi.mock('../lib/actions', () => ({
+  loadActions: vi.fn(),
+  saveActions: vi.fn(),
+  createAction: vi.fn(),
+  DEFAULT_ACTIONS: [
+    { id: 'builtin-go', name: 'Go', prompt: '', agent: null, builtin: true, enabled: true },
+  ],
+}))
+
+vi.mock('../lib/stores', () => ({
+  activeProjectId: writable('test-project-id'),
+  projects: writable([
+    {
+      id: 'test-project-id',
+      name: 'Test Project',
+      path: '/tmp/test',
+      created_at: Date.now(),
+      updated_at: Date.now(),
+    },
+  ]),
+}))
+
+import SettingsView from './SettingsView.svelte'
+import { getProjectConfig, setProjectConfig, updateProject, deleteProject, getConfig, setConfig, getAllWhisperModelStatuses } from '../lib/ipc'
+import { loadActions, createAction } from '../lib/actions'
+import { activeProjectId, projects } from '../lib/stores'
+
+const defaultProps = {
+  onClose: vi.fn(),
+  onProjectDeleted: vi.fn(),
+}
+
+describe('SettingsView', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(getProjectConfig).mockResolvedValue(null)
+    vi.mocked(getConfig).mockResolvedValue(null)
+    vi.mocked(setProjectConfig).mockResolvedValue(undefined)
+    vi.mocked(setConfig).mockResolvedValue(undefined)
+    vi.mocked(updateProject).mockResolvedValue(undefined)
+    vi.mocked(deleteProject).mockResolvedValue(undefined)
+    vi.mocked(getAllWhisperModelStatuses).mockResolvedValue([])
+    vi.mocked(loadActions).mockResolvedValue([])
+
+    activeProjectId.set('test-project-id')
+    projects.set([
+      {
+        id: 'test-project-id',
+        name: 'Test Project',
+        path: '/tmp/test',
+        created_at: Date.now(),
+        updated_at: Date.now(),
+      },
+    ])
+  })
+
+  it('renders General section', () => {
+    render(SettingsView, { props: defaultProps })
+    expect(screen.getByText(/general/i)).toBeTruthy()
+  })
+
+  it('renders Integrations section', () => {
+    render(SettingsView, { props: defaultProps })
+    expect(screen.getByText(/integrations/i)).toBeTruthy()
+  })
+
+  it('renders AI section', () => {
+    render(SettingsView, { props: defaultProps })
+    expect(screen.getByText(/ai/i)).toBeTruthy()
+  })
+
+  it('renders Credentials section', () => {
+    render(SettingsView, { props: defaultProps })
+    expect(screen.getByText(/credentials/i)).toBeTruthy()
+  })
+
+  it('renders Actions section', () => {
+    render(SettingsView, { props: defaultProps })
+    expect(screen.getByText(/actions/i)).toBeTruthy()
+  })
+
+  it('renders sidebar nav with General link', () => {
+    render(SettingsView, { props: defaultProps })
+    const links = screen.getAllByRole('link')
+    const texts = links.map((l) => l.textContent ?? '')
+    expect(texts.some((t) => /general/i.test(t))).toBe(true)
+  })
+
+  it('renders sidebar nav with Integrations link', () => {
+    render(SettingsView, { props: defaultProps })
+    const links = screen.getAllByRole('link')
+    const texts = links.map((l) => l.textContent ?? '')
+    expect(texts.some((t) => /integrations/i.test(t))).toBe(true)
+  })
+
+  it('renders sidebar nav with AI link', () => {
+    render(SettingsView, { props: defaultProps })
+    const links = screen.getAllByRole('link')
+    const texts = links.map((l) => l.textContent ?? '')
+    expect(texts.some((t) => /^ai$/i.test(t.trim()))).toBe(true)
+  })
+
+  it('renders sidebar nav with Credentials link', () => {
+    render(SettingsView, { props: defaultProps })
+    const links = screen.getAllByRole('link')
+    const texts = links.map((l) => l.textContent ?? '')
+    expect(texts.some((t) => /credentials/i.test(t))).toBe(true)
+  })
+
+  it('renders sidebar nav with Actions link', () => {
+    render(SettingsView, { props: defaultProps })
+    const links = screen.getAllByRole('link')
+    const texts = links.map((l) => l.textContent ?? '')
+    expect(texts.some((t) => /actions/i.test(t))).toBe(true)
+  })
+
+  it('renders project name field', () => {
+    render(SettingsView, { props: defaultProps })
+    expect(screen.getByPlaceholderText('My Project')).toBeTruthy()
+  })
+
+  it('renders project path field', () => {
+    render(SettingsView, { props: defaultProps })
+    expect(screen.getByPlaceholderText('/path/to/project')).toBeTruthy()
+  })
+
+  it('renders JIRA board ID field', () => {
+    render(SettingsView, { props: defaultProps })
+    expect(screen.getByPlaceholderText('e.g. PROJ')).toBeTruthy()
+  })
+
+  it('renders GitHub repository field', () => {
+    render(SettingsView, { props: defaultProps })
+    expect(screen.getByPlaceholderText('owner/repo')).toBeTruthy()
+  })
+
+  it('renders AI instructions textarea', () => {
+    render(SettingsView, { props: defaultProps })
+    expect(
+      screen.getByPlaceholderText(
+        'Optional instructions prepended to the first prompt when starting a new task...'
+      )
+    ).toBeTruthy()
+  })
+
+  it('renders JIRA base URL field', () => {
+    render(SettingsView, { props: defaultProps })
+    expect(screen.getByPlaceholderText('https://your-domain.atlassian.net')).toBeTruthy()
+  })
+
+  it('renders JIRA username field', () => {
+    render(SettingsView, { props: defaultProps })
+    expect(screen.getByPlaceholderText('your@email.com')).toBeTruthy()
+  })
+
+  it('renders JIRA API token field', () => {
+    render(SettingsView, { props: defaultProps })
+    expect(screen.getByPlaceholderText('Your JIRA API token')).toBeTruthy()
+  })
+
+  it('renders GitHub PAT field', () => {
+    render(SettingsView, { props: defaultProps })
+    expect(screen.getByPlaceholderText('ghp_...')).toBeTruthy()
+  })
+
+  it('renders a single Save Settings button', () => {
+    render(SettingsView, { props: defaultProps })
+    expect(screen.getByRole('button', { name: /save settings/i })).toBeTruthy()
+  })
+
+  it('clicking Save calls setProjectConfig and setConfig', async () => {
+    render(SettingsView, { props: defaultProps })
+
+    await new Promise((r) => setTimeout(r, 50))
+
+    const saveBtn = screen.getByRole('button', { name: /save settings/i })
+    await fireEvent.click(saveBtn)
+
+    await new Promise((r) => setTimeout(r, 50))
+
+    expect(vi.mocked(setConfig)).toHaveBeenCalled()
+    expect(vi.mocked(setProjectConfig)).toHaveBeenCalled()
+  })
+
+  it('renders Add Action button', () => {
+    render(SettingsView, { props: defaultProps })
+    expect(screen.getByRole('button', { name: /add action/i })).toBeTruthy()
+  })
+
+  it('clicking Add Action creates a new action entry', async () => {
+    vi.mocked(loadActions).mockResolvedValue([
+      { id: 'builtin-go', name: 'Go', prompt: '', agent: null, builtin: true, enabled: true },
+    ])
+    vi.mocked(createAction).mockReturnValue({
+      id: 'new-action-id',
+      name: 'New Action',
+      prompt: '',
+      agent: null,
+      builtin: false,
+      enabled: true,
+    })
+
+    render(SettingsView, { props: defaultProps })
+
+    await vi.waitFor(() => {
+      expect(screen.getByText('Go')).toBeTruthy()
+    })
+
+    const addButton = screen.getByRole('button', { name: /add action/i })
+    await fireEvent.click(addButton)
+
+    await vi.waitFor(() => {
+      expect(screen.getByDisplayValue('New Action')).toBeTruthy()
+    })
+  })
+
+  it('renders action toggle checkboxes', async () => {
+    vi.mocked(loadActions).mockResolvedValue([
+      { id: 'builtin-go', name: 'Go', prompt: '', agent: null, builtin: true, enabled: true },
+    ])
+
+    render(SettingsView, { props: defaultProps })
+
+    await vi.waitFor(() => {
+      expect(screen.getByText('Go')).toBeTruthy()
+    })
+
+    const checkboxes = screen.getAllByRole('checkbox')
+    expect(checkboxes.length).toBeGreaterThan(0)
+  })
+
+  it('JIRA API token field has type=password', () => {
+    render(SettingsView, { props: defaultProps })
+    const apiTokenInput = screen.getByPlaceholderText('Your JIRA API token') as HTMLInputElement
+    expect(apiTokenInput.type).toBe('password')
+  })
+
+  it('GitHub PAT field has type=password', () => {
+    render(SettingsView, { props: defaultProps })
+    const patInput = screen.getByPlaceholderText('ghp_...') as HTMLInputElement
+    expect(patInput.type).toBe('password')
+  })
+
+  it('renders Whisper model selector', async () => {
+    vi.mocked(getAllWhisperModelStatuses).mockResolvedValue([
+      {
+        size: 'tiny',
+        display_name: 'Tiny',
+        disk_size_mb: 39,
+        ram_usage_mb: 125,
+        downloaded: true,
+        model_path: '/tmp/tiny.bin',
+        model_size_bytes: 40960000,
+        model_name: 'ggml-tiny',
+        is_active: true,
+      },
+    ])
+
+    render(SettingsView, { props: defaultProps })
+
+    await vi.waitFor(() => {
+      expect(screen.getByText(/tiny/i)).toBeTruthy()
+    })
+  })
+
+  it('renders a Delete Project button in the danger zone', () => {
+    render(SettingsView, { props: defaultProps })
+    expect(screen.getByRole('button', { name: /delete project/i })).toBeTruthy()
+  })
+
+  it('hides project-specific fields when activeProjectId is null', () => {
+    activeProjectId.set(null)
+    projects.set([])
+
+    render(SettingsView, { props: defaultProps })
+
+    expect(screen.queryByPlaceholderText('My Project')).toBeNull()
+  })
+
+  it('still shows global credential fields when activeProjectId is null', () => {
+    activeProjectId.set(null)
+    projects.set([])
+
+    render(SettingsView, { props: defaultProps })
+
+    expect(screen.getByPlaceholderText('https://your-domain.atlassian.net')).toBeTruthy()
+  })
+})
