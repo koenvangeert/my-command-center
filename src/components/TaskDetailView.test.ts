@@ -93,6 +93,7 @@ vi.mock('../lib/ipc', () => ({
   transcribeAudio: vi.fn(),
   getWhisperModelStatus: vi.fn(),
   downloadWhisperModel: vi.fn(),
+  updateTask: vi.fn().mockResolvedValue(undefined),
 }))
 
 vi.mock('@tauri-apps/api/event', () => ({
@@ -141,6 +142,7 @@ const baseTask: Task = {
   project_id: null,
   created_at: 1000,
   updated_at: 2000,
+  name: null,
 }
 
 const mockOnRunAction = vi.fn()
@@ -320,6 +322,57 @@ describe('TaskDetailView', () => {
       expect(shellWrapper).toBeTruthy()
     })
     vi.mocked(getWorktreeForTask).mockResolvedValue(null)
+  })
+
+  it('shows pencil edit icon on header name', () => {
+    render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
+    const editBtns = screen.getAllByTitle('Edit name')
+    expect(editBtns.length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('shows inline input when edit pencil is clicked', async () => {
+    render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
+    const editBtns = screen.getAllByTitle('Edit name')
+    await fireEvent.click(editBtns[0])
+
+    const input = screen.getByPlaceholderText('Enter task name')
+    expect(input).toBeTruthy()
+  })
+
+  it('calls updateTask when header name is saved via Enter', async () => {
+    const { updateTask } = await import('../lib/ipc')
+    const onTaskUpdated = vi.fn()
+    render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction, onTaskUpdated } })
+    const editBtns = screen.getAllByTitle('Edit name')
+    await fireEvent.click(editBtns[0])
+
+    const input = screen.getByPlaceholderText('Enter task name') as HTMLInputElement
+    input.value = 'New name'
+    await fireEvent.input(input)
+    await fireEvent.keyDown(input, { key: 'Enter' })
+
+    expect(updateTask).toHaveBeenCalledWith('T-42', 'Implement auth middleware', 'PROJ-123', 'New name')
+  })
+
+  it('cancels header name editing on Escape', async () => {
+    render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
+    const editBtns = screen.getAllByTitle('Edit name')
+    await fireEvent.click(editBtns[0])
+
+    const input = screen.getByPlaceholderText('Enter task name')
+    await fireEvent.keyDown(input, { key: 'Escape' })
+
+    // Should go back to showing the title, not the input
+    expect(screen.queryByPlaceholderText('Enter task name')).toBeNull()
+    const editBtnsAfter = screen.getAllByTitle('Edit name')
+    expect(editBtnsAfter.length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('shows task name when set, falls back to title', () => {
+    const taskWithName = { ...baseTask, name: 'My Custom Name' }
+    render(TaskDetailView, { props: { task: taskWithName, onRunAction: mockOnRunAction } })
+    const matches = screen.getAllByText('My Custom Name')
+    expect(matches.length).toBeGreaterThanOrEqual(1)
   })
 
 })

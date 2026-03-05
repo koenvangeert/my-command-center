@@ -145,76 +145,102 @@
     }
   }
 
+  // ── Jira key extraction ─────────────────────────────────────────────────────
+  function extractJiraKey(input: string): string | null {
+    const trimmed = input.trim()
+    if (!trimmed) return null
+    // Match a Jira URL like https://mycompany.atlassian.net/browse/PROJ-123
+    const urlMatch = trimmed.match(/\/browse\/([A-Z][A-Z0-9_]+-\d+)/i)
+    if (urlMatch) return urlMatch[1].toUpperCase()
+    // Already a bare key like PROJ-123
+    const keyMatch = trimmed.match(/^([A-Z][A-Z0-9_]+-\d+)$/i)
+    if (keyMatch) return keyMatch[1].toUpperCase()
+    // Return as-is if it doesn't match known patterns
+    return trimmed
+  }
+
   // ── Submit ────────────────────────────────────────────────────────────────────
   function handleSubmit() {
     const prompt = textValue.trim()
     if (!prompt) return
-    onSubmit(prompt, jiraKeyValue.trim() || null)
+    onSubmit(prompt, extractJiraKey(jiraKeyValue))
   }
 </script>
 
-<div class="bg-base-100">
-  <div class="relative">
-    <textarea
-      bind:this={textareaEl}
-      bind:value={textValue}
-      class="w-full resize-none bg-transparent border-none outline-none p-3 text-sm"
-      rows={2}
-      {placeholder}
-      style="max-height: 15rem; overflow-y: auto;"
-      oninput={handleInput}
-      onkeydown={handleKeydown}
-    ></textarea>
+<div>
+  <div class="bg-base-100 border border-base-300 rounded-lg">
+    <div class="relative">
+      <textarea
+        bind:this={textareaEl}
+        bind:value={textValue}
+        class="w-full resize-none bg-transparent border-none outline-none p-3 text-sm"
+        rows={2}
+        {placeholder}
+        style="max-height: 15rem; overflow-y: auto;"
+        oninput={handleInput}
+        onkeydown={handleKeydown}
+      ></textarea>
 
-    <AutocompletePopover
-      items={ac.autocompleteItems}
-      visible={ac.popoverVisible}
-      selectedIndex={ac.selectedIndex}
-      onSelect={handleSelect}
-      onClose={ac.closePopover}
-    />
+      <AutocompletePopover
+        items={ac.autocompleteItems}
+        visible={ac.popoverVisible}
+        selectedIndex={ac.selectedIndex}
+        onSelect={handleSelect}
+        onClose={ac.closePopover}
+      />
+    </div>
+
+    <!-- Voice input inside the bordered area -->
+    <div class="flex items-center px-3 pb-2">
+      <VoiceInput onTranscription={handleTranscription} listenToHotkey />
+    </div>
   </div>
 
-  <div class="flex items-center justify-between px-3 pb-2">
-    <div class="flex items-center gap-2">
-      <VoiceInput onTranscription={handleTranscription} listenToHotkey />
-      {#if showJiraKey}
-        <input
-          type="text"
-          class="input input-bordered input-xs w-48"
-          bind:value={jiraKeyValue}
-          placeholder="e.g. PROJ-123"
-        />
-        <span
-          class="text-xs text-base-content/40 cursor-pointer"
-          role="button"
-          tabindex="0"
-          onclick={() => { showJiraKey = false; jiraKeyValue = '' }}
-          onkeydown={(e: KeyboardEvent) => e.key === 'Enter' && (showJiraKey = false) && (jiraKeyValue = '')}
-        >✕</span>
-      {:else}
-        <span
-          class="text-xs text-primary cursor-pointer"
-          role="button"
-          tabindex="0"
-          onclick={() => { showJiraKey = true }}
-          onkeydown={(e: KeyboardEvent) => { if (e.key === 'Enter') showJiraKey = true }}
-        >+ Add JIRA key</span>
-      {/if}
-    </div>
-    <div class="flex items-center gap-2">
-      <span class="text-xs text-base-content/40">⌘Enter to submit · Enter for newline</span>
-      <button
-        class="btn btn-primary btn-sm"
-        type="button"
-        disabled={!textValue.trim()}
-        onclick={handleSubmit}
-      >Submit</button>
-    </div>
+  <!-- Jira Key row (outside border) -->
+  <div class="pt-2">
+    {#if showJiraKey}
+      <label class="flex flex-col gap-1.5">
+        <span class="text-xs text-base-content/60 font-medium">Jira Key</span>
+        <div class="flex items-center gap-2">
+          <input
+            type="text"
+            class="input input-bordered input-sm flex-1"
+            bind:value={jiraKeyValue}
+            placeholder="e.g. PROJ-123 or Jira link"
+          />
+          <span
+            class="text-xs text-base-content/40 cursor-pointer hover:text-base-content/60"
+            role="button"
+            tabindex="0"
+            onclick={() => { showJiraKey = false; jiraKeyValue = '' }}
+            onkeydown={(e: KeyboardEvent) => e.key === 'Enter' && (showJiraKey = false) && (jiraKeyValue = '')}
+          >✕</span>
+        </div>
+      </label>
+    {:else}
+      <span
+        class="text-xs text-primary cursor-pointer hover:underline"
+        role="button"
+        tabindex="0"
+        onclick={() => { showJiraKey = true }}
+        onkeydown={(e: KeyboardEvent) => { if (e.key === 'Enter') showJiraKey = true }}
+      >+ Add JIRA key or link</span>
+    {/if}
+  </div>
+
+  <!-- Footer with submit (outside border) -->
+  <div class="flex items-center justify-end gap-2 pt-2">
+    <span class="text-xs text-base-content/40">⌘Enter to submit · Enter for newline</span>
+    <button
+      class="btn btn-primary btn-sm"
+      type="button"
+      disabled={!textValue.trim()}
+      onclick={handleSubmit}
+    >Submit</button>
   </div>
 
   {#if showModelDownload}
-    <div class="px-3 pb-2">
+    <div class="pt-2">
       <ModelDownloadProgress
         onComplete={() => { showModelDownload = false }}
         onError={() => { showModelDownload = false }}

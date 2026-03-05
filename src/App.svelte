@@ -28,6 +28,16 @@
   let showAddDialog = $state(false)
   let isSyncing = $state(false)
   let editingTask = $state<Task | null>(null)
+  let dialogName = $state('')
+
+  // Sync dialogName when dialog opens for editing
+  $effect(() => {
+    if (showAddDialog && editingTask) {
+      dialogName = editingTask.name || ''
+    } else if (showAddDialog) {
+      dialogName = ''
+    }
+  })
   let showProjectSetup = $state(false)
   let appMode = $state<string | null>(null)
   let showShortcutsDialog = $state(false)
@@ -649,7 +659,7 @@
       {:else if $currentView === 'skills'}
         <SkillsView onRunAction={handleRunAction} />
       {:else if selectedTask}
-        <TaskDetailView task={selectedTask} onRunAction={handleRunAction} />
+        <TaskDetailView task={selectedTask} onRunAction={handleRunAction} onTaskUpdated={loadTasks} />
       {:else}
         <div class="flex-1 overflow-hidden">
           {#if $isLoading && $tasks.length === 0}
@@ -668,7 +678,16 @@
           {#snippet header()}
             <h2 class="text-[0.95rem] font-semibold text-base-content m-0">{editingTask ? 'Edit Task' : 'Create Task'}</h2>
           {/snippet}
-          <div class="p-4 overflow-visible">
+          <div class="p-4 overflow-visible flex flex-col gap-3">
+            <label class="flex flex-col gap-1.5">
+              <span class="text-xs text-base-content/60 font-medium">Name</span>
+              <input
+                type="text"
+                class="input input-bordered input-sm w-full"
+                bind:value={dialogName}
+                placeholder="Optional short name for this task"
+              />
+            </label>
             <PromptInput
               projectId={$activeProjectId}
               value={editingTask ? editingTask.title : ''}
@@ -677,19 +696,20 @@
               onSubmit={async (prompt, jiraKey) => {
                 try {
                   if (editingTask) {
-                    await updateTask(editingTask.id, prompt, jiraKey)
+                    await updateTask(editingTask.id, prompt, jiraKey, dialogName.trim() || null)
                   } else {
-                    await createTask(prompt, 'backlog', jiraKey, $activeProjectId)
+                    await createTask(prompt, 'backlog', jiraKey, $activeProjectId, dialogName.trim() || null)
                   }
                   showAddDialog = false
                   editingTask = null
+                  dialogName = ''
                   await loadTasks()
                 } catch (e) {
                   console.error('Failed to save task:', e)
                   $error = String(e)
                 }
               }}
-              onCancel={() => { showAddDialog = false; editingTask = null }}
+              onCancel={() => { showAddDialog = false; editingTask = null; dialogName = '' }}
             />
           </div>
         </Modal>

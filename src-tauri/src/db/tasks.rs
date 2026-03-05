@@ -15,6 +15,7 @@ pub struct TaskRow {
     pub created_at: i64,
     pub updated_at: i64,
     pub jira_description: Option<String>,
+    pub name: Option<String>,
 }
 
 impl super::Database {
@@ -22,7 +23,7 @@ impl super::Database {
     pub fn get_tasks_for_project(&self, project_id: &str) -> Result<Vec<TaskRow>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT id, title, status, jira_key, jira_title, jira_status, jira_assignee, project_id, created_at, updated_at, jira_description 
+            "SELECT id, title, status, jira_key, jira_title, jira_status, jira_assignee, project_id, created_at, updated_at, jira_description, name
              FROM tasks WHERE project_id = ?1 ORDER BY updated_at DESC",
         )?;
 
@@ -39,6 +40,7 @@ impl super::Database {
                 created_at: row.get(8)?,
                 updated_at: row.get(9)?,
                 jira_description: row.get(10)?,
+                name: row.get(11)?,
             })
         })?;
 
@@ -55,6 +57,7 @@ impl super::Database {
         status: &str,
         jira_key: Option<&str>,
         project_id: Option<&str>,
+        name: Option<&str>,
     ) -> Result<TaskRow> {
         let conn = self.conn.lock().unwrap();
 
@@ -80,8 +83,8 @@ impl super::Database {
             .as_secs() as i64;
 
         conn.execute(
-            "INSERT INTO tasks (id, title, status, jira_key, jira_title, jira_status, jira_assignee, project_id, created_at, updated_at, jira_description)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+            "INSERT INTO tasks (id, title, status, jira_key, jira_title, jira_status, jira_assignee, project_id, created_at, updated_at, jira_description, name)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
             rusqlite::params![
                 &task_id,
                 title,
@@ -94,6 +97,7 @@ impl super::Database {
                 now,
                 now,
                 None::<String>,
+                name,
             ],
         )?;
 
@@ -109,13 +113,14 @@ impl super::Database {
             created_at: now,
             updated_at: now,
             jira_description: None,
+            name: name.map(|s| s.to_string()),
         })
     }
 
     pub fn get_all_tasks(&self) -> Result<Vec<TaskRow>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT id, title, status, jira_key, jira_title, jira_status, jira_assignee, project_id, created_at, updated_at, jira_description 
+            "SELECT id, title, status, jira_key, jira_title, jira_status, jira_assignee, project_id, created_at, updated_at, jira_description, name
              FROM tasks ORDER BY updated_at DESC"
         )?;
 
@@ -132,6 +137,7 @@ impl super::Database {
                 created_at: row.get(8)?,
                 updated_at: row.get(9)?,
                 jira_description: row.get(10)?,
+                name: row.get(11)?,
             })
         })?;
 
@@ -145,7 +151,7 @@ impl super::Database {
     pub fn get_task(&self, id: &str) -> Result<Option<TaskRow>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT id, title, status, jira_key, jira_title, jira_status, jira_assignee, project_id, created_at, updated_at, jira_description 
+            "SELECT id, title, status, jira_key, jira_title, jira_status, jira_assignee, project_id, created_at, updated_at, jira_description, name
              FROM tasks WHERE id = ?1"
         )?;
         let mut rows = stmt.query([id])?;
@@ -162,21 +168,22 @@ impl super::Database {
                 created_at: row.get(8)?,
                 updated_at: row.get(9)?,
                 jira_description: row.get(10)?,
+                name: row.get(11)?,
             }))
         } else {
             Ok(None)
         }
     }
 
-    pub fn update_task(&self, id: &str, title: &str, jira_key: Option<&str>) -> Result<()> {
+    pub fn update_task(&self, id: &str, title: &str, jira_key: Option<&str>, name: Option<&str>) -> Result<()> {
         let conn = self.conn.lock().unwrap();
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .expect("time went backwards")
             .as_secs() as i64;
         conn.execute(
-            "UPDATE tasks SET title = ?1, jira_key = ?2, updated_at = ?3 WHERE id = ?4",
-            rusqlite::params![title, jira_key, now, id],
+            "UPDATE tasks SET title = ?1, jira_key = ?2, name = ?3, updated_at = ?4 WHERE id = ?5",
+            rusqlite::params![title, jira_key, name, now, id],
         )?;
         Ok(())
     }
@@ -277,7 +284,7 @@ impl super::Database {
     pub fn get_tasks_with_jira_links(&self) -> Result<Vec<TaskRow>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT id, title, status, jira_key, jira_title, jira_status, jira_assignee, project_id, created_at, updated_at, jira_description 
+            "SELECT id, title, status, jira_key, jira_title, jira_status, jira_assignee, project_id, created_at, updated_at, jira_description, name
              FROM tasks WHERE jira_key IS NOT NULL ORDER BY updated_at DESC"
         )?;
 
@@ -294,6 +301,7 @@ impl super::Database {
                 created_at: row.get(8)?,
                 updated_at: row.get(9)?,
                 jira_description: row.get(10)?,
+                name: row.get(11)?,
             })
         })?;
 
@@ -326,7 +334,7 @@ mod tests {
         let (db, path) = make_test_db("create_task");
 
         let task = db
-            .create_task("My task", "backlog", None, None)
+            .create_task("My task", "backlog", None, None, None)
             .expect("create failed");
 
         assert_eq!(task.id, "T-1");
@@ -347,10 +355,10 @@ mod tests {
         let (db, path) = make_test_db("update_task");
 
         let task = db
-            .create_task("Original", "backlog", None, None)
+            .create_task("Original", "backlog", None, None, None)
             .expect("create failed");
 
-        db.update_task(&task.id, "Updated", None)
+        db.update_task(&task.id, "Updated", None, None)
             .expect("update failed");
 
         let tasks = db.get_all_tasks().expect("get_all failed");
@@ -366,7 +374,7 @@ mod tests {
         let (db, path) = make_test_db("get_task_by_id");
 
         let task = db
-            .create_task("Found me", "backlog", None, None)
+            .create_task("Found me", "backlog", None, None, None)
             .expect("create failed");
 
         let retrieved = db.get_task(&task.id).expect("get failed");
@@ -385,13 +393,13 @@ mod tests {
         let (db, path) = make_test_db("task_autoincrement");
 
         let task1 = db
-            .create_task("Task 1", "backlog", None, None)
+            .create_task("Task 1", "backlog", None, None, None)
             .expect("create 1 failed");
         let task2 = db
-            .create_task("Task 2", "backlog", None, None)
+            .create_task("Task 2", "backlog", None, None, None)
             .expect("create 2 failed");
         let task3 = db
-            .create_task("Task 3", "backlog", None, None)
+            .create_task("Task 3", "backlog", None, None, None)
             .expect("create 3 failed");
 
         assert_eq!(task1.id, "T-1");
@@ -407,7 +415,7 @@ mod tests {
         let (db, path) = make_test_db("update_task_status");
 
         let task = db
-            .create_task("My task", "backlog", None, None)
+            .create_task("My task", "backlog", None, None, None)
             .expect("create failed");
 
         db.update_task_status(&task.id, "doing")
@@ -424,9 +432,9 @@ mod tests {
     fn test_update_task_jira_info() {
         let (db, path) = make_test_db("update_jira_info");
 
-        db.create_task("Linked task", "backlog", Some("PROJ-1"), None)
+        db.create_task("Linked task", "backlog", Some("PROJ-1"), None, None)
             .expect("create 1 failed");
-        db.create_task("Unlinked task", "backlog", None, None)
+        db.create_task("Unlinked task", "backlog", None, None, None)
             .expect("create 2 failed");
 
         let updated = db
@@ -463,11 +471,11 @@ mod tests {
     fn test_get_tasks_with_jira_links() {
         let (db, path) = make_test_db("tasks_with_jira");
 
-        db.create_task("Task 1", "backlog", Some("PROJ-1"), None)
+        db.create_task("Task 1", "backlog", Some("PROJ-1"), None, None)
             .expect("create 1 failed");
-        db.create_task("Task 2", "backlog", Some("PROJ-2"), None)
+        db.create_task("Task 2", "backlog", Some("PROJ-2"), None, None)
             .expect("create 2 failed");
-        db.create_task("Task 3", "backlog", None, None)
+        db.create_task("Task 3", "backlog", None, None, None)
             .expect("create 3 failed");
 
         let linked = db.get_tasks_with_jira_links().expect("get linked failed");
@@ -481,7 +489,7 @@ mod tests {
     fn test_jira_description_null_handling() {
         let (db, path) = make_test_db("jira_desc_null");
 
-        db.create_task("Task with jira", "backlog", Some("PROJ-1"), None)
+        db.create_task("Task with jira", "backlog", Some("PROJ-1"), None, None)
             .expect("create task failed");
 
         let task = db.get_task("T-1").expect("get failed").unwrap();
@@ -524,7 +532,7 @@ mod tests {
         let (db, path) = make_test_db("delete_task_basic");
 
         let task = db
-            .create_task("Deletable", "backlog", None, None)
+            .create_task("Deletable", "backlog", None, None, None)
             .expect("create failed");
         let tasks = db.get_all_tasks().expect("get failed");
         assert_eq!(tasks.len(), 1);
