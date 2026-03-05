@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte'
+  import { onMount } from 'svelte'
   import { activeProjectId, projects } from '../lib/stores'
   import {
     getProjectConfig,
@@ -65,7 +65,9 @@
   let isDeleting = $state(false)
 
   // Scroll spy
-  let observer: IntersectionObserver | null = null
+  let scrollContainer = $state<HTMLDivElement | null>(null)
+  let isNavigating = false
+  const sectionOrder = ['general', 'integrations', 'instructions', 'actions', 'ai', 'credentials']
 
   // Derived state
   const hasProject = $derived(!!$activeProjectId)
@@ -153,28 +155,54 @@
     // Load agents
     availableAgents = await getAgents().catch(() => [])
 
-    if (typeof IntersectionObserver !== 'undefined') {
-      const sections = document.querySelectorAll('[id^="section-"]')
-      observer = new IntersectionObserver(
-        (entries) => {
-          for (const entry of entries) {
-            if (entry.isIntersecting) {
-              activeSection = entry.target.id.replace('section-', '')
-            }
-          }
-        },
-        { threshold: 0.3 }
-      )
-      sections.forEach((s) => observer?.observe(s))
-    }
   })
 
-  onDestroy(() => {
-    observer?.disconnect()
+  // Scroll spy: re-observe whenever conditional sections mount/unmount
+  $effect(() => {
+    const container = scrollContainer
+    void hasProject
+
+    if (!container || typeof IntersectionObserver === 'undefined') return
+
+    const visible = new Set<string>()
+
+    const obs = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const id = entry.target.id.replace('section-', '')
+          if (entry.isIntersecting) {
+            visible.add(id)
+          } else {
+            visible.delete(id)
+          }
+        }
+        if (isNavigating) return
+        for (const id of sectionOrder) {
+          if (visible.has(id)) {
+            activeSection = id
+            return
+          }
+        }
+      },
+      {
+        root: container,
+        rootMargin: '0px 0px -50% 0px',
+        threshold: 0,
+      }
+    )
+
+    container.querySelectorAll('[id^="section-"]').forEach((s) => obs.observe(s))
+
+    return () => obs.disconnect()
   })
 
   function handleNavigate(sectionId: string) {
+    isNavigating = true
+    activeSection = sectionId
     document.getElementById(`section-${sectionId}`)?.scrollIntoView({ behavior: 'smooth' })
+    setTimeout(() => {
+      isNavigating = false
+    }, 800)
   }
 
   async function save() {
@@ -264,7 +292,7 @@
 <div class="flex h-full w-full">
   <SettingsSidebar {activeSection} onNavigate={handleNavigate} {hasProject} />
 
-  <div class="flex-1 overflow-y-auto bg-base-200">
+  <div bind:this={scrollContainer} class="flex-1 overflow-y-auto bg-base-200">
     <div class="px-6 py-6 flex flex-col gap-6">
       <div class="flex items-center justify-between">
         <div>
