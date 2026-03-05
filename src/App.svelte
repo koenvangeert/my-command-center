@@ -194,7 +194,7 @@
         showAddDialog = true
       }
     }
-    if ((e.metaKey || e.ctrlKey) && e.key === '[') {
+    if ((e.metaKey || e.ctrlKey) && (e.key === '[' || e.key === 'ArrowLeft')) {
       e.preventDefault()
       navigateBack()
     }
