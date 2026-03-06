@@ -44,6 +44,27 @@
   let hoveredState = $derived(hoveredTask ? computeCreatureState(hoveredTask, hoveredSession) : null)
   let hoveredRoom = $derived(hoveredTask ? computeCreatureRoom(hoveredTask, hoveredSession) : null)
 
+  let hoverPosition = $derived.by(() => {
+    if (!hoverRect) return { x: 0, y: 0 }
+    
+    const CARD_WIDTH = 320
+    const CARD_HEIGHT = 240
+    const GAP = 12
+    
+    let x = hoverRect.right + GAP
+    let y = hoverRect.top
+    
+    if (hoverRect.right + GAP + CARD_WIDTH > window.innerWidth) {
+      x = hoverRect.left - CARD_WIDTH - GAP
+    }
+    
+    if (hoverRect.top + CARD_HEIGHT > window.innerHeight) {
+      y = window.innerHeight - CARD_HEIGHT - GAP
+    }
+    
+    return { x, y }
+  })
+
   let runningCount = $derived(forgeTasks.filter(t => {
     const s = getSession(t.id)
     return s?.status === 'running'
@@ -165,15 +186,15 @@
     </div>
   {/if}
 
-  {#if hoveredTaskId && hoveredTask && hoveredState && hoveredRoom && hoverRect}
-    <CreatureHoverCard
-      task={hoveredTask}
-      session={hoveredSession}
-      state={hoveredState}
-      room={hoveredRoom}
-      position={{ x: hoverRect.right + 12, y: hoverRect.top }}
-      onClose={closeCard}
-      onCardEnter={cancelHide}
-    />
-  {/if}
+   {#if hoveredTaskId && hoveredTask && hoveredState && hoveredRoom && hoverRect}
+     <CreatureHoverCard
+       task={hoveredTask}
+       session={hoveredSession}
+       state={hoveredState}
+       room={hoveredRoom}
+       position={hoverPosition}
+       onClose={closeCard}
+       onCardEnter={cancelHide}
+     />
+   {/if}
 </div>
