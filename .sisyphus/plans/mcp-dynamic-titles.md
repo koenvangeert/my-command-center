@@ -407,7 +407,7 @@ Max Concurrent: 6 (Wave 2)
   - Files: `src-tauri/src/mcp-server/package.json`, `src-tauri/src/mcp-server/index.js`
   - Pre-commit: MCP initialize test
 
-- [ ] 4. HTTP /update_task Endpoint
+- [x] 4. HTTP /update_task Endpoint
 
   **What to do**:
   - Write failing test for the new endpoint

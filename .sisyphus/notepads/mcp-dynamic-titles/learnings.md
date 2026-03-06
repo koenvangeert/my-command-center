@@ -51,3 +51,13 @@
 - All 51 http_server tests pass; full suite: 398 tests pass with no regressions
 - Struct serialization tests cover: all fields, title only, summary only, neither (deserialize fails), roundtrip
 - Response tests cover: creation, serialization, JSON structure
+
+## 2026-03-06 Task — AddTaskDialog UI update (prompt/summary in Task type)
+- Task interface in types.ts must match Rust TaskRow field order exactly (prompt, summary between jira_description and project_id)
+- TDD approach: updated tests first with new placeholder "Describe what you want the agent to do", verified 5 tests fail before touching component
+- AddTaskDialog still binds to `title` state var internally — the `prompt` field is backend-populated from title, no separate input
+- Label changed: "Title *" → "Prompt *"; placeholder: "Enter task title" → "Describe what you want the agent to do"
+- Mock Task objects in tests need ALL nullable fields explicit (null) — TypeScript verbatimModuleSyntax enforces this
+- Test queries use `getByPlaceholderText` not `getByLabelText` — placeholder text is the key selector
+- Test added: `shows Prompt label in create mode` using `getByText('Prompt', { exact: false })`
+- All 739 tests pass after changes (51 test files)
