@@ -1,7 +1,7 @@
 use axum::{
-    extract::{State, Json},
+    extract::{State, Json, Path},
     middleware::Next,
-    routing::post,
+    routing::{post, get},
     Router,
     http::StatusCode,
     response::Response,
@@ -81,6 +81,16 @@ pub struct UpdateTaskRequest {
 pub struct UpdateTaskResponse {
     pub task_id: String,
     pub status: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct GetTaskInfoResponse {
+    pub id: String,
+    pub title: String,
+    pub prompt: Option<String>,
+    pub summary: Option<String>,
+    pub status: String,
+    pub jira_key: Option<String>,
 }
 
 /// Payload from Claude Code hooks
@@ -178,6 +188,25 @@ pub async fn update_task_handler(
         task_id: request.task_id,
         status: "updated".to_string(),
     }))
+}
+
+pub async fn get_task_info_handler(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<Json<GetTaskInfoResponse>, StatusCode> {
+    let db = state.db.lock().unwrap();
+
+    match db.get_task(&id).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)? {
+        Some(task) => Ok(Json(GetTaskInfoResponse {
+            id: task.id,
+            title: task.title,
+            prompt: task.prompt,
+            summary: task.summary,
+            status: task.status,
+            jira_key: task.jira_key,
+        })),
+        None => Err(StatusCode::NOT_FOUND),
+    }
 }
 
 pub(crate) fn map_hook_to_status(event_type: &str, current_status: &str) -> Option<String> {
@@ -312,6 +341,7 @@ pub fn create_router(state: AppState) -> Router {
     Router::new()
         .route("/create_task", post(create_task_handler))
         .route("/update_task", post(update_task_handler))
+        .route("/task/:id", get(get_task_info_handler))
         .route("/hooks/stop", post(hook_stop_handler))
         .route("/hooks/pre-tool-use", post(hook_pre_tool_use_handler))
         .route("/hooks/post-tool-use", post(hook_post_tool_use_handler))
@@ -917,6 +947,100 @@ mod tests {
         let json_value = serde_json::to_value(&response).expect("Failed to convert to JSON value");
         assert_eq!(json_value["task_id"], "T-789");
         assert_eq!(json_value["status"], "updated");
+    }
+
+    // ========================================================================
+    // GetTaskInfoResponse Tests
+    // ========================================================================
+
+    #[test]
+    fn test_get_task_info_response_creation_all_fields() {
+        let response = GetTaskInfoResponse {
+            id: "T-42".to_string(),
+            title: "My Task".to_string(),
+            prompt: Some("Do something cool".to_string()),
+            summary: Some("Did the thing".to_string()),
+            status: "doing".to_string(),
+            jira_key: Some("PROJ-1".to_string()),
+        };
+        assert_eq!(response.id, "T-42");
+        assert_eq!(response.title, "My Task");
+        assert_eq!(response.prompt, Some("Do something cool".to_string()));
+        assert_eq!(response.summary, Some("Did the thing".to_string()));
+        assert_eq!(response.status, "doing");
+        assert_eq!(response.jira_key, Some("PROJ-1".to_string()));
+    }
+
+    #[test]
+    fn test_get_task_info_response_creation_nullable_fields_none() {
+        let response = GetTaskInfoResponse {
+            id: "T-1".to_string(),
+            title: "Simple Task".to_string(),
+            prompt: None,
+            summary: None,
+            status: "backlog".to_string(),
+            jira_key: None,
+        };
+        assert!(response.prompt.is_none());
+        assert!(response.summary.is_none());
+        assert!(response.jira_key.is_none());
+    }
+
+    #[test]
+    fn test_get_task_info_response_serialize_all_fields() {
+        let response = GetTaskInfoResponse {
+            id: "T-99".to_string(),
+            title: "Full Task".to_string(),
+            prompt: Some("Implement X".to_string()),
+            summary: Some("Implemented X".to_string()),
+            status: "done".to_string(),
+            jira_key: Some("PROJ-99".to_string()),
+        };
+        let json = serde_json::to_string(&response).expect("Failed to serialize");
+        assert!(json.contains("\"id\":\"T-99\""));
+        assert!(json.contains("\"title\":\"Full Task\""));
+        assert!(json.contains("\"prompt\":\"Implement X\""));
+        assert!(json.contains("\"summary\":\"Implemented X\""));
+        assert!(json.contains("\"status\":\"done\""));
+        assert!(json.contains("\"jira_key\":\"PROJ-99\""));
+    }
+
+    #[test]
+    fn test_get_task_info_response_serialize_nulls() {
+        let response = GetTaskInfoResponse {
+            id: "T-1".to_string(),
+            title: "Minimal".to_string(),
+            prompt: None,
+            summary: None,
+            status: "backlog".to_string(),
+            jira_key: None,
+        };
+        let json_value = serde_json::to_value(&response).expect("Failed to serialize");
+        assert_eq!(json_value["id"], "T-1");
+        assert_eq!(json_value["title"], "Minimal");
+        assert!(json_value["prompt"].is_null());
+        assert!(json_value["summary"].is_null());
+        assert_eq!(json_value["status"], "backlog");
+        assert!(json_value["jira_key"].is_null());
+    }
+
+    #[test]
+    fn test_get_task_info_response_json_structure() {
+        let response = GetTaskInfoResponse {
+            id: "T-7".to_string(),
+            title: "Structure Test".to_string(),
+            prompt: Some("Test prompt".to_string()),
+            summary: None,
+            status: "doing".to_string(),
+            jira_key: None,
+        };
+        let json_value = serde_json::to_value(&response).expect("Failed to convert to JSON value");
+        assert_eq!(json_value["id"], "T-7");
+        assert_eq!(json_value["title"], "Structure Test");
+        assert_eq!(json_value["prompt"], "Test prompt");
+        assert!(json_value["summary"].is_null());
+        assert_eq!(json_value["status"], "doing");
+        assert!(json_value["jira_key"].is_null());
     }
 
 }
