@@ -48,6 +48,24 @@ describe('CreaturesView', () => {
       expect(screen.getByText('THE NURSERY')).toBeTruthy()
     })
 
+    it('renders rooms in order: Nursery, Forge, War Room (left to right)', () => {
+      tasks.set([makeTask('T-1', 'backlog')])
+      render(CreaturesView, { props: { onCreatureClick: vi.fn() } })
+      const rooms = screen.getAllByTestId(/^room-/)
+      expect(rooms.map(r => r.dataset.testid)).toEqual([
+        'room-nursery',
+        'room-forge',
+        'room-warRoom',
+      ])
+    })
+
+    it('renders nursery narrower than forge and war room', () => {
+      tasks.set([makeTask('T-1', 'backlog')])
+      render(CreaturesView, { props: { onCreatureClick: vi.fn() } })
+      const nursery = screen.getByTestId('room-nursery')
+      expect(nursery.className).not.toContain('flex-1')
+    })
+
     it('places running tasks in THE FORGE room', () => {
       tasks.set([makeTask('T-forge', 'doing')])
       activeSessions.set(new Map([['T-forge', makeSession('T-forge', 'running')]]))

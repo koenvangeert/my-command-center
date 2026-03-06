@@ -88,6 +88,23 @@
     </div>
   {:else}
     <div class="flex flex-1 overflow-hidden">
+      <div data-testid="room-nursery" class="w-56 shrink-0 flex flex-col border-r border-base-content/10 bg-base-200/50">
+        <div class="px-4 pt-3 pb-2">
+          <h3 class="font-mono text-xs font-bold tracking-widest text-base-content/60">THE NURSERY</h3>
+          <p class="font-mono text-[9px] text-base-content/30">{nurseryTasks.length} tasks in backlog</p>
+          <div class="border-b border-base-content/10 mt-2"></div>
+        </div>
+        <div class="flex flex-wrap gap-4 p-4 items-start content-start flex-1 overflow-y-auto">
+          {#each nurseryTasks as task (task.id)}
+            {@const session = getSession(task.id)}
+            {@const state = computeCreatureState(task, session)}
+            {@const room = computeCreatureRoom(task, session)}
+            {@const questionText = parseCheckpointQuestion(session?.checkpoint_data ?? null)}
+            <Creature {task} {state} {room} {questionText} onClick={onCreatureClick} onHover={handleHover} onHoverEnd={handleHoverEnd} />
+          {/each}
+        </div>
+      </div>
+
       <div data-testid="room-forge" class="flex-1 flex flex-col border-r border-base-content/10 bg-success/5">
         <div class="px-4 pt-3 pb-2">
           <h3 class="font-mono text-xs font-bold tracking-widest text-success">THE FORGE</h3>
@@ -105,7 +122,7 @@
         </div>
       </div>
 
-      <div data-testid="room-warRoom" class="flex-1 flex flex-col border-r border-base-content/10 bg-warning/5">
+      <div data-testid="room-warRoom" class="flex-1 flex flex-col bg-warning/5">
         <div class="px-4 pt-3 pb-2">
           <h3 class="font-mono text-xs font-bold tracking-widest text-warning">WAR ROOM</h3>
           <p class="font-mono text-[9px] text-warning/40">{warRoomTasks.length} tasks blocked</p>
@@ -113,23 +130,6 @@
         </div>
         <div class="flex flex-wrap gap-4 p-4 items-start content-start flex-1 overflow-y-auto">
           {#each warRoomTasks as task (task.id)}
-            {@const session = getSession(task.id)}
-            {@const state = computeCreatureState(task, session)}
-            {@const room = computeCreatureRoom(task, session)}
-            {@const questionText = parseCheckpointQuestion(session?.checkpoint_data ?? null)}
-            <Creature {task} {state} {room} {questionText} onClick={onCreatureClick} onHover={handleHover} onHoverEnd={handleHoverEnd} />
-          {/each}
-        </div>
-      </div>
-
-      <div data-testid="room-nursery" class="flex-1 flex flex-col bg-base-200/50">
-        <div class="px-4 pt-3 pb-2">
-          <h3 class="font-mono text-xs font-bold tracking-widest text-base-content/60">THE NURSERY</h3>
-          <p class="font-mono text-[9px] text-base-content/30">{nurseryTasks.length} tasks in backlog</p>
-          <div class="border-b border-base-content/10 mt-2"></div>
-        </div>
-        <div class="flex flex-wrap gap-4 p-4 items-start content-start flex-1 overflow-y-auto">
-          {#each nurseryTasks as task (task.id)}
             {@const session = getSession(task.id)}
             {@const state = computeCreatureState(task, session)}
             {@const room = computeCreatureRoom(task, session)}
