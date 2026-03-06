@@ -1,7 +1,8 @@
 <script lang="ts">
   import type { Task, AgentSession, PullRequestInfo } from '../lib/types'
   import { isReadyToMerge } from '../lib/types'
-  import { openUrl } from '../lib/ipc'
+  import { openUrl, updateTask } from '../lib/ipc'
+  import { tasks } from '../lib/stores'
   import Card from './Card.svelte'
 
   interface Props {
@@ -13,7 +14,11 @@
 
   let { task, session = null, pullRequests = [], onSelect }: Props = $props()
 
+  let isEditingName = $state(false)
+  let editedName = $state('')
+
   function handleClick() {
+    if (isEditingName) return
     onSelect?.(task.id)
   }
 
@@ -25,6 +30,45 @@
     return text.split('\n')[0]
   }
 
+  function startEditingName(e: MouseEvent) {
+    e.stopPropagation()
+    editedName = task.name || ''
+    isEditingName = true
+  }
+
+  async function saveName() {
+    const newName = editedName.trim() || null
+    if (newName === (task.name || null)) {
+      isEditingName = false
+      return
+    }
+    try {
+      await updateTask(task.id, task.title, task.jira_key, newName)
+      // Update the task in the store
+      tasks.update(list => list.map(t => t.id === task.id ? { ...t, name: newName } : t))
+      isEditingName = false
+    } catch (e) {
+      console.error('Failed to update task name:', e)
+    }
+  }
+
+  function cancelEditingName() {
+    isEditingName = false
+  }
+
+  function handleNameKeydown(e: KeyboardEvent) {
+    e.stopPropagation()
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      saveName()
+    } else if (e.key === 'Escape') {
+      cancelEditingName()
+    }
+  }
+
+  function handleInputClick(e: MouseEvent) {
+    e.stopPropagation()
+  }
 
   let statusClass = $derived(session?.status || 'idle')
   let needsInput = $derived(session?.status === 'paused' && session?.checkpoint_data !== null)
@@ -70,10 +114,39 @@
       </span>
     {/if}
   </div>
-  <div class="font-mono text-sm font-medium leading-relaxed text-base-content mb-1">
-    {truncate(firstLine(task.title), 80)}
-    {#if task.title.includes('\n')}
-      <span class="font-mono text-[0.6rem] text-base-content/40 ml-1">+{task.title.split('\n').length - 1} lines</span>
+  <div class="font-mono text-sm font-medium leading-relaxed text-base-content mb-1 flex items-center gap-1.5 group/name">
+    {#if isEditingName}
+      <input
+        type="text"
+        class="input input-bordered input-xs flex-1 font-mono"
+        bind:value={editedName}
+        onkeydown={handleNameKeydown}
+        onclick={handleInputClick}
+        placeholder="Enter task name"
+        autofocus
+      />
+      <button class="btn btn-ghost btn-xs px-1 min-h-0 h-auto text-success" onclick={(e: MouseEvent) => { e.stopPropagation(); saveName() }} title="Save">✓</button>
+      <button class="btn btn-ghost btn-xs px-1 min-h-0 h-auto text-error" onclick={(e: MouseEvent) => { e.stopPropagation(); cancelEditingName() }} title="Cancel">✗</button>
+    {:else}
+      <span class="flex-1">
+        {#if task.name}
+          {truncate(task.name, 80)}
+        {:else}
+          {truncate(firstLine(task.title), 80)}
+          {#if task.title.includes('\n')}
+            <span class="font-mono text-[0.6rem] text-base-content/40 ml-1">+{task.title.split('\n').length - 1} lines</span>
+          {/if}
+        {/if}
+      </span>
+      <button
+        class="btn btn-ghost btn-xs px-1 min-h-0 h-auto opacity-0 group-hover/name:opacity-100 transition-opacity"
+        onclick={startEditingName}
+        title="Edit name"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-base-content/50" viewBox="0 0 20 20" fill="currentColor">
+          <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+        </svg>
+      </button>
     {/if}
   </div>
   {#if task.jira_title}

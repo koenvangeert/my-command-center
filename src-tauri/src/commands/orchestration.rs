@@ -439,6 +439,7 @@ mod tests {
             project_id: None,
             created_at: 0,
             updated_at: 0,
+            name: None,
         };
 
         let prompt = build_task_prompt(&task, "Do the thing!", None);
@@ -462,6 +463,7 @@ mod tests {
             project_id: None,
             created_at: 0,
             updated_at: 0,
+            name: None,
         };
 
         let prompt = build_task_prompt(&task, "Execute now!", None);
@@ -485,6 +487,7 @@ mod tests {
             project_id: None,
             created_at: 0,
             updated_at: 0,
+            name: None,
         };
 
         let prompt = build_task_prompt(&task, "Run test!", None);
@@ -508,6 +511,7 @@ mod tests {
             project_id: None,
             created_at: 0,
             updated_at: 0,
+            name: None,
         };
 
         let prompt = build_task_prompt(&task, "Do the thing!", Some("Always use TypeScript strict mode.\nFollow the project coding standards."));
@@ -532,6 +536,7 @@ mod tests {
             project_id: None,
             created_at: 0,
             updated_at: 0,
+            name: None,
         };
 
         let prompt_with_empty = build_task_prompt(&task, "Do the thing!", Some(""));
@@ -554,6 +559,7 @@ mod tests {
             project_id: None,
             created_at: 0,
             updated_at: 0,
+            name: None,
         };
 
         let prompt = build_task_prompt(&task, "Do the thing!", None);
@@ -575,6 +581,7 @@ mod tests {
             project_id: None,
             created_at: 0,
             updated_at: 0,
+            name: None,
         };
 
         let prompt = build_task_prompt(&task, "Implement this task.", None);
@@ -601,6 +608,7 @@ mod tests {
             project_id: None,
             created_at: 0,
             updated_at: 0,
+            name: None,
         };
 
         let prompt = build_task_prompt(&task, "Do it!", None);
@@ -624,6 +632,7 @@ mod tests {
             project_id: None,
             created_at: 0,
             updated_at: 0,
+            name: None,
         };
 
         let prompt = build_task_prompt(&task, "Go!", None);

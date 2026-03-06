@@ -10,6 +10,7 @@ export interface Task {
   project_id: string | null;
   created_at: number;
   updated_at: number;
+  name: string | null;
 }
 
 export interface AgentSession {

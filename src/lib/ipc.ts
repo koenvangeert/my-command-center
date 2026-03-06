@@ -1,12 +1,12 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { Task, AgentSession, AgentLog, PrComment, PollResult, PullRequestInfo, AgentInfo, Project, ProjectAttention, WorktreeInfo, ImplementationStatus, ReviewPullRequest, PrFileDiff, ReviewComment, ReviewSubmissionComment, SelfReviewComment, AgentReviewComment, CommandInfo, AutocompleteAgentInfo, PrOverviewComment, TranscriptionResult, WhisperModelStatus, WhisperModelSizeId, SkillInfo } from "./types";
 
-export async function createTask(title: string, status: string, jiraKey: string | null, projectId: string | null): Promise<Task> {
-  return invoke<Task>("create_task", { title, status, jiraKey, projectId });
+export async function createTask(title: string, status: string, jiraKey: string | null, projectId: string | null, name: string | null): Promise<Task> {
+  return invoke<Task>("create_task", { title, status, jiraKey, projectId, name });
 }
 
-export async function updateTask(id: string, title: string, jiraKey: string | null): Promise<void> {
-  return invoke("update_task", { id, title, jiraKey });
+export async function updateTask(id: string, title: string, jiraKey: string | null, name: string | null): Promise<void> {
+  return invoke("update_task", { id, title, jiraKey, name });
 }
 
 export async function updateTaskStatus(id: string, status: string): Promise<void> {

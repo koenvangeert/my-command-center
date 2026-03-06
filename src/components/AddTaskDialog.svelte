@@ -15,6 +15,7 @@
 
   let title = $state('')
   let jiraKey = $state('')
+  let name = $state('')
   let status = $state<KanbanColumn>('backlog')
   let isSubmitting = $state(false)
 
@@ -23,6 +24,7 @@
     title = mode === 'edit' && task ? task.title : ''
     jiraKey = mode === 'edit' && task ? (task.jira_key || '') : ''
     status = mode === 'edit' && task ? (task.status as KanbanColumn) : 'backlog'
+    name = mode === 'edit' && task ? (task.name || '') : ''
   })
 
   async function handleSubmit() {
@@ -35,14 +37,16 @@
           title.trim(),
           status,
           jiraKey.trim() || null,
-          $activeProjectId
+          $activeProjectId,
+          name.trim() || null
         )
         onTaskSaved?.(newTask)
       } else if (task) {
         await updateTask(
           task.id,
           title.trim(),
-          jiraKey.trim() || null
+          jiraKey.trim() || null,
+          name.trim() || null
         )
         onTaskSaved?.()
       }
@@ -85,6 +89,16 @@
           class="input input-bordered input-sm w-full"
           bind:value={jiraKey}
           placeholder="e.g. PROJ-123"
+        />
+      </label>
+
+      <label class="flex flex-col gap-1.5">
+        <span class="text-xs text-base-content/60 font-medium">Name</span>
+        <input
+          type="text"
+          class="input input-bordered input-sm w-full"
+          bind:value={name}
+          placeholder="Optional short name for this task"
         />
       </label>
     </div>

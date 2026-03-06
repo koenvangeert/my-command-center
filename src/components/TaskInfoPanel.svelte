@@ -2,7 +2,7 @@
   import type { Task, PrComment } from '../lib/types'
   import { parseCheckRuns, isReadyToMerge } from '../lib/types'
   import { ticketPrs } from '../lib/stores'
-  import { getPrComments, markCommentAddressed, openUrl } from '../lib/ipc'
+  import { getPrComments, markCommentAddressed, openUrl, updateTask } from '../lib/ipc'
   import { timeAgo } from '../lib/timeAgo'
   import MarkdownContent from './MarkdownContent.svelte'
   import CopyButton from './CopyButton.svelte'
@@ -11,9 +11,13 @@
     task: Task
     worktreePath: string | null
     jiraBaseUrl: string
+    onTaskUpdated?: () => void
   }
 
-  let { task, worktreePath, jiraBaseUrl }: Props = $props()
+  let { task, worktreePath, jiraBaseUrl, onTaskUpdated }: Props = $props()
+
+  let isEditingName = $state(false)
+  let editedName = $state('')
 
   let prCommentsByPr = $state<Map<number, PrComment[]>>(new Map())
 
@@ -58,10 +62,75 @@
 
 
 
+  function startEditingName() {
+    editedName = task.name || ''
+    isEditingName = true
+  }
+
+  async function saveName() {
+    const newName = editedName.trim() || null
+    if (newName === (task.name || null)) {
+      isEditingName = false
+      return
+    }
+    try {
+      await updateTask(task.id, task.title, task.jira_key, newName)
+      isEditingName = false
+      onTaskUpdated?.()
+    } catch (e) {
+      console.error('Failed to update task name:', e)
+    }
+  }
+
+  function cancelEditingName() {
+    isEditingName = false
+  }
+
+  function handleNameKeydown(e: KeyboardEvent) {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      saveName()
+    } else if (e.key === 'Escape') {
+      cancelEditingName()
+    }
+  }
+
   let taskPrs = $derived($ticketPrs.get(task.id) || [])
 </script>
 
 <div class="flex flex-col gap-5 p-5 overflow-y-auto bg-base-200 h-full">
+  <!-- Task Name Section -->
+  <section class="flex flex-col gap-2.5">
+    <h3 class="text-[10px] font-bold text-primary font-mono tracking-[1.2px] m-0" aria-label="Task Name">// TASK_NAME</h3>
+    {#if isEditingName}
+      <div class="flex items-center gap-2">
+        <input
+          type="text"
+          class="input input-bordered input-sm flex-1"
+          bind:value={editedName}
+          onkeydown={handleNameKeydown}
+          placeholder="Enter task name"
+          autofocus
+        />
+        <button class="btn btn-ghost btn-xs text-success" onclick={saveName} title="Save">✓</button>
+        <button class="btn btn-ghost btn-xs text-error" onclick={cancelEditingName} title="Cancel">✗</button>
+      </div>
+    {:else}
+      <div class="flex items-center gap-2 group">
+        <span class="text-sm text-base-content leading-relaxed {task.name ? '' : 'text-base-content/40 italic'}">{task.name || 'No name'}</span>
+        <button
+          class="btn btn-ghost btn-xs px-1 min-h-0 h-auto opacity-0 group-hover:opacity-100 transition-opacity"
+          onclick={startEditingName}
+          title="Edit name"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-base-content/50" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+          </svg>
+        </button>
+      </div>
+    {/if}
+  </section>
+
   <!-- Title / Initial Prompt Section -->
   <section class="flex flex-col gap-2.5">
     <h3 class="text-[10px] font-bold text-primary font-mono tracking-[1.2px] m-0" aria-label="Initial Prompt">// INITIAL_PROMPT</h3>

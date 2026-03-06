@@ -112,6 +112,7 @@ pub async fn create_task_handler(
         "backlog",
         None,
         project_id.as_deref(),
+        None,
     ).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     drop(db);

@@ -91,10 +91,10 @@ describe('PromptInput', () => {
       },
     })
 
-    const addJiraLink = screen.getByText('+ Add JIRA key')
+    const addJiraLink = screen.getByText('+ Add JIRA key or link')
     await fireEvent.click(addJiraLink)
 
-    const jiraInput = screen.getByPlaceholderText('e.g. PROJ-123')
+    const jiraInput = screen.getByPlaceholderText('e.g. PROJ-123 or Jira link')
     expect(jiraInput).toBeTruthy()
   })
 
@@ -156,7 +156,78 @@ describe('PromptInput', () => {
     const textarea = screen.getByPlaceholderText('Describe what you want to implement...')
     expect((textarea as HTMLTextAreaElement).value).toBe('Fix the bug')
 
-    const jiraInput = screen.getByPlaceholderText('e.g. PROJ-123')
+    const jiraInput = screen.getByPlaceholderText('e.g. PROJ-123 or Jira link')
     expect((jiraInput as HTMLInputElement).value).toBe('PROJ-42')
+  })
+
+  it('extracts Jira key from URL on submit', async () => {
+    const onSubmit = vi.fn()
+    render(PromptInput, {
+      props: {
+        ...baseProps,
+        onSubmit,
+        jiraKey: 'https://mycompany.atlassian.net/browse/PROJ-456',
+      },
+    })
+
+    const textarea = screen.getByPlaceholderText('Describe what you want to implement...') as HTMLTextAreaElement
+    textarea.value = 'Fix the bug'
+    await fireEvent.input(textarea)
+    await fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true })
+
+    expect(onSubmit).toHaveBeenCalledWith('Fix the bug', 'PROJ-456')
+  })
+
+  it('passes bare Jira key through on submit', async () => {
+    const onSubmit = vi.fn()
+    render(PromptInput, {
+      props: {
+        ...baseProps,
+        onSubmit,
+        jiraKey: 'PROJ-789',
+      },
+    })
+
+    const textarea = screen.getByPlaceholderText('Describe what you want to implement...') as HTMLTextAreaElement
+    textarea.value = 'Fix the bug'
+    await fireEvent.input(textarea)
+    await fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true })
+
+    expect(onSubmit).toHaveBeenCalledWith('Fix the bug', 'PROJ-789')
+  })
+
+  it('normalizes lowercase Jira key to uppercase', async () => {
+    const onSubmit = vi.fn()
+    render(PromptInput, {
+      props: {
+        ...baseProps,
+        onSubmit,
+        jiraKey: 'proj-123',
+      },
+    })
+
+    const textarea = screen.getByPlaceholderText('Describe what you want to implement...') as HTMLTextAreaElement
+    textarea.value = 'Fix the bug'
+    await fireEvent.input(textarea)
+    await fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true })
+
+    expect(onSubmit).toHaveBeenCalledWith('Fix the bug', 'PROJ-123')
+  })
+
+  it('submits null jira key when field is empty', async () => {
+    const onSubmit = vi.fn()
+    render(PromptInput, {
+      props: {
+        ...baseProps,
+        onSubmit,
+      },
+    })
+
+    const textarea = screen.getByPlaceholderText('Describe what you want to implement...') as HTMLTextAreaElement
+    textarea.value = 'Fix the bug'
+    await fireEvent.input(textarea)
+    await fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true })
+
+    expect(onSubmit).toHaveBeenCalledWith('Fix the bug', null)
   })
 })

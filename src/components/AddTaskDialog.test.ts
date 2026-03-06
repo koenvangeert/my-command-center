@@ -16,6 +16,7 @@ vi.mock('../lib/ipc', () => ({
     project_id: null,
     created_at: 1000,
     updated_at: 1000,
+    name: null,
   } as Task),
   updateTask: vi.fn().mockResolvedValue(undefined),
 }))
@@ -34,6 +35,7 @@ const mockTask: Task = {
   project_id: null,
   created_at: 1000,
   updated_at: 2000,
+  name: 'My Task Name',
 }
 
 describe('AddTaskDialog', () => {
@@ -78,7 +80,7 @@ describe('AddTaskDialog', () => {
     await fireEvent.click(submitBtn)
     
     await new Promise((r) => setTimeout(r, 10))
-    expect(createTask).toHaveBeenCalledWith('My new task', 'backlog', 'PROJ-456', null)
+    expect(createTask).toHaveBeenCalledWith('My new task', 'backlog', 'PROJ-456', null, null)
   })
 
   it('pre-fills fields in edit mode', () => {
@@ -90,6 +92,9 @@ describe('AddTaskDialog', () => {
     
     const jiraInput = screen.getByPlaceholderText('e.g. PROJ-123') as HTMLInputElement
     expect(jiraInput.value).toBe('PROJ-123')
+
+    const nameInput = screen.getByPlaceholderText('Optional short name for this task') as HTMLInputElement
+    expect(nameInput.value).toBe('My Task Name')
   })
 
   it('calls updateTask when submitted in edit mode', async () => {
@@ -99,7 +104,7 @@ describe('AddTaskDialog', () => {
     await fireEvent.click(submitBtn)
     
     await new Promise((r) => setTimeout(r, 10))
-    expect(updateTask).toHaveBeenCalledWith('T-42', 'Existing Task', 'PROJ-123')
+    expect(updateTask).toHaveBeenCalledWith('T-42', 'Existing Task', 'PROJ-123', 'My Task Name')
   })
 
   it('does not show status dropdown in edit mode', () => {
