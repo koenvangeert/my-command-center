@@ -57,7 +57,6 @@ pub struct CreateTaskRequest {
 pub struct AppState {
     pub app: tauri::AppHandle,
     pub db: std::sync::Arc<Mutex<db::Database>>,
-    pub token: String,
 }
 
 /// Response containing the created task ID
@@ -348,7 +347,6 @@ pub fn create_router(state: AppState) -> Router {
         .route("/hooks/session-end", post(hook_session_end_handler))
         .route("/hooks/notification", post(hook_notification_handler))
         .route("/hooks/notification-permission", post(hook_notification_permission_handler))
-        .layer(axum::middleware::from_fn(auth_middleware))
         .with_state(state)
 }
 
@@ -373,7 +371,7 @@ pub async fn start_http_server(
     let _ = HTTP_TOKEN.set(token.clone());
 
     let addr = SocketAddr::from(([127, 0, 0, 1], port));
-    let state = AppState { app, db, token };
+    let state = AppState { app, db };
     let router = create_router(state);
 
     println!("[http_server] Starting on {}", addr);
@@ -450,70 +448,7 @@ mod tests {
         assert!(!validate_bearer_token(&headers, "mytoken"));
     }
 
-    fn create_test_app_with_auth() -> Router {
-        Router::new()
-            .route("/ping", axum::routing::get(|| async { StatusCode::OK }))
-            .layer(axum::middleware::from_fn(auth_middleware))
-    }
 
-    #[tokio::test]
-    async fn test_request_without_auth_header_returns_401() {
-        use axum::body::Body;
-        use axum::http::Request;
-        use tower::ServiceExt;
-
-        init_test_token();
-        let app = create_test_app_with_auth();
-
-        let request = Request::builder()
-            .method("GET")
-            .uri("/ping")
-            .body(Body::empty())
-            .unwrap();
-
-        let response = app.oneshot(request).await.unwrap();
-        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
-    }
-
-    #[tokio::test]
-    async fn test_request_with_wrong_token_returns_401() {
-        use axum::body::Body;
-        use axum::http::Request;
-        use tower::ServiceExt;
-
-        init_test_token();
-        let app = create_test_app_with_auth();
-
-        let request = Request::builder()
-            .method("GET")
-            .uri("/ping")
-            .header("Authorization", "Bearer definitely_wrong_token")
-            .body(Body::empty())
-            .unwrap();
-
-        let response = app.oneshot(request).await.unwrap();
-        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
-    }
-
-    #[tokio::test]
-    async fn test_request_with_correct_token_returns_200() {
-        use axum::body::Body;
-        use axum::http::Request;
-        use tower::ServiceExt;
-
-        let token = init_test_token().to_string();
-        let app = create_test_app_with_auth();
-
-        let request = Request::builder()
-            .method("GET")
-            .uri("/ping")
-            .header("Authorization", format!("Bearer {}", token))
-            .body(Body::empty())
-            .unwrap();
-
-        let response = app.oneshot(request).await.unwrap();
-        assert_eq!(response.status(), StatusCode::OK);
-    }
 
     // ========================================================================
     // CreateTaskRequest Tests

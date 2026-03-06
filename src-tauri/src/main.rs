@@ -270,22 +270,14 @@ fn main() {
             });
             println!("HTTP server task started");
 
-            tauri::async_runtime::spawn(async move {
-                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-                if let Some(token) = http_server::HTTP_TOKEN.get() {
-                    let port = std::env::var("AI_COMMAND_CENTER_PORT")
-                        .unwrap_or_else(|_| "17422".to_string());
-                    if let Err(e) = mcp_installer::configure_opencode_mcp(token, &port) {
-                        eprintln!("[startup] Failed to configure OpenCode MCP: {}", e);
-                    }
-                    if let Err(e) = mcp_installer::configure_claude_mcp(token, &port) {
-                        eprintln!("[startup] Failed to configure Claude Code MCP: {}", e);
-                    }
-                } else {
-                    eprintln!("[startup] HTTP_TOKEN not set after 500ms, skipping MCP config");
-                }
-            });
-            println!("MCP config task started");
+            let port = std::env::var("AI_COMMAND_CENTER_PORT")
+                .unwrap_or_else(|_| "17422".to_string());
+            if let Err(e) = mcp_installer::configure_opencode_mcp(&port) {
+                eprintln!("[startup] Failed to configure OpenCode MCP: {}", e);
+            }
+            if let Err(e) = mcp_installer::configure_claude_mcp(&port) {
+                eprintln!("[startup] Failed to configure Claude Code MCP: {}", e);
+            }
 
             let hooks_port = claude_hooks::get_http_server_port();
             match claude_hooks::generate_hooks_settings(hooks_port) {

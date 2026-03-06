@@ -4,9 +4,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import * as z from 'zod/v4';
 
-// Read at invocation time — token regenerates on every app start, so
-// reading at module parse time would capture a stale value.
-const HTTP_TOKEN = process.env.OPENFORGE_HTTP_TOKEN ?? '';
+// Read at invocation time
 const HTTP_PORT = process.env.OPENFORGE_HTTP_PORT ?? '17422';
 const BASE_URL = `http://127.0.0.1:${HTTP_PORT}`;
 
@@ -28,7 +26,6 @@ server.tool(
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${HTTP_TOKEN}`,
         },
         body: JSON.stringify({ title, project_id }),
       });
@@ -61,7 +58,6 @@ server.tool(
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${HTTP_TOKEN}`,
         },
         body: JSON.stringify({ task_id, title, summary }),
       });
@@ -90,9 +86,6 @@ server.tool(
     try {
       const res = await fetch(`${BASE_URL}/task/${task_id}`, {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${HTTP_TOKEN}`,
-        },
       });
 
       if (!res.ok) {
@@ -128,4 +121,4 @@ main().catch((error) => {
   process.exit(1);
 });
 
-export { HTTP_TOKEN, HTTP_PORT, BASE_URL };
+export { HTTP_PORT, BASE_URL };

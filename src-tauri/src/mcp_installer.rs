@@ -24,24 +24,18 @@ fn read_json_file_opt(path: &PathBuf) -> Option<Value> {
     }
 }
 
-fn build_mcp_entry(token: &str, port: &str, install_path: &str) -> Value {
+fn build_mcp_entry(port: &str, install_path: &str) -> Value {
     serde_json::json!({
         "type": "stdio",
         "command": "node",
         "args": [format!("{}/index.js", install_path)],
         "env": {
-            "OPENFORGE_HTTP_TOKEN": token,
             "OPENFORGE_HTTP_PORT": port
         }
     })
 }
 
-pub fn merge_mcp_config(
-    existing: Option<Value>,
-    token: &str,
-    port: &str,
-    install_path: &str,
-) -> Value {
+pub fn merge_mcp_config(existing: Option<Value>, port: &str, install_path: &str) -> Value {
     let mut config = match existing {
         Some(Value::Object(map)) => Value::Object(map),
         _ => serde_json::json!({}),
@@ -51,7 +45,7 @@ pub fn merge_mcp_config(
         config["mcpServers"] = serde_json::json!({});
     }
 
-    config["mcpServers"]["openforge"] = build_mcp_entry(token, port, install_path);
+    config["mcpServers"]["openforge"] = build_mcp_entry(port, install_path);
     config
 }
 
@@ -91,14 +85,14 @@ pub fn install_mcp_server() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-pub fn configure_opencode_mcp(token: &str, port: &str) -> Result<(), Box<dyn std::error::Error>> {
+pub fn configure_opencode_mcp(port: &str) -> Result<(), Box<dyn std::error::Error>> {
     let config_dir = dirs::config_dir().ok_or("Could not determine config directory")?;
     let config_path = config_dir.join("opencode").join("config.json");
     let install_dir = get_mcp_install_dir().ok_or("Could not determine config directory")?;
     let install_path = install_dir.to_string_lossy().to_string();
 
     let existing = read_json_file_opt(&config_path);
-    let merged = merge_mcp_config(existing, token, port, &install_path);
+    let merged = merge_mcp_config(existing, port, &install_path);
 
     if let Some(parent) = config_path.parent() {
         fs::create_dir_all(parent)?;
@@ -112,7 +106,7 @@ pub fn configure_opencode_mcp(token: &str, port: &str) -> Result<(), Box<dyn std
     Ok(())
 }
 
-pub fn configure_claude_mcp(token: &str, port: &str) -> Result<(), Box<dyn std::error::Error>> {
+pub fn configure_claude_mcp(port: &str) -> Result<(), Box<dyn std::error::Error>> {
     let config_path = dirs::home_dir()
         .ok_or("Could not determine home directory")?
         .join(".claude.json");
@@ -120,7 +114,7 @@ pub fn configure_claude_mcp(token: &str, port: &str) -> Result<(), Box<dyn std::
     let install_path = install_dir.to_string_lossy().to_string();
 
     let existing = read_json_file_opt(&config_path);
-    let merged = merge_mcp_config(existing, token, port, &install_path);
+    let merged = merge_mcp_config(existing, port, &install_path);
 
     fs::write(&config_path, serde_json::to_string_pretty(&merged)?)?;
     println!(
@@ -137,7 +131,7 @@ mod tests {
 
     #[test]
     fn test_merge_mcp_config_creates_new() {
-        let result = merge_mcp_config(None, "test-token", "17422", "/opt/openforge/mcp-server");
+        let result = merge_mcp_config(None, "17422", "/opt/openforge/mcp-server");
 
         assert!(result.is_object());
         assert!(result["mcpServers"].is_object());
@@ -146,7 +140,6 @@ mod tests {
         assert_eq!(openforge["type"], "stdio");
         assert_eq!(openforge["command"], "node");
         assert_eq!(openforge["args"][0], "/opt/openforge/mcp-server/index.js");
-        assert_eq!(openforge["env"]["OPENFORGE_HTTP_TOKEN"], "test-token");
         assert_eq!(openforge["env"]["OPENFORGE_HTTP_PORT"], "17422");
     }
 
@@ -162,7 +155,7 @@ mod tests {
             }
         });
 
-        let result = merge_mcp_config(Some(existing), "my-token", "17422", "/path/to/mcp");
+        let result = merge_mcp_config(Some(existing), "17422", "/path/to/mcp");
 
         assert_eq!(result["theme"], "dark");
 
@@ -172,7 +165,6 @@ mod tests {
 
         let openforge = &result["mcpServers"]["openforge"];
         assert_eq!(openforge["type"], "stdio");
-        assert_eq!(openforge["env"]["OPENFORGE_HTTP_TOKEN"], "my-token");
     }
 
     #[test]
@@ -184,29 +176,27 @@ mod tests {
                     "command": "node",
                     "args": ["/old/path/index.js"],
                     "env": {
-                        "OPENFORGE_HTTP_TOKEN": "old-token",
                         "OPENFORGE_HTTP_PORT": "9999"
                     }
                 }
             }
         });
 
-        let result = merge_mcp_config(Some(existing), "new-token", "17422", "/new/path/mcp-server");
+        let result = merge_mcp_config(Some(existing), "17422", "/new/path/mcp-server");
 
         let openforge = &result["mcpServers"]["openforge"];
         assert_eq!(openforge["args"][0], "/new/path/mcp-server/index.js");
-        assert_eq!(openforge["env"]["OPENFORGE_HTTP_TOKEN"], "new-token");
         assert_eq!(openforge["env"]["OPENFORGE_HTTP_PORT"], "17422");
     }
 
     #[test]
     fn test_merge_mcp_config_handles_invalid_json() {
-        let result = merge_mcp_config(Some(json!("not-an-object")), "tok", "17422", "/some/path");
+        let result = merge_mcp_config(Some(json!("not-an-object")), "17422", "/some/path");
 
         assert!(result["mcpServers"]["openforge"].is_object());
         assert_eq!(
-            result["mcpServers"]["openforge"]["env"]["OPENFORGE_HTTP_TOKEN"],
-            "tok"
+            result["mcpServers"]["openforge"]["env"]["OPENFORGE_HTTP_PORT"],
+            "17422"
         );
     }
 
