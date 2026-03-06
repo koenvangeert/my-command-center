@@ -6,6 +6,7 @@
   import { pushNavState } from '../lib/navigation'
   import { loadActions, getEnabledActions } from '../lib/actions'
   import TaskCard from './TaskCard.svelte'
+  import Modal from './Modal.svelte'
 
   interface Props {
     onRunAction?: (data: { taskId: string; actionPrompt: string; agent: string | null }) => void
@@ -25,16 +26,28 @@
     showDoneDrawer = !showDoneDrawer
   }
 
+  function isInputFocused(): boolean {
+    const active = document.activeElement
+    if (!active) return false
+    const tagName = active.tagName.toLowerCase()
+    return tagName === 'input' || tagName === 'textarea' || (active as HTMLElement).isContentEditable
+  }
+
   function handleBoardKeydown(e: KeyboardEvent) {
-    // Cmd+B / Ctrl+B — toggle backlog
-    if ((e.metaKey || e.ctrlKey) && e.key === 'b') {
-      e.preventDefault()
-      toggleBacklog()
-    }
-    // Cmd+Shift+D / Ctrl+Shift+D — toggle done drawer
-    if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'D') {
-      e.preventDefault()
-      toggleDoneDrawer()
+    // Plain key shortcuts (only when not typing in input)
+    if (!isInputFocused()) {
+      // b — toggle backlog
+      if (e.key === 'b' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault()
+        toggleBacklog()
+        return
+      }
+      // c — toggle done drawer
+      if (e.key === 'c' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault()
+        toggleDoneDrawer()
+        return
+      }
     }
   }
 
@@ -153,7 +166,7 @@
     <button
       class="font-mono text-[11px] px-2.5 py-1 rounded cursor-pointer transition-colors {showBacklog ? 'bg-base-300 text-base-content' : 'text-secondary hover:text-base-content hover:bg-base-300/50'}"
       onclick={toggleBacklog}
-      title="Toggle backlog (⌘B)"
+      title="Toggle backlog (b)"
     >
       {showBacklog ? '▾' : '▸'} backlog
       <span class="ml-1 text-[10px] text-secondary bg-base-300 px-1 py-0.5 rounded">{backlogTasks.length}</span>
@@ -162,7 +175,7 @@
     <button
       class="font-mono text-[11px] px-2.5 py-1 rounded cursor-pointer transition-colors {showDoneDrawer ? 'bg-base-300 text-base-content' : 'text-secondary hover:text-base-content hover:bg-base-300/50'}"
       onclick={toggleDoneDrawer}
-      title="Toggle done drawer (⌘⇧D)"
+      title="Toggle done drawer (c)"
     >
       done
       <span class="ml-1 text-[10px] text-secondary bg-base-300 px-1 py-0.5 rounded">{doneTasks.length}</span>
@@ -257,7 +270,7 @@
         <button
           class="text-secondary hover:text-base-content cursor-pointer transition-colors text-lg leading-none"
           onclick={toggleDoneDrawer}
-          title="Close (⌘⇧D)"
+          title="Close (c)"
         >
           ✕
         </button>

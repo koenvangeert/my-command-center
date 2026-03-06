@@ -64,7 +64,7 @@ describe('KanbanBoard', () => {
     render(KanbanBoard)
 
     // Click the "done" toggle button
-    const doneToggle = screen.getByTitle('Toggle done drawer (⌘⇧D)')
+    const doneToggle = screen.getByTitle('Toggle done drawer (c)')
     await fireEvent.click(doneToggle)
 
     // Done column header should now be visible in the drawer
@@ -79,7 +79,7 @@ describe('KanbanBoard', () => {
     expect(screen.getByText('// backlog')).toBeTruthy()
 
     // Click the backlog toggle button
-    const backlogToggle = screen.getByTitle('Toggle backlog (⌘B)')
+    const backlogToggle = screen.getByTitle('Toggle backlog (b)')
     await fireEvent.click(backlogToggle)
     await new Promise(resolve => setTimeout(resolve, 10))
 
