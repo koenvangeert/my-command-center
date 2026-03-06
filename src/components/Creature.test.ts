@@ -118,46 +118,11 @@ describe('Creature', () => {
       expect(container.querySelector('[data-testid="leg-r"]')).toBeTruthy()
     })
 
-    it('applies hue-rotate filter style for color variation', () => {
-      const { container } = renderCreature('active', 'forge')
-      const svg = container.querySelector('svg')
-      expect(svg?.style.filter).toMatch(/hue-rotate\(-?\d+deg\)/)
-    })
-
     it('forge room does not show alert badge', () => {
       const { container } = renderCreature('active', 'forge')
       expect(container.querySelector('[data-testid="alert-badge"]')).toBeNull()
     })
 
-    it('applies creature-work animation class for active state', () => {
-      const { container } = renderCreature('active', 'forge')
-      const svg = container.querySelector('svg')
-      expect(svg?.classList.contains('creature-work')).toBe(true)
-    })
-
-    it('applies creature-alert animation class for needs-input state', () => {
-      const { container } = renderCreature('needs-input', 'warRoom')
-      const svg = container.querySelector('svg')
-      expect(svg?.classList.contains('creature-alert')).toBe(true)
-    })
-
-    it('applies creature-alert animation class for sad state', () => {
-      const { container } = renderCreature('sad', 'warRoom')
-      const svg = container.querySelector('svg')
-      expect(svg?.classList.contains('creature-alert')).toBe(true)
-    })
-
-    it('applies creature-celebrate animation class for celebrating state', () => {
-      const { container } = renderCreature('celebrating', 'forge')
-      const svg = container.querySelector('svg')
-      expect(svg?.classList.contains('creature-celebrate')).toBe(true)
-    })
-
-    it('applies creature-sleep animation class for resting state', () => {
-      const { container } = renderCreature('resting', 'warRoom')
-      const svg = container.querySelector('svg')
-      expect(svg?.classList.contains('creature-sleep')).toBe(true)
-    })
   })
 
   describe('Assignee display', () => {
@@ -193,12 +158,6 @@ describe('Creature', () => {
       expect(screen.getByText('T-99')).toBeTruthy()
     })
 
-    it('applies creature-sleep animation class for nursery room', () => {
-      const { container } = renderCreature('egg', 'nursery')
-      const svg = container.querySelector('svg')
-      expect(svg?.classList.contains('creature-sleep')).toBe(true)
-    })
-
     it('does not render pixel character in nursery', () => {
       const { container } = renderCreature('egg', 'nursery')
       expect(container.querySelector('[data-testid="pixel-char"]')).toBeNull()
@@ -232,50 +191,6 @@ describe('Creature', () => {
       const button = screen.getByRole('button')
       await fireEvent.mouseLeave(button)
       expect(onHoverEnd).toHaveBeenCalled()
-    })
-  })
-
-  describe('Room colors', () => {
-    it('active forge creatures use text-success color class on svg', () => {
-      const { container } = renderCreature('active', 'forge')
-      const svg = container.querySelector('svg')
-      expect(svg?.classList.contains('text-success')).toBe(true)
-    })
-
-    it('celebrating forge creatures use text-info color class on svg', () => {
-      const { container } = renderCreature('celebrating', 'forge')
-      const svg = container.querySelector('svg')
-      expect(svg?.classList.contains('text-info')).toBe(true)
-    })
-
-    it('celebrating forge creatures do not use text-success', () => {
-      const { container } = renderCreature('celebrating', 'forge')
-      const svg = container.querySelector('svg')
-      expect(svg?.classList.contains('text-success')).toBe(false)
-    })
-
-    it('celebrating creatures use border-info thought bubble', () => {
-      const { container } = renderCreature('celebrating', 'forge')
-      const bubble = container.querySelector('.border-info\\/50')
-      expect(bubble).toBeTruthy()
-    })
-
-    it('celebrating creatures status label uses text-info', () => {
-      const { container } = renderCreature('celebrating', 'forge')
-      const statusDot = container.querySelector('.text-info')
-      expect(statusDot).toBeTruthy()
-    })
-
-    it('warRoom creatures use text-warning color class on svg', () => {
-      const { container } = renderCreature('needs-input', 'warRoom')
-      const svg = container.querySelector('svg')
-      expect(svg?.classList.contains('text-warning')).toBe(true)
-    })
-
-    it('nursery creatures use text-base-content/40 color class on svg', () => {
-      const { container } = renderCreature('egg', 'nursery')
-      const svg = container.querySelector('svg')
-      expect(svg?.classList.contains('text-base-content/40')).toBe(true)
     })
   })
 

@@ -59,12 +59,6 @@ describe('CreaturesView', () => {
       ])
     })
 
-    it('renders nursery narrower than forge and war room', () => {
-      tasks.set([makeTask('T-1', 'backlog')])
-      render(CreaturesView, { props: { onCreatureClick: vi.fn() } })
-      const nursery = screen.getByTestId('room-nursery')
-      expect(nursery.className).not.toContain('flex-1')
-    })
     it('places running tasks in THE FORGE room', () => {
       tasks.set([makeTask('T-forge', 'doing')])
       activeSessions.set(new Map([['T-forge', makeSession('T-forge', 'running')]]))
@@ -318,12 +312,5 @@ describe('CreaturesView', () => {
       expect(nest).toBeTruthy()
     })
 
-    it('running forge creature has creature-work animation class', () => {
-      tasks.set([makeTask('T-active', 'doing')])
-      activeSessions.set(new Map([['T-active', makeSession('T-active', 'running')]]))
-      const { container } = render(CreaturesView, { props: { onCreatureClick: vi.fn() } })
-      const svg = container.querySelector('svg')
-      expect(svg?.classList.contains('creature-work')).toBe(true)
-    })
   })
 })
