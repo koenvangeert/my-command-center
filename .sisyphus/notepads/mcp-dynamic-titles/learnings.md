@@ -18,3 +18,24 @@
 - `server.connect(transport)` must be awaited before the server handles messages
 - Initialize response includes `serverInfo.name` + `serverInfo.version` from `new McpServer({name, version})`
 - Tool-less server responds to `initialize` with `capabilities: {}` — no negotiation errors
+
+## 2026-03-06 V6 Migration Implementation
+- V6 migration successfully added with M::up_with_hook pattern (lines 420-432 in mod.rs)
+- Both new columns (prompt, summary) are nullable TEXT fields
+- Backfill hook copies title → prompt for all existing rows
+- Test pattern: create V5 db, set user_version=5, insert test data, run migration, verify backfill
+- rusqlite_migration automatically increments user_version based on migration count
+- No explicit CURRENT_VERSION constant needed — version is implicit in Migrations::new(vec![...]) length
+- All 71 db tests pass with no regressions
+
+## 2026-03-06 Task 2 — TaskRow struct fields
+- TaskRow struct now has `prompt: Option<String>` and `summary: Option<String>` fields
+- All 4 SELECT queries in tasks.rs updated to include prompt, summary columns (indices 11, 12)
+- create_task() signature extended: added `prompt: Option<&str>` parameter
+- Backward compat: if prompt is None, defaults to title (line 32 in tasks.rs)
+- New function: update_task_title_and_summary() with conditional UPDATE logic
+- TDD approach: wrote 3 new tests first, then implemented code
+- Test helpers across 8 files updated to include prompt, summary in INSERT/TaskRow
+- All 13 db::tasks tests pass; no regressions
+- Prompt field enables MCP server to store custom prompts per task (Task 5)
+- Summary field enables task summaries from agent output (Task 12)
