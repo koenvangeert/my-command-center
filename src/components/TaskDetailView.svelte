@@ -119,7 +119,7 @@
         </div>
        {/if}
       <button
-        class="btn btn-ghost btn-sm text-error shrink-0 hover:btn-error"
+        class="btn btn-ghost btn-sm text-error shrink-0 hover:bg-error hover:text-error-content"
         title="Delete task"
         onclick={handleDelete}
       >
