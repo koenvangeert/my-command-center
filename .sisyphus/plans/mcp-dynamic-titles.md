@@ -256,7 +256,7 @@ Max Concurrent: 6 (Wave 2)
   - Files: `src-tauri/src/db/mod.rs`
   - Pre-commit: `cd src-tauri && cargo test test_migration_v6`
 
-- [ ] 2. Update Rust TaskRow struct + query functions
+- [x] 2. Update Rust TaskRow struct + query functions
 
   **What to do**:
   - Write failing tests: verify `TaskRow` has `prompt` and `summary` fields, verify `create_task` stores prompt
@@ -485,7 +485,7 @@ Max Concurrent: 6 (Wave 2)
   - Files: `src-tauri/src/http_server.rs`
   - Pre-commit: `cd src-tauri && cargo test http_server`
 
-- [ ] 5. Update build_task_prompt + branch naming to use prompt field
+- [x] 5. Update build_task_prompt + branch naming to use prompt field
 
   **What to do**:
   - Update existing tests for `build_task_prompt` to expect `prompt` field usage instead of `title`
@@ -561,7 +561,7 @@ Max Concurrent: 6 (Wave 2)
   - Files: `src-tauri/src/commands/orchestration.rs`
   - Pre-commit: `cd src-tauri && cargo test build_task_prompt`
 
-- [ ] 6. MCP create_task Tool
+- [x] 6. MCP create_task Tool
 
   **What to do**:
   - Add `create_task` tool to MCP server (`src-tauri/src/mcp-server/index.js`)
@@ -713,7 +713,7 @@ Max Concurrent: 6 (Wave 2)
   - Files: `src-tauri/src/mcp-server/index.js`, `src-tauri/src/http_server.rs`
   - Pre-commit: MCP tools/list + cargo test
 
-- [ ] 8. Frontend — AddTaskDialog prompt field + IPC updates
+- [x] 8. Frontend — AddTaskDialog prompt field + IPC updates
 
   **What to do**:
   - Update `AddTaskDialog.test.ts` to test for "Prompt" label instead of "Title"

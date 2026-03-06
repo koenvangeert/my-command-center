@@ -33,3 +33,18 @@
 - MCP tool graceful error: `catch (e) { return { content: [{ type: 'text', text: \`Error: ${message}. Is Open Forge running?\` }] }; }`
 - `tools/list` JSON-RPC confirms 3 tools with correct inputSchema (zod → JSON Schema auto-conversion)
 - 56 http_server tests pass; 5 new `GetTaskInfoResponse` serialization tests added
+
+## T-512: Display prompt and summary in TaskInfoPanel + title fallback in TaskDetailView
+
+### What was done
+- `TaskInfoPanel.svelte`: Changed INITIAL_PROMPT section from `{task.title}` to `{task.prompt ?? ''}` (semantic fix — label already existed)
+- `TaskInfoPanel.svelte`: Added SUMMARY section with `{#if task.summary}` / `"No summary yet"` fallback in `text-xs text-base-content/50`
+- `TaskDetailView.svelte`: Added `let displayTitle = $derived(task.title || (task.prompt ? task.prompt.split('\n')[0] : '') || task.id)` and used it in the header h1
+
+### Key patterns
+- INITIAL_PROMPT label existed but showed `task.title` — semantic intent was already there, just the data source was wrong
+- `task.prompt` is `string | null` — use `task.prompt ?? ''` in template to avoid Svelte rendering null
+- `$derived` keeps fallback chain logic out of the template, making it testable via `getByRole('heading', { level: 1 }).textContent`
+- Testing-library `getByLabelText('Initial Prompt')` finds elements with `aria-label="Initial Prompt"` directly on them (not just form labels)
+- Avoid newline `\n` in `getByText` test strings — testing-library's default normalizer collapses whitespace; use single-line strings for fixture prompts
+- Read-only assertion: `promptSection?.querySelector('input')` and `querySelector('textarea')` returning null confirms no editable elements
