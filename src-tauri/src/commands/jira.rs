@@ -12,14 +12,14 @@ pub async fn refresh_jira_info(
         .map_err(|e| format!("{}", e))?
         .ok_or("jira_api_token not configured".to_string())?;
     let (jira_base_url, jira_username) = {
-        let db_lock = db.lock().unwrap();
+        let db_lock = crate::db::acquire_db(&db);
         let base = db_lock.get_config("jira_base_url").map_err(|e| format!("{}", e))?.ok_or("jira_base_url not configured")?;
         let user = db_lock.get_config("jira_username").map_err(|e| format!("{}", e))?.ok_or("jira_username not configured")?;
         (base, user)
     };
 
     let jira_keys: Vec<String> = {
-        let db_lock = db.lock().unwrap();
+        let db_lock = crate::db::acquire_db(&db);
         db_lock.get_tasks_with_jira_links()
             .map_err(|e| format!("Failed to get linked tasks: {}", e))?
             .into_iter()
@@ -46,7 +46,7 @@ pub async fn refresh_jira_info(
             .as_ref()
             .and_then(|rf| rf.description.clone())
             .unwrap_or_default();
-        let db_lock = db.lock().unwrap();
+        let db_lock = crate::db::acquire_db(&db);
         match db_lock.update_task_jira_info(&issue.key, &jira_title, &jira_status, &assignee, &jira_description) {
             Ok(count) => updated += count,
             Err(e) => eprintln!("Failed to update JIRA info for {}: {}", issue.key, e),
