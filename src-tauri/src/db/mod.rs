@@ -775,10 +775,10 @@ mod tests {
                 [],
             )
             .expect("create tasks table");
-            // Insert a test task
+            // Insert a test task (V5 schema — no prompt/summary columns yet)
             conn.execute(
-                "INSERT INTO tasks (id, title, status, created_at, updated_at, jira_key, jira_title, jira_status, jira_assignee, project_id, jira_description, prompt, summary) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                rusqlite::params!["T-999", "Test Task Title", "backlog", 1000, 1000, None::<String>, None::<String>, None::<String>, None::<String>, None::<String>, None::<String>, None::<String>, None::<String>],
+                "INSERT INTO tasks (id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+                rusqlite::params!["T-999", "Test Task Title", "backlog", 1000, 1000],
             )
             .expect("insert test task");
         }
