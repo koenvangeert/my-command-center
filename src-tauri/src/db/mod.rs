@@ -48,6 +48,10 @@ impl Database {
             .to_latest(&mut conn)
             .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?;
 
+        // Safety net: ensure critical columns exist even if user_version is past V6
+        // (handles edge cases where schema and version get out of sync)
+        ensure_tasks_columns(&conn)?;
+
         // Enable foreign keys AFTER migrations (pragma is a no-op inside transactions)
         conn.execute("PRAGMA foreign_keys = ON", [])?;
 
@@ -72,6 +76,35 @@ pub fn acquire_db(db: &std::sync::Mutex<Database>) -> std::sync::MutexGuard<'_, 
             poisoned.into_inner()
         }
     }
+}
+
+fn ensure_tasks_columns(conn: &Connection) -> Result<()> {
+    let has_tasks: bool = conn.query_row(
+        "SELECT COUNT(*) > 0 FROM sqlite_master WHERE type='table' AND name='tasks'",
+        [],
+        |r| r.get(0),
+    )?;
+    if !has_tasks {
+        return Ok(());
+    }
+
+    for (col, backfill) in [("prompt", true), ("summary", false)] {
+        let exists: bool = conn.query_row(
+            &format!(
+                "SELECT COUNT(*) > 0 FROM pragma_table_info('tasks') WHERE name = '{}'",
+                col
+            ),
+            [],
+            |r| r.get(0),
+        )?;
+        if !exists {
+            conn.execute(&format!("ALTER TABLE tasks ADD COLUMN {} TEXT", col), [])?;
+            if backfill {
+                conn.execute("UPDATE tasks SET prompt = title WHERE prompt IS NULL", [])?;
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Detects existing databases (created before the migration system) and sets
@@ -418,10 +451,30 @@ CREATE INDEX IF NOT EXISTS idx_agent_review_comments_session ON agent_review_com
             Ok(())
         }),
         M::up_with_hook("", |tx| {
-            tx.execute("ALTER TABLE tasks ADD COLUMN prompt TEXT", [])
-                .map_err(rusqlite_migration::HookError::RusqliteError)?;
-            tx.execute("ALTER TABLE tasks ADD COLUMN summary TEXT", [])
-                .map_err(rusqlite_migration::HookError::RusqliteError)?;
+            let has_prompt: bool = tx
+                .query_row(
+                    "SELECT COUNT(*) > 0 FROM pragma_table_info('tasks') WHERE name = 'prompt'",
+                    [],
+                    |r| r.get(0),
+                )
+                .unwrap_or(false);
+            if !has_prompt {
+                tx.execute("ALTER TABLE tasks ADD COLUMN prompt TEXT", [])
+                    .map_err(rusqlite_migration::HookError::RusqliteError)?;
+            }
+
+            let has_summary: bool = tx
+                .query_row(
+                    "SELECT COUNT(*) > 0 FROM pragma_table_info('tasks') WHERE name = 'summary'",
+                    [],
+                    |r| r.get(0),
+                )
+                .unwrap_or(false);
+            if !has_summary {
+                tx.execute("ALTER TABLE tasks ADD COLUMN summary TEXT", [])
+                    .map_err(rusqlite_migration::HookError::RusqliteError)?;
+            }
+
             tx.execute("UPDATE tasks SET prompt = title WHERE prompt IS NULL", [])
                 .map_err(rusqlite_migration::HookError::RusqliteError)?;
             Ok(())
@@ -730,8 +783,8 @@ mod tests {
             .query_row("PRAGMA user_version", [], |r| r.get(0))
             .unwrap();
         assert_eq!(
-            uv, 6,
-            "Fresh DB should have user_version=6 after migrations, got {}",
+            uv, 7,
+            "Fresh DB should have user_version=7 after migrations, got {}",
             uv
         );
 
