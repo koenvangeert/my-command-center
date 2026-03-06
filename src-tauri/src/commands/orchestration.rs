@@ -12,7 +12,7 @@ pub fn build_task_prompt(task: &db::TaskRow, action_instruction: &str, additiona
         }
     }
     
-    prompt.push_str(&task.title);
+    prompt.push_str(task.prompt.as_deref().unwrap_or(&task.title));
     prompt.push('\n');
     
     if let Some(ref key) = task.jira_key {
@@ -166,7 +166,7 @@ pub async fn start_implementation(
         sse_mgr.inner().clone(),
     ).map_err(|e| format!("Unknown provider: {}", e))?;
 
-    let branch = git_worktree::slugify_branch_name(&task_id, &task.title);
+    let branch = git_worktree::slugify_branch_name(&task_id, task.prompt.as_deref().unwrap_or(&task.title));
     let home = dirs::home_dir().ok_or("Failed to get home directory")?;
     let repo_name = std::path::Path::new(&repo_path)
         .file_name()
@@ -324,7 +324,7 @@ pub async fn run_action(
         }
     }
 
-    let branch = git_worktree::slugify_branch_name(&task_id, &task.title);
+    let branch = git_worktree::slugify_branch_name(&task_id, task.prompt.as_deref().unwrap_or(&task.title));
     let home = dirs::home_dir().ok_or("Failed to get home directory")?;
     let repo_name = std::path::Path::new(&repo_path)
         .file_name()
@@ -648,6 +648,55 @@ mod tests {
 
         assert!(!prompt.contains("T-555"));
         assert!(prompt.contains("No ID in prompt"));
+    }
+
+    #[test]
+    fn test_build_task_prompt_uses_prompt() {
+        let task = db::TaskRow {
+            id: "T-666".to_string(),
+            title: "Auth fix".to_string(),
+            status: "backlog".to_string(),
+            jira_key: None,
+            jira_title: None,
+            jira_status: None,
+            jira_assignee: None,
+            jira_description: None,
+            project_id: None,
+            created_at: 0,
+            updated_at: 0,
+            prompt: Some("Fix auth bug".to_string()),
+            summary: None,
+        };
+
+        let prompt = build_task_prompt(&task, "Implement this task.", None);
+        
+        assert!(prompt.contains("Fix auth bug"));
+        assert!(!prompt.contains("Auth fix"));
+        assert!(prompt.ends_with("Implement this task."));
+    }
+
+    #[test]
+    fn test_build_task_prompt_fallback_to_title() {
+        let task = db::TaskRow {
+            id: "T-777".to_string(),
+            title: "My task".to_string(),
+            status: "backlog".to_string(),
+            jira_key: None,
+            jira_title: None,
+            jira_status: None,
+            jira_assignee: None,
+            jira_description: None,
+            project_id: None,
+            created_at: 0,
+            updated_at: 0,
+            prompt: None,
+            summary: None,
+        };
+
+        let prompt = build_task_prompt(&task, "Do it!", None);
+        
+        assert!(prompt.contains("My task"));
+        assert!(prompt.ends_with("Do it!"));
     }
 
     #[test]
