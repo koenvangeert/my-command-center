@@ -28,6 +28,7 @@ pub struct WorkQueueTaskRow {
     pub project_id: String,
     pub project_name: String,
     pub session_completed_at: Option<i64>,
+    pub session_status: Option<String>,
 }
 
 impl super::Database {
@@ -75,7 +76,8 @@ impl super::Database {
                     t.summary,
                     t.project_id,
                     p.name,
-                    ls.updated_at
+                    ls.updated_at,
+                    ls.status
                 FROM tasks t
                 JOIN projects p ON p.id = t.project_id
                 LEFT JOIN (
@@ -99,6 +101,7 @@ impl super::Database {
                     project_id: row.get(4)?,
                     project_name: row.get(5)?,
                     session_completed_at: row.get(6)?,
+                    session_status: row.get(7)?,
                 })
             })
             .map_err(|e| format!("Failed to execute get_work_queue_tasks query: {e}"))?;
@@ -879,6 +882,7 @@ mod tests {
         assert_eq!(rows[0].id, "T-1");
         assert_eq!(rows[0].project_name, "Project One");
         assert_eq!(rows[0].session_completed_at, Some(1200));
+        assert_eq!(rows[0].session_status, Some("completed".to_string()));
 
         drop(db);
         let _ = fs::remove_file(&path);
@@ -914,6 +918,7 @@ mod tests {
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].id, "T-1");
         assert_eq!(rows[0].session_completed_at, Some(1200));
+        assert_eq!(rows[0].session_status, Some("running".to_string()));
 
         drop(db);
         let _ = fs::remove_file(&path);
@@ -1015,6 +1020,7 @@ mod tests {
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].id, "T-1");
         assert_eq!(rows[0].session_completed_at, Some(2200));
+        assert_eq!(rows[0].session_status, Some("completed".to_string()));
 
         drop(db);
         let _ = fs::remove_file(&path);
@@ -1044,6 +1050,7 @@ mod tests {
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].id, "T-1");
         assert_eq!(rows[0].session_completed_at, None);
+        assert_eq!(rows[0].session_status, None);
 
         drop(db);
         let _ = fs::remove_file(&path);

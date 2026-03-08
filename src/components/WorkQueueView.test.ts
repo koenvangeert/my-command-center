@@ -33,6 +33,7 @@ function makeWorkQueueTask(overrides: Partial<WorkQueueTask> = {}): WorkQueueTas
     project_id: 'proj-1',
     project_name: 'Frontend App',
     session_completed_at: now - 3600, // 1 hour ago
+    session_status: null,
     ...overrides,
   }
 }
@@ -124,6 +125,47 @@ describe('WorkQueueView', () => {
     await waitFor(() => {
       expect(screen.getByText('no session')).toBeTruthy()
     })
+  })
+
+  it('shows session status badge when session_status is present', async () => {
+    vi.mocked(getWorkQueueTasks).mockResolvedValue([
+      makeWorkQueueTask({ session_status: 'completed' }),
+    ])
+
+    render(WorkQueueView)
+
+    await waitFor(() => {
+      expect(screen.getByText('Done')).toBeTruthy()
+    })
+  })
+
+  it('shows running status badge with correct label', async () => {
+    vi.mocked(getWorkQueueTasks).mockResolvedValue([
+      makeWorkQueueTask({ session_status: 'running' }),
+    ])
+
+    render(WorkQueueView)
+
+    await waitFor(() => {
+      expect(screen.getByText('Running')).toBeTruthy()
+    })
+  })
+
+  it('does not show status badge when session_status is null', async () => {
+    vi.mocked(getWorkQueueTasks).mockResolvedValue([
+      makeWorkQueueTask({ session_status: null }),
+    ])
+
+    render(WorkQueueView)
+
+    await waitFor(() => {
+      expect(screen.getByText('T-1')).toBeTruthy()
+    })
+    expect(screen.queryByText('Done')).toBeNull()
+    expect(screen.queryByText('Running')).toBeNull()
+    expect(screen.queryByText('Paused')).toBeNull()
+    expect(screen.queryByText('Error')).toBeNull()
+    expect(screen.queryByText('Stopped')).toBeNull()
   })
 
   it('navigates to project board on task click', async () => {

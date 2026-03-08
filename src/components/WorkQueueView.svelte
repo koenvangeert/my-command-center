@@ -41,6 +41,27 @@
       loading = false
     }
   }
+  function statusLabel(s: string): string {
+    switch (s) {
+      case 'running': return 'Running'
+      case 'completed': return 'Done'
+      case 'paused': return 'Paused'
+      case 'failed': return 'Error'
+      case 'interrupted': return 'Stopped'
+      default: return s
+    }
+  }
+
+  function statusStyle(s: string): string {
+    switch (s) {
+      case 'running': return 'bg-success/15 text-success'
+      case 'completed': return 'bg-info/20 text-info'
+      case 'paused': return 'bg-warning/15 text-warning'
+      case 'failed': return 'bg-error/15 text-error'
+      case 'interrupted': return 'bg-base-content/15 text-base-content/50'
+      default: return 'bg-base-content/15 text-base-content/50'
+    }
+  }
 
   function handleTaskClick(task: WorkQueueTask) {
     pushNavState()
@@ -78,7 +99,14 @@
             {#each projectTasks as task}
               <Card onclick={() => handleTaskClick(task)} class="block px-3.5 py-3">
                 <div class="flex items-center justify-between mb-1">
-                  <span class="font-mono text-xs font-semibold text-primary">{task.id}</span>
+                  <div class="flex items-center gap-1.5">
+                    <span class="font-mono text-xs font-semibold text-primary">{task.id}</span>
+                    {#if task.session_status}
+                      <span
+                        class="font-mono text-[0.6rem] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider whitespace-nowrap leading-tight {statusStyle(task.session_status)}"
+                      >{statusLabel(task.session_status)}</span>
+                    {/if}
+                  </div>
                   <span class="font-mono text-[0.6rem] text-base-content/40">{task.session_completed_at ? timeAgoFromSeconds(task.session_completed_at) : 'no session'}</span>
                 </div>
                 <div class="font-mono text-sm font-medium leading-relaxed text-base-content mb-1">
