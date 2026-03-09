@@ -131,7 +131,7 @@
   }
 
   // Vim navigation — room-based (0=nursery, 1=forge, 2=warRoom)
-  let focusedRoom = $state(0)
+  let focusedRoom = $state(1)
 
   let rooms = $derived([
     { key: 'nursery', tasks: nurseryTasks },

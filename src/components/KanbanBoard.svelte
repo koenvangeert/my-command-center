@@ -19,8 +19,8 @@
   let showBacklog = $state(true)
   let showDoneDrawer = $state(false)
 
-  // Vim navigation state
-  let focusedColumn = $state(0) // 0=backlog, 1=doing, 2=done
+  // Vim navigation state — default to "doing" column (index 1 when backlog visible, 0 when hidden)
+  let focusedColumn = $state(showBacklog ? 1 : 0)
 
   let columns = $derived.by(() => {
     const cols: { key: string; tasks: Task[] }[] = []

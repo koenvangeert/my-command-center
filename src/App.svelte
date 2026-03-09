@@ -291,7 +291,7 @@
       showShortcutsDialog = true
       return
     }
-    if ((e.metaKey || e.ctrlKey) && e.key === 'p') {
+    if (e.metaKey && e.key === 'p') {
       e.preventDefault()
       showProjectSwitcher = !showProjectSwitcher
       return
@@ -316,7 +316,7 @@
       e.preventDefault()
       window.dispatchEvent(new CustomEvent('toggle-voice-recording'))
     }
-    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    if (e.metaKey && e.key === 'k') {
       e.preventDefault()
       showCommandPalette = !showCommandPalette
       return
