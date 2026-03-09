@@ -15,11 +15,13 @@ vi.mock('../lib/navigation', () => ({
 
 vi.mock('../lib/ipc', () => ({
   getWorkQueueTasks: vi.fn().mockResolvedValue([]),
+  getConfig: vi.fn().mockResolvedValue(null),
+  setConfig: vi.fn().mockResolvedValue(undefined),
 }))
 
 import WorkQueueView from './WorkQueueView.svelte'
 import { activeProjectId, currentView, selectedTaskId } from '../lib/stores'
-import { getWorkQueueTasks } from '../lib/ipc'
+import { getWorkQueueTasks, getConfig, setConfig } from '../lib/ipc'
 import { pushNavState } from '../lib/navigation'
 
 const now = Math.floor(Date.now() / 1000)
@@ -45,6 +47,8 @@ describe('WorkQueueView', () => {
     selectedTaskId.set(null)
     vi.clearAllMocks()
     vi.mocked(getWorkQueueTasks).mockResolvedValue([])
+    vi.mocked(getConfig).mockResolvedValue(null)
+    vi.mocked(setConfig).mockResolvedValue(undefined)
   })
 
   it('renders grouped tasks by project', async () => {
@@ -103,7 +107,7 @@ describe('WorkQueueView', () => {
     expect(screen.queryByTestId('summary-popover-T-1')).toBeNull()
   })
 
-  it('shows full summary in custom popover on hover and supports icon toggle', async () => {
+  it('shows full summary in popover on hover over summary area', async () => {
     const longSummary = 'This is a very long summary that should be visually truncated in the card but remain fully accessible via hover title tooltip text for easy reading'
     vi.mocked(getWorkQueueTasks).mockResolvedValue([
       makeWorkQueueTask({ summary: longSummary }),
@@ -117,14 +121,15 @@ describe('WorkQueueView', () => {
 
     expect(screen.queryByTestId('summary-popover-T-1')).toBeNull()
 
-    const toggleBtn = screen.getByLabelText('Show full summary')
-    await fireEvent.click(toggleBtn)
+    const container = screen.getByTestId('summary-container-T-1')
+    await fireEvent.mouseEnter(container)
     const openedPopover = screen.getByTestId('summary-popover-T-1')
     expect(openedPopover).toBeTruthy()
-    expect(openedPopover.className).toContain('max-h-44')
+    expect(openedPopover.className).toContain('max-h-72')
     expect(openedPopover.className).toContain('overflow-auto')
+    expect(openedPopover.className).toContain('bg-base-200')
 
-    await fireEvent.click(toggleBtn)
+    await fireEvent.mouseLeave(container)
     expect(screen.queryByTestId('summary-popover-T-1')).toBeNull()
   })
 
@@ -256,6 +261,251 @@ describe('WorkQueueView', () => {
 
     await waitFor(() => {
       expect(getWorkQueueTasks).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  describe('column reordering', () => {
+    it('respects saved column order from config', async () => {
+      vi.mocked(getConfig).mockImplementation(async (key: string) => {
+        if (key === 'workqueue_column_order') return JSON.stringify(['Backend API', 'Frontend App'])
+        return null
+      })
+      vi.mocked(getWorkQueueTasks).mockResolvedValue([
+        makeWorkQueueTask({ id: 'T-1', project_name: 'Frontend App', project_id: 'proj-1' }),
+        makeWorkQueueTask({ id: 'T-2', project_name: 'Backend API', project_id: 'proj-2', title: 'Add endpoint' }),
+      ])
+
+      render(WorkQueueView)
+
+      await waitFor(() => {
+        expect(screen.getByText('Frontend App')).toBeTruthy()
+        expect(screen.getByText('Backend API')).toBeTruthy()
+      })
+
+      // Verify Backend API column appears before Frontend App
+      const columns = screen.getAllByTestId(/^workqueue-column-(?!header)/)
+      expect(columns[0].getAttribute('data-testid')).toBe('workqueue-column-Backend API')
+      expect(columns[1].getAttribute('data-testid')).toBe('workqueue-column-Frontend App')
+    })
+
+    it('renders columns with reorder arrow buttons', async () => {
+      vi.mocked(getWorkQueueTasks).mockResolvedValue([
+        makeWorkQueueTask({ id: 'T-1', project_name: 'Frontend App', project_id: 'proj-1' }),
+        makeWorkQueueTask({ id: 'T-2', project_name: 'Backend API', project_id: 'proj-2', title: 'Add endpoint' }),
+      ])
+
+      render(WorkQueueView)
+
+      await waitFor(() => {
+        expect(screen.getByText('Frontend App')).toBeTruthy()
+      })
+
+      // Each column header should have left/right arrow buttons
+      expect(screen.getByTestId('move-left-Frontend App')).toBeTruthy()
+      expect(screen.getByTestId('move-right-Frontend App')).toBeTruthy()
+      expect(screen.getByTestId('move-left-Backend API')).toBeTruthy()
+      expect(screen.getByTestId('move-right-Backend API')).toBeTruthy()
+
+      // First column's left button should be disabled, last column's right button should be disabled
+      expect(screen.getByTestId('move-left-Frontend App').hasAttribute('disabled')).toBe(true)
+      expect(screen.getByTestId('move-right-Backend API').hasAttribute('disabled')).toBe(true)
+      // Inner buttons should be enabled
+      expect(screen.getByTestId('move-right-Frontend App').hasAttribute('disabled')).toBe(false)
+      expect(screen.getByTestId('move-left-Backend API').hasAttribute('disabled')).toBe(false)
+    })
+
+    it('persists new column order after clicking move-right arrow', async () => {
+      vi.mocked(getWorkQueueTasks).mockResolvedValue([
+        makeWorkQueueTask({ id: 'T-1', project_name: 'Frontend App', project_id: 'proj-1' }),
+        makeWorkQueueTask({ id: 'T-2', project_name: 'Backend API', project_id: 'proj-2', title: 'Add endpoint' }),
+        makeWorkQueueTask({ id: 'T-3', project_name: 'Mobile App', project_id: 'proj-3', title: 'Fix crash' }),
+      ])
+
+      render(WorkQueueView)
+
+      await waitFor(() => {
+        expect(screen.getByText('Frontend App')).toBeTruthy()
+      })
+
+      // Move Frontend App to the right (swap with Backend API)
+      await fireEvent.click(screen.getByTestId('move-right-Frontend App'))
+
+      await waitFor(() => {
+        expect(setConfig).toHaveBeenCalledWith(
+          'workqueue_column_order',
+          expect.any(String)
+        )
+      })
+
+      const orderCall = vi.mocked(setConfig).mock.calls.find(c => c[0] === 'workqueue_column_order')
+      expect(orderCall).toBeTruthy()
+      const savedOrder = JSON.parse(orderCall![1])
+      expect(savedOrder).toEqual(['Backend API', 'Frontend App', 'Mobile App'])
+    })
+
+    it('shows new projects not in saved order at the end', async () => {
+      vi.mocked(getConfig).mockImplementation(async (key: string) => {
+        if (key === 'workqueue_column_order') return JSON.stringify(['Backend API'])
+        return null
+      })
+      vi.mocked(getWorkQueueTasks).mockResolvedValue([
+        makeWorkQueueTask({ id: 'T-1', project_name: 'Frontend App', project_id: 'proj-1' }),
+        makeWorkQueueTask({ id: 'T-2', project_name: 'Backend API', project_id: 'proj-2', title: 'Add endpoint' }),
+      ])
+
+      render(WorkQueueView)
+
+      await waitFor(() => {
+        expect(screen.getByText('Frontend App')).toBeTruthy()
+        expect(screen.getByText('Backend API')).toBeTruthy()
+      })
+
+      // Backend API should be first (in saved order), Frontend App appended after
+      const columns = screen.getAllByTestId(/^workqueue-column-(?!header)/)
+      expect(columns[0].getAttribute('data-testid')).toBe('workqueue-column-Backend API')
+      expect(columns[1].getAttribute('data-testid')).toBe('workqueue-column-Frontend App')
+    })
+  })
+
+  describe('task pinning', () => {
+    it('shows pin button on task card hover and hides it by default when unpinned', async () => {
+      vi.mocked(getWorkQueueTasks).mockResolvedValue([
+        makeWorkQueueTask({ id: 'T-1' }),
+      ])
+
+      render(WorkQueueView)
+
+      await waitFor(() => {
+        expect(screen.getByText('T-1')).toBeTruthy()
+      })
+
+      // Pin button exists but is hidden (opacity-0) by default for unpinned tasks
+      const pinBtn = screen.getByTestId('pin-btn-T-1')
+      expect(pinBtn).toBeTruthy()
+    })
+
+    it('pins a task when pin button is clicked', async () => {
+      vi.mocked(getWorkQueueTasks).mockResolvedValue([
+        makeWorkQueueTask({ id: 'T-1' }),
+        makeWorkQueueTask({ id: 'T-2', title: 'Second task' }),
+      ])
+
+      render(WorkQueueView)
+
+      await waitFor(() => {
+        expect(screen.getByText('T-1')).toBeTruthy()
+      })
+
+      const pinBtn = screen.getByTestId('pin-btn-T-2')
+      await fireEvent.click(pinBtn)
+
+      // Should persist pinned tasks
+      await waitFor(() => {
+        expect(setConfig).toHaveBeenCalledWith(
+          'workqueue_pinned_tasks',
+          expect.any(String)
+        )
+      })
+
+      const savedPins = JSON.parse(
+        vi.mocked(setConfig).mock.calls.find(c => c[0] === 'workqueue_pinned_tasks')![1]
+      )
+      expect(savedPins).toContain('T-2')
+    })
+
+    it('unpins a task when pin button is clicked on a pinned task', async () => {
+      vi.mocked(getConfig).mockImplementation(async (key: string) => {
+        if (key === 'workqueue_pinned_tasks') return JSON.stringify(['T-1'])
+        return null
+      })
+      vi.mocked(getWorkQueueTasks).mockResolvedValue([
+        makeWorkQueueTask({ id: 'T-1' }),
+      ])
+
+      render(WorkQueueView)
+
+      await waitFor(() => {
+        expect(screen.getByText('T-1')).toBeTruthy()
+      })
+
+      const pinBtn = screen.getByTestId('pin-btn-T-1')
+      await fireEvent.click(pinBtn)
+
+      await waitFor(() => {
+        expect(setConfig).toHaveBeenCalledWith(
+          'workqueue_pinned_tasks',
+          expect.any(String)
+        )
+      })
+
+      const savedPins = JSON.parse(
+        vi.mocked(setConfig).mock.calls.find(c => c[0] === 'workqueue_pinned_tasks')![1]
+      )
+      expect(savedPins).not.toContain('T-1')
+    })
+
+    it('sorts pinned tasks to the top of their column', async () => {
+      vi.mocked(getConfig).mockImplementation(async (key: string) => {
+        if (key === 'workqueue_pinned_tasks') return JSON.stringify(['T-3'])
+        return null
+      })
+      vi.mocked(getWorkQueueTasks).mockResolvedValue([
+        makeWorkQueueTask({ id: 'T-1', project_name: 'Frontend App', project_id: 'proj-1' }),
+        makeWorkQueueTask({ id: 'T-2', project_name: 'Frontend App', project_id: 'proj-1', title: 'Second' }),
+        makeWorkQueueTask({ id: 'T-3', project_name: 'Frontend App', project_id: 'proj-1', title: 'Third (pinned)' }),
+      ])
+
+      render(WorkQueueView)
+
+      await waitFor(() => {
+        expect(screen.getByText('T-3')).toBeTruthy()
+      })
+
+      // T-3 should appear before T-1 and T-2 in the DOM
+      const taskIds = screen.getAllByTestId(/^task-card-/).map(el => el.getAttribute('data-testid'))
+      const idx3 = taskIds.indexOf('task-card-T-3')
+      const idx1 = taskIds.indexOf('task-card-T-1')
+      const idx2 = taskIds.indexOf('task-card-T-2')
+      expect(idx3).toBeLessThan(idx1)
+      expect(idx3).toBeLessThan(idx2)
+    })
+
+    it('shows pinned indicator on pinned tasks', async () => {
+      vi.mocked(getConfig).mockImplementation(async (key: string) => {
+        if (key === 'workqueue_pinned_tasks') return JSON.stringify(['T-1'])
+        return null
+      })
+      vi.mocked(getWorkQueueTasks).mockResolvedValue([
+        makeWorkQueueTask({ id: 'T-1' }),
+      ])
+
+      render(WorkQueueView)
+
+      await waitFor(() => {
+        expect(screen.getByText('T-1')).toBeTruthy()
+      })
+
+      // Pinned task should have a visible pin indicator
+      const pinBtn = screen.getByTestId('pin-btn-T-1')
+      expect(pinBtn.getAttribute('aria-label')).toBe('Unpin task')
+    })
+
+    it('pin click does not navigate to the task', async () => {
+      vi.mocked(getWorkQueueTasks).mockResolvedValue([
+        makeWorkQueueTask({ id: 'T-1' }),
+      ])
+
+      render(WorkQueueView)
+
+      await waitFor(() => {
+        expect(screen.getByText('T-1')).toBeTruthy()
+      })
+
+      const pinBtn = screen.getByTestId('pin-btn-T-1')
+      await fireEvent.click(pinBtn)
+
+      // Should NOT navigate
+      expect(pushNavState).not.toHaveBeenCalled()
     })
   })
 })
