@@ -32,8 +32,6 @@
   let currentSession = $derived($activeSessions.get(task.id))
   let agentStatus = $derived(currentSession?.status ?? null)
   let isStarting = $derived($startingTasks.has(task.id))
-  let isSessionBusy = $derived(currentSession?.status === 'running' || currentSession?.status === 'paused')
-  let busyReason = $derived(currentSession?.status === 'running' ? 'Agent is busy' : currentSession?.status === 'paused' ? 'Answer pending question first' : '')
 
   $effect(() => {
     const taskId = task.id
@@ -116,8 +114,8 @@
             {#each actions as action (action.id)}
               <button
                 class="btn btn-soft btn-sm shadow-sm hover:shadow-md hover:btn-primary transition-all duration-200"
-                disabled={isSessionBusy || isStarting}
-                title={isSessionBusy ? busyReason : isStarting ? 'Task is starting' : action.name}
+                disabled={isStarting}
+                title={isStarting ? 'Task is starting' : action.name}
                 onclick={() => handleActionClick(action)}
               >
                 {action.name}
