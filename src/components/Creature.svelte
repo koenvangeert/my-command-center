@@ -80,7 +80,7 @@
   {#if room !== 'nursery'}
     <svg
       viewBox="0 0 160 130"
-      class="w-20 h-16 shrink-0 {roomColor} {animClass}"
+      class="w-32 h-24 shrink-0 {roomColor} {animClass}"
       style={room === 'forge' ? `filter: hue-rotate(${hueRotation()}deg)` : ''}
       xmlns="http://www.w3.org/2000/svg"
       role="img"
@@ -223,7 +223,7 @@
     <!-- Nursery: egg in nest -->
     <svg
       viewBox="0 0 120 100"
-      class="w-16 h-12 shrink-0 {roomColor} {animClass}"
+      class="w-24 h-16 shrink-0 {roomColor} {animClass}"
       xmlns="http://www.w3.org/2000/svg"
       role="img"
       aria-label="nest"
