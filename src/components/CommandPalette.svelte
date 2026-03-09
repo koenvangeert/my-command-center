@@ -110,10 +110,10 @@
 
     if (count === 0) return
 
-    if (e.key === 'ArrowDown') {
+    if (e.key === 'ArrowDown' || (e.ctrlKey && (e.key === 'j' || e.key === 'n'))) {
       e.preventDefault()
       selectedIndex = (selectedIndex + 1) % count
-    } else if (e.key === 'ArrowUp') {
+    } else if (e.key === 'ArrowUp' || (e.ctrlKey && (e.key === 'k' || e.key === 'p'))) {
       e.preventDefault()
       selectedIndex = selectedIndex <= 0 ? count - 1 : selectedIndex - 1
     } else if (e.key === 'Enter') {
@@ -230,6 +230,14 @@
           </button>
         {/each}
       {/if}
+    </div>
+
+    <!-- Hints bar -->
+    <div class="flex items-center gap-4 px-3 py-1.5 border-t border-base-300 bg-base-300/30">
+      <span class="font-mono text-[10px] text-base-content/40"><kbd class="kbd kbd-xs">↑↓</kbd> navigate</span>
+      <span class="font-mono text-[10px] text-base-content/40"><kbd class="kbd kbd-xs">Enter</kbd> open task</span>
+      <span class="font-mono text-[10px] text-base-content/40"><kbd class="kbd kbd-xs">Esc</kbd> close</span>
+      <span class="font-mono text-[10px] text-base-content/40 ml-auto"><kbd class="kbd kbd-xs">Ctrl+N/P</kbd> navigate</span>
     </div>
   </div>
 </div>
