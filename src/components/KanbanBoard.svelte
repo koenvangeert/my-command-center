@@ -3,6 +3,7 @@
   import { tasks, selectedTaskId, activeSessions, ticketPrs, error, activeProjectId, searchQuery, runningTerminals, startingTasks } from '../lib/stores'
   import { updateTaskStatus, deleteTask, clearDoneTasks } from '../lib/ipc'
   import { pushNavState } from '../lib/navigation'
+  import { sortBySessionActivity, sortForSearch } from '../lib/taskSort'
   import TaskCard from './TaskCard.svelte'
 
   interface Props {
@@ -61,11 +62,14 @@
   }
 
   let filteredTasks = $derived(
-    $searchQuery ? $tasks.filter(t => matchesSearch(t, $searchQuery)) : $tasks
+    $searchQuery
+      ? sortForSearch($tasks.filter(t => matchesSearch(t, $searchQuery)), $activeSessions)
+      : $tasks
   )
 
   function tasksForColumn(allTasks: Task[], column: KanbanColumn): Task[] {
-    return allTasks.filter(t => t.status === column)
+    const filtered = allTasks.filter(t => t.status === column)
+    return $searchQuery ? filtered : sortBySessionActivity(filtered, $activeSessions)
   }
 
   let backlogTasks = $derived(tasksForColumn(filteredTasks, 'backlog'))

@@ -471,7 +471,7 @@ mod tests {
         };
 
         let prompt = build_task_prompt(&task, "Do the thing!", None);
-        
+
         assert!(prompt.contains("Test Task"));
         assert!(!prompt.contains("Plan:"));
         assert!(prompt.contains("Do the thing!"));
