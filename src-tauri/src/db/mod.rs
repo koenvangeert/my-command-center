@@ -109,7 +109,6 @@ fn ensure_tasks_columns(conn: &Connection) -> Result<()> {
             }
         }
     }
-
     Ok(())
 }
 
@@ -599,8 +598,6 @@ CREATE INDEX IF NOT EXISTS idx_agent_review_comments_session ON agent_review_com
             }
             Ok(())
         }),
-        // V11: no-op (placeholder to preserve migration count for existing databases)
-        M::up(""),
     ])
 }
 #[cfg(test)]
@@ -872,8 +869,8 @@ mod tests {
             .query_row("PRAGMA user_version", [], |r| r.get(0))
             .unwrap();
         assert_eq!(
-            uv, 11,
-            "Fresh DB should have user_version=11 after migrations, got {}",
+            uv, 10,
+            "Fresh DB should have user_version=10 after migrations, got {}",
             uv
         );
 
