@@ -443,6 +443,7 @@ async fn sync_open_prs(
                 &pr.state,
                 now,
                 now,
+                pr.draft.unwrap_or(false),
             );
             let _ = db_lock.update_pr_head_sha(pr.number, &pr.head.sha);
             drop(db_lock);

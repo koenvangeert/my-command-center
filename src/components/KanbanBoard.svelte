@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Task, AgentSession, KanbanColumn } from '../lib/types'
-  import { tasks, selectedTaskId, activeSessions, ticketPrs, error, activeProjectId, searchQuery, runningTerminals } from '../lib/stores'
+  import { tasks, selectedTaskId, activeSessions, ticketPrs, error, activeProjectId, searchQuery, runningTerminals, startingTasks } from '../lib/stores'
   import { updateTaskStatus, deleteTask, clearDoneTasks } from '../lib/ipc'
   import { pushNavState } from '../lib/navigation'
   import TaskCard from './TaskCard.svelte'
@@ -182,7 +182,7 @@
         >
           {#each backlogTasks as task (task.id)}
             <div oncontextmenu={(e: MouseEvent) => handleContextMenu(e, task.id)}>
-              <TaskCard {task} session={getSession($activeSessions, task.id)} pullRequests={$ticketPrs.get(task.id) || []} hasRunningTerminal={$runningTerminals.has(task.id)} onSelect={handleSelect} />
+              <TaskCard {task} session={getSession($activeSessions, task.id)} pullRequests={$ticketPrs.get(task.id) || []} hasRunningTerminal={$runningTerminals.has(task.id)} isStarting={$startingTasks.has(task.id)} onSelect={handleSelect} />
             </div>
           {/each}
           {#if backlogTasks.length === 0}
@@ -207,7 +207,7 @@
       >
         {#each doingTasks as task (task.id)}
           <div oncontextmenu={(e: MouseEvent) => handleContextMenu(e, task.id)}>
-            <TaskCard {task} session={getSession($activeSessions, task.id)} pullRequests={$ticketPrs.get(task.id) || []} hasRunningTerminal={$runningTerminals.has(task.id)} onSelect={handleSelect} />
+            <TaskCard {task} session={getSession($activeSessions, task.id)} pullRequests={$ticketPrs.get(task.id) || []} hasRunningTerminal={$runningTerminals.has(task.id)} isStarting={$startingTasks.has(task.id)} onSelect={handleSelect} />
           </div>
         {/each}
         {#if doingTasks.length === 0}
@@ -265,7 +265,7 @@
     <div class="flex-1 flex flex-col gap-2 overflow-y-auto p-4">
       {#each doneTasks as task (task.id)}
         <div oncontextmenu={(e: MouseEvent) => handleContextMenu(e, task.id)}>
-          <TaskCard {task} session={getSession($activeSessions, task.id)} pullRequests={$ticketPrs.get(task.id) || []} hasRunningTerminal={$runningTerminals.has(task.id)} onSelect={handleSelect} />
+          <TaskCard {task} session={getSession($activeSessions, task.id)} pullRequests={$ticketPrs.get(task.id) || []} hasRunningTerminal={$runningTerminals.has(task.id)} isStarting={$startingTasks.has(task.id)} onSelect={handleSelect} />
         </div>
       {/each}
       {#if doneTasks.length === 0}
