@@ -1680,6 +1680,7 @@ pub struct PullRequest {
     pub html_url: String,
     pub user: GitHubUser,
     pub head: GitHubHead,
+    pub draft: Option<bool>,
     #[serde(flatten)]
     pub extra: serde_json::Value,
 }
