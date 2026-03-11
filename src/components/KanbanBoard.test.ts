@@ -2,15 +2,33 @@ import { render, screen, fireEvent } from '@testing-library/svelte'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import KanbanBoard from './KanbanBoard.svelte'
 import type { Task } from '../lib/types'
-import { tasks, activeSessions, activeProjectId } from '../lib/stores'
+import { tasks, activeSessions, activeProjectId, ticketPrs, startingTasks } from '../lib/stores'
 
-// Mock IPC functions
 vi.mock('../lib/ipc', () => ({
   getTasks: vi.fn(),
   getTasksForProject: vi.fn(() => Promise.resolve([])),
   updateTaskStatus: vi.fn(),
   deleteTask: vi.fn(),
   clearDoneTasks: vi.fn(),
+  getProjectConfig: vi.fn(() => Promise.resolve(null)),
+  setProjectConfig: vi.fn(() => Promise.resolve()),
+}))
+
+vi.mock('../lib/boardColumns', () => ({
+  loadBoardColumns: vi.fn(() => Promise.resolve([
+    { id: 'col-backlog', name: 'Backlog', statuses: ['egg'], underlyingStatus: 'backlog' },
+    { id: 'col-doing', name: 'Doing', statuses: ['idle', 'active', 'needs-input', 'resting', 'celebrating', 'sad', 'frozen', 'pr-draft', 'pr-open', 'ci-failed', 'changes-requested', 'ready-to-merge', 'pr-merged'], underlyingStatus: 'doing' },
+    { id: 'col-done', name: 'Done', statuses: ['done'], underlyingStatus: 'done' },
+  ])),
+  DEFAULT_BOARD_COLUMNS: [
+    { id: 'col-backlog', name: 'Backlog', statuses: ['egg'], underlyingStatus: 'backlog' },
+    { id: 'col-doing', name: 'Doing', statuses: ['idle', 'active', 'needs-input', 'resting', 'celebrating', 'sad', 'frozen', 'pr-draft', 'pr-open', 'ci-failed', 'changes-requested', 'ready-to-merge', 'pr-merged'], underlyingStatus: 'doing' },
+    { id: 'col-done', name: 'Done', statuses: ['done'], underlyingStatus: 'done' },
+  ],
+}))
+
+vi.mock('../lib/navigation', () => ({
+  pushNavState: vi.fn(),
 }))
 
 const baseTask: Task = {
@@ -39,59 +57,54 @@ describe('KanbanBoard', () => {
     tasks.set([baseTask])
     activeSessions.set(new Map())
     activeProjectId.set('proj-1')
+    ticketPrs.set(new Map())
+    startingTasks.set(new Set())
   })
 
-  it('renders backlog and doing columns by default', () => {
+  it('renders all three default columns', async () => {
     render(KanbanBoard, { props: { onRunAction: mockOnRunAction } })
-    expect(screen.getByText('// backlog')).toBeTruthy()
-    expect(screen.getByText('// doing')).toBeTruthy()
+    expect(await screen.findByText('// backlog')).toBeTruthy()
+    expect(await screen.findByText('// doing')).toBeTruthy()
+    expect(await screen.findByText('// done')).toBeTruthy()
   })
 
-  it('does not show done column by default (requires drawer toggle)', () => {
+  it('renders tasks in correct columns', async () => {
     render(KanbanBoard, { props: { onRunAction: mockOnRunAction } })
-    // Done column header should not be in the DOM (drawer is closed)
-    expect(screen.queryByText('// done')).toBeNull()
+    expect(await screen.findByText('Test task')).toBeTruthy()
   })
 
-  it('shows done drawer when toggle button is clicked', async () => {
+  it('groups tasks by creature state', async () => {
+    const doingTask: Task = { ...baseTask, id: 'T-2', initial_prompt: 'Doing task', status: 'doing' }
+    const doneTask: Task = { ...baseTask, id: 'T-3', initial_prompt: 'Done task', status: 'done' }
+    tasks.set([baseTask, doingTask, doneTask])
+
+    render(KanbanBoard, { props: { onRunAction: mockOnRunAction } })
+
+    expect(await screen.findByText('Test task')).toBeTruthy()
+    expect(await screen.findByText('Doing task')).toBeTruthy()
+    expect(await screen.findByText('Done task')).toBeTruthy()
+  })
+
+  it('shows empty state for columns with no tasks', async () => {
+    tasks.set([])
+    render(KanbanBoard, { props: { onRunAction: mockOnRunAction } })
+    const emptyMessages = await screen.findAllByText('No tasks')
+    expect(emptyMessages.length).toBeGreaterThan(0)
+  })
+
+  it('shows clear done button in done column when tasks exist', async () => {
     const doneTask: Task = { ...baseTask, id: 'T-2', initial_prompt: 'Done task', status: 'done' }
-    tasks.set([baseTask, doneTask])
+    tasks.set([doneTask])
 
     render(KanbanBoard, { props: { onRunAction: mockOnRunAction } })
 
-    // Click the "done" toggle button
-    const doneToggle = screen.getByTitle('Toggle done drawer (c)')
-    await fireEvent.click(doneToggle)
-
-    // Done column header should now be visible in the drawer
-    expect(screen.getByText('// done')).toBeTruthy()
-    expect(screen.getByText('Done task')).toBeTruthy()
-  })
-
-  it('hides backlog column when toggle is clicked', async () => {
-    render(KanbanBoard, { props: { onRunAction: mockOnRunAction } })
-
-    // Backlog column header is visible
-    expect(screen.getByText('// backlog')).toBeTruthy()
-
-    // Click the backlog toggle button
-    const backlogToggle = screen.getByTitle('Toggle backlog (b)')
-    await fireEvent.click(backlogToggle)
-    await new Promise(resolve => setTimeout(resolve, 10))
-
-    // Backlog column header should be gone
-    expect(screen.queryByText('// backlog')).toBeNull()
-  })
-
-  it('renders tasks in correct columns', () => {
-    render(KanbanBoard, { props: { onRunAction: mockOnRunAction } })
-    expect(screen.getByText('Test task')).toBeTruthy()
+    expect(await screen.findByTitle('Clear done tasks')).toBeTruthy()
   })
 
   it('shows Start Task in context menu for backlog tasks', async () => {
     render(KanbanBoard, { props: { onRunAction: mockOnRunAction } })
 
-    const taskCard = screen.getByText('Test task')
+    const taskCard = await screen.findByText('Test task')
     await fireEvent.contextMenu(taskCard)
 
     expect(screen.getByText('Start Task')).toBeTruthy()
@@ -103,7 +116,7 @@ describe('KanbanBoard', () => {
 
     render(KanbanBoard, { props: { onRunAction: mockOnRunAction } })
 
-    const taskCard = screen.getByText('Active task')
+    const taskCard = await screen.findByText('Active task')
     await fireEvent.contextMenu(taskCard)
 
     expect(screen.queryByText('Start Task')).toBeNull()
@@ -112,7 +125,7 @@ describe('KanbanBoard', () => {
   it('calls onRunAction when Start Task is clicked in context menu', async () => {
     render(KanbanBoard, { props: { onRunAction: mockOnRunAction } })
 
-    const taskCard = screen.getByText('Test task')
+    const taskCard = await screen.findByText('Test task')
     await fireEvent.contextMenu(taskCard)
     await fireEvent.click(screen.getByText('Start Task'))
 
@@ -125,7 +138,7 @@ describe('KanbanBoard', () => {
 
     render(KanbanBoard, { props: { onRunAction: mockOnRunAction } })
 
-    const taskCard = screen.getByText('Active task')
+    const taskCard = await screen.findByText('Active task')
     await fireEvent.contextMenu(taskCard)
 
     expect(screen.getByText('Move to Done')).toBeTruthy()
@@ -136,7 +149,7 @@ describe('KanbanBoard', () => {
 
     render(KanbanBoard, { props: { onRunAction: mockOnRunAction } })
 
-    const taskCard = screen.getByText('Test task')
+    const taskCard = await screen.findByText('Test task')
     await fireEvent.contextMenu(taskCard)
 
     expect(screen.queryByText('Move to Done')).toBeNull()
@@ -149,11 +162,10 @@ describe('KanbanBoard', () => {
 
     render(KanbanBoard, { props: { onRunAction: mockOnRunAction } })
 
-    const taskCard = screen.getByText('Active task')
+    const taskCard = await screen.findByText('Active task')
     await fireEvent.contextMenu(taskCard)
     await fireEvent.click(screen.getByText('Move to Done'))
 
     expect(updateTaskStatus).toHaveBeenCalledWith('T-2', 'done')
   })
-
 })
