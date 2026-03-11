@@ -15,11 +15,13 @@
     setWhisperModel,
   } from '../lib/ipc'
   import { loadActions, saveActions, createAction, DEFAULT_ACTIONS } from '../lib/actions'
+  import { loadBoardColumns, saveBoardColumns } from '../lib/boardColumns'
   import { themeMode, applyTheme } from '../lib/theme'
   import type { ThemeMode } from '../lib/theme'
-  import type { Action, AgentInfo, WhisperModelStatus, WhisperModelSizeId } from '../lib/types'
+  import type { Action, AgentInfo, WhisperModelStatus, WhisperModelSizeId, BoardColumnConfig } from '../lib/types'
   import SettingsSidebar from './SettingsSidebar.svelte'
   import SettingsGeneralCard from './SettingsGeneralCard.svelte'
+  import SettingsBoardCard from './SettingsBoardCard.svelte'
   import SettingsIntegrationsCard from './SettingsIntegrationsCard.svelte'
   import SettingsPreferencesCard from './SettingsPreferencesCard.svelte'
   import SettingsAICard from './SettingsAICard.svelte'
@@ -64,6 +66,9 @@
   let actions = $state<Action[]>([])
   let availableAgents = $state<AgentInfo[]>([])
 
+  // Board state
+  let boardColumns = $state<BoardColumnConfig[]>([])
+
   // Feature flag state
   let isCreaturesEnabled = $state($creaturesEnabled)
   let isCodeCleanupTasksEnabled = $state($codeCleanupTasksEnabled)
@@ -99,7 +104,7 @@
   // Scroll spy
   let scrollContainer = $state<HTMLDivElement | null>(null)
   let isNavigating = false
-  const projectSections = ['general', 'integrations', 'instructions', 'actions']
+  const projectSections = ['general', 'board', 'integrations', 'instructions', 'actions']
   const globalSections = ['preferences', 'ai', 'credentials', 'experimental']
 
   // Derived state
@@ -136,6 +141,11 @@
       loadActions(pid).then((loaded) => {
         actions = loaded
       })
+
+      // Load board columns
+      loadBoardColumns(pid).then((cols) => {
+        boardColumns = cols
+      })
     } else {
       projectName = ''
       projectPath = ''
@@ -145,6 +155,7 @@
       aiProvider = 'claude-code'
       useWorktrees = true
       actions = []
+      boardColumns = []
     }
   })
 
@@ -264,6 +275,7 @@
         await setProjectConfig($activeProjectId, 'ai_provider', aiProvider)
         await setProjectConfig($activeProjectId, 'use_worktrees', useWorktrees ? 'true' : 'false')
         await saveActions($activeProjectId, actions)
+        await saveBoardColumns($activeProjectId, boardColumns)
       }
       await setConfig('task_id_prefix', taskIdPrefix)
       await setConfig('jira_base_url', jiraBaseUrl)
@@ -381,6 +393,12 @@
           onProjectPathChange={(v) => (projectPath = v)}
           onAiProviderChange={(v) => (aiProvider = v)}
           onUseWorktreesChange={() => (useWorktrees = !useWorktrees)}
+        />
+
+        <SettingsBoardCard
+          columns={boardColumns}
+          onColumnsChange={(cols) => (boardColumns = cols)}
+          disabled={!hasProject}
         />
 
         <SettingsIntegrationsCard

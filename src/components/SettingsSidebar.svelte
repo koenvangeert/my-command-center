@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Folder, Plug, FileText, Zap, Brain, KeyRound, Settings2, FlaskConical } from 'lucide-svelte'
+  import { Folder, Plug, FileText, Zap, Brain, KeyRound, Settings2, FlaskConical, LayoutGrid } from 'lucide-svelte'
 
   interface Props {
     activeSection: string
@@ -11,6 +11,7 @@
 
   const projectItems: { id: string; label: string; Icon: typeof Folder }[] = [
     { id: 'general', label: 'General', Icon: Folder },
+    { id: 'board', label: 'Board', Icon: LayoutGrid },
     { id: 'integrations', label: 'Integrations', Icon: Plug },
     { id: 'instructions', label: 'Instructions', Icon: FileText },
     { id: 'actions', label: 'Actions', Icon: Zap },
