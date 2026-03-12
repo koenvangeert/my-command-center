@@ -8,6 +8,8 @@ vi.mock('../lib/ipc', () => ({
 
 import {
   ALL_TASK_STATES,
+  BACKLOG_COLUMN,
+  DONE_COLUMN,
   TASK_STATE_LABELS,
   DEFAULT_BOARD_COLUMNS,
   getColumnForTaskState,
@@ -23,10 +25,9 @@ describe('boardColumns', () => {
   })
 
   describe('constants', () => {
-    it('defines all 15 task states', () => {
-      expect(ALL_TASK_STATES).toHaveLength(15)
+    it('defines all 13 task states', () => {
+      expect(ALL_TASK_STATES).toHaveLength(13)
       expect(ALL_TASK_STATES).toEqual([
-        'egg',
         'idle',
         'active',
         'needs-input',
@@ -34,7 +35,6 @@ describe('boardColumns', () => {
         'celebrating',
         'sad',
         'frozen',
-        'done',
         'pr-draft',
         'pr-open',
         'ci-failed',
@@ -44,8 +44,26 @@ describe('boardColumns', () => {
       ])
     })
 
+    it('exports fixed backlog column constant', () => {
+      expect(BACKLOG_COLUMN).toEqual({
+        id: 'col-backlog',
+        name: 'Backlog',
+        statuses: ['egg'],
+        underlyingStatus: 'backlog',
+      })
+    })
+
+    it('exports fixed done column constant', () => {
+      expect(DONE_COLUMN).toEqual({
+        id: 'col-done',
+        name: 'Done',
+        statuses: ['done'],
+        underlyingStatus: 'done',
+      })
+    })
+
     it('maps task state labels to human readable names', () => {
-      expect(TASK_STATE_LABELS['egg']).toBe('Egg')
+      expect(TASK_STATE_LABELS['egg']).toBe('New')
       expect(TASK_STATE_LABELS['needs-input']).toBe('Needs Input')
       expect(TASK_STATE_LABELS['pr-draft']).toBe('PR Draft')
       expect(TASK_STATE_LABELS['ci-failed']).toBe('CI Failed')
@@ -53,14 +71,8 @@ describe('boardColumns', () => {
     })
 
     it('defines default columns matching current behavior', () => {
-      expect(DEFAULT_BOARD_COLUMNS).toHaveLength(3)
+      expect(DEFAULT_BOARD_COLUMNS).toHaveLength(1)
       expect(DEFAULT_BOARD_COLUMNS).toEqual([
-        {
-          id: 'col-backlog',
-          name: 'Backlog',
-          statuses: ['egg'],
-          underlyingStatus: 'backlog',
-        },
         {
           id: 'col-doing',
           name: 'Doing',
@@ -81,12 +93,6 @@ describe('boardColumns', () => {
           ],
           underlyingStatus: 'doing',
         },
-        {
-          id: 'col-done',
-          name: 'Done',
-          statuses: ['done'],
-          underlyingStatus: 'done',
-        },
       ])
     })
   })
@@ -106,23 +112,26 @@ describe('boardColumns', () => {
     })
 
     it('fails when a state is missing', () => {
-      const withoutDone: BoardColumnConfig[] = DEFAULT_BOARD_COLUMNS.map((column) => {
-        if (column.id !== 'col-done') return column
-        return { ...column, statuses: [] }
+      const withoutIdle: BoardColumnConfig[] = DEFAULT_BOARD_COLUMNS.map((column) => {
+        if (column.id !== 'col-doing') return column
+        return { ...column, statuses: column.statuses.filter((s) => s !== 'idle') }
       })
 
-      const result = validateBoardColumns(withoutDone)
+      const result = validateBoardColumns(withoutIdle)
       expect(result.valid).toBe(false)
-      expect(result.errors.some((error) => error.includes('done'))).toBe(true)
+      expect(result.errors.some((error) => error.includes('idle'))).toBe(true)
     })
 
     it('fails when a state appears in multiple columns', () => {
       const withDuplicate: BoardColumnConfig[] = [
-        ...DEFAULT_BOARD_COLUMNS,
-      ].map((column) => {
-        if (column.id !== 'col-backlog') return column
-        return { ...column, statuses: ['egg', 'idle'] }
-      })
+        DEFAULT_BOARD_COLUMNS[0],
+        {
+          id: 'col-doing-2',
+          name: 'Doing 2',
+          statuses: ['idle'],
+          underlyingStatus: 'doing',
+        },
+      ]
 
       const result = validateBoardColumns(withDuplicate)
       expect(result.valid).toBe(false)
@@ -132,23 +141,11 @@ describe('boardColumns', () => {
     it('fails when a column name is empty', () => {
       const invalidColumns: BoardColumnConfig[] = [
         { ...DEFAULT_BOARD_COLUMNS[0], name: ' ' },
-        ...DEFAULT_BOARD_COLUMNS.slice(1),
       ]
 
       const result = validateBoardColumns(invalidColumns)
       expect(result.valid).toBe(false)
       expect(result.errors.some((error) => error.includes('name'))).toBe(true)
-    })
-
-    it('fails when underlyingStatus is invalid', () => {
-      const invalidColumns = [
-        { ...DEFAULT_BOARD_COLUMNS[0], underlyingStatus: 'wip' },
-        ...DEFAULT_BOARD_COLUMNS.slice(1),
-      ] as unknown as BoardColumnConfig[]
-
-      const result = validateBoardColumns(invalidColumns)
-      expect(result.valid).toBe(false)
-      expect(result.errors.some((error) => error.includes('underlyingStatus'))).toBe(true)
     })
   })
 
@@ -163,12 +160,12 @@ describe('boardColumns', () => {
         {
           id: 'first',
           name: 'First',
-          statuses: ['egg'],
-          underlyingStatus: 'backlog',
+          statuses: ['idle'],
+          underlyingStatus: 'doing',
         },
       ]
 
-      const column = getColumnForTaskState('done', customColumns)
+      const column = getColumnForTaskState('active', customColumns)
       expect(column.id).toBe('first')
     })
   })
@@ -190,15 +187,10 @@ describe('boardColumns', () => {
     it('returns stored config when valid', async () => {
       const customColumns: BoardColumnConfig[] = [
         {
-          id: 'col-backlog',
-          name: 'Queue',
-          statuses: ['egg', 'idle'],
-          underlyingStatus: 'backlog',
-        },
-        {
           id: 'col-doing',
           name: 'In Progress',
           statuses: [
+            'idle',
             'active',
             'needs-input',
             'resting',
@@ -213,12 +205,6 @@ describe('boardColumns', () => {
             'pr-merged',
           ],
           underlyingStatus: 'doing',
-        },
-        {
-          id: 'col-done',
-          name: 'Done',
-          statuses: ['done'],
-          underlyingStatus: 'done',
         },
       ]
 
@@ -246,10 +232,10 @@ describe('boardColumns', () => {
     it('falls back to defaults when stored config is invalid', async () => {
       const invalidColumns = [
         {
-          id: 'col-backlog',
-          name: 'Backlog',
-          statuses: ['egg'],
-          underlyingStatus: 'backlog',
+          id: 'col-doing',
+          name: 'Doing',
+          statuses: ['idle'],
+          underlyingStatus: 'doing',
         },
       ]
       vi.mocked(getProjectConfig).mockResolvedValue(JSON.stringify(invalidColumns))

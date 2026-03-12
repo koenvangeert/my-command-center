@@ -16,15 +16,13 @@ vi.mock('../lib/ipc', () => ({
 
 vi.mock('../lib/boardColumns', () => ({
   loadBoardColumns: vi.fn(() => Promise.resolve([
-    { id: 'col-backlog', name: 'Backlog', statuses: ['egg'], underlyingStatus: 'backlog' },
     { id: 'col-doing', name: 'Doing', statuses: ['idle', 'active', 'needs-input', 'resting', 'celebrating', 'sad', 'frozen', 'pr-draft', 'pr-open', 'ci-failed', 'changes-requested', 'ready-to-merge', 'pr-merged'], underlyingStatus: 'doing' },
-    { id: 'col-done', name: 'Done', statuses: ['done'], underlyingStatus: 'done' },
   ])),
   DEFAULT_BOARD_COLUMNS: [
-    { id: 'col-backlog', name: 'Backlog', statuses: ['egg'], underlyingStatus: 'backlog' },
     { id: 'col-doing', name: 'Doing', statuses: ['idle', 'active', 'needs-input', 'resting', 'celebrating', 'sad', 'frozen', 'pr-draft', 'pr-open', 'ci-failed', 'changes-requested', 'ready-to-merge', 'pr-merged'], underlyingStatus: 'doing' },
-    { id: 'col-done', name: 'Done', statuses: ['done'], underlyingStatus: 'done' },
   ],
+  BACKLOG_COLUMN: { id: 'col-backlog', name: 'Backlog', statuses: ['egg'], underlyingStatus: 'backlog' },
+  DONE_COLUMN: { id: 'col-done', name: 'Done', statuses: ['done'], underlyingStatus: 'done' },
 }))
 
 vi.mock('../lib/navigation', () => ({
@@ -61,11 +59,11 @@ describe('KanbanBoard', () => {
     startingTasks.set(new Set())
   })
 
-  it('renders all three default columns', async () => {
+  it('renders backlog and doing columns by default', async () => {
     render(KanbanBoard, { props: { onRunAction: mockOnRunAction } })
     expect(await screen.findByText('// backlog')).toBeTruthy()
     expect(await screen.findByText('// doing')).toBeTruthy()
-    expect(await screen.findByText('// done')).toBeTruthy()
+    expect(screen.queryByText('// done')).toBeNull()
   })
 
   it('renders tasks in correct columns', async () => {
@@ -86,11 +84,12 @@ describe('KanbanBoard', () => {
     // Find column containers by data-vim-column attribute
     const backlogCol = document.querySelector('[data-vim-column="col-backlog"]')!
     const doingCol = document.querySelector('[data-vim-column="col-doing"]')!
-    const doneCol = document.querySelector('[data-vim-column="col-done"]')!
 
     expect(within(backlogCol as HTMLElement).getByText('Test task')).toBeTruthy()
     expect(within(doingCol as HTMLElement).getByText('Doing task')).toBeTruthy()
-    expect(within(doneCol as HTMLElement).getByText('Done task')).toBeTruthy()
+
+    await fireEvent.click(screen.getByTitle('Toggle done drawer (c)'))
+    expect(screen.getByText('Done task')).toBeTruthy()
   })
 
   it('shows empty state for columns with no tasks', async () => {
@@ -100,13 +99,14 @@ describe('KanbanBoard', () => {
     expect(emptyMessages.length).toBeGreaterThan(0)
   })
 
-  it('shows clear done button in done column when tasks exist', async () => {
+  it('shows clear done button in done drawer when tasks exist', async () => {
     const doneTask: Task = { ...baseTask, id: 'T-2', initial_prompt: 'Done task', status: 'done' }
     tasks.set([doneTask])
 
     render(KanbanBoard, { props: { onRunAction: mockOnRunAction } })
 
-    expect(await screen.findByTitle('Clear done tasks')).toBeTruthy()
+    await fireEvent.click(await screen.findByTitle('Toggle done drawer (c)'))
+    expect(screen.getByTitle('Clear done tasks')).toBeTruthy()
   })
 
   it('shows Start Task in context menu for backlog tasks', async () => {
@@ -180,20 +180,18 @@ describe('KanbanBoard', () => {
   it('renders N columns from custom config', async () => {
     const { loadBoardColumns } = await import('../lib/boardColumns')
     vi.mocked(loadBoardColumns).mockResolvedValueOnce([
-      { id: 'col-1', name: 'Todo', statuses: ['egg'], underlyingStatus: 'backlog' },
       { id: 'col-2', name: 'In Progress', statuses: ['active'], underlyingStatus: 'doing' },
       { id: 'col-3', name: 'Blocked', statuses: ['needs-input', 'sad', 'frozen'], underlyingStatus: 'doing' },
       { id: 'col-4', name: 'Review', statuses: ['pr-draft', 'pr-open', 'ci-failed', 'changes-requested', 'ready-to-merge', 'pr-merged'], underlyingStatus: 'doing' },
-      { id: 'col-5', name: 'Complete', statuses: ['done', 'idle', 'resting', 'celebrating'], underlyingStatus: 'done' },
     ])
 
     render(KanbanBoard, { props: { onRunAction: mockOnRunAction } })
 
-    expect(await screen.findByText('// todo')).toBeTruthy()
+    expect(await screen.findByText('// backlog')).toBeTruthy()
     expect(await screen.findByText('// in progress')).toBeTruthy()
     expect(await screen.findByText('// blocked')).toBeTruthy()
     expect(await screen.findByText('// review')).toBeTruthy()
-    expect(await screen.findByText('// complete')).toBeTruthy()
+    expect(screen.queryByText('// done')).toBeNull()
   })
 
   it('vim h/l navigation moves between columns', async () => {
@@ -206,5 +204,52 @@ describe('KanbanBoard', () => {
     await fireEvent.keyDown(window, { key: 'l' })
     await fireEvent.keyDown(window, { key: 'l' })
     await fireEvent.keyDown(window, { key: 'h' })
+  })
+
+  it('shows toggle bar with backlog and done controls', async () => {
+    const doneTask: Task = { ...baseTask, id: 'T-2', initial_prompt: 'Done task', status: 'done' }
+    tasks.set([baseTask, doneTask])
+    render(KanbanBoard, { props: { onRunAction: mockOnRunAction } })
+    expect(await screen.findByTitle('Toggle backlog (b)')).toBeTruthy()
+    expect(screen.getByTitle('Toggle done drawer (c)')).toBeTruthy()
+  })
+
+  it('hides backlog when toggle is clicked', async () => {
+    render(KanbanBoard, { props: { onRunAction: mockOnRunAction } })
+    await screen.findByText('// backlog')
+    await fireEvent.click(screen.getByTitle('Toggle backlog (b)'))
+    expect(screen.queryByText('// backlog')).toBeNull()
+    expect(screen.getByText('// doing')).toBeTruthy()
+  })
+
+  it('b shortcut toggles backlog visibility', async () => {
+    render(KanbanBoard, { props: { onRunAction: mockOnRunAction } })
+    await screen.findByText('// backlog')
+    await fireEvent.keyDown(window, { key: 'b' })
+    expect(screen.queryByText('// backlog')).toBeNull()
+    await fireEvent.keyDown(window, { key: 'b' })
+    expect(screen.getByText('// backlog')).toBeTruthy()
+  })
+
+  it('shows done drawer when toggle is clicked', async () => {
+    const doneTask: Task = { ...baseTask, id: 'T-2', initial_prompt: 'Done task', status: 'done' }
+    tasks.set([doneTask])
+    render(KanbanBoard, { props: { onRunAction: mockOnRunAction } })
+    await screen.findByText('// doing')
+    expect(screen.queryByText('// done')).toBeNull()
+    await fireEvent.click(screen.getByTitle('Toggle done drawer (c)'))
+    expect(screen.getByText('// done')).toBeTruthy()
+    expect(screen.getByText('Done task')).toBeTruthy()
+  })
+
+  it('c shortcut toggles done drawer', async () => {
+    const doneTask: Task = { ...baseTask, id: 'T-2', initial_prompt: 'Done task', status: 'done' }
+    tasks.set([doneTask])
+    render(KanbanBoard, { props: { onRunAction: mockOnRunAction } })
+    await screen.findByText('// doing')
+    await fireEvent.keyDown(window, { key: 'c' })
+    expect(screen.getByText('// done')).toBeTruthy()
+    await fireEvent.keyDown(window, { key: 'c' })
+    expect(screen.queryByText('// done')).toBeNull()
   })
 })

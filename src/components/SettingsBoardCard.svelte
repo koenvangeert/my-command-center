@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { LayoutGrid } from 'lucide-svelte';
-	import type { BoardColumnConfig, KanbanColumn } from '../lib/types';
-	import { COLUMN_LABELS } from '../lib/types';
+	import type { BoardColumnConfig } from '../lib/types';
 	import type { TaskState } from '../lib/taskState';
 	import {
 		ALL_TASK_STATES,
@@ -25,7 +24,7 @@
 			id: crypto.randomUUID(),
 			name: '',
 			statuses: [],
-			underlyingStatus: 'backlog',
+			underlyingStatus: 'doing',
 		};
 		onColumnsChange([...columns, newColumn]);
 	}
@@ -36,10 +35,6 @@
 
 	function updateName(id: string, name: string) {
 		onColumnsChange(columns.map((c) => (c.id === id ? { ...c, name } : c)));
-	}
-
-	function updateUnderlyingStatus(id: string, underlyingStatus: KanbanColumn) {
-		onColumnsChange(columns.map((c) => (c.id === id ? { ...c, underlyingStatus } : c)));
 	}
 
 	function toggleState(id: string, state: TaskState, checked: boolean) {
@@ -82,30 +77,18 @@
 					{/if}
 				</div>
 
-				<label class="flex flex-col gap-1">
-					<span class="text-[0.7rem] text-base-content/50">Name</span>
-					<input
-						type="text"
-						value={column.name}
-						oninput={(e) => updateName(column.id, e.currentTarget.value)}
-						placeholder="Column name"
-						class="input input-bordered input-sm w-full"
-					/>
-				</label>
+			<label class="flex flex-col gap-1">
+				<span class="text-[0.7rem] text-base-content/50">Name</span>
+				<input
+					type="text"
+					value={column.name}
+					oninput={(e) => updateName(column.id, e.currentTarget.value)}
+					placeholder="Column name"
+					class="input input-bordered input-sm w-full"
+				/>
+			</label>
 
-				<label class="flex flex-col gap-1">
-					<span class="text-[0.7rem] text-base-content/50">Underlying Status</span>
-					<select
-						onchange={(e) => updateUnderlyingStatus(column.id, e.currentTarget.value as KanbanColumn)}
-						class="select select-bordered select-sm w-full"
-					>
-						{#each Object.entries(COLUMN_LABELS) as [value, label]}
-							<option {value} selected={value === column.underlyingStatus}>{label}</option>
-						{/each}
-					</select>
-				</label>
-
-				<div class="collapse collapse-arrow bg-base-100 border border-base-300 rounded-md">
+			<div class="collapse collapse-arrow bg-base-100 border border-base-300 rounded-md">
 					<input type="checkbox" />
 					<div class="collapse-title text-sm font-medium py-2 min-h-0">
 						Task States

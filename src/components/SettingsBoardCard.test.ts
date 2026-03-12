@@ -4,11 +4,10 @@ import type { BoardColumnConfig } from '../lib/types'
 
 vi.mock('../lib/boardColumns', () => ({
 	DEFAULT_BOARD_COLUMNS: [
-		{ id: 'col-backlog', name: 'Backlog', statuses: ['egg'], underlyingStatus: 'backlog' },
-		{ id: 'col-doing', name: 'Doing', statuses: ['idle', 'active'], underlyingStatus: 'doing' },
+		{ id: 'col-doing', name: 'Doing', statuses: ['idle', 'active', 'needs-input'], underlyingStatus: 'doing' },
 	],
-	ALL_TASK_STATES: ['egg', 'idle', 'active', 'done'],
-	TASK_STATE_LABELS: { egg: 'Egg', idle: 'Idle', active: 'Active', done: 'Done' },
+	ALL_TASK_STATES: ['idle', 'active', 'needs-input'],
+	TASK_STATE_LABELS: { idle: 'Idle', active: 'Running', 'needs-input': 'Needs Input' },
 	validateBoardColumns: vi.fn(() => ({ valid: true, errors: [] })),
 }))
 
@@ -36,7 +35,6 @@ describe('SettingsBoardCard', () => {
 
 	it('renders default columns', () => {
 		render(SettingsBoardCard, { props: defaultProps() })
-		expect(screen.getAllByDisplayValue('Backlog').length).toBeGreaterThan(0)
 		expect(screen.getAllByDisplayValue('Doing').length).toBeGreaterThan(0)
 	})
 
@@ -54,7 +52,7 @@ describe('SettingsBoardCard', () => {
 		expect(added).toMatchObject({
 			name: '',
 			statuses: [],
-			underlyingStatus: 'backlog',
+			underlyingStatus: 'doing',
 		})
 		expect(typeof added.id).toBe('string')
 		expect(added.id.length).toBeGreaterThan(0)
@@ -62,15 +60,19 @@ describe('SettingsBoardCard', () => {
 
 	it('remove column calls onColumnsChange without removed column', async () => {
 		const onColumnsChange = vi.fn()
-		render(SettingsBoardCard, { props: defaultProps({ onColumnsChange }) })
+		const twoColumns = [
+			{ id: 'col-doing', name: 'Doing', statuses: ['idle', 'active', 'needs-input'], underlyingStatus: 'doing' as const },
+			{ id: 'col-custom', name: 'Custom', statuses: [], underlyingStatus: 'doing' as const },
+		]
+		render(SettingsBoardCard, { props: defaultProps({ columns: twoColumns, onColumnsChange }) })
 
 		const removeButtons = screen.getAllByTitle('Remove column')
 		await fireEvent.click(removeButtons[0])
 
 		expect(onColumnsChange).toHaveBeenCalledOnce()
 		const newColumns: BoardColumnConfig[] = onColumnsChange.mock.calls[0][0]
-		expect(newColumns).toHaveLength((DEFAULT_BOARD_COLUMNS as BoardColumnConfig[]).length - 1)
-		expect(newColumns.find((c) => c.id === 'col-backlog')).toBeUndefined()
+		expect(newColumns).toHaveLength(1)
+		expect(newColumns.find((c) => c.id === 'col-doing')).toBeUndefined()
 	})
 
 	it('reset to default calls onColumnsChange with DEFAULT_BOARD_COLUMNS', async () => {
@@ -95,8 +97,11 @@ describe('SettingsBoardCard', () => {
 
 	it('toggling task state checkbox calls onColumnsChange with updated statuses', async () => {
 		const onColumnsChange = vi.fn()
-		render(SettingsBoardCard, { props: defaultProps({ onColumnsChange }) })
-		// Find the 'Idle' checkbox label and click it
+		const columnWithoutIdle = [
+			{ id: 'col-doing', name: 'Doing', statuses: ['active', 'needs-input'], underlyingStatus: 'doing' as const },
+		]
+		render(SettingsBoardCard, { props: defaultProps({ columns: columnWithoutIdle, onColumnsChange }) })
+		// Find the 'Idle' checkbox label and click it to add it
 		const idleCheckbox = screen.getAllByLabelText('Idle')[0]
 		await fireEvent.click(idleCheckbox)
 		expect(onColumnsChange).toHaveBeenCalledOnce()

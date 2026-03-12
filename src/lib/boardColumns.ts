@@ -1,11 +1,11 @@
 import type { TaskState } from './taskState'
-import type { BoardColumnConfig, KanbanColumn } from './types'
+import type { BoardColumnConfig } from './types'
 import { getProjectConfig, setProjectConfig } from './ipc'
 
 const BOARD_COLUMNS_CONFIG_KEY = 'board_columns'
 
+/** Configurable task states (doing-related only — egg and done are fixed). */
 export const ALL_TASK_STATES: TaskState[] = [
-  'egg',
   'idle',
   'active',
   'needs-input',
@@ -13,7 +13,6 @@ export const ALL_TASK_STATES: TaskState[] = [
   'celebrating',
   'sad',
   'frozen',
-  'done',
   'pr-draft',
   'pr-open',
   'ci-failed',
@@ -22,15 +21,31 @@ export const ALL_TASK_STATES: TaskState[] = [
   'pr-merged',
 ]
 
+/** Fixed backlog column — not user-configurable. */
+export const BACKLOG_COLUMN: BoardColumnConfig = {
+  id: 'col-backlog',
+  name: 'Backlog',
+  statuses: ['egg'],
+  underlyingStatus: 'backlog',
+}
+
+/** Fixed done column — not user-configurable. */
+export const DONE_COLUMN: BoardColumnConfig = {
+  id: 'col-done',
+  name: 'Done',
+  statuses: ['done'],
+  underlyingStatus: 'done',
+}
+
 export const TASK_STATE_LABELS: Record<TaskState, string> = {
-  egg: 'Egg',
+  egg: 'New',
   idle: 'Idle',
-  active: 'Active',
+  active: 'Running',
   'needs-input': 'Needs Input',
-  resting: 'Resting',
-  celebrating: 'Celebrating',
-  sad: 'Sad',
-  frozen: 'Frozen',
+  resting: 'Paused',
+  celebrating: 'Agent Done',
+  sad: 'Failed',
+  frozen: 'Interrupted',
   done: 'Done',
   'pr-draft': 'PR Draft',
   'pr-open': 'PR Open',
@@ -41,12 +56,6 @@ export const TASK_STATE_LABELS: Record<TaskState, string> = {
 }
 
 export const DEFAULT_BOARD_COLUMNS: BoardColumnConfig[] = [
-  {
-    id: 'col-backlog',
-    name: 'Backlog',
-    statuses: ['egg'],
-    underlyingStatus: 'backlog',
-  },
   {
     id: 'col-doing',
     name: 'Doing',
@@ -67,12 +76,6 @@ export const DEFAULT_BOARD_COLUMNS: BoardColumnConfig[] = [
     ],
     underlyingStatus: 'doing',
   },
-  {
-    id: 'col-done',
-    name: 'Done',
-    statuses: ['done'],
-    underlyingStatus: 'done',
-  },
 ]
 
 export function validateBoardColumns(columns: BoardColumnConfig[]): { valid: boolean; errors: string[] } {
@@ -83,16 +86,11 @@ export function validateBoardColumns(columns: BoardColumnConfig[]): { valid: boo
     return { valid: false, errors }
   }
 
-  const allowedUnderlyingStatuses: KanbanColumn[] = ['backlog', 'doing', 'done']
   const stateCounts = new Map<TaskState, number>()
 
   for (const column of columns) {
     if (typeof column.name !== 'string' || column.name.trim().length === 0) {
       errors.push(`Column "${column.id}" must have a non-empty name.`)
-    }
-
-    if (!allowedUnderlyingStatuses.includes(column.underlyingStatus)) {
-      errors.push(`Column "${column.id}" has invalid underlyingStatus: ${String(column.underlyingStatus)}.`)
     }
 
     for (const state of column.statuses) {
