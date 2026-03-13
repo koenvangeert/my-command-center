@@ -42,6 +42,7 @@ vi.mock('./lib/stores', () => ({
   reviewPullRequestDiff: writable(null),
   skills: writable([]),
   selectedSkillName: writable(null),
+  startingTasks: writable(new Set()),
   codeCleanupTasksEnabled: writable(false),
   authoredPrCount: writable(0),
 }))
@@ -99,6 +100,7 @@ vi.mock('./lib/ipc', () => ({
   clearDoneTasks: vi.fn(),
   refreshJiraInfo: vi.fn(),
   getAgents: vi.fn(),
+  listOpenCodeAgents: vi.fn().mockResolvedValue([]),
   createProject: vi.fn(),
   updateProject: vi.fn(),
   deleteProject: vi.fn(),
