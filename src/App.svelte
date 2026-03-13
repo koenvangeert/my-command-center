@@ -2,7 +2,7 @@
   import { onMount, onDestroy } from 'svelte'
   import { listen } from '@tauri-apps/api/event'
   import type { UnlistenFn, Event } from '@tauri-apps/api/event'
-  import { tasks, selectedTaskId, activeSessions, checkpointNotification, ciFailureNotification, ticketPrs, error, isLoading, projects, activeProjectId, currentView, reviewRequestCount, authoredPrCount, projectAttention, taskSpawned, selectedSkillName, startingTasks, codeCleanupTasksEnabled } from './lib/stores'
+  import { tasks, selectedTaskId, activeSessions, checkpointNotification, ciFailureNotification, ticketPrs, error, isLoading, projects, activeProjectId, currentView, reviewRequestCount, authoredPrCount, projectAttention, taskSpawned, startingTasks, codeCleanupTasksEnabled } from './lib/stores'
   import { getProjects, getTasksForProject, getPullRequests, startImplementation, getSessionStatus, getLatestSession, getLatestSessions, forceGithubSync, createTask, updateTask, updateTaskStatus, deleteTask, getProjectAttention, getAppMode, finalizeClaudeSession, getConfig, getProjectConfig, listOpenCodeAgents, getReviewPrs, getAuthoredPrs } from './lib/ipc'
   import { writePtyWithSubmit } from './lib/ptySubmit'
   import SearchableSelect from './components/SearchableSelect.svelte'
@@ -19,18 +19,18 @@
   import CheckpointToast from './components/CheckpointToast.svelte'
   import CiFailureToast from './components/CiFailureToast.svelte'
   import TaskSpawnedToast from './components/TaskSpawnedToast.svelte'
-  import ProjectSwitcher from './components/ProjectSwitcher.svelte'
+  import ProjectSidebar from './components/ProjectSidebar.svelte'
   import ProjectSwitcherModal from './components/ProjectSwitcherModal.svelte'
   import ProjectSetupDialog from './components/ProjectSetupDialog.svelte'
   import IconRail from './components/IconRail.svelte'
   import CommandPalette from './components/CommandPalette.svelte'
   import ActionPalette from './components/ActionPalette.svelte'
 
+  import { PanelLeft } from 'lucide-svelte'
   import { pushNavState, navigateBack } from './lib/navigation'
   import { loadActions, getEnabledActions } from './lib/actions'
   import type { Action } from './lib/types'
   import { release as releaseTerminal, isPtyActive, focusTerminal } from './lib/terminalPool'
-  import { isInputFocused } from './lib/domUtils'
 
   let unlisteners: UnlistenFn[] = []
   let showAddDialog = $state(false)
@@ -65,6 +65,7 @@
   let appMode = $state<string | null>(null)
   let showShortcutsDialog = $state(false)
   let showProjectSwitcher = $state(false)
+  let showProjectSidebar = $state(localStorage.getItem('projectSidebarVisible') !== 'false')
   let showCommandPalette = $state(false)
   let showActionPalette = $state(false)
   let actionPaletteActions = $state<Action[]>([])
@@ -327,6 +328,12 @@
     if (e.metaKey && !e.shiftKey && e.key === 'p') {
       e.preventDefault()
       showProjectSwitcher = !showProjectSwitcher
+      return
+    }
+    if (e.metaKey && e.key === 'b') {
+      e.preventDefault()
+      showProjectSidebar = !showProjectSidebar
+      localStorage.setItem('projectSidebarVisible', String(showProjectSidebar))
       return
     }
     if (e.metaKey && e.key === 't') {
@@ -752,10 +759,21 @@
 
 <div class="flex h-screen overflow-hidden bg-base-200">
   <IconRail currentView={$currentView} onNavigate={handleNavigate} reviewRequestCount={$reviewRequestCount} authoredPrCount={$authoredPrCount} />
+  {#if showProjectSidebar}
+    <ProjectSidebar onNewProject={() => showProjectSetup = true} />
+  {/if}
 
   <div class="flex flex-col flex-1 min-w-0">
-    <header class="bg-neutral text-neutral-content h-12 flex items-center justify-between px-6 shrink-0">
-      <div class="flex items-center gap-4">
+    <header class="bg-neutral text-neutral-content h-12 grid grid-cols-3 items-center px-6 shrink-0">
+      <div class="flex items-center gap-3">
+        <button
+          type="button"
+          class="btn btn-ghost btn-sm btn-square {showProjectSidebar ? 'text-primary' : 'text-neutral-content/40 hover:text-neutral-content'}"
+          onclick={() => { showProjectSidebar = !showProjectSidebar; localStorage.setItem('projectSidebarVisible', String(showProjectSidebar)) }}
+          title={showProjectSidebar ? 'Hide project sidebar (⌘B)' : 'Show project sidebar (⌘B)'}
+        >
+          <PanelLeft size={16} />
+        </button>
         <span class="flex items-center gap-1.5 font-mono text-sm">
           <span class="text-primary font-bold">&gt;</span>
           <span class="font-semibold">open_forge</span>
@@ -763,7 +781,6 @@
         {#if appMode === 'dev'}
           <span class="badge badge-sm bg-primary text-black font-mono">DEV</span>
         {/if}
-        <ProjectSwitcher onNewProject={() => showProjectSetup = true} />
         <button
           type="button"
           class="btn btn-sm bg-primary text-black hover:bg-primary/80 font-mono"
@@ -777,25 +794,26 @@
         </button>
       </div>
 
-      <div class="flex items-center gap-2">
+      <button
+        type="button"
+        class="btn btn-ghost btn-sm text-neutral-content/60 hover:text-neutral-content font-mono text-xs gap-1 justify-self-center"
+        onclick={() => showProjectSwitcher = true}
+      >
+        {#if activeProject}
+          <span class="text-neutral-content/80">{activeProject.name}</span>
+        {:else}
+          projects
+        {/if}
+        <kbd class="kbd kbd-xs bg-neutral-content/10 text-neutral-content/50 border-neutral-content/20">&#8984;P</kbd>
+      </button>
+
+      <div class="flex items-center gap-2 justify-end">
         <button
           type="button"
           class="btn btn-ghost btn-sm text-neutral-content/60 hover:text-neutral-content font-mono text-xs gap-1"
           onclick={() => showCommandPalette = true}
         >
           search <kbd class="kbd kbd-xs bg-neutral-content/10 text-neutral-content/50 border-neutral-content/20">&#8984;K</kbd>
-        </button>
-        <button
-          type="button"
-          class="btn btn-ghost btn-sm text-neutral-content/60 hover:text-neutral-content font-mono text-xs gap-1"
-          onclick={() => showProjectSwitcher = true}
-        >
-          {#if activeProject}
-            <span class="text-neutral-content/80">{activeProject.name}</span>
-          {:else}
-            projects
-          {/if}
-          <kbd class="kbd kbd-xs bg-neutral-content/10 text-neutral-content/50 border-neutral-content/20">&#8984;P</kbd>
         </button>
       </div>
     </header>

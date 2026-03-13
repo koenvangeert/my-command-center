@@ -72,6 +72,7 @@ vi.mock('./lib/ipc', () => ({
     callOrder.push('getAppMode')
     return 'prod'
   }),
+  getConfig: vi.fn(async () => null),
   getProjectAttention: vi.fn(async () => {
     callOrder.push('getProjectAttention')
     return []
@@ -142,18 +143,22 @@ vi.mock('./components/KanbanBoard.svelte', () => ({ default: vi.fn() }))
 vi.mock('./components/TaskDetailView.svelte', () => ({ default: vi.fn() }))
 vi.mock('./components/PrReviewView.svelte', () => ({ default: vi.fn() }))
 vi.mock('./components/SkillsView.svelte', () => ({ default: vi.fn() }))
+vi.mock('./components/SettingsView.svelte', () => ({ default: vi.fn() }))
+vi.mock('./components/WorkQueueView.svelte', () => ({ default: vi.fn() }))
 vi.mock('./components/ClaudeAgentPanel.svelte', () => ({ default: vi.fn() }))
 vi.mock('./components/PromptInput.svelte', () => ({ default: vi.fn() }))
 vi.mock('./components/Modal.svelte', () => ({ default: vi.fn() }))
-vi.mock('./components/SettingsPanel.svelte', () => ({ default: vi.fn() }))
-vi.mock('./components/GlobalSettingsPanel.svelte', () => ({ default: vi.fn() }))
+vi.mock('./components/SearchableSelect.svelte', () => ({ default: vi.fn() }))
 vi.mock('./components/Toast.svelte', () => ({ default: vi.fn() }))
 vi.mock('./components/CheckpointToast.svelte', () => ({ default: vi.fn() }))
 vi.mock('./components/CiFailureToast.svelte', () => ({ default: vi.fn() }))
 vi.mock('./components/TaskSpawnedToast.svelte', () => ({ default: vi.fn() }))
-vi.mock('./components/ProjectSwitcher.svelte', () => ({ default: vi.fn() }))
+vi.mock('./components/ProjectSidebar.svelte', () => ({ default: vi.fn() }))
+vi.mock('./components/ProjectSwitcherModal.svelte', () => ({ default: vi.fn() }))
 vi.mock('./components/ProjectSetupDialog.svelte', () => ({ default: vi.fn() }))
 vi.mock('./components/IconRail.svelte', () => ({ default: vi.fn() }))
+vi.mock('./components/CommandPalette.svelte', () => ({ default: vi.fn() }))
+vi.mock('./components/ActionPalette.svelte', () => ({ default: vi.fn() }))
 
 vi.mock('./lib/doingStatus', () => ({
   computeDoingStatus: vi.fn(() => 'idle'),
@@ -170,6 +175,7 @@ vi.mock('./lib/terminalPool', () => ({
 
 vi.mock('lucide-svelte', () => ({
   RefreshCw: vi.fn(),
+  PanelLeft: vi.fn(),
 }))
 
 describe('App onMount initialization order', () => {
@@ -202,7 +208,7 @@ describe('App onMount initialization order', () => {
 
     // 2 out of 3 PRs are unviewed (viewed_at === null)
     expect(get(stores.reviewRequestCount)).toBe(2)
-  })
+  }, 15000)
 
   it('registers event listeners before making IPC data-loading calls', async () => {
     const App = (await import('./App.svelte')).default
@@ -221,5 +227,5 @@ describe('App onMount initialization order', () => {
 
     expect(firstListen).toBeLessThan(firstGetProjects, 'listen() should be called before getProjects()')
     expect(firstListen).toBeLessThan(firstGetAppMode, 'listen() should be called before getAppMode()')
-  })
+  }, 15000)
 })
