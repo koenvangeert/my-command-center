@@ -782,7 +782,7 @@
 </script>
 
 <div class="flex h-screen overflow-hidden bg-base-200">
-  <IconRail currentView={$currentView} onNavigate={handleNavigate} reviewRequestCount={$reviewRequestCount} authoredPrCount={$authoredPrCount} />
+  <IconRail currentView={$currentView} onNavigate={handleNavigate} reviewRequestCount={$reviewRequestCount} authoredPrCount={$authoredPrCount} modalsOpen={showCommandPalette || showProjectSwitcher || showActionPalette || showAddDialog} />
   {#if showProjectSidebar}
     <ProjectSidebar onNewProject={() => showProjectSetup = true} />
   {/if}

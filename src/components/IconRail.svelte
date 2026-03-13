@@ -8,9 +8,10 @@
     onNavigate: (view: AppView) => void
     reviewRequestCount: number
     authoredPrCount: number
+    modalsOpen?: boolean
   }
 
-  let { currentView, onNavigate, reviewRequestCount = 0, authoredPrCount = 0 }: Props = $props()
+  let { currentView, onNavigate, reviewRequestCount = 0, authoredPrCount = 0, modalsOpen = false }: Props = $props()
 
   const navItems: { view: AppView; Icon: typeof LayoutDashboard; shortcut: string }[] = [
     { view: 'board', Icon: LayoutDashboard, shortcut: 'B' },
@@ -40,7 +41,7 @@
       {#if view === 'pr_review' && authoredPrCount > 0}
         <span class="badge badge-warning badge-xs absolute -bottom-2 -right-3 text-[0.6rem] font-bold min-w-4 h-4">{authoredPrCount}</span>
       {/if}
-      {#if $commandHeld}
+      {#if $commandHeld && !modalsOpen}
         <kbd class="kbd kbd-xs absolute -bottom-2 -left-3 bg-neutral-content/10 text-neutral-content/60 border-neutral-content/20 text-[0.55rem] min-w-4 h-4 flex items-center justify-center pointer-events-none">{shortcut}</kbd>
       {/if}
     </button>

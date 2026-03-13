@@ -105,6 +105,19 @@ describe('IconRail', () => {
 
       commandHeld.set(false)
     })
+
+    it('hides kbd badges when modalsOpen is true even if commandHeld is true', () => {
+      commandHeld.set(true)
+      render(IconRail, { props: { currentView: 'board' as AppView, onNavigate: vi.fn(), authoredPrCount: 0, modalsOpen: true } })
+
+      expect(screen.queryByText('B')).toBeNull()
+      expect(screen.queryByText('G')).toBeNull()
+      expect(screen.queryByText('L')).toBeNull()
+      expect(screen.queryByText('R')).toBeNull()
+      expect(screen.queryByText(',')).toBeNull()
+
+      commandHeld.set(false)
+    })
   })
 
 })
