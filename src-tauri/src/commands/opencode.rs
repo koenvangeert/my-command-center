@@ -306,9 +306,48 @@ pub async fn list_opencode_skills(
     Ok(skills)
 }
 
+/// Save a skill's SKILL.md content to disk.
+/// Resolves the file path from level (project/user), source_dir (.claude/.opencode/.agents), and skill name.
+#[tauri::command]
+pub async fn save_skill_content(
+    db: State<'_, Arc<Mutex<db::Database>>>,
+    project_id: String,
+    skill_name: String,
+    level: String,
+    source_dir: String,
+    content: String,
+) -> Result<(), String> {
+    let skill_dir = if level == "project" {
+        let project_path = {
+            let db = crate::db::acquire_db(&db);
+            db.get_project(&project_id)
+                .map_err(|e| format!("Failed to get project: {}", e))?
+                .map(|p| p.path)
+                .ok_or_else(|| "Project not found".to_string())?
+        };
+        std::path::PathBuf::from(project_path)
+            .join(&source_dir)
+            .join("skills")
+            .join(&skill_name)
+    } else {
+        dirs::home_dir()
+            .ok_or_else(|| "Cannot determine home directory".to_string())?
+            .join(&source_dir)
+            .join("skills")
+            .join(&skill_name)
+    };
 
+    let skill_file = skill_dir.join("SKILL.md");
 
+    // Ensure the directory exists
+    std::fs::create_dir_all(&skill_dir)
+        .map_err(|e| format!("Failed to create skill directory: {}", e))?;
 
+    std::fs::write(&skill_file, content)
+        .map_err(|e| format!("Failed to write skill file: {}", e))?;
+
+    Ok(())
+}
 
 
 

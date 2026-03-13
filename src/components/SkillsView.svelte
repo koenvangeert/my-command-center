@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { skills, selectedSkillName, activeProjectId } from '../lib/stores'
-  import { listOpenCodeSkills } from '../lib/ipc'
+  import { listOpenCodeSkills, saveSkillContent } from '../lib/ipc'
   import { pushNavState } from '../lib/navigation'
   import { isInputFocused } from '../lib/domUtils'
   import { useVimNavigation } from '../lib/useVimNavigation.svelte'
@@ -11,6 +11,10 @@
   let isLoading = $state(false)
   let error = $state<string | null>(null)
   let searchFilter = $state('')
+  let editMode = $state(false)
+  let editContent = $state('')
+  let isSaving = $state(false)
+  let saveError = $state<string | null>(null)
 
   let selectedSkill = $derived($skills.find(s => s.name === $selectedSkillName) || null)
 
@@ -81,6 +85,47 @@
   function selectSkill(skill: SkillInfo) {
     pushNavState()
     $selectedSkillName = skill.name
+    editMode = false
+    saveError = null
+  }
+
+  function enterEditMode() {
+    if (!selectedSkill) return
+    editContent = selectedSkill.template || ''
+    editMode = true
+    saveError = null
+  }
+
+  function cancelEdit() {
+    editMode = false
+    saveError = null
+  }
+
+  async function saveEdit() {
+    if (!selectedSkill || !$activeProjectId) return
+    isSaving = true
+    saveError = null
+    try {
+      await saveSkillContent(
+        $activeProjectId,
+        selectedSkill.name,
+        selectedSkill.level,
+        selectedSkill.source_dir,
+        editContent,
+      )
+      // Update the local skill data with new content
+      $skills = $skills.map(s =>
+        s.name === selectedSkill!.name && s.level === selectedSkill!.level && s.source_dir === selectedSkill!.source_dir
+          ? { ...s, template: editContent }
+          : s
+      )
+      editMode = false
+    } catch (e) {
+      console.error('Failed to save skill:', e)
+      saveError = String(e)
+    } finally {
+      isSaving = false
+    }
   }
 
   const vimSkills = useVimNavigation({
@@ -257,26 +302,62 @@
             <span class="badge badge-sm {selectedSkill.level === 'project' ? 'badge-primary' : 'badge-secondary'} shrink-0">{selectedSkill.level === 'project' ? 'repository' : 'personal'}</span>
             <span class="text-xs text-base-content/40 shrink-0">{selectedSkill.source_dir}/skills</span>
           </div>
+          <div class="flex items-center gap-2 shrink-0">
+            {#if editMode}
+              <button
+                class="btn btn-ghost btn-sm text-base-content/70"
+                onclick={cancelEdit}
+                disabled={isSaving}
+              >Cancel</button>
+              <button
+                class="btn btn-primary btn-sm"
+                onclick={saveEdit}
+                disabled={isSaving}
+              >{isSaving ? 'Saving...' : 'Save'}</button>
+            {:else}
+              <button
+                class="btn btn-ghost btn-sm text-base-content/70"
+                onclick={enterEditMode}
+              >Manually Edit</button>
+            {/if}
+          </div>
         </div>
 
+        {#if saveError}
+          <div class="px-6 py-2 bg-error/10 border-b border-error/20 shrink-0">
+            <p class="text-xs text-error m-0">{saveError}</p>
+          </div>
+        {/if}
+
         <!-- Description -->
-        {#if selectedSkill.description}
+        {#if selectedSkill.description && !editMode}
           <div class="px-6 py-3 border-b border-base-300 shrink-0">
             <p class="text-sm text-base-content/70 m-0">{selectedSkill.description}</p>
           </div>
         {/if}
 
-        <!-- Markdown content -->
-        <div class="flex-1 overflow-y-auto px-6 py-4">
-          {#if selectedSkill.template}
-            <MarkdownContent content={selectedSkill.template} />
-          {:else}
-            <div class="flex flex-col items-center justify-center h-full gap-3 text-base-content/50 text-center">
-              <span class="text-3xl">📄</span>
-              <p class="text-sm m-0">No content available for this skill.</p>
-            </div>
-          {/if}
-        </div>
+        {#if editMode}
+          <!-- Edit mode: raw markdown textarea -->
+          <div class="flex-1 overflow-hidden flex flex-col">
+            <textarea
+              class="flex-1 w-full p-4 font-mono text-sm bg-base-100 text-base-content resize-none border-none outline-none"
+              bind:value={editContent}
+              spellcheck="false"
+            ></textarea>
+          </div>
+        {:else}
+          <!-- Read mode: rendered markdown -->
+          <div class="flex-1 overflow-y-auto px-6 py-4">
+            {#if selectedSkill.template}
+              <MarkdownContent content={selectedSkill.template} />
+            {:else}
+              <div class="flex flex-col items-center justify-center h-full gap-3 text-base-content/50 text-center">
+                <span class="text-3xl">📄</span>
+                <p class="text-sm m-0">No content available for this skill.</p>
+              </div>
+            {/if}
+          </div>
+        {/if}
       {:else}
         <!-- No skill selected -->
         <div class="flex flex-col items-center justify-center h-full gap-4 text-base-content/50 text-center">
