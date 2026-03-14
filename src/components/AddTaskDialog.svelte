@@ -24,6 +24,14 @@
   let aiProvider = $state<string | null>(null)
   let availableAgents = $state<AutocompleteAgentInfo[]>([])
 
+  const providerDisplayNames: Record<string, string> = {
+    'claude-code': 'Claude Code',
+    'opencode': 'OpenCode',
+  }
+  let agentLabel = $derived(
+    aiProvider ? `${providerDisplayNames[aiProvider] ?? aiProvider} Agent` : 'Agent'
+  )
+
   // Focus the title input after Modal's own focus effect has run
   $effect(() => {
     if (inputEl) {
@@ -137,7 +145,7 @@
 
         {#if aiProvider !== null && (aiProvider !== 'claude-code' || availableAgents.length > 0)}
           <label class="flex flex-col gap-1.5">
-            <span class="text-xs text-base-content/60 font-medium">Agent</span>
+            <span class="text-xs text-base-content/60 font-medium">{agentLabel}</span>
             <select
               class="select select-bordered select-sm w-full"
               bind:value={selectedAgent}

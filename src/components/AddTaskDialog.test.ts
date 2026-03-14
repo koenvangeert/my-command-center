@@ -146,6 +146,30 @@ describe('AddTaskDialog', () => {
     })
   })
 
+  it('shows provider name in agent dropdown label for claude-code', async () => {
+    vi.mocked(getProjectConfig).mockResolvedValue('claude-code')
+    vi.mocked(listOpenCodeAgents).mockResolvedValue([
+      { name: 'agent-1', hidden: false, mode: null },
+    ])
+    render(AddTaskDialog, { props: { mode: 'create' } })
+
+    await waitFor(() => {
+      expect(screen.queryByLabelText('Claude Code Agent')).toBeTruthy()
+    })
+  })
+
+  it('shows provider name in agent dropdown label for opencode', async () => {
+    vi.mocked(getProjectConfig).mockResolvedValue('opencode')
+    vi.mocked(listOpenCodeAgents).mockResolvedValue([
+      { name: 'agent-1', hidden: false, mode: null },
+    ])
+    render(AddTaskDialog, { props: { mode: 'create' } })
+
+    await waitFor(() => {
+      expect(screen.queryByLabelText('OpenCode Agent')).toBeTruthy()
+    })
+  })
+
   it('shows agent dropdown when ai_provider is claude-code and agents exist', async () => {
     vi.mocked(getProjectConfig).mockResolvedValue('claude-code')
     vi.mocked(listOpenCodeAgents).mockResolvedValue([
@@ -154,7 +178,7 @@ describe('AddTaskDialog', () => {
     render(AddTaskDialog, { props: { mode: 'create' } })
 
     await waitFor(() => {
-      expect(screen.queryByLabelText('Agent')).toBeTruthy()
+      expect(screen.queryByLabelText('Claude Code Agent')).toBeTruthy()
     })
   })
 
@@ -165,7 +189,7 @@ describe('AddTaskDialog', () => {
 
     await waitFor(() => {
       expect(screen.queryByLabelText('Permission Mode')).toBeTruthy()
-      expect(screen.queryByLabelText('Agent')).toBeNull()
+      expect(screen.queryByLabelText('Claude Code Agent')).toBeNull()
     })
   })
 
@@ -174,7 +198,7 @@ describe('AddTaskDialog', () => {
     render(AddTaskDialog, { props: { mode: 'create' } })
 
     await waitFor(() => {
-      expect(screen.queryByLabelText('Agent')).toBeTruthy()
+      expect(screen.queryByLabelText('OpenCode Agent')).toBeTruthy()
     })
   })
 
@@ -197,9 +221,9 @@ describe('AddTaskDialog', () => {
     render(AddTaskDialog, { props: { mode: 'create' } })
 
     await waitFor(() => {
-      expect(screen.queryByLabelText('Agent')).toBeTruthy()
+      expect(screen.queryByLabelText('OpenCode Agent')).toBeTruthy()
     })
-    const agentSelect = screen.getByLabelText('Agent') as HTMLSelectElement
+    const agentSelect = screen.getByLabelText('OpenCode Agent') as HTMLSelectElement
     const options = Array.from(agentSelect.options).map(o => o.textContent)
     expect(options).toContain('visible-agent')
     expect(options).toContain('null-hidden-agent')
