@@ -146,6 +146,25 @@ fn descendant_snapshot_is_idle_candidate(
     descendant_ids.is_empty() || !has_active_descendants(descendant_ids, statuses)
 }
 
+fn root_session_is_idle_candidate(
+    root_session_id: &str,
+    statuses: &HashMap<String, SessionStatusInfo>,
+) -> bool {
+    statuses
+        .get(root_session_id)
+        .map(|status| status.status_type == "idle")
+        .unwrap_or(true)
+}
+
+fn completion_snapshot_is_idle_candidate(
+    root_session_id: &str,
+    descendant_ids: &HashSet<String>,
+    statuses: &HashMap<String, SessionStatusInfo>,
+) -> bool {
+    root_session_is_idle_candidate(root_session_id, statuses)
+        && descendant_snapshot_is_idle_candidate(descendant_ids, statuses)
+}
+
 async fn fetch_descendant_session_ids(
     client: &OpenCodeClient,
     root_session_id: &str,
@@ -405,10 +424,10 @@ impl SseBridgeManager {
                                                     }
                                                 };
 
-                                                if descendant_snapshot_is_idle_candidate(&descendant_ids, &statuses) {
+                                                if completion_snapshot_is_idle_candidate(&our_session_id, &descendant_ids, &statuses) {
                                                     consecutive_idle_snapshots += 1;
                                                     if consecutive_idle_snapshots >= DESCENDANT_IDLE_CONFIRMATION_POLLS {
-                                                        println!("[SSE] All descendants idle — emitting action-complete for task {}", task_id_for_poll);
+                                                        println!("[SSE] Root and descendants idle — emitting action-complete for task {}", task_id_for_poll);
                                                         poll_outcome = DescendantPollOutcome::AllIdle;
                                                         break;
                                                     }
@@ -704,6 +723,27 @@ mod tests {
         let statuses = HashMap::new();
 
         assert!(descendant_snapshot_is_idle_candidate(&descendants, &statuses));
+    }
+
+    #[test]
+    fn test_completion_snapshot_rejects_busy_root_even_when_descendants_are_idle() {
+        let descendants = HashSet::from(["ses_child".to_string()]);
+        let statuses = HashMap::from([(
+            "ses_root".to_string(),
+            SessionStatusInfo {
+                status_type: "busy".to_string(),
+            },
+        )]);
+
+        assert!(!completion_snapshot_is_idle_candidate("ses_root", &descendants, &statuses));
+    }
+
+    #[test]
+    fn test_completion_snapshot_accepts_missing_root_when_descendants_are_idle() {
+        let descendants = HashSet::from(["ses_child".to_string()]);
+        let statuses = HashMap::new();
+
+        assert!(completion_snapshot_is_idle_candidate("ses_root", &descendants, &statuses));
     }
 
     #[test]
