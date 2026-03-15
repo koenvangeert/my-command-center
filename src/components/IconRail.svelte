@@ -1,37 +1,30 @@
 <script lang="ts">
-  import { LayoutDashboard, GitPullRequest, Settings, Sparkles, ListChecks } from 'lucide-svelte'
+  import { LayoutDashboard, GitPullRequest, Sparkles } from 'lucide-svelte'
   import type { AppView } from '../lib/types'
   import { commandHeld } from '../lib/stores'
 
   interface Props {
     currentView: AppView
     onNavigate: (view: AppView) => void
-    reviewRequestCount: number
-    authoredPrCount: number
+    reviewRequestCount?: number
+    authoredPrCount?: number
     modalsOpen?: boolean
   }
 
   let { currentView, onNavigate, reviewRequestCount = 0, authoredPrCount = 0, modalsOpen = false }: Props = $props()
 
-  const navItems: { view: AppView; Icon: typeof LayoutDashboard; shortcut: string }[] = [
-    { view: 'board', Icon: LayoutDashboard, shortcut: 'H' },
-    { view: 'pr_review', Icon: GitPullRequest, shortcut: 'G' },
-    { view: 'skills', Icon: Sparkles, shortcut: 'L' },
-    { view: 'workqueue', Icon: ListChecks, shortcut: 'R' },
-    { view: 'settings', Icon: Settings, shortcut: ',' },
+  const navItems: { view: AppView; Icon: typeof LayoutDashboard; shortcut: string; label: string }[] = [
+    { view: 'board', Icon: LayoutDashboard, shortcut: 'H', label: 'Board' },
+    { view: 'pr_review', Icon: GitPullRequest, shortcut: 'G', label: 'Pull Requests' },
+    { view: 'skills', Icon: Sparkles, shortcut: 'L', label: 'Skills' },
   ]
 </script>
 
 <div class="w-16 h-full bg-neutral flex flex-col items-center py-4 gap-5">
-  <div class="w-9 h-9 bg-primary flex items-center justify-center rounded">
-    <span class="text-black font-bold font-mono text-sm">&gt;_</span>
-  </div>
-
-  <div class="w-9 h-px bg-neutral-content/20"></div>
-
-  {#each navItems as { view, Icon, shortcut }}
+  {#each navItems as { view, Icon, shortcut, label }}
     <button
       class="relative cursor-pointer {currentView === view ? 'text-primary' : 'text-neutral-content/40'}"
+      title={label}
       onclick={() => onNavigate(view)}
     >
       <Icon size={24} />
