@@ -8,12 +8,13 @@
   interface Props {
     collapsed: boolean
     currentView: AppView
+    appMode: string
     onToggleCollapse: () => void
     onNewProject?: () => void
     onNavigate: (view: AppView) => void
   }
 
-  let { collapsed, currentView, onToggleCollapse, onNewProject, onNavigate }: Props = $props()
+  let { collapsed, currentView, appMode, onToggleCollapse, onNewProject, onNavigate }: Props = $props()
 
   onMount(async () => {
     try {
@@ -63,6 +64,12 @@
 </script>
 
 <div class="{collapsed ? 'w-16' : 'w-48'} shrink-0 h-full bg-base-300 border-r border-base-content/10 flex flex-col font-mono transition-all duration-200">
+  {#if appMode === 'dev'}
+    <div class="w-full h-12 dev-badge-gradient flex items-center justify-center">
+      <span class="font-mono text-sm font-black text-white tracking-[0.25em] uppercase">{collapsed ? 'D' : 'DEV MODE'}</span>
+    </div>
+  {/if}
+
   <div class="h-12 px-3 flex items-center {collapsed ? 'justify-center' : 'gap-2'} border-b border-base-content/10">
     <div class="w-7 h-7 bg-primary flex items-center justify-center rounded shrink-0">
       <span class="text-black font-bold font-mono text-xs">&gt;_</span>
