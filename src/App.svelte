@@ -789,6 +789,7 @@
   <AppSidebar
     collapsed={appSidebarCollapsed}
     currentView={$currentView}
+    {appMode}
     onToggleCollapse={() => { appSidebarCollapsed = !appSidebarCollapsed; localStorage.setItem('appSidebarCollapsed', String(appSidebarCollapsed)) }}
     onNewProject={() => showProjectSetup = true}
     onNavigate={handleNavigate}
@@ -797,50 +798,7 @@
     <IconRail currentView={$currentView} onNavigate={handleNavigate} reviewRequestCount={$reviewRequestCount} authoredPrCount={$authoredPrCount} modalsOpen={showCommandPalette || showProjectSwitcher || showActionPalette || showAddDialog} />
   {/if}
 
-  <div class="flex flex-col flex-1 min-w-0">
-    {#if $currentView !== 'workqueue' && $currentView !== 'global_settings'}
-      <header class="bg-neutral text-neutral-content h-12 grid grid-cols-3 items-center px-6 shrink-0">
-        <div class="flex items-center gap-3">
-          {#if appMode === 'dev'}
-            <span class="badge badge-sm bg-primary text-black font-mono">DEV</span>
-          {/if}
-          <button
-            type="button"
-            class="btn btn-sm bg-primary text-black hover:bg-primary/80 font-mono"
-            onclick={() => {
-              editingTask = null
-              showAddDialog = true
-              loadDialogAgentInfo()
-            }}
-          >
-            + new_task <span class="text-[0.65rem] opacity-70 ml-1 font-normal">&#8984;T</span>
-          </button>
-        </div>
-
-        <button
-          type="button"
-          class="btn btn-ghost btn-sm text-neutral-content/60 hover:text-neutral-content font-mono gap-1 justify-self-center"
-          onclick={() => showProjectSwitcher = true}
-        >
-          {#if activeProject}
-            <span class="text-neutral-content/80 text-sm">{activeProject.name}</span>
-          {:else}
-            projects
-          {/if}
-        </button>
-
-        <div class="flex items-center gap-2 justify-end">
-          <button
-            type="button"
-            class="btn btn-ghost btn-sm text-neutral-content/60 hover:text-neutral-content font-mono text-xs gap-1"
-            onclick={() => showCommandPalette = true}
-          >
-            search <kbd class="kbd kbd-xs bg-neutral-content/10 text-neutral-content/50 border-neutral-content/20">&#8984;K</kbd>
-          </button>
-        </div>
-      </header>
-    {/if}
-
+  <div class="flex flex-col flex-1 min-w-0 relative">
     <main class="flex-1 overflow-hidden flex flex-col">
       {#if $currentView === 'settings'}
         <SettingsView mode="project" onClose={() => { pushNavState(); $currentView = 'board' }} onProjectDeleted={loadProjects} />
@@ -948,6 +906,21 @@
         <ProjectSetupDialog onClose={() => showProjectSetup = false} onProjectCreated={handleProjectCreated} />
       {/if}
     </main>
+
+    {#if $activeProjectId && $currentView !== 'global_settings'}
+      <button
+        type="button"
+        class="absolute bottom-6 right-6 btn btn-primary btn-circle btn-lg shadow-lg font-mono text-lg z-10"
+        aria-label="Create new task"
+        onclick={() => {
+          editingTask = null
+          showAddDialog = true
+          loadDialogAgentInfo()
+        }}
+      >
+        +
+      </button>
+    {/if}
   </div>
 </div>
 

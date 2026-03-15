@@ -212,6 +212,10 @@
 <svelte:window onkeydown={handleBoardKeydown} />
 
 <div class="flex flex-col h-full overflow-hidden">
+  <div class="flex items-center justify-between px-6 py-4 bg-base-200 border-b border-base-300 shrink-0">
+    <h2 class="text-xl font-semibold text-base-content m-0">Board</h2>
+  </div>
+
   <div class="flex items-center justify-between px-6 pt-4 pb-1">
     <button
       class="font-mono text-[11px] px-2.5 py-1 rounded cursor-pointer transition-colors {showBacklog ? 'bg-base-300 text-base-content' : 'text-secondary hover:text-base-content hover:bg-base-300/50'}"
