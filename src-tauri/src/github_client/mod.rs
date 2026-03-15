@@ -15,16 +15,20 @@
 //! Uses Personal Access Token (PAT) in Authorization header
 //! Authorization header format: `token {personal_access_token}`
 
-pub mod error;
-pub mod types;
-mod pulls;
 mod checks;
+pub mod error;
+mod events;
+mod pulls;
 mod reviews;
+pub mod types;
 
-pub use error::GitHubError;
-pub use types::*;
 pub use checks::{aggregate_ci_status, deduplicate_check_runs, filter_to_required};
+pub use error::GitHubError;
+pub use events::{
+    dedupe_pr_refs, extract_authored_pr_refs_from_user_events, parse_repo_event_changes,
+};
 pub use reviews::aggregate_review_status;
+pub use types::*;
 
 use reqwest::Client;
 use serde::de::DeserializeOwned;
@@ -53,6 +57,15 @@ impl GitHubClient {
         }
     }
 
+    fn github_get(&self, url: &str, token: &str) -> reqwest::RequestBuilder {
+        self.client
+            .get(url)
+            .header("Authorization", format!("token {}", token))
+            .header("User-Agent", "openforge")
+            .header("Accept", "application/vnd.github+json")
+            .header("X-GitHub-Api-Version", "2026-03-10")
+    }
+
     /// Make a GET request with ETag conditional request support.
     ///
     /// Sends `If-None-Match` header when a cached ETag exists for the URL.
@@ -71,11 +84,7 @@ impl GitHubClient {
                 .map(|c| c.etag.clone())
         };
 
-        let mut req = self
-            .client
-            .get(url)
-            .header("Authorization", format!("token {}", token))
-            .header("User-Agent", "openforge");
+        let mut req = self.github_get(url, token);
 
         if let Some(ref etag) = cached_etag {
             req = req.header("If-None-Match", etag);
@@ -142,10 +151,7 @@ impl GitHubClient {
         let url = "https://api.github.com/user";
 
         let response = self
-            .client
-            .get(url)
-            .header("Authorization", format!("token {}", token))
-            .header("User-Agent", "openforge")
+            .github_get(url, token)
             .send()
             .await
             .map_err(|e| GitHubError::NetworkError(e.to_string()))?;
