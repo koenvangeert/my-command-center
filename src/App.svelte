@@ -112,6 +112,7 @@
     if ($activeProjectId) {
       loadTasks()
       loadPullRequests()
+      refreshPrCounts()
     }
   })
 
@@ -174,6 +175,34 @@
       $ticketPrs = grouped
     } catch (e) {
       console.error('Failed to load pull requests:', e)
+    }
+  }
+
+  async function refreshPrCounts() {
+    if (!$activeProjectId) return
+    try {
+      let excludedRepos = new Set<string>()
+      try {
+        const val = await getProjectConfig($activeProjectId, 'pr_excluded_repos')
+        if (val) {
+          const parsed = JSON.parse(val)
+          excludedRepos = new Set(Array.isArray(parsed) ? parsed : [])
+        }
+      } catch {
+        // No exclusion config — count all
+      }
+
+      const isExcluded = (owner: string, name: string) => excludedRepos.has(`${owner}/${name}`)
+
+      const reviewPrList = await getReviewPrs()
+      const filtered = reviewPrList.filter(p => !isExcluded(p.repo_owner, p.repo_name))
+      $reviewRequestCount = filtered.filter(p => p.viewed_at === null).length
+
+      const authoredPrList = await getAuthoredPrs()
+      const filteredAuthored = authoredPrList.filter(p => !isExcluded(p.repo_owner, p.repo_name))
+      $authoredPrCount = filteredAuthored.filter(p => p.ci_status === 'failure' || p.review_status === 'changes_requested').length
+    } catch (e) {
+      console.error('Failed to refresh PR counts:', e)
     }
   }
 
@@ -808,7 +837,7 @@
   })
 </script>
 
-<div class="flex h-screen overflow-hidden bg-base-200">
+<div class="flex h-screen overflow-hidden bg-base-100">
   <AppSidebar
     collapsed={appSidebarCollapsed}
     currentView={$currentView}
@@ -828,9 +857,9 @@
       {:else if $currentView === 'global_settings'}
         <SettingsView mode="global" onClose={() => { pushNavState(); $currentView = 'board' }} onProjectDeleted={loadProjects} />
       {:else if $currentView === 'pr_review'}
-        <PrReviewView />
+        <PrReviewView projectName={activeProject?.name ?? ''} />
        {:else if $currentView === 'skills'}
-         <SkillsView />
+         <SkillsView projectName={activeProject?.name ?? ''} />
        {:else if $currentView === 'workqueue'}
          <WorkQueueView refreshTrigger={workQueueRefreshTrigger} />
        {:else if selectedTask}
@@ -843,7 +872,7 @@
               <span>Loading tasks...</span>
             </div>
           {:else}
-            <KanbanBoard onRunAction={handleRunAction} />
+            <KanbanBoard onRunAction={handleRunAction} projectName={activeProject?.name ?? ''} />
           {/if}
         </div>
       {/if}
