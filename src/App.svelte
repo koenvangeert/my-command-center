@@ -19,14 +19,13 @@
   import CheckpointToast from './components/CheckpointToast.svelte'
   import CiFailureToast from './components/CiFailureToast.svelte'
   import TaskSpawnedToast from './components/TaskSpawnedToast.svelte'
-  import ProjectSidebar from './components/ProjectSidebar.svelte'
+  import AppSidebar from './components/AppSidebar.svelte'
   import ProjectSwitcherModal from './components/ProjectSwitcherModal.svelte'
   import ProjectSetupDialog from './components/ProjectSetupDialog.svelte'
   import IconRail from './components/IconRail.svelte'
   import CommandPalette from './components/CommandPalette.svelte'
   import ActionPalette from './components/ActionPalette.svelte'
 
-  import { PanelLeft } from 'lucide-svelte'
   import { pushNavState, navigateBack } from './lib/navigation'
   import { loadActions, getEnabledActions } from './lib/actions'
   import type { Action } from './lib/types'
@@ -67,7 +66,7 @@
   let appMode = $state<string | null>(null)
   let showShortcutsDialog = $state(false)
   let showProjectSwitcher = $state(false)
-  let showProjectSidebar = $state(localStorage.getItem('projectSidebarVisible') !== 'false')
+  let appSidebarCollapsed = $state(localStorage.getItem('appSidebarCollapsed') === 'true')
   let showCommandPalette = $state(false)
   let showActionPalette = $state(false)
   let actionPaletteActions = $state<Action[]>([])
@@ -98,6 +97,12 @@
    
    $effect(() => {
      if ($currentView === 'workqueue') {
+       $selectedTaskId = null
+     }
+   })
+
+   $effect(() => {
+     if ($currentView === 'global_settings') {
        $selectedTaskId = null
      }
    })
@@ -336,8 +341,8 @@
     }
     if (e.metaKey && e.key === 'b') {
       e.preventDefault()
-      showProjectSidebar = !showProjectSidebar
-      localStorage.setItem('projectSidebarVisible', String(showProjectSidebar))
+      appSidebarCollapsed = !appSidebarCollapsed
+      localStorage.setItem('appSidebarCollapsed', String(appSidebarCollapsed))
       return
     }
     if (e.metaKey && e.key === 't') {
@@ -389,6 +394,28 @@
     if (e.metaKey && e.key === ',') {
       e.preventDefault()
       handleNavigate('settings')
+      return
+    }
+
+    // 1/2 — cycle through projects (plain keys, no modifier)
+    if ((e.key === '1' || e.key === '2') && !e.metaKey && !e.ctrlKey && !e.altKey && !isInputFocused()) {
+      const projectList = $projects
+      if (projectList.length === 0) return
+      e.preventDefault()
+      const currentIndex = projectList.findIndex((p) => p.id === $activeProjectId)
+      let nextIndex: number
+      if (e.key === '2') {
+        // Next project
+        nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % projectList.length
+      } else {
+        // Previous project
+        nextIndex = currentIndex <= 0 ? projectList.length - 1 : currentIndex - 1
+      }
+      $activeProjectId = projectList[nextIndex].id
+      // If on workqueue/global_settings, switch to board
+      if ($currentView === 'workqueue' || $currentView === 'global_settings') {
+        handleNavigate('board')
+      }
       return
     }
   }
@@ -782,69 +809,66 @@
 </script>
 
 <div class="flex h-screen overflow-hidden bg-base-200">
-  <IconRail currentView={$currentView} onNavigate={handleNavigate} reviewRequestCount={$reviewRequestCount} authoredPrCount={$authoredPrCount} modalsOpen={showCommandPalette || showProjectSwitcher || showActionPalette || showAddDialog} />
-  {#if showProjectSidebar}
-    <ProjectSidebar onNewProject={() => showProjectSetup = true} />
+  <AppSidebar
+    collapsed={appSidebarCollapsed}
+    currentView={$currentView}
+    onToggleCollapse={() => { appSidebarCollapsed = !appSidebarCollapsed; localStorage.setItem('appSidebarCollapsed', String(appSidebarCollapsed)) }}
+    onNewProject={() => showProjectSetup = true}
+    onNavigate={handleNavigate}
+  />
+  {#if $currentView !== 'workqueue' && $currentView !== 'global_settings'}
+    <IconRail currentView={$currentView} onNavigate={handleNavigate} reviewRequestCount={$reviewRequestCount} authoredPrCount={$authoredPrCount} modalsOpen={showCommandPalette || showProjectSwitcher || showActionPalette || showAddDialog} />
   {/if}
 
   <div class="flex flex-col flex-1 min-w-0">
-    <header class="bg-neutral text-neutral-content h-12 grid grid-cols-3 items-center px-6 shrink-0">
-      <div class="flex items-center gap-3">
-        <button
-          type="button"
-          class="btn btn-ghost btn-sm btn-square {showProjectSidebar ? 'text-primary' : 'text-neutral-content/40 hover:text-neutral-content'}"
-          onclick={() => { showProjectSidebar = !showProjectSidebar; localStorage.setItem('projectSidebarVisible', String(showProjectSidebar)) }}
-          title={showProjectSidebar ? 'Hide project sidebar (⌘B)' : 'Show project sidebar (⌘B)'}
-        >
-          <PanelLeft size={16} />
-        </button>
-        <span class="flex items-center gap-1.5 font-mono text-sm">
-          <span class="text-primary font-bold">&gt;</span>
-          <span class="font-semibold">open_forge</span>
-        </span>
-        {#if appMode === 'dev'}
-          <span class="badge badge-sm bg-primary text-black font-mono">DEV</span>
-        {/if}
-        <button
-          type="button"
-          class="btn btn-sm bg-primary text-black hover:bg-primary/80 font-mono"
-          onclick={() => {
-            editingTask = null
-            showAddDialog = true
-            loadDialogAgentInfo()
-          }}
-        >
-          + new_task <span class="text-[0.65rem] opacity-70 ml-1 font-normal">&#8984;T</span>
-        </button>
-      </div>
+    {#if $currentView !== 'workqueue' && $currentView !== 'global_settings'}
+      <header class="bg-neutral text-neutral-content h-12 grid grid-cols-3 items-center px-6 shrink-0">
+        <div class="flex items-center gap-3">
+          {#if appMode === 'dev'}
+            <span class="badge badge-sm bg-primary text-black font-mono">DEV</span>
+          {/if}
+          <button
+            type="button"
+            class="btn btn-sm bg-primary text-black hover:bg-primary/80 font-mono"
+            onclick={() => {
+              editingTask = null
+              showAddDialog = true
+              loadDialogAgentInfo()
+            }}
+          >
+            + new_task <span class="text-[0.65rem] opacity-70 ml-1 font-normal">&#8984;T</span>
+          </button>
+        </div>
 
-      <button
-        type="button"
-        class="btn btn-ghost btn-sm text-neutral-content/60 hover:text-neutral-content font-mono text-xs gap-1 justify-self-center"
-        onclick={() => showProjectSwitcher = true}
-      >
-        {#if activeProject}
-          <span class="text-neutral-content/80">{activeProject.name}</span>
-        {:else}
-          projects
-        {/if}
-        <kbd class="kbd kbd-xs bg-neutral-content/10 text-neutral-content/50 border-neutral-content/20">&#8984;P</kbd>
-      </button>
-
-      <div class="flex items-center gap-2 justify-end">
         <button
           type="button"
-          class="btn btn-ghost btn-sm text-neutral-content/60 hover:text-neutral-content font-mono text-xs gap-1"
-          onclick={() => showCommandPalette = true}
+          class="btn btn-ghost btn-sm text-neutral-content/60 hover:text-neutral-content font-mono gap-1 justify-self-center"
+          onclick={() => showProjectSwitcher = true}
         >
-          search <kbd class="kbd kbd-xs bg-neutral-content/10 text-neutral-content/50 border-neutral-content/20">&#8984;K</kbd>
+          {#if activeProject}
+            <span class="text-neutral-content/80 text-sm">{activeProject.name}</span>
+          {:else}
+            projects
+          {/if}
         </button>
-      </div>
-    </header>
+
+        <div class="flex items-center gap-2 justify-end">
+          <button
+            type="button"
+            class="btn btn-ghost btn-sm text-neutral-content/60 hover:text-neutral-content font-mono text-xs gap-1"
+            onclick={() => showCommandPalette = true}
+          >
+            search <kbd class="kbd kbd-xs bg-neutral-content/10 text-neutral-content/50 border-neutral-content/20">&#8984;K</kbd>
+          </button>
+        </div>
+      </header>
+    {/if}
 
     <main class="flex-1 overflow-hidden flex flex-col">
       {#if $currentView === 'settings'}
-        <SettingsView onClose={() => { pushNavState(); $currentView = 'board' }} onProjectDeleted={loadProjects} />
+        <SettingsView mode="project" onClose={() => { pushNavState(); $currentView = 'board' }} onProjectDeleted={loadProjects} />
+      {:else if $currentView === 'global_settings'}
+        <SettingsView mode="global" onClose={() => { pushNavState(); $currentView = 'board' }} onProjectDeleted={loadProjects} />
       {:else if $currentView === 'pr_review'}
         <PrReviewView />
        {:else if $currentView === 'skills'}
