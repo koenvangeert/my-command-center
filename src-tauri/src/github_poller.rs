@@ -511,6 +511,7 @@ struct PollSinglePrResult {
     combined_status: Option<CombinedStatusResponse>,
     reviews: Option<Vec<PrReview>>,
     has_requested_reviewers: bool,
+    is_queued: bool,
     required_check_names: Vec<String>,
     required_approving_count: Option<usize>,
     error: Option<String>,
@@ -545,6 +546,7 @@ async fn poll_single_pr(
                 combined_status: None,
                 reviews: None,
                 has_requested_reviewers: false,
+                is_queued: false,
                 required_check_names: vec![],
                 required_approving_count: None,
                 error: Some(format!("Failed to fetch comments: {}", e)),
@@ -612,6 +614,15 @@ async fn poll_single_pr(
         }
     };
 
+    let is_queued = match &pr_details_result {
+        Ok(details) => details
+            .extra
+            .get("merge_queue_entry")
+            .map(|v| !v.is_null())
+            .unwrap_or(false),
+        Err(_) => false,
+    };
+
     // Fetch required status check names and required review count from branch protection
     let (required_check_names, required_approving_count) = match &pr_details_result {
         Ok(details) => {
@@ -644,6 +655,7 @@ async fn poll_single_pr(
         combined_status,
         reviews,
         has_requested_reviewers,
+        is_queued,
         required_check_names,
         required_approving_count,
         error: None,
@@ -889,6 +901,13 @@ async fn poll_prs_for_project(
                 }
                 review_change_count += 1;
             }
+        }
+
+        if let Err(e) = db_lock.update_pr_is_queued(result.pr_id, result.is_queued) {
+            eprintln!(
+                "[GitHub Poller] Failed to update is_queued for PR #{}: {}",
+                result.pr_id, e
+            );
         }
 
         if let Err(e) = db_lock.set_pr_last_polled(result.pr_id, now) {
