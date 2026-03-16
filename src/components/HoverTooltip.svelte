@@ -43,15 +43,11 @@
 
     hoverTimer = setTimeout(() => {
       const tooltipWidth = 280
-      const margin = 8
+      const margin = 6
 
-      if (rect.right + margin + tooltipWidth < window.innerWidth) {
-        tooltipX = rect.right + margin
-      } else {
-        tooltipX = rect.left - margin - tooltipWidth
-      }
-
-      tooltipY = Math.max(8, Math.min(rect.top, window.innerHeight - 200))
+      const centerX = rect.left + rect.width / 2 - tooltipWidth / 2
+      tooltipX = Math.max(8, Math.min(centerX, window.innerWidth - tooltipWidth - 8))
+      tooltipY = Math.max(8, Math.min(rect.bottom + margin, window.innerHeight - 200))
       visible = true
     }, 200)
   }
