@@ -8,6 +8,8 @@ function defaultProps(overrides: Record<string, unknown> = {}) {
 		onTaskIdPrefixChange: vi.fn(),
 		isDarkMode: false,
 		onThemeToggle: vi.fn(),
+		githubPollInterval: 30,
+		onGithubPollIntervalChange: vi.fn(),
 		...overrides,
 	}
 }
@@ -109,5 +111,50 @@ describe('SettingsPreferencesCard', () => {
 		})
 	})
 
+	describe('GitHub Poll Interval', () => {
+		it('renders "GitHub Poll Interval" label', () => {
+			render(SettingsPreferencesCard, { props: defaultProps() })
+
+			expect(screen.getByText('GitHub Poll Interval')).toBeTruthy()
+		})
+
+		it('renders number input with current value', () => {
+			render(SettingsPreferencesCard, {
+				props: defaultProps({ githubPollInterval: 60 }),
+			})
+
+			const input = screen.getByTestId('poll-interval-input') as HTMLInputElement
+			expect(input).toBeTruthy()
+			expect(input.value).toBe('60')
+		})
+
+		it('input has min=30 and max=300 attributes', () => {
+			render(SettingsPreferencesCard, { props: defaultProps() })
+
+			const input = screen.getByTestId('poll-interval-input') as HTMLInputElement
+			expect(input.min).toBe('30')
+			expect(input.max).toBe('300')
+		})
+
+		it('calls onGithubPollIntervalChange when value changes', async () => {
+			const onGithubPollIntervalChange = vi.fn()
+			render(SettingsPreferencesCard, {
+				props: defaultProps({ onGithubPollIntervalChange }),
+			})
+
+			const input = screen.getByTestId('poll-interval-input') as HTMLInputElement
+			await fireEvent.input(input, { target: { value: '90' } })
+
+			expect(onGithubPollIntervalChange).toHaveBeenCalled()
+		})
+
+		it('shows helper text with current interval', () => {
+			render(SettingsPreferencesCard, {
+				props: defaultProps({ githubPollInterval: 45 }),
+			})
+
+			expect(screen.getByText('Polls every 45 seconds')).toBeTruthy()
+		})
+	})
 
 })

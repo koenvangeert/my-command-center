@@ -42,6 +42,7 @@ struct CachedResponse {
 pub struct GitHubClient {
     client: Client,
     etag_cache: Arc<Mutex<HashMap<String, CachedResponse>>>,
+    last_rate_limit_reset: Arc<Mutex<Option<i64>>>,
 }
 
 impl GitHubClient {
@@ -50,7 +51,19 @@ impl GitHubClient {
         Self {
             client: Client::new(),
             etag_cache: Arc::new(Mutex::new(HashMap::new())),
+            last_rate_limit_reset: Arc::new(Mutex::new(None)),
         }
+    }
+
+    /// Get the last rate limit reset timestamp, if a rate limit was hit.
+    pub fn get_last_rate_limit_reset(&self) -> Option<i64> {
+        *self.last_rate_limit_reset.lock().unwrap()
+    }
+
+    /// Clear the stored rate limit reset timestamp.
+    /// Call at the start of each poll cycle so stale values don't persist.
+    pub fn clear_rate_limit_reset(&self) {
+        *self.last_rate_limit_reset.lock().unwrap() = None;
     }
 
     /// Make a GET request with ETag conditional request support.
@@ -100,6 +113,16 @@ impl GitHubClient {
 
         if !response.status().is_success() {
             let status = response.status();
+            if status.as_u16() == 403 || status.as_u16() == 429 {
+                if let Some(reset_val) = response
+                    .headers()
+                    .get("x-ratelimit-reset")
+                    .and_then(|v| v.to_str().ok())
+                    .and_then(|s| s.parse::<i64>().ok())
+                {
+                    *self.last_rate_limit_reset.lock().unwrap() = Some(reset_val);
+                }
+            }
             let body = response
                 .text()
                 .await
@@ -206,5 +229,18 @@ mod tests {
         };
         assert_eq!(cached.etag, "\"abc123\"");
         assert_eq!(cached.body, "[{\"id\":1}]");
+    }
+
+    #[test]
+    fn test_last_rate_limit_reset_initialized_none() {
+        let client = GitHubClient::new();
+        let reset = client.last_rate_limit_reset.lock().unwrap();
+        assert!(reset.is_none());
+    }
+
+    #[test]
+    fn test_get_last_rate_limit_reset_returns_none_initially() {
+        let client = GitHubClient::new();
+        assert_eq!(client.get_last_rate_limit_reset(), None);
     }
 }
