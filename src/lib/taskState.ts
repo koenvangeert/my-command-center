@@ -17,8 +17,7 @@ function getPrState(prs: PullRequestInfo[]): TaskState | null {
   // Open PR checks in priority order
   if (pr.ci_status === 'failure') return 'ci-failed'
   if (pr.review_status === 'changes_requested') return 'changes-requested'
-  if (pr.ci_status === 'success' && pr.review_status === 'approved' && pr.is_queued) return 'pr-queued'
-  if (pr.ci_status === 'success' && pr.review_status === 'approved') return 'ready-to-merge'
+  if (pr.ci_status === 'success' && pr.review_status === 'approved') return pr.is_queued ? 'pr-queued' : 'ready-to-merge'
   if (pr.draft) return 'pr-draft'
   if (pr.ci_status === 'pending') return 'ci-running'
   if (pr.ci_status === 'success' && pr.review_status === 'review_required') return 'review-pending'
