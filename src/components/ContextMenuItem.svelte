@@ -3,9 +3,10 @@
     label: string
     onclick: (e: MouseEvent) => void
     variant?: 'default' | 'primary' | 'danger'
+    description?: string
   }
 
-  let { label, onclick, variant = 'default' }: Props = $props()
+  let { label, onclick, variant = 'default', description }: Props = $props()
 
   let variantClasses = $derived(
     variant === 'primary'
@@ -22,4 +23,7 @@
   role="menuitem"
 >
   {label}
+  {#if description}
+    <span class="block text-xs opacity-50 truncate max-w-[250px]">{description}</span>
+  {/if}
 </button>

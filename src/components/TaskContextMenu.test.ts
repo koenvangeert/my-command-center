@@ -194,4 +194,15 @@ describe('TaskContextMenu', () => {
     const labels = menuItems.map(el => el.textContent?.trim())
     expect(labels).not.toContain('Deploy')
   })
+
+  it('shows action prompt as description on custom action items', () => {
+    tasks.set([makeTask('T-1', 'backlog')])
+    const actions = [
+      { id: 'act-1', name: 'Deploy', prompt: 'deploy to production', builtin: false, enabled: true },
+    ]
+    render(TaskContextMenu, {
+      props: { visible: true, x: 0, y: 0, taskId: 'T-1', onClose: vi.fn(), onStart: vi.fn(), actions, onRunAction: vi.fn() },
+    })
+    expect(screen.getByText('deploy to production')).toBeTruthy()
+  })
 })

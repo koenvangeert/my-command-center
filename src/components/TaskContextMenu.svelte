@@ -63,7 +63,7 @@
   {#if taskStatus === 'backlog' && actions.length > 0 && onRunAction}
     <div class="border-t border-base-content/10 my-1"></div>
     {#each actions as action (action.id)}
-      <ContextMenuItem label={action.name} onclick={() => handleRunAction(action)} />
+      <ContextMenuItem label={action.name} description={action.prompt} onclick={() => handleRunAction(action)} />
     {/each}
   {/if}
   {#if taskStatus === 'doing'}

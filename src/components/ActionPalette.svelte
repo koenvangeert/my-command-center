@@ -96,6 +96,12 @@
   function getFlatIndex(action: PaletteAction): number {
     return flatList.indexOf(action)
   }
+
+  function getActionTooltip(action: PaletteAction): string | undefined {
+    if (!action.id.startsWith('custom-action-')) return undefined
+    const realId = action.id.replace('custom-action-', '')
+    return customActions.find(a => a.id === realId)?.prompt
+  }
 </script>
 
 <div
@@ -136,6 +142,7 @@
           {#each group.actions as action (action.id)}
             {@const flatIdx = getFlatIndex(action)}
             {@const isHighlighted = flatIdx === selectedIndex}
+            {@const tooltip = getActionTooltip(action)}
             <button
               type="button"
               data-palette-item
@@ -143,7 +150,12 @@
                 {isHighlighted ? 'bg-base-300' : 'hover:bg-base-300/60'}"
               onclick={() => onExecute(action.id)}
             >
-              <span class="flex-1">{action.label}</span>
+              <span class="flex-1">
+                {action.label}
+                {#if tooltip}
+                  <span class="block text-xs opacity-50 truncate max-w-[350px]">{tooltip}</span>
+                {/if}
+              </span>
               {#if action.shortcut}
                 <kbd class="kbd kbd-xs bg-base-content/5 text-base-content/40 border-base-content/10">{action.shortcut}</kbd>
               {/if}
