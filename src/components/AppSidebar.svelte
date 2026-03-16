@@ -29,13 +29,13 @@
     } catch (e) {
       console.error('Failed to load project attention:', e)
     }
+  })
 
-    if (appMode === 'dev') {
-      try {
-        branchName = await getGitBranch()
-      } catch (e) {
-        console.error('Failed to get git branch:', e)
-      }
+  $effect(() => {
+    if (appMode === 'dev' && !branchName) {
+      getGitBranch()
+        .then((name: string) => { branchName = name })
+        .catch((e: unknown) => console.error('Failed to get git branch:', e))
     }
   })
 
