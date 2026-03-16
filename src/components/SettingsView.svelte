@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte'
+  import { onMount, onDestroy } from 'svelte'
   import { activeProjectId, projects, codeCleanupTasksEnabled, error } from '../lib/stores'
   import {
     getProjectConfig,
@@ -88,9 +88,12 @@
     $codeCleanupTasksEnabled = isCodeCleanupTasksEnabled
   }
 
-  // UI state
+  // Auto-save state
   let isSaving = $state(false)
   let saved = $state(false)
+  let saveTimer: ReturnType<typeof setTimeout> | null = null
+  const SAVE_DEBOUNCE_MS = 500
+
   let activeSection = $state(mode === 'global' ? 'preferences' : 'general')
   let isDeleting = $state(false)
 
@@ -283,6 +286,24 @@
     }
   }
 
+  function scheduleSave() {
+    if (saveTimer) clearTimeout(saveTimer)
+    saveTimer = setTimeout(() => {
+      saveTimer = null
+      save()
+    }, SAVE_DEBOUNCE_MS)
+  }
+
+  function flushPendingSave() {
+    if (saveTimer) {
+      clearTimeout(saveTimer)
+      saveTimer = null
+      save()
+    }
+  }
+
+  onDestroy(flushPendingSave)
+
   async function handleDelete() {
     if (!$activeProjectId) return
     const confirmed = confirm(
@@ -352,15 +373,11 @@
           : 'Configure global preferences and credentials'}
       >
         {#snippet actions()}
-          <button class="btn btn-primary btn-sm" onclick={save} disabled={isSaving}>
-            {#if isSaving}
-              Saving...
-            {:else if saved}
-              Saved!
-            {:else}
-              Save Settings
-            {/if}
-          </button>
+          {#if isSaving}
+            <span class="text-xs text-base-content/50">Saving…</span>
+          {:else if saved}
+            <span class="text-xs text-success">Saved</span>
+          {/if}
         {/snippet}
       </ProjectPageHeader>
 
@@ -377,16 +394,16 @@
           {claudeInstalled}
           {claudeVersion}
           {claudeAuthenticated}
-          onProjectNameChange={(v) => (projectName = v)}
-          onProjectPathChange={(v) => (projectPath = v)}
-          onAiProviderChange={(v) => (aiProvider = v)}
-          onUseWorktreesChange={() => (useWorktrees = !useWorktrees)}
-          onProjectColorChange={(v) => (projectColor = v)}
+          onProjectNameChange={(v) => { projectName = v; scheduleSave() }}
+          onProjectPathChange={(v) => { projectPath = v; scheduleSave() }}
+          onAiProviderChange={(v) => { aiProvider = v; scheduleSave() }}
+          onUseWorktreesChange={() => { useWorktrees = !useWorktrees; scheduleSave() }}
+          onProjectColorChange={(v) => { projectColor = v; scheduleSave() }}
         />
 
         <SettingsBoardCard
           columns={boardColumns}
-          onColumnsChange={(cols) => (boardColumns = cols)}
+          onColumnsChange={(cols) => { boardColumns = cols; scheduleSave() }}
           disabled={!hasProject}
         />
 
@@ -394,23 +411,23 @@
           {jiraBoardId}
           {githubDefaultRepo}
           disabled={!hasProject}
-          onJiraBoardIdChange={(v) => (jiraBoardId = v)}
-          onGithubDefaultRepoChange={(v) => (githubDefaultRepo = v)}
+          onJiraBoardIdChange={(v) => { jiraBoardId = v; scheduleSave() }}
+          onGithubDefaultRepoChange={(v) => { githubDefaultRepo = v; scheduleSave() }}
         />
 
         <SettingsInstructionsCard
           {agentInstructions}
           disabled={!hasProject}
-          onInstructionsChange={(v) => (agentInstructions = v)}
+          onInstructionsChange={(v) => { agentInstructions = v; scheduleSave() }}
         />
 
         <SettingsActionsCard
           {actions}
           disabled={!hasProject}
-          onAddAction={addAction}
+          onAddAction={() => { addAction(); scheduleSave() }}
           onDeleteAction={removeAction}
-          onToggleAction={toggleAction}
-          onUpdateAction={updateAction}
+          onToggleAction={(id: string) => { toggleAction(id); scheduleSave() }}
+          onUpdateAction={(id: string, field: string, value: string) => { updateAction(id, field, value); scheduleSave() }}
           onResetActions={resetActions}
         />
 
@@ -433,9 +450,9 @@
       {:else}
         <SettingsPreferencesCard
           {taskIdPrefix}
-          onTaskIdPrefixChange={(v) => (taskIdPrefix = v)}
+          onTaskIdPrefixChange={(v) => { taskIdPrefix = v; scheduleSave() }}
           {isDarkMode}
-          onThemeToggle={handleThemeToggle}
+          onThemeToggle={() => { handleThemeToggle(); scheduleSave() }}
         />
 
         <SettingsAICard
@@ -455,15 +472,15 @@
           {jiraUsername}
           {jiraApiToken}
           {githubToken}
-          onJiraBaseUrlChange={(v: string) => (jiraBaseUrl = v)}
-          onJiraUsernameChange={(v: string) => (jiraUsername = v)}
-          onJiraApiTokenChange={(v: string) => (jiraApiToken = v)}
-          onGithubTokenChange={(v: string) => (githubToken = v)}
+          onJiraBaseUrlChange={(v: string) => { jiraBaseUrl = v; scheduleSave() }}
+          onJiraUsernameChange={(v: string) => { jiraUsername = v; scheduleSave() }}
+          onJiraApiTokenChange={(v: string) => { jiraApiToken = v; scheduleSave() }}
+          onGithubTokenChange={(v: string) => { githubToken = v; scheduleSave() }}
         />
 
         <SettingsExperimentalCard
           codeCleanupTasksEnabled={isCodeCleanupTasksEnabled}
-          onCodeCleanupTasksToggle={handleCodeCleanupTasksToggle}
+          onCodeCleanupTasksToggle={() => { handleCodeCleanupTasksToggle(); scheduleSave() }}
         />
       {/if}
     </div>

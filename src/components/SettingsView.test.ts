@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/svelte'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { writable } from 'svelte/store'
 
 vi.mock('../lib/ipc', () => ({
@@ -244,23 +244,78 @@ describe('SettingsView', () => {
     expect(screen.queryByPlaceholderText('My Project')).toBeNull()
   })
 
-  it('renders a single Save Settings button', () => {
+  it('does not render a Save Settings button (auto-save replaces it)', () => {
     render(SettingsView, { props: defaultProps })
-    expect(screen.getByRole('button', { name: /save settings/i })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /save settings/i })).toBeNull()
   })
 
-  it('clicking Save calls setProjectConfig and setConfig', async () => {
-    render(SettingsView, { props: defaultProps })
+  describe('auto-save', () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+    })
 
-    await new Promise((r) => setTimeout(r, 50))
+    afterEach(() => {
+      vi.useRealTimers()
+    })
 
-    const saveBtn = screen.getByRole('button', { name: /save settings/i })
-    await fireEvent.click(saveBtn)
+    it('saves project settings after debounce when a field changes', async () => {
+      render(SettingsView, { props: defaultProps })
 
-    await new Promise((r) => setTimeout(r, 50))
+      await vi.advanceTimersByTimeAsync(50)
+      vi.mocked(setProjectConfig).mockClear()
+      vi.mocked(setConfig).mockClear()
+      vi.mocked(updateProject).mockClear()
 
-    expect(vi.mocked(setConfig)).toHaveBeenCalled()
-    expect(vi.mocked(setProjectConfig)).toHaveBeenCalled()
+      const nameInput = screen.getByPlaceholderText('My Project')
+      await fireEvent.input(nameInput, { target: { value: 'New Name' } })
+
+      expect(vi.mocked(setProjectConfig)).not.toHaveBeenCalled()
+
+      await vi.advanceTimersByTimeAsync(600)
+
+      expect(vi.mocked(updateProject)).toHaveBeenCalled()
+      expect(vi.mocked(setProjectConfig)).toHaveBeenCalled()
+      expect(vi.mocked(setConfig)).toHaveBeenCalled()
+    })
+
+    it('saves global settings after debounce when a field changes', async () => {
+      activeProjectId.set(null)
+      projects.set([])
+      render(SettingsView, { props: { ...defaultProps, mode: 'global' as const } })
+
+      await vi.advanceTimersByTimeAsync(50)
+      vi.mocked(setConfig).mockClear()
+
+      const jiraInput = screen.getByPlaceholderText('https://your-domain.atlassian.net')
+      await fireEvent.input(jiraInput, { target: { value: 'https://test.atlassian.net' } })
+
+      await vi.advanceTimersByTimeAsync(600)
+
+      expect(vi.mocked(setConfig)).toHaveBeenCalled()
+    })
+
+    it('resets debounce when multiple changes happen quickly', async () => {
+      render(SettingsView, { props: defaultProps })
+
+      await vi.advanceTimersByTimeAsync(50)
+      vi.mocked(setProjectConfig).mockClear()
+      vi.mocked(setConfig).mockClear()
+      vi.mocked(updateProject).mockClear()
+
+      const nameInput = screen.getByPlaceholderText('My Project')
+
+      await fireEvent.input(nameInput, { target: { value: 'A' } })
+      await vi.advanceTimersByTimeAsync(200)
+      await fireEvent.input(nameInput, { target: { value: 'AB' } })
+      await vi.advanceTimersByTimeAsync(200)
+      await fireEvent.input(nameInput, { target: { value: 'ABC' } })
+
+      expect(vi.mocked(updateProject)).not.toHaveBeenCalled()
+
+      await vi.advanceTimersByTimeAsync(600)
+
+      expect(vi.mocked(updateProject)).toHaveBeenCalledTimes(1)
+    })
   })
 
   it('renders Add Action button', () => {
