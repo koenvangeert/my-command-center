@@ -6,15 +6,23 @@
 		onTaskIdPrefixChange: (value: string) => void
 		isDarkMode: boolean
 		onThemeToggle: () => void
+		githubPollInterval: number
+		onGithubPollIntervalChange: (value: number) => void
 	}
 
-	const { taskIdPrefix, onTaskIdPrefixChange, isDarkMode, onThemeToggle }: Props = $props()
+	const { taskIdPrefix, onTaskIdPrefixChange, isDarkMode, onThemeToggle, githubPollInterval, onGithubPollIntervalChange }: Props = $props()
 
 	// Sanitize input: strip non-alphanumeric, uppercase, max 5 chars
 	function handleInput(e: Event) {
 		const raw = (e.currentTarget as HTMLInputElement).value
 		const sanitized = raw.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 5)
 		onTaskIdPrefixChange(sanitized)
+	}
+
+	function handlePollIntervalInput(e: Event) {
+		const raw = parseInt((e.currentTarget as HTMLInputElement).value, 10)
+		const clamped = Math.max(30, Math.min(300, isNaN(raw) ? 30 : raw))
+		onGithubPollIntervalChange(clamped)
 	}
 
 	const isValid = $derived(
@@ -66,14 +74,32 @@
 				<p class="text-xs text-error">Task ID prefix must be 1-5 alphanumeric characters</p>
 			{/if}
 
-			{#if isValid}
-				<div class="bg-base-200 rounded px-3 py-2">
-					<p class="text-xs text-base-content/70">
-						New tasks will be created as <span class="font-semibold">{previewTaskId}</span>,
-						<span class="font-semibold">{taskIdPrefix}-2</span>, etc.
-					</p>
-				</div>
-			{/if}
+		{#if isValid}
+			<div class="bg-base-200 rounded px-3 py-2">
+				<p class="text-xs text-base-content/70">
+					New tasks will be created as <span class="font-semibold">{previewTaskId}</span>,
+					<span class="font-semibold">{taskIdPrefix}-2</span>, etc.
+				</p>
+			</div>
+		{/if}
+
+		<div class="border-b border-base-300"></div>
+
+		<div class="flex flex-col gap-1">
+			<span class="text-sm text-base-content">GitHub Poll Interval</span>
+			<span class="text-[0.7rem] text-base-content/50">How often to check GitHub for updates (seconds)</span>
+			<input
+				type="number"
+				min="30"
+				max="300"
+				step="5"
+				value={githubPollInterval}
+				data-testid="poll-interval-input"
+				class="input input-bordered input-sm w-full"
+				oninput={handlePollIntervalInput}
+			/>
+			<p class="text-xs text-base-content/70">Polls every {githubPollInterval} seconds</p>
 		</div>
 	</div>
+</div>
 </div>
