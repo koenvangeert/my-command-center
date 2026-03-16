@@ -73,7 +73,6 @@
   let showCommandPalette = $state(false)
   let showActionPalette = $state(false)
   let actionPaletteActions = $state<Action[]>([])
-  let workQueueRefreshTrigger = $state(0)
 
   useCommandHeld()
 
@@ -541,7 +540,6 @@
         }
         loadTasks()
         loadProjectAttention()
-        workQueueRefreshTrigger++
       })
     )
 
@@ -796,7 +794,6 @@
           $taskSpawned = { taskId: event.payload.task_id, initial_prompt: event.payload.task_id }
         }
         loadTasks()
-        workQueueRefreshTrigger++
       })
     )
 
@@ -868,7 +865,7 @@
        {:else if $currentView === 'skills'}
          <SkillsView projectName={activeProject?.name ?? ''} />
        {:else if $currentView === 'workqueue'}
-         <WorkQueueView refreshTrigger={workQueueRefreshTrigger} onRunAction={handleRunAction} />
+         <WorkQueueView onRunAction={handleRunAction} />
        {:else if selectedTask}
         <TaskDetailView task={selectedTask} onRunAction={handleRunAction} />
       {:else}

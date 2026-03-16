@@ -25,10 +25,30 @@ vi.mock('../lib/ipc', () => ({
   deleteTask: vi.fn().mockResolvedValue(undefined),
 }))
 
+const listenCallbacks = new Map<string, ((event: { payload: unknown }) => void)[]>()
+const mockUnlisten = vi.fn()
+
+vi.mock('@tauri-apps/api/event', () => ({
+  listen: vi.fn().mockImplementation((eventName: string, cb: (event: { payload: unknown }) => void) => {
+    const existing = listenCallbacks.get(eventName) || []
+    existing.push(cb)
+    listenCallbacks.set(eventName, existing)
+    return Promise.resolve(mockUnlisten)
+  }),
+}))
+
+function emitTauriEvent(eventName: string, payload: unknown = {}) {
+  const callbacks = listenCallbacks.get(eventName) || []
+  for (const cb of callbacks) {
+    cb({ payload })
+  }
+}
+
 import WorkQueueView from './WorkQueueView.svelte'
 import { activeProjectId, currentView, selectedTaskId } from '../lib/stores'
 import { getWorkQueueTasks, getConfig, setConfig } from '../lib/ipc'
 import { pushNavState } from '../lib/navigation'
+import { listen } from '@tauri-apps/api/event'
 
 const now = Math.floor(Date.now() / 1000)
 
@@ -71,9 +91,19 @@ function makeEntry(overrides: {
 describe('WorkQueueView', () => {
   beforeEach(() => {
     Element.prototype.scrollIntoView = vi.fn()
+    // Polyfill Web Animations API for JSDOM (needed by Svelte animate:flip)
+    if (!Element.prototype.animate) {
+      Element.prototype.animate = vi.fn().mockReturnValue({
+        onfinish: null,
+        cancel: vi.fn(),
+        finished: Promise.resolve(),
+      })
+    }
     activeProjectId.set(null)
     currentView.set('workqueue')
     selectedTaskId.set(null)
+    listenCallbacks.clear()
+    mockUnlisten.mockClear()
     vi.clearAllMocks()
     vi.mocked(getWorkQueueTasks).mockResolvedValue([])
     vi.mocked(getConfig).mockResolvedValue(null)
@@ -205,12 +235,12 @@ describe('WorkQueueView', () => {
     })
   })
 
-  it('re-fetches when refreshTrigger changes', async () => {
+  it('re-fetches when a Tauri event fires', async () => {
     vi.mocked(getWorkQueueTasks).mockResolvedValue([
       makeEntry({ id: 'T-1' }),
     ])
 
-    const { rerender } = render(WorkQueueView, { props: { refreshTrigger: 0 } })
+    render(WorkQueueView)
 
     await waitFor(() => {
       expect(getWorkQueueTasks).toHaveBeenCalledTimes(1)
@@ -221,14 +251,14 @@ describe('WorkQueueView', () => {
       makeEntry({ id: 'T-2', initial_prompt: 'New task' }),
     ])
 
-    await rerender({ refreshTrigger: 1 })
+    emitTauriEvent('task-changed', { action: 'updated', task_id: 'T-2' })
 
     await waitFor(() => {
       expect(getWorkQueueTasks).toHaveBeenCalledTimes(2)
     })
   })
 
-  it('keeps existing task cards mounted during refresh-trigger reloads', async () => {
+  it('keeps existing task cards mounted during event-triggered reloads', async () => {
     let resolveRefresh: ((value: WorkQueueEntry[]) => void) | null = null
 
     vi.mocked(getWorkQueueTasks)
@@ -237,13 +267,13 @@ describe('WorkQueueView', () => {
         resolveRefresh = resolve
       }))
 
-    const { rerender } = render(WorkQueueView, { props: { refreshTrigger: 0 } })
+    render(WorkQueueView)
 
     await waitFor(() => {
       expect(screen.getByText('T-1')).toBeTruthy()
     })
 
-    await rerender({ refreshTrigger: 1 })
+    emitTauriEvent('task-changed', { action: 'updated', task_id: 'T-1' })
 
     expect(screen.getByText('T-1')).toBeTruthy()
     expect(screen.queryByText('Loading...')).toBeNull()
@@ -255,7 +285,7 @@ describe('WorkQueueView', () => {
     })
   })
 
-  it('does not scroll focused work queue item into view on refresh-trigger reloads', async () => {
+  it('does not scroll focused work queue item into view on event-triggered reloads', async () => {
     vi.mocked(getWorkQueueTasks)
       .mockResolvedValueOnce([
         makeEntry({ id: 'T-1', project_name: 'Frontend App' }),
@@ -267,7 +297,7 @@ describe('WorkQueueView', () => {
         makeEntry({ id: 'T-3', project_name: 'Frontend App', initial_prompt: 'Third task' }),
       ])
 
-    const { rerender } = render(WorkQueueView, { props: { refreshTrigger: 0 } })
+    render(WorkQueueView)
 
     await waitFor(() => {
       expect(screen.getByText('T-1')).toBeTruthy()
@@ -275,7 +305,7 @@ describe('WorkQueueView', () => {
 
     vi.mocked(Element.prototype.scrollIntoView).mockClear()
 
-    await rerender({ refreshTrigger: 1 })
+    emitTauriEvent('task-changed', { action: 'updated', task_id: 'T-3' })
 
     await waitFor(() => {
       expect(screen.getByText('T-3')).toBeTruthy()
@@ -294,7 +324,7 @@ describe('WorkQueueView', () => {
         makeEntry({ id: 'T-1', project_name: 'Frontend App', project_id: 'proj-1' }),
       ])
 
-    const { rerender } = render(WorkQueueView, { props: { refreshTrigger: 0 } })
+    render(WorkQueueView)
 
     await waitFor(() => {
       expect(screen.getByText('Backend API')).toBeTruthy()
@@ -303,11 +333,10 @@ describe('WorkQueueView', () => {
     await fireEvent.keyDown(window, { key: 'l' })
     vi.mocked(Element.prototype.scrollIntoView).mockClear()
 
-    await rerender({ refreshTrigger: 1 })
+    emitTauriEvent('task-changed', { action: 'deleted', task_id: 'T-2' })
 
     await waitFor(() => {
-      expect(screen.queryByText('Backend API')).toBeNull()
-      expect(screen.getByText('Frontend App')).toBeTruthy()
+      expect(getWorkQueueTasks).toHaveBeenCalledTimes(2)
     })
 
     expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled()
@@ -574,6 +603,122 @@ describe('WorkQueueView', () => {
 
       // Should NOT navigate
       expect(pushNavState).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('auto-refresh via Tauri events', () => {
+    it('registers Tauri event listeners on mount', async () => {
+      vi.mocked(getWorkQueueTasks).mockResolvedValue([])
+
+      render(WorkQueueView)
+
+      await waitFor(() => {
+        expect(listen).toHaveBeenCalled()
+      })
+
+      const registeredEvents = vi.mocked(listen).mock.calls.map(c => c[0])
+      expect(registeredEvents).toContain('task-changed')
+      expect(registeredEvents).toContain('action-complete')
+      expect(registeredEvents).toContain('agent-status-changed')
+      expect(registeredEvents).toContain('implementation-failed')
+    })
+
+    it('re-fetches tasks when task-changed event fires', async () => {
+      vi.mocked(getWorkQueueTasks).mockResolvedValue([
+        makeEntry({ id: 'T-1' }),
+      ])
+
+      render(WorkQueueView)
+
+      await waitFor(() => {
+        expect(screen.getByText('T-1')).toBeTruthy()
+      })
+
+      vi.mocked(getWorkQueueTasks).mockResolvedValue([
+        makeEntry({ id: 'T-1' }),
+        makeEntry({ id: 'T-2', initial_prompt: 'New task from event' }),
+      ])
+
+      emitTauriEvent('task-changed', { action: 'updated', task_id: 'T-2' })
+
+      await waitFor(() => {
+        expect(screen.getByText('T-2')).toBeTruthy()
+      })
+    })
+
+    it('re-fetches tasks when action-complete event fires', async () => {
+      vi.mocked(getWorkQueueTasks).mockResolvedValue([])
+
+      render(WorkQueueView)
+
+      await waitFor(() => {
+        expect(screen.getByText('No tasks waiting for review')).toBeTruthy()
+      })
+
+      vi.mocked(getWorkQueueTasks).mockResolvedValue([
+        makeEntry({ id: 'T-5', initial_prompt: 'Completed task' }),
+      ])
+
+      emitTauriEvent('action-complete', { task_id: 'T-5' })
+
+      await waitFor(() => {
+        expect(screen.getByText('T-5')).toBeTruthy()
+      })
+    })
+
+    it('re-fetches tasks when agent-status-changed event fires', async () => {
+      vi.mocked(getWorkQueueTasks).mockResolvedValue([
+        makeEntry({ id: 'T-1' }),
+      ])
+
+      render(WorkQueueView)
+
+      await waitFor(() => {
+        expect(screen.getByText('T-1')).toBeTruthy()
+      })
+
+      vi.mocked(getWorkQueueTasks).mockResolvedValue([
+        makeEntry({ id: 'T-1' }),
+        makeEntry({ id: 'T-3', initial_prompt: 'Agent finished' }),
+      ])
+
+      emitTauriEvent('agent-status-changed', { task_id: 'T-3', status: 'completed' })
+
+      await waitFor(() => {
+        expect(screen.getByText('T-3')).toBeTruthy()
+      })
+    })
+
+    it('re-fetches tasks when implementation-failed event fires', async () => {
+      vi.mocked(getWorkQueueTasks).mockResolvedValue([])
+
+      render(WorkQueueView)
+
+      await waitFor(() => {
+        expect(getWorkQueueTasks).toHaveBeenCalledTimes(1)
+      })
+
+      emitTauriEvent('implementation-failed', { task_id: 'T-1', error: 'build failed' })
+
+      await waitFor(() => {
+        expect(getWorkQueueTasks).toHaveBeenCalledTimes(2)
+      })
+    })
+
+    it('unregisters Tauri event listeners on unmount', async () => {
+      vi.mocked(getWorkQueueTasks).mockResolvedValue([])
+
+      const { unmount } = render(WorkQueueView)
+
+      await waitFor(() => {
+        expect(listen).toHaveBeenCalled()
+      })
+
+      const listenerCount = vi.mocked(listen).mock.calls.length
+
+      unmount()
+
+      expect(mockUnlisten).toHaveBeenCalledTimes(listenerCount)
     })
   })
 })

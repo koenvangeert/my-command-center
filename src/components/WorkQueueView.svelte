@@ -1,5 +1,9 @@
 <script lang="ts">
-  import { untrack } from 'svelte'
+  import { onMount, onDestroy, untrack } from 'svelte'
+  import { fly, fade } from 'svelte/transition'
+  import { flip } from 'svelte/animate'
+  import { listen } from '@tauri-apps/api/event'
+  import type { UnlistenFn } from '@tauri-apps/api/event'
   import { ChevronLeft, ChevronRight } from 'lucide-svelte'
   import type { WorkQueueEntry } from '../lib/types'
   import type { AgentSession } from '../lib/types'
@@ -12,11 +16,10 @@
   import TaskContextMenu from './TaskContextMenu.svelte'
 
   interface Props {
-    refreshTrigger?: number
     onRunAction?: (data: { taskId: string; actionPrompt: string; agent: string | null }) => void
   }
 
-  let { refreshTrigger = 0, onRunAction }: Props = $props()
+  let { onRunAction }: Props = $props()
 
   let entries = $state<WorkQueueEntry[]>([])
   let loading = $state(true)
@@ -243,10 +246,25 @@
     loadTasks(true)
   })
 
-  $effect(() => {
-    if (refreshTrigger > 0) {
-      loadTasks(false)
+  // Auto-refresh: listen for Tauri events that affect work queue
+  const tauriEvents = ['task-changed', 'action-complete', 'agent-status-changed', 'implementation-failed']
+  let unlisteners: UnlistenFn[] = []
+
+  onMount(() => {
+    for (const eventName of tauriEvents) {
+      listen(eventName, () => {
+        loadTasks(false)
+      }).then((unlisten: UnlistenFn) => {
+        unlisteners.push(unlisten)
+      })
     }
+  })
+
+  onDestroy(() => {
+    for (const unlisten of unlisteners) {
+      unlisten()
+    }
+    unlisteners = []
   })
 </script>
 
@@ -270,6 +288,8 @@
           data-vim-wq-col={projectName}
           role="group"
           aria-label={`${projectName} column`}
+          in:fly={{ x: 30, duration: 300 }}
+          out:fade={{ duration: 200 }}
         >
           <div
             class="flex items-center gap-2 mb-3 px-1"
@@ -301,7 +321,15 @@
             {#each projectEntries as entry, i (entry.task.id)}
               {@const colIdx = sortedColumns.findIndex(([n]) => n === projectName)}
               {@const isVimFocused = colIdx === focusedCol && vimWq.focusedIndex === i}
-              <div data-testid={`task-card-${entry.task.id}`} data-vim-wq-item class={isVimFocused ? 'vim-focus' : ''} oncontextmenu={(e: MouseEvent) => handleContextMenu(e, entry.task.id)}>
+              <div
+                data-testid={`task-card-${entry.task.id}`}
+                data-vim-wq-item
+                class={isVimFocused ? 'vim-focus' : ''}
+                oncontextmenu={(e: MouseEvent) => handleContextMenu(e, entry.task.id)}
+                in:fly={{ y: 20, duration: 300 }}
+                out:fade={{ duration: 200 }}
+                animate:flip={{ duration: 300 }}
+              >
                 <TaskCard
                   task={entry.task}
                   session={getSession(entry)}
