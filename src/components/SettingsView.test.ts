@@ -106,25 +106,19 @@ describe('SettingsView', () => {
     expect(screen.queryAllByText(/actions/i).length).toBeGreaterThan(0)
   })
 
-  it('renders sidebar nav with General link', () => {
+  it('renders General section card', () => {
     render(SettingsView, { props: defaultProps })
-    const links = screen.getAllByRole('link')
-    const texts = links.map((l) => l.textContent ?? '')
-    expect(texts.some((t) => /general/i.test(t))).toBe(true)
+    expect(screen.queryAllByText(/general/i).length).toBeGreaterThan(0)
   })
 
-  it('renders sidebar nav with Integrations link', () => {
+  it('renders Integrations section card', () => {
     render(SettingsView, { props: defaultProps })
-    const links = screen.getAllByRole('link')
-    const texts = links.map((l) => l.textContent ?? '')
-    expect(texts.some((t) => /integrations/i.test(t))).toBe(true)
+    expect(screen.queryAllByText(/integrations/i).length).toBeGreaterThan(0)
   })
 
-  it('renders sidebar nav with Instructions link', () => {
+  it('renders Instructions section card', () => {
     render(SettingsView, { props: defaultProps })
-    const links = screen.getAllByRole('link')
-    const texts = links.map((l) => l.textContent ?? '')
-    expect(texts.some((t) => /instructions/i.test(t))).toBe(true)
+    expect(screen.queryAllByText(/instructions/i).length).toBeGreaterThan(0)
   })
 
   it('does not render sidebar nav in global mode', () => {
@@ -143,11 +137,9 @@ describe('SettingsView', () => {
     expect(links.length).toBe(0)
   })
 
-  it('renders sidebar nav with Actions link', () => {
+  it('renders Actions section card', () => {
     render(SettingsView, { props: defaultProps })
-    const links = screen.getAllByRole('link')
-    const texts = links.map((l) => l.textContent ?? '')
-    expect(texts.some((t) => /actions/i.test(t))).toBe(true)
+    expect(screen.queryAllByText(/actions/i).length).toBeGreaterThan(0)
   })
 
   it('renders project name field', () => {
@@ -209,7 +201,7 @@ describe('SettingsView', () => {
 
   it('shows Project Settings header when project is active', () => {
     render(SettingsView, { props: defaultProps })
-    expect(screen.queryAllByText(/project settings/i).length).toBeGreaterThan(0)
+    expect(screen.getByText('Test Project — Settings')).toBeTruthy()
   })
 
   it('shows Global Settings header when no project is active', () => {
@@ -219,9 +211,9 @@ describe('SettingsView', () => {
     expect(screen.queryAllByText(/global settings/i).length).toBeGreaterThan(0)
   })
 
-  it('renders sidebar Project group label in project mode', () => {
+  it('renders project name in header in project mode', () => {
     render(SettingsView, { props: defaultProps })
-    expect(screen.queryAllByText(/^project$/i).length).toBeGreaterThan(0)
+    expect(screen.getByText(/Test Project/)).toBeTruthy()
   })
 
   it('does not render sidebar Global group label in global mode', () => {
