@@ -20,6 +20,7 @@ pub struct PrRow {
     pub created_at: i64,
     pub updated_at: i64,
     pub draft: bool,
+    pub is_queued: bool,
     pub unaddressed_comment_count: i64,
 }
 
@@ -42,7 +43,7 @@ impl super::Database {
     pub fn get_open_prs(&self) -> Result<Vec<PrRow>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT id, ticket_id, repo_owner, repo_name, title, url, state, head_sha, ci_status, ci_check_runs, review_status, merged_at, created_at, updated_at, draft,
+            "SELECT id, ticket_id, repo_owner, repo_name, title, url, state, head_sha, ci_status, ci_check_runs, review_status, merged_at, created_at, updated_at, draft, is_queued,
                     (SELECT COUNT(*) FROM pr_comments WHERE pr_id = pull_requests.id AND addressed = 0) as unaddressed_comment_count
              FROM pull_requests
              WHERE state = 'open'
@@ -66,7 +67,8 @@ impl super::Database {
                 created_at: row.get(12)?,
                 updated_at: row.get(13)?,
                 draft: row.get(14)?,
-                unaddressed_comment_count: row.get(15)?,
+                is_queued: row.get(15)?,
+                unaddressed_comment_count: row.get(16)?,
             })
         })?;
 
@@ -80,7 +82,7 @@ impl super::Database {
     pub fn get_all_pull_requests(&self) -> Result<Vec<PrRow>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT id, ticket_id, repo_owner, repo_name, title, url, state, head_sha, ci_status, ci_check_runs, review_status, merged_at, created_at, updated_at, draft,
+            "SELECT id, ticket_id, repo_owner, repo_name, title, url, state, head_sha, ci_status, ci_check_runs, review_status, merged_at, created_at, updated_at, draft, is_queued,
                     (SELECT COUNT(*) FROM pr_comments WHERE pr_id = pull_requests.id AND addressed = 0) as unaddressed_comment_count
              FROM pull_requests
              ORDER BY updated_at DESC",
@@ -103,7 +105,8 @@ impl super::Database {
                 created_at: row.get(12)?,
                 updated_at: row.get(13)?,
                 draft: row.get(14)?,
-                unaddressed_comment_count: row.get(15)?,
+                is_queued: row.get(15)?,
+                unaddressed_comment_count: row.get(16)?,
             })
         })?;
 
@@ -274,6 +277,15 @@ impl super::Database {
         conn.execute(
             "UPDATE pull_requests SET state = 'merged', merged_at = ?1 WHERE id = ?2",
             rusqlite::params![merged_at, id],
+        )?;
+        Ok(())
+    }
+
+    pub fn update_pr_is_queued(&self, pr_id: i64, is_queued: bool) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "UPDATE pull_requests SET is_queued = ?1 WHERE id = ?2",
+            rusqlite::params![is_queued as i32, pr_id],
         )?;
         Ok(())
     }
@@ -771,6 +783,32 @@ mod tests {
 
         drop(db);
         let _ = fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_update_pr_is_queued() {
+        let (db, path) = make_test_db("update_pr_is_queued");
+        insert_test_task(&db);
+        let _ = db.insert_pull_request(
+            1,
+            "T-100",
+            "owner",
+            "repo",
+            "Test PR",
+            "https://url",
+            "open",
+            1000,
+            1000,
+            false,
+        );
+        db.update_pr_is_queued(1, true).unwrap();
+        let prs = db.get_open_prs().unwrap();
+        assert_eq!(prs.len(), 1);
+        assert!(prs[0].is_queued);
+        db.update_pr_is_queued(1, false).unwrap();
+        let prs = db.get_open_prs().unwrap();
+        assert!(!prs[0].is_queued);
+        let _ = std::fs::remove_file(&path);
     }
 
     #[test]

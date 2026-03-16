@@ -113,8 +113,8 @@ impl super::Database {
                         permission_mode: row.get(14)?,
                     },
                     row.get::<_, String>(15)?,         // project_name
-                    row.get::<_, Option<String>>(16)?,  // session_status
-                    row.get::<_, Option<String>>(17)?,  // session_checkpoint_data
+                    row.get::<_, Option<String>>(16)?, // session_status
+                    row.get::<_, Option<String>>(17)?, // session_checkpoint_data
                 ))
             })
             .map_err(|e| format!("Failed to execute get_work_queue_tasks query: {e}"))?
@@ -127,57 +127,75 @@ impl super::Database {
 
         // Step 2: Fetch PRs for all work queue task IDs
         let task_ids: Vec<&str> = task_rows.iter().map(|(t, _, _, _)| t.id.as_str()).collect();
-        let placeholders: Vec<String> = task_ids.iter().enumerate().map(|(i, _)| format!("?{}", i + 1)).collect();
+        let placeholders: Vec<String> = task_ids
+            .iter()
+            .enumerate()
+            .map(|(i, _)| format!("?{}", i + 1))
+            .collect();
         let pr_sql = format!(
-            "SELECT id, ticket_id, repo_owner, repo_name, title, url, state, head_sha, ci_status, ci_check_runs, review_status, merged_at, created_at, updated_at, draft,
+            "SELECT id, ticket_id, repo_owner, repo_name, title, url, state, head_sha, ci_status, ci_check_runs, review_status, merged_at, created_at, updated_at, draft, is_queued,
                     (SELECT COUNT(*) FROM pr_comments WHERE pr_id = pull_requests.id AND addressed = 0) as unaddressed_comment_count
              FROM pull_requests
              WHERE ticket_id IN ({})
              ORDER BY updated_at DESC",
             placeholders.join(", ")
         );
-        let mut pr_stmt = conn.prepare(&pr_sql)
+        let mut pr_stmt = conn
+            .prepare(&pr_sql)
             .map_err(|e| format!("Failed to prepare work queue PRs query: {e}"))?;
-        let params: Vec<Box<dyn rusqlite::types::ToSql>> = task_ids.iter().map(|id| Box::new(id.to_string()) as Box<dyn rusqlite::types::ToSql>).collect();
-        let param_refs: Vec<&dyn rusqlite::types::ToSql> = params.iter().map(|p| p.as_ref()).collect();
-        let pr_rows = pr_stmt.query_map(param_refs.as_slice(), |row| {
-            Ok(super::PrRow {
-                id: row.get(0)?,
-                ticket_id: row.get(1)?,
-                repo_owner: row.get(2)?,
-                repo_name: row.get(3)?,
-                title: row.get(4)?,
-                url: row.get(5)?,
-                state: row.get(6)?,
-                head_sha: row.get(7)?,
-                ci_status: row.get(8)?,
-                ci_check_runs: row.get(9)?,
-                review_status: row.get(10)?,
-                merged_at: row.get(11)?,
-                created_at: row.get(12)?,
-                updated_at: row.get(13)?,
-                draft: row.get(14)?,
-                unaddressed_comment_count: row.get(15)?,
+        let params: Vec<Box<dyn rusqlite::types::ToSql>> = task_ids
+            .iter()
+            .map(|id| Box::new(id.to_string()) as Box<dyn rusqlite::types::ToSql>)
+            .collect();
+        let param_refs: Vec<&dyn rusqlite::types::ToSql> =
+            params.iter().map(|p| p.as_ref()).collect();
+        let pr_rows = pr_stmt
+            .query_map(param_refs.as_slice(), |row| {
+                Ok(super::PrRow {
+                    id: row.get(0)?,
+                    ticket_id: row.get(1)?,
+                    repo_owner: row.get(2)?,
+                    repo_name: row.get(3)?,
+                    title: row.get(4)?,
+                    url: row.get(5)?,
+                    state: row.get(6)?,
+                    head_sha: row.get(7)?,
+                    ci_status: row.get(8)?,
+                    ci_check_runs: row.get(9)?,
+                    review_status: row.get(10)?,
+                    merged_at: row.get(11)?,
+                    created_at: row.get(12)?,
+                    updated_at: row.get(13)?,
+                    draft: row.get(14)?,
+                    is_queued: row.get(15)?,
+                    unaddressed_comment_count: row.get(16)?,
+                })
             })
-        }).map_err(|e| format!("Failed to execute work queue PRs query: {e}"))?;
+            .map_err(|e| format!("Failed to execute work queue PRs query: {e}"))?;
 
-        let mut pr_map: std::collections::HashMap<String, Vec<super::PrRow>> = std::collections::HashMap::new();
+        let mut pr_map: std::collections::HashMap<String, Vec<super::PrRow>> =
+            std::collections::HashMap::new();
         for pr in pr_rows {
             let pr = pr.map_err(|e| format!("Failed to map PR row: {e}"))?;
             pr_map.entry(pr.ticket_id.clone()).or_default().push(pr);
         }
 
         // Step 3: Combine task and PR data
-        let result = task_rows.into_iter().map(|(task, project_name, session_status, session_checkpoint_data)| {
-            let prs = pr_map.remove(&task.id).unwrap_or_default();
-            WorkQueueTaskRow {
-                task,
-                project_name,
-                session_status,
-                session_checkpoint_data,
-                pull_requests: prs,
-            }
-        }).collect();
+        let result = task_rows
+            .into_iter()
+            .map(
+                |(task, project_name, session_status, session_checkpoint_data)| {
+                    let prs = pr_map.remove(&task.id).unwrap_or_default();
+                    WorkQueueTaskRow {
+                        task,
+                        project_name,
+                        session_status,
+                        session_checkpoint_data,
+                        pull_requests: prs,
+                    }
+                },
+            )
+            .collect();
 
         Ok(result)
     }

@@ -640,6 +640,11 @@ CREATE INDEX IF NOT EXISTS idx_authored_prs_repo ON authored_prs(repo_owner, rep
 CREATE INDEX IF NOT EXISTS idx_authored_prs_state ON authored_prs(state);
             "#,
         ),
+        // V14: Add is_queued for merge queue detection
+        M::up(
+            "ALTER TABLE pull_requests ADD COLUMN is_queued INTEGER NOT NULL DEFAULT 0;
+             ALTER TABLE authored_prs ADD COLUMN is_queued INTEGER NOT NULL DEFAULT 0;",
+        ),
     ])
 }
 #[cfg(test)]
@@ -875,6 +880,28 @@ mod tests {
                 "CREATE TABLE tasks (id TEXT PRIMARY KEY, title TEXT NOT NULL, status TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)",
                 [],
             ).expect("create tasks table");
+            conn.execute(
+                "CREATE TABLE pull_requests (
+                    id INTEGER PRIMARY KEY,
+                    ticket_id TEXT NOT NULL,
+                    repo_owner TEXT NOT NULL,
+                    repo_name TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    url TEXT NOT NULL,
+                    state TEXT NOT NULL,
+                    created_at INTEGER NOT NULL,
+                    updated_at INTEGER NOT NULL,
+                    head_sha TEXT NOT NULL DEFAULT '',
+                    ci_status TEXT,
+                    ci_check_runs TEXT,
+                    last_polled_at INTEGER DEFAULT 0,
+                    review_status TEXT,
+                    merged_at INTEGER,
+                    FOREIGN KEY (ticket_id) REFERENCES tasks(id)
+                )",
+                [],
+            )
+            .expect("create pull_requests table");
             let uv: i32 = conn
                 .query_row("PRAGMA user_version", [], |r| r.get(0))
                 .unwrap();
@@ -911,8 +938,8 @@ mod tests {
             .query_row("PRAGMA user_version", [], |r| r.get(0))
             .unwrap();
         assert_eq!(
-            uv, 13,
-            "Fresh DB should have user_version=13 after migrations, got {}",
+            uv, 14,
+            "Fresh DB should have user_version=14 after migrations, got {}",
             uv
         );
 
@@ -987,6 +1014,28 @@ mod tests {
                 [],
             )
             .expect("create tasks table");
+            conn.execute(
+                "CREATE TABLE pull_requests (
+                    id INTEGER PRIMARY KEY,
+                    ticket_id TEXT NOT NULL,
+                    repo_owner TEXT NOT NULL,
+                    repo_name TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    url TEXT NOT NULL,
+                    state TEXT NOT NULL,
+                    created_at INTEGER NOT NULL,
+                    updated_at INTEGER NOT NULL,
+                    head_sha TEXT NOT NULL DEFAULT '',
+                    ci_status TEXT,
+                    ci_check_runs TEXT,
+                    last_polled_at INTEGER DEFAULT 0,
+                    review_status TEXT,
+                    merged_at INTEGER,
+                    FOREIGN KEY (ticket_id) REFERENCES tasks(id)
+                )",
+                [],
+            )
+            .expect("create pull_requests table");
             // Insert a test task (V5 schema — no prompt/summary columns yet)
             conn.execute(
                 "INSERT INTO tasks (id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
