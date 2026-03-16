@@ -74,6 +74,10 @@ const baseTask: Task = {
   jira_assignee: null,
   jira_description: null,
   project_id: 'proj-1',
+  prompt: null,
+  summary: null,
+  agent: null,
+  permission_mode: null,
   created_at: Date.now(),
   updated_at: Date.now(),
 }
@@ -276,6 +280,7 @@ describe('SelfReviewView — hide addressed comments', () => {
     merged_at: null,
     created_at: 1000,
     updated_at: 2000,
+    draft: false,
     unaddressed_comment_count: 0,
   }
 

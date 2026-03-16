@@ -75,7 +75,7 @@ jobs:
 
   rust:
     name: Rust Tests
-    runs-on: macos-latest
+    runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
 
