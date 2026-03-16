@@ -24,16 +24,6 @@
     
     // Store the rect immediately while the element is definitely in the DOM
     const rect = targetElement.getBoundingClientRect()
-    console.log('[HoverTooltip] Element rect:', { 
-      left: rect.left, 
-      right: rect.right, 
-      top: rect.top, 
-      bottom: rect.bottom,
-      width: rect.width,
-      height: rect.height,
-      element: targetElement.tagName,
-      hasFirstChild: !!wrapper.firstElementChild
-    })
     
     hoverTimer = setTimeout(() => {
       const tooltipWidth = 280
@@ -48,7 +38,6 @@
 
       // Align top of tooltip with top of trigger, clamp to viewport
       tooltipY = Math.max(8, Math.min(rect.top, window.innerHeight - 200))
-      console.log('[HoverTooltip] Calculated position:', { tooltipX, tooltipY, windowWidth: window.innerWidth, windowHeight: window.innerHeight })
       visible = true
     }, 200)
   }
@@ -74,11 +63,17 @@
 </div>
 
 {#if visible}
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
-    class="fixed z-[110] max-w-[280px] px-3 py-2 bg-base-100 border border-base-300 rounded-lg shadow-xl text-xs text-base-content/70 whitespace-pre-wrap break-words pointer-events-none"
-    style="left: {tooltipX}px; top: {tooltipY}px;"
-    role="tooltip"
+    class="fixed top-0 left-0 w-full h-full pointer-events-none z-[9999]"
+    onmouseout={hide}
   >
-    {text}
+    <div
+      class="absolute max-w-[280px] px-3 py-2 bg-base-100 border border-base-300 rounded-lg shadow-xl text-xs text-base-content/70 whitespace-pre-wrap break-words"
+      style="left: {tooltipX}px; top: {tooltipY}px;"
+      role="tooltip"
+    >
+      {text}
+    </div>
   </div>
 {/if}
