@@ -467,6 +467,9 @@ fn main() {
             commands::shepherd::stop_shepherd,
             commands::shepherd::get_shepherd_status,
             commands::shepherd::notify_shepherd_event,
+            commands::action_items::get_action_items,
+            commands::action_items::dismiss_action_item,
+            commands::action_items::get_action_item_count,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");

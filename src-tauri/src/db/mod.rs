@@ -3,7 +3,7 @@ use rusqlite_migration::{Migrations, M};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
-mod action_items;
+pub mod action_items;
 mod agent_review;
 mod agents;
 mod authored_prs;

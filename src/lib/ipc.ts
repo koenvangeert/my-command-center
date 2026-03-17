@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Task, AgentSession, PrComment, PollResult, PullRequestInfo, AgentInfo, Project, ProjectAttention, WorktreeInfo, ImplementationStatus, ReviewPullRequest, AuthoredPullRequest, PrFileDiff, ReviewComment, ReviewSubmissionComment, SelfReviewComment, AgentReviewComment, CommandInfo, AutocompleteAgentInfo, PrOverviewComment, TranscriptionResult, WhisperModelStatus, WhisperModelSizeId, SkillInfo, WorkQueueEntry, ShepherdMessage, ShepherdStatus } from "./types";
+import type { Task, AgentSession, PrComment, PollResult, PullRequestInfo, AgentInfo, Project, ProjectAttention, WorktreeInfo, ImplementationStatus, ReviewPullRequest, AuthoredPullRequest, PrFileDiff, ReviewComment, ReviewSubmissionComment, SelfReviewComment, AgentReviewComment, CommandInfo, AutocompleteAgentInfo, PrOverviewComment, TranscriptionResult, WhisperModelStatus, WhisperModelSizeId, SkillInfo, WorkQueueEntry, ShepherdMessage, ShepherdStatus, ActionItem } from "./types";
 
 export async function createTask(initialPrompt: string, status: string, jiraKey: string | null, projectId: string | null, agent: string | null, permissionMode: string | null): Promise<Task> {
   return invoke<Task>("create_task", { initialPrompt, status, jiraKey, projectId, agent, permissionMode });
@@ -80,6 +80,19 @@ export async function getShepherdEnabled(projectId: string): Promise<boolean> {
 
 export async function setShepherdEnabled(projectId: string, enabled: boolean): Promise<void> {
   return invoke("set_shepherd_enabled", { projectId, enabled });
+}
+
+// Action Item Commands
+export async function getActionItems(projectId: string, limit: number): Promise<ActionItem[]> {
+  return invoke<ActionItem[]>("get_action_items", { projectId, limit });
+}
+
+export async function dismissActionItem(id: number): Promise<void> {
+  return invoke("dismiss_action_item", { id });
+}
+
+export async function getActionItemCount(projectId: string): Promise<number> {
+  return invoke<number>("get_action_item_count", { projectId });
 }
 
 
