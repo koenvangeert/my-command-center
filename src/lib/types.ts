@@ -502,3 +502,15 @@ export interface ShepherdMessage {
   event_context: string | null;
   created_at: number;
 }
+
+export interface ActionItem {
+  id: number;
+  project_id: string;
+  source: string;
+  title: string;
+  description: string;
+  task_id: string | null;
+  status: string;
+  created_at: number;
+  dismissed_at: number | null;
+}

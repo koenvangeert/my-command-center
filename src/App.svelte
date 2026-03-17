@@ -2,8 +2,8 @@
   import { onMount, onDestroy } from 'svelte'
   import { listen } from '@tauri-apps/api/event'
   import type { UnlistenFn, Event } from '@tauri-apps/api/event'
-  import { tasks, selectedTaskId, activeSessions, checkpointNotification, ciFailureNotification, ticketPrs, error, isLoading, projects, activeProjectId, currentView, reviewRequestCount, authoredPrCount, projectAttention, taskSpawned, startingTasks, codeCleanupTasksEnabled, rateLimitNotification, shepherdEnabled, shepherdMessages, shepherdStatus } from './lib/stores'
-  import { getProjects, getTasksForProject, getPullRequests, startImplementation, getSessionStatus, getLatestSession, getLatestSessions, forceGithubSync, createTask, updateTask, updateTaskStatus, deleteTask, getProjectAttention, getAppMode, finalizeClaudeSession, getConfig, getProjectConfig, listOpenCodeAgents, getReviewPrs, getAuthoredPrs, notifyShepherdEvent, getShepherdEnabled } from './lib/ipc'
+  import { tasks, selectedTaskId, activeSessions, checkpointNotification, ciFailureNotification, ticketPrs, error, isLoading, projects, activeProjectId, currentView, reviewRequestCount, authoredPrCount, projectAttention, taskSpawned, startingTasks, codeCleanupTasksEnabled, rateLimitNotification, shepherdEnabled, shepherdMessages, shepherdStatus, actionItemCount } from './lib/stores'
+  import { getProjects, getTasksForProject, getPullRequests, startImplementation, getSessionStatus, getLatestSession, getLatestSessions, forceGithubSync, createTask, updateTask, updateTaskStatus, deleteTask, getProjectAttention, getAppMode, finalizeClaudeSession, getConfig, getProjectConfig, listOpenCodeAgents, getReviewPrs, getAuthoredPrs, notifyShepherdEvent, getShepherdEnabled, getActionItemCount } from './lib/ipc'
   import { writePtyWithSubmit } from './lib/ptySubmit'
   import SearchableSelect from './components/SearchableSelect.svelte'
   import type { Task, PullRequestInfo, AgentEvent, ProjectAttention, AppView, PermissionMode, AgentSession } from './lib/types'
@@ -116,20 +116,26 @@
      }
    })
 
-   // Reload tasks when active project changes
-  $effect(() => {
-    if ($activeProjectId) {
-      loadTasks()
-      loadPullRequests()
-      refreshPrCounts()
-      getShepherdEnabled($activeProjectId).then(enabled => {
-        $shepherdEnabled = enabled
-      }).catch(e => {
-        console.error('[App] Failed to load shepherd enabled state:', e)
-        $shepherdEnabled = false
-      })
-    }
-  })
+    // Reload tasks when active project changes
+   $effect(() => {
+     if ($activeProjectId) {
+       $actionItemCount = 0
+       loadTasks()
+       loadPullRequests()
+       refreshPrCounts()
+       getShepherdEnabled($activeProjectId).then(enabled => {
+         $shepherdEnabled = enabled
+       }).catch(e => {
+         console.error('[App] Failed to load shepherd enabled state:', e)
+         $shepherdEnabled = false
+       })
+       getActionItemCount($activeProjectId).then(count => {
+         $actionItemCount = count
+       }).catch(e => {
+         console.error('[App] Failed to load action item count:', e)
+       })
+     }
+   })
 
   // Find active project
   let activeProject = $derived($projects.find(p => p.id === $activeProjectId) || null)
@@ -659,6 +665,22 @@
     )
 
     unlisteners.push(
+      await listen('action-item-created', async () => {
+        if ($shepherdEnabled && $activeProjectId) {
+          $actionItemCount = await getActionItemCount($activeProjectId)
+        }
+      })
+    )
+
+    unlisteners.push(
+      await listen('action-item-dismissed', async () => {
+        if ($shepherdEnabled && $activeProjectId) {
+          $actionItemCount = await getActionItemCount($activeProjectId)
+        }
+      })
+    )
+
+    unlisteners.push(
       await listen<{ task_id: string, pr_id: number, pr_title: string, ci_status: string, timestamp: number }>('ci-status-changed', (event) => {
         if (event.payload.ci_status === 'failure') {
           const session = $activeSessions.get(event.payload.task_id)
@@ -707,6 +729,9 @@
             stage: session.stage,
             message: 'Agent needs input',
             timestamp: Date.now(),
+          }
+          if ($shepherdEnabled) {
+            notifyShepherdEvent('agent-checkpoint', { task_id: taskId }).catch(console.error)
           }
         } else {
           if (
@@ -783,6 +808,9 @@
           if ($checkpointNotification?.ticketId === taskId) {
             $checkpointNotification = null
           }
+          if ($shepherdEnabled) {
+            notifyShepherdEvent('agent-started', { task_id: taskId }).catch(console.error)
+          }
         } else if (status === 'paused') {
           if (session.status === 'paused') return
           const updated = new Map($activeSessions)
@@ -797,6 +825,9 @@
             message: 'Agent needs permission',
             timestamp: Date.now(),
           }
+          if ($shepherdEnabled) {
+            notifyShepherdEvent('agent-checkpoint', { task_id: taskId }).catch(console.error)
+          }
         } else if (status === 'interrupted') {
           if (session.status === 'interrupted') return
           const updated = new Map($activeSessions)
@@ -806,6 +837,9 @@
             $checkpointNotification = null
           }
           loadTasks()
+          if ($shepherdEnabled) {
+            notifyShepherdEvent('agent-errored', { task_id: taskId }).catch(console.error)
+          }
         }
         loadProjectAttention()
       })
@@ -862,6 +896,15 @@
           $taskSpawned = { taskId: event.payload.task_id, initial_prompt: event.payload.task_id }
         }
         loadTasks()
+        if ($shepherdEnabled) {
+          if (event.payload.action === 'created') {
+            notifyShepherdEvent('task-created', event.payload).catch(console.error)
+          } else if (event.payload.action === 'updated') {
+            notifyShepherdEvent('task-moved', event.payload).catch(console.error)
+          } else if (event.payload.action === 'deleted') {
+            notifyShepherdEvent('task-deleted', event.payload).catch(console.error)
+          }
+        }
       })
     )
 
@@ -908,7 +951,7 @@
     onNavigate={handleNavigate}
   />
   {#if $currentView !== 'workqueue' && $currentView !== 'global_settings'}
-    <IconRail currentView={$currentView} onNavigate={handleNavigate} reviewRequestCount={$reviewRequestCount} authoredPrCount={$authoredPrCount} shepherdEnabled={$shepherdEnabled} modalsOpen={showCommandPalette || showProjectSwitcher || showActionPalette || showAddDialog} railBg={iconRailBg} />
+    <IconRail currentView={$currentView} onNavigate={handleNavigate} reviewRequestCount={$reviewRequestCount} authoredPrCount={$authoredPrCount} shepherdEnabled={$shepherdEnabled} actionItemCount={$actionItemCount} modalsOpen={showCommandPalette || showProjectSwitcher || showActionPalette || showAddDialog} railBg={iconRailBg} />
   {/if}
 
   <div class="flex flex-col flex-1 min-w-0 relative" style="background: linear-gradient(180deg, var(--project-bg-alt) 0%, var(--project-bg) 100%)">
