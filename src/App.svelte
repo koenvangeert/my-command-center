@@ -710,6 +710,9 @@
             message: 'Agent needs input',
             timestamp: Date.now(),
           }
+          if ($shepherdEnabled) {
+            notifyShepherdEvent('agent-checkpoint', { task_id: taskId }).catch(console.error)
+          }
         } else {
           if (
             session.status === sessionUpdate.status &&
@@ -785,6 +788,9 @@
           if ($checkpointNotification?.ticketId === taskId) {
             $checkpointNotification = null
           }
+          if ($shepherdEnabled) {
+            notifyShepherdEvent('agent-started', { task_id: taskId }).catch(console.error)
+          }
         } else if (status === 'paused') {
           if (session.status === 'paused') return
           const updated = new Map($activeSessions)
@@ -799,6 +805,9 @@
             message: 'Agent needs permission',
             timestamp: Date.now(),
           }
+          if ($shepherdEnabled) {
+            notifyShepherdEvent('agent-checkpoint', { task_id: taskId }).catch(console.error)
+          }
         } else if (status === 'interrupted') {
           if (session.status === 'interrupted') return
           const updated = new Map($activeSessions)
@@ -808,6 +817,9 @@
             $checkpointNotification = null
           }
           loadTasks()
+          if ($shepherdEnabled) {
+            notifyShepherdEvent('agent-errored', { task_id: taskId }).catch(console.error)
+          }
         }
         loadProjectAttention()
       })
