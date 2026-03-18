@@ -1,39 +1,37 @@
-use crate::db::action_items::ActionItemRow;
-use crate::db::Database;
-use std::sync::Arc;
+use crate::db::{self, action_items::ActionItemRow};
+use std::sync::{Arc, Mutex};
 use tauri::State;
-use tokio::sync::Mutex;
 
 #[tauri::command]
 pub async fn get_action_items(
-    db: State<'_, Arc<Mutex<Database>>>,
+    db: State<'_, Arc<Mutex<db::Database>>>,
     project_id: String,
     limit: i64,
 ) -> Result<Vec<ActionItemRow>, String> {
     if !(1..=100).contains(&limit) {
         return Err("limit must be between 1 and 100".to_string());
     }
-    let db = db.lock().await;
+    let db = crate::db::acquire_db(&db);
     db.get_active_action_items(&project_id, limit)
         .map_err(|e| format!("failed to get action items: {}", e))
 }
 
 #[tauri::command]
 pub async fn dismiss_action_item(
-    db: State<'_, Arc<Mutex<Database>>>,
+    db: State<'_, Arc<Mutex<db::Database>>>,
     id: i64,
 ) -> Result<(), String> {
-    let db = db.lock().await;
+    let db = crate::db::acquire_db(&db);
     db.dismiss_action_item(id)
         .map_err(|e| format!("failed to dismiss action item: {}", e))
 }
 
 #[tauri::command]
 pub async fn get_action_item_count(
-    db: State<'_, Arc<Mutex<Database>>>,
+    db: State<'_, Arc<Mutex<db::Database>>>,
     project_id: String,
 ) -> Result<i64, String> {
-    let db = db.lock().await;
+    let db = crate::db::acquire_db(&db);
     db.get_active_action_item_count(&project_id)
         .map_err(|e| format!("failed to get action item count: {}", e))
 }
