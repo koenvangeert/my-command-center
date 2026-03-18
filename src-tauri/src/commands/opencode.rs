@@ -192,6 +192,76 @@ pub async fn list_opencode_agents(
         .map_err(|e| format!("Failed to list agents: {}", e))
 }
 
+#[tauri::command]
+pub async fn list_shepherd_agents(
+    db: State<'_, Arc<Mutex<db::Database>>>,
+    server_mgr: State<'_, server_manager::ServerManager>,
+    project_id: String,
+) -> Result<Vec<crate::opencode_client::AgentInfo>, String> {
+    let shepherd_task_id = format!("shepherd-{}", project_id);
+    if let Some(port) = server_mgr.get_server_port(&shepherd_task_id).await {
+        let client = OpenCodeClient::with_base_url(format!("http://127.0.0.1:{}", port));
+        if let Ok(agents) = client.list_agents().await {
+            return Ok(agents);
+        }
+    }
+
+    let task_ids: Vec<String> = {
+        let db = crate::db::acquire_db(&db);
+        db.get_tasks_for_project(&project_id)
+            .map_err(|e| format!("Failed to get tasks: {}", e))?
+            .into_iter()
+            .map(|t| t.id)
+            .collect()
+    };
+
+    let port = match server_mgr.get_any_server_port_for_project(&task_ids).await {
+        Some(p) => p,
+        None => return Ok(vec![]),
+    };
+
+    let client = OpenCodeClient::with_base_url(format!("http://127.0.0.1:{}", port));
+    client
+        .list_agents()
+        .await
+        .map_err(|e| format!("Failed to list shepherd agents: {}", e))
+}
+
+#[tauri::command]
+pub async fn list_opencode_models(
+    db: State<'_, Arc<Mutex<db::Database>>>,
+    server_mgr: State<'_, server_manager::ServerManager>,
+    project_id: String,
+) -> Result<Vec<crate::opencode_client::ProviderModelInfo>, String> {
+    let shepherd_task_id = format!("shepherd-{}", project_id);
+    if let Some(port) = server_mgr.get_server_port(&shepherd_task_id).await {
+        let client = OpenCodeClient::with_base_url(format!("http://127.0.0.1:{}", port));
+        if let Ok(models) = client.list_providers().await {
+            return Ok(models);
+        }
+    }
+
+    let task_ids: Vec<String> = {
+        let db = crate::db::acquire_db(&db);
+        db.get_tasks_for_project(&project_id)
+            .map_err(|e| format!("Failed to get tasks: {}", e))?
+            .into_iter()
+            .map(|t| t.id)
+            .collect()
+    };
+
+    let port = match server_mgr.get_any_server_port_for_project(&task_ids).await {
+        Some(p) => p,
+        None => return Ok(vec![]),
+    };
+
+    let client = OpenCodeClient::with_base_url(format!("http://127.0.0.1:{}", port));
+    client
+        .list_providers()
+        .await
+        .map_err(|e| format!("Failed to list models: {}", e))
+}
+
 
 
 /// List skills from OpenCode API + filesystem (.opencode/skills/ and .claude/skills/).
@@ -348,6 +418,5 @@ pub async fn save_skill_content(
 
     Ok(())
 }
-
 
 

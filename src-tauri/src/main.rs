@@ -133,6 +133,7 @@ async fn resume_task_servers(app: tauri::AppHandle, http_ready: tokio::sync::one
             None,
             None,
             None,
+            None,
             &app,
         ).await {
             Ok(result) => {
@@ -454,6 +455,8 @@ fn main() {
             commands::whisper::get_all_whisper_model_statuses,
             commands::whisper::set_whisper_model,
             commands::opencode::list_opencode_agents,
+            commands::opencode::list_shepherd_agents,
+            commands::opencode::list_opencode_models,
             commands::agent_review::start_agent_review,
             commands::agent_review::get_agent_review_comments,
             commands::agent_review::update_agent_review_comment_status,

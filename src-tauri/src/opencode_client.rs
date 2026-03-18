@@ -167,6 +167,7 @@ impl OpenCodeClient {
         session_id: &str,
         text: String,
         agent: Option<String>,
+        model: Option<PromptModel>,
     ) -> Result<(), OpenCodeError> {
         let url = format!("{}/session/{}/prompt_async", self.base_url, session_id);
         let request = PromptAsyncRequest {
@@ -175,6 +176,7 @@ impl OpenCodeClient {
                 text,
             }],
             agent,
+            model,
         };
 
         let response = self
@@ -265,6 +267,54 @@ impl OpenCodeClient {
             .map_err(|e| OpenCodeError::ParseError(e.to_string()))?;
 
         Ok(agents)
+    }
+
+    pub async fn list_providers(&self) -> Result<Vec<ProviderModelInfo>, OpenCodeError> {
+        let url = format!("{}/provider", self.base_url);
+        let response = self
+            .client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| OpenCodeError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            return Err(OpenCodeError::ApiError {
+                status: status.as_u16(),
+                message: body,
+            });
+        }
+
+        let raw: serde_json::Value = response
+            .json()
+            .await
+            .map_err(|e| OpenCodeError::ParseError(e.to_string()))?;
+
+        let mut models = Vec::new();
+        if let Some(all) = raw.get("all").and_then(|v| v.as_array()) {
+            for provider in all {
+                let provider_id = provider
+                    .get("id")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or_default();
+
+                if let Some(provider_models) = provider.get("models").and_then(|v| v.as_array()) {
+                    for m in provider_models {
+                        let model_id = m.get("id").and_then(|v| v.as_str()).unwrap_or_default();
+                        let name = m.get("name").and_then(|v| v.as_str()).unwrap_or(model_id);
+                        models.push(ProviderModelInfo {
+                            provider_id: provider_id.to_string(),
+                            model_id: model_id.to_string(),
+                            name: name.to_string(),
+                        });
+                    }
+                }
+            }
+        }
+
+        Ok(models)
     }
 
     /// List available commands
@@ -491,11 +541,22 @@ pub struct Part {
 }
 
 /// Request to send a prompt asynchronously
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PromptModel {
+    #[serde(rename = "providerID")]
+    pub provider_id: String,
+    #[serde(rename = "modelID")]
+    pub model_id: String,
+}
+
+/// Request to send a prompt asynchronously
 #[derive(Debug, Serialize)]
 pub struct PromptAsyncRequest {
     pub parts: Vec<Part>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub agent: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model: Option<PromptModel>,
 }
 
 /// Agent information
@@ -508,6 +569,13 @@ pub struct AgentInfo {
     pub mode: Option<String>,
     #[serde(flatten)]
     pub extra: serde_json::Map<String, serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ProviderModelInfo {
+    pub provider_id: String,
+    pub model_id: String,
+    pub name: String,
 }
 
 /// Command information
@@ -684,5 +752,53 @@ mod tests {
         assert_eq!(map.len(), 2);
         assert_eq!(map.get("ses_1").unwrap().status_type, "busy");
         assert_eq!(map.get("ses_2").unwrap().status_type, "retry");
+    }
+
+    #[test]
+    fn test_prompt_model_serialization() {
+        let model = PromptModel {
+            provider_id: "anthropic".to_string(),
+            model_id: "claude-sonnet".to_string(),
+        };
+
+        let value = serde_json::to_value(&model).unwrap();
+        assert_eq!(value["providerID"], "anthropic");
+        assert_eq!(value["modelID"], "claude-sonnet");
+        assert!(value.get("provider_id").is_none());
+        assert!(value.get("model_id").is_none());
+    }
+
+    #[test]
+    fn test_prompt_async_request_with_model() {
+        let request = PromptAsyncRequest {
+            parts: vec![Part {
+                r#type: "text".to_string(),
+                text: "Hello".to_string(),
+            }],
+            agent: Some("shepherd".to_string()),
+            model: Some(PromptModel {
+                provider_id: "anthropic".to_string(),
+                model_id: "claude-sonnet".to_string(),
+            }),
+        };
+
+        let value = serde_json::to_value(&request).unwrap();
+        assert_eq!(value["model"]["providerID"], "anthropic");
+        assert_eq!(value["model"]["modelID"], "claude-sonnet");
+    }
+
+    #[test]
+    fn test_prompt_async_request_without_model() {
+        let request = PromptAsyncRequest {
+            parts: vec![Part {
+                r#type: "text".to_string(),
+                text: "Hello".to_string(),
+            }],
+            agent: Some("shepherd".to_string()),
+            model: None,
+        };
+
+        let value = serde_json::to_value(&request).unwrap();
+        assert!(value.get("model").is_none());
     }
 }

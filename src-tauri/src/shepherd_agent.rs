@@ -21,6 +21,7 @@ pub struct ShepherdSession {
     pub task_id: String,
     opencode_session_id: Option<String>,
     agent: Option<String>,
+    model: Option<crate::opencode_client::PromptModel>,
 }
 
 pub struct ShepherdManager {
@@ -52,7 +53,7 @@ impl ShepherdManager {
             .as_ref()
             .ok_or_else(|| "ShepherdManager app handle not configured".to_string())?;
 
-        let (project, agent) = {
+        let (project, agent, model_str, initial_prompt) = {
             let db_guard = db
                 .lock()
                 .map_err(|e| format!("database lock error: {}", e))?;
@@ -67,8 +68,20 @@ impl ShepherdManager {
                 .ok()
                 .flatten();
 
-            (project, agent)
+            let model_str = db_guard
+                .get_project_config(project_id, "shepherd_model")
+                .ok()
+                .flatten();
+
+            let initial_prompt = db_guard
+                .get_project_config(project_id, "shepherd_initial_prompt")
+                .ok()
+                .flatten();
+
+            (project, agent, model_str, initial_prompt)
         };
+
+        let model = model_str.as_deref().and_then(parse_model_string);
 
         let provider = Provider::from_name(
             "opencode",
@@ -78,9 +91,17 @@ impl ShepherdManager {
         )?;
 
         let task_id = shepherd_task_id(project_id);
-        let prompt = build_shepherd_system_prompt(&project.name, project_id);
+        let prompt = build_shepherd_system_prompt(&project.name, project_id, initial_prompt.as_deref());
         let result = provider
-            .start(&task_id, Path::new(&project.path), &prompt, agent.as_deref(), None, app)
+            .start(
+                &task_id,
+                Path::new(&project.path),
+                &prompt,
+                agent.as_deref(),
+                None,
+                model.as_ref(),
+                app,
+            )
             .await?;
 
         if let Some(ref session_id) = result.opencode_session_id {
@@ -98,6 +119,7 @@ impl ShepherdManager {
             task_id,
             opencode_session_id: result.opencode_session_id,
             agent,
+            model,
         });
 
         Ok(())
@@ -178,6 +200,7 @@ async fn send_message_for_session(
         &active.task_id,
         active.opencode_session_id.as_deref(),
         active.agent.as_deref(),
+        active.model.as_ref(),
         content,
     )
     .await?;
@@ -197,6 +220,7 @@ async fn send_to_opencode_provider(
     task_id: &str,
     opencode_session_id: Option<&str>,
     agent: Option<&str>,
+    model: Option<&crate::opencode_client::PromptModel>,
     content: &str,
 ) -> Result<(), String> {
     let session_id = opencode_session_id
@@ -209,9 +233,26 @@ async fn send_to_opencode_provider(
 
     let client = OpenCodeClient::with_base_url(format!("http://127.0.0.1:{}", port));
     client
-        .prompt_async(session_id, content.to_string(), agent.map(str::to_string))
+        .prompt_async(
+            session_id,
+            content.to_string(),
+            agent.map(str::to_string),
+            model.cloned(),
+        )
         .await
         .map_err(|e| format!("Failed to send Shepherd prompt to OpenCode: {}", e))
+}
+
+fn parse_model_string(s: &str) -> Option<crate::opencode_client::PromptModel> {
+    let parts: Vec<&str> = s.splitn(2, '/').collect();
+    if parts.len() == 2 && !parts[0].is_empty() && !parts[1].is_empty() {
+        Some(crate::opencode_client::PromptModel {
+            provider_id: parts[0].to_string(),
+            model_id: parts[1].to_string(),
+        })
+    } else {
+        None
+    }
 }
 
 async fn capture_opencode_response(
@@ -487,6 +528,7 @@ mod tests {
             task_id: shepherd_task_id("P-1"),
             opencode_session_id: None,
             agent: None,
+            model: None,
         });
 
         assert!(manager.is_running());
@@ -573,6 +615,24 @@ mod tests {
 
         let extracted = extract_assistant_text_from_opencode_messages(&messages);
         assert_eq!(extracted, Some("Latest response".to_string()));
+    }
+
+    #[test]
+    fn test_parse_model_string_valid() {
+        let parsed = parse_model_string("anthropic/claude-sonnet");
+        assert!(parsed.is_some());
+        let model = parsed.unwrap();
+        assert_eq!(model.provider_id, "anthropic");
+        assert_eq!(model.model_id, "claude-sonnet");
+    }
+
+    #[test]
+    fn test_parse_model_string_invalid() {
+        assert!(parse_model_string("").is_none());
+        assert!(parse_model_string("anthropic").is_none());
+        assert!(parse_model_string("/claude-sonnet").is_none());
+        assert!(parse_model_string("anthropic/").is_none());
+        assert!(parse_model_string("/").is_none());
     }
 
 }

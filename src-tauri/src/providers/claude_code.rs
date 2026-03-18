@@ -26,6 +26,7 @@ impl ClaudeCodeProvider {
         prompt: &str,
         _agent: Option<&str>,
         permission_mode: Option<&str>,
+        _model: Option<&crate::opencode_client::PromptModel>,
         app: &AppHandle,
     ) -> Result<ProviderSessionResult, String> {
         let port = crate::claude_hooks::get_http_server_port();
@@ -60,6 +61,7 @@ impl ClaudeCodeProvider {
         prompt: Option<&str>,
         _agent: Option<&str>,
         permission_mode: Option<&str>,
+        _model: Option<&crate::opencode_client::PromptModel>,
         app: &AppHandle,
     ) -> Result<ProviderSessionResult, String> {
         let port = crate::claude_hooks::get_http_server_port();

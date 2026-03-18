@@ -24,6 +24,7 @@ impl OpenCodeProvider {
         prompt: &str,
         agent: Option<&str>,
         _permission_mode: Option<&str>,
+        model: Option<&crate::opencode_client::PromptModel>,
         app: &AppHandle,
     ) -> Result<ProviderSessionResult, String> {
         let port = self.server_mgr
@@ -44,7 +45,12 @@ impl OpenCodeProvider {
             .map_err(|e| e.to_string())?;
 
         client
-            .prompt_async(&opencode_session_id, prompt.to_string(), agent.map(str::to_string))
+            .prompt_async(
+                &opencode_session_id,
+                prompt.to_string(),
+                agent.map(str::to_string),
+                model.cloned(),
+            )
             .await
             .map_err(|e| format!("Failed to send prompt: {}", e))?;
 
@@ -63,6 +69,7 @@ impl OpenCodeProvider {
         prompt: Option<&str>,
         agent: Option<&str>,
         _permission_mode: Option<&str>,
+        model: Option<&crate::opencode_client::PromptModel>,
         app: &AppHandle,
     ) -> Result<ProviderSessionResult, String> {
         match prompt {
@@ -86,7 +93,12 @@ impl OpenCodeProvider {
                 };
 
                 client
-                    .prompt_async(&opencode_session_id, action_prompt.to_string(), agent.map(str::to_string))
+                    .prompt_async(
+                        &opencode_session_id,
+                        action_prompt.to_string(),
+                        agent.map(str::to_string),
+                        model.cloned(),
+                    )
                     .await
                     .map_err(|e| format!("Failed to send prompt: {}", e))?;
 
