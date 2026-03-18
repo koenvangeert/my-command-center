@@ -59,11 +59,12 @@ impl Provider {
         prompt: &str,
         agent: Option<&str>,
         permission_mode: Option<&str>,
+        model: Option<&crate::opencode_client::PromptModel>,
         app: &AppHandle,
     ) -> Result<ProviderSessionResult, String> {
         match self {
-            Provider::ClaudeCode(p) => p.start(task_id, worktree_path, prompt, agent, permission_mode, app).await,
-            Provider::OpenCode(p) => p.start(task_id, worktree_path, prompt, agent, permission_mode, app).await,
+            Provider::ClaudeCode(p) => p.start(task_id, worktree_path, prompt, agent, permission_mode, model, app).await,
+            Provider::OpenCode(p) => p.start(task_id, worktree_path, prompt, agent, permission_mode, model, app).await,
         }
     }
 
@@ -77,11 +78,12 @@ impl Provider {
         prompt: Option<&str>,
         agent: Option<&str>,
         permission_mode: Option<&str>,
+        model: Option<&crate::opencode_client::PromptModel>,
         app: &AppHandle,
     ) -> Result<ProviderSessionResult, String> {
         match self {
-            Provider::ClaudeCode(p) => p.resume(task_id, session, worktree_path, prompt, agent, permission_mode, app).await,
-            Provider::OpenCode(p) => p.resume(task_id, session, worktree_path, prompt, agent, permission_mode, app).await,
+            Provider::ClaudeCode(p) => p.resume(task_id, session, worktree_path, prompt, agent, permission_mode, model, app).await,
+            Provider::OpenCode(p) => p.resume(task_id, session, worktree_path, prompt, agent, permission_mode, model, app).await,
         }
     }
 
