@@ -253,7 +253,17 @@ pub async fn start_implementation(
     };
 
     let prompt = build_task_prompt(&task, additional_instructions.as_deref(), code_cleanup_enabled);
-    let result = provider.start(&task_id, &working_dir, &prompt, task.agent.as_deref(), task.permission_mode.as_deref(), &app).await?;
+    let result = provider
+        .start(
+            &task_id,
+            &working_dir,
+            &prompt,
+            task.agent.as_deref(),
+            task.permission_mode.as_deref(),
+            None,
+            &app,
+        )
+        .await?;
 
     if use_worktrees && provider_name != "claude-code" {
         let db = crate::db::acquire_db(&db);

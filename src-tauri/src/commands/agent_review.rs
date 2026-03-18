@@ -80,7 +80,7 @@ pub async fn start_agent_review(
 
     // Step 9: Send prompt
     client
-        .prompt_async(&opencode_session_id, prompt, None)
+        .prompt_async(&opencode_session_id, prompt, None, None)
         .await
         .map_err(|e| format!("Failed to send prompt: {}", e))?;
 
