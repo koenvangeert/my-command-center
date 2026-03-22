@@ -7,6 +7,52 @@ use super::error::GitHubError;
 use super::types::*;
 
 impl GitHubClient {
+    pub async fn merge_pr(
+        &self,
+        owner: &str,
+        repo: &str,
+        pr_number: i64,
+        token: &str,
+    ) -> Result<MergePrResponse, GitHubError> {
+        let url = format!(
+            "https://api.github.com/repos/{}/{}/pulls/{}/merge",
+            owner, repo, pr_number
+        );
+
+        let request_body = MergePrRequest {
+            commit_title: None,
+            commit_message: None,
+            merge_method: Some("merge".to_string()),
+        };
+
+        let response = self
+            .client
+            .put(&url)
+            .header("Authorization", format!("token {}", token))
+            .header("User-Agent", "openforge")
+            .json(&request_body)
+            .send()
+            .await
+            .map_err(|e| GitHubError::NetworkError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unable to read response body".to_string());
+            return Err(GitHubError::ApiError {
+                status: status.as_u16(),
+                message: body,
+            });
+        }
+
+        response
+            .json()
+            .await
+            .map_err(|e| GitHubError::ParseError(e.to_string()))
+    }
+
     /// Get pull request details
     pub async fn get_pr_details(
         &self,
