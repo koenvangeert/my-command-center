@@ -1,6 +1,7 @@
 use std::sync::{Mutex, Arc};
 use tauri::{Emitter, State};
 use crate::{db, github_poller};
+use crate::github_client::GitHubClient;
 
 #[tauri::command]
 pub async fn force_github_sync(
@@ -78,6 +79,29 @@ pub async fn mark_comment_addressed(
         .mark_comment_addressed(comment_id)
         .map_err(|e| format!("Failed to mark comment addressed: {}", e))?;
     let _ = app.emit("comment-addressed", ());
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn merge_pull_request(
+    github_client: State<'_, GitHubClient>,
+    owner: String,
+    repo: String,
+    pr_number: i64,
+) -> Result<(), String> {
+    let token = crate::secure_store::get_secret("github_token")
+        .map_err(|e| format!("Failed to get config: {}", e))?
+        .ok_or("github_token not configured".to_string())?;
+
+    let response = github_client
+        .merge_pr(&owner, &repo, pr_number, &token)
+        .await
+        .map_err(|e| format!("Failed to merge pull request: {}", e))?;
+
+    if !response.merged {
+        return Err(format!("Failed to merge pull request: {}", response.message));
+    }
+
     Ok(())
 }
 

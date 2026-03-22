@@ -167,6 +167,20 @@ pub(crate) struct ReviewSubmitRequest {
     pub comments: Vec<ReviewSubmitComment>,
 }
 
+#[derive(Debug, Serialize)]
+pub(crate) struct MergePrRequest {
+    pub commit_title: Option<String>,
+    pub commit_message: Option<String>,
+    pub merge_method: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MergePrResponse {
+    pub sha: String,
+    pub merged: bool,
+    pub message: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReviewSubmitComment {
     pub path: String,
@@ -492,6 +506,35 @@ mod tests {
         assert!(json.contains("\"commit_id\":\"sha123\""));
         assert!(json.contains("\"event\":\"APPROVE\""));
         assert!(json.contains("\"comments\""));
+    }
+
+    #[test]
+    fn test_merge_pr_request_serialization() {
+        let request = MergePrRequest {
+            commit_title: Some("Merge feature branch".to_string()),
+            commit_message: None,
+            merge_method: Some("squash".to_string()),
+        };
+
+        let json = serde_json::to_string(&request).unwrap();
+
+        assert!(json.contains("\"commit_title\":\"Merge feature branch\""));
+        assert!(json.contains("\"merge_method\":\"squash\""));
+    }
+
+    #[test]
+    fn test_merge_pr_response_deserialization() {
+        let json = r#"{
+            "sha": "abc123",
+            "merged": true,
+            "message": "Pull Request successfully merged"
+        }"#;
+
+        let response: MergePrResponse = serde_json::from_str(json).unwrap();
+
+        assert_eq!(response.sha, "abc123");
+        assert!(response.merged);
+        assert_eq!(response.message, "Pull Request successfully merged");
     }
 
     #[test]

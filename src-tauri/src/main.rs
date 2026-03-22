@@ -439,6 +439,7 @@ fn main() {
             commands::github::get_pull_requests,
             commands::github::get_pr_comments,
             commands::github::mark_comment_addressed,
+            commands::github::merge_pull_request,
             commands::agents::get_session_status,
             commands::agents::abort_session,
             commands::agents::get_latest_session,

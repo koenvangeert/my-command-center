@@ -1,17 +1,29 @@
 import { render, screen, fireEvent } from '@testing-library/svelte'
-import { describe, it, expect, vi } from 'vitest'
+import { beforeEach, describe, it, expect, vi } from 'vitest'
 import { writable } from 'svelte/store'
 import TaskInfoPanel from './TaskInfoPanel.svelte'
 import type { Task, PullRequestInfo } from '../lib/types'
 import { ticketPrs } from '../lib/stores'
+import { getPullRequests, mergePullRequest, openUrl } from '../lib/ipc'
 
 vi.mock('../lib/stores', () => ({
   ticketPrs: writable(new Map()),
 }))
 
 vi.mock('../lib/ipc', () => ({
+  forceGithubSync: vi.fn().mockResolvedValue({
+    new_comments: 0,
+    ci_changes: 0,
+    review_changes: 0,
+    pr_changes: 0,
+    errors: 0,
+    rate_limited: false,
+    rate_limit_reset_at: null,
+  }),
   getPrComments: vi.fn().mockResolvedValue([]),
+  getPullRequests: vi.fn().mockResolvedValue([]),
   markCommentAddressed: vi.fn().mockResolvedValue(undefined),
+  mergePullRequest: vi.fn().mockResolvedValue(undefined),
   openUrl: vi.fn().mockResolvedValue(undefined),
 }))
 
@@ -38,6 +50,37 @@ const baseTask: Task = {
 }
 
 describe('TaskInfoPanel', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    ticketPrs.set(new Map())
+    vi.mocked(getPullRequests).mockResolvedValue([])
+  })
+
+  function createPullRequest(overrides: Partial<PullRequestInfo> = {}): PullRequestInfo {
+    return {
+      id: 42,
+      ticket_id: 'T-42',
+      repo_owner: 'owner',
+      repo_name: 'repo',
+      title: 'Test PR',
+      url: 'https://github.com/owner/repo/pull/42',
+      state: 'open',
+      head_sha: 'abc123',
+      ci_status: null,
+      ci_check_runs: null,
+      review_status: null,
+      mergeable: null,
+      mergeable_state: null,
+      merged_at: null,
+      created_at: 1000,
+      updated_at: 2000,
+      draft: false,
+      is_queued: false,
+      unaddressed_comment_count: 0,
+      ...overrides,
+    }
+  }
+
   it('renders Initial Prompt section with task prompt', () => {
     render(TaskInfoPanel, { props: { task: baseTask, worktreePath: null, jiraBaseUrl: '' } })
     expect(screen.getByText('// INITIAL_PROMPT')).toBeTruthy()
@@ -228,10 +271,122 @@ describe('TaskInfoPanel', () => {
   })
 
   it('calls openUrl with correct Jira URL on click', async () => {
-    const { openUrl } = await import('../lib/ipc')
     render(TaskInfoPanel, { props: { task: baseTask, worktreePath: null, jiraBaseUrl: 'https://jira.example.com' } })
     const button = screen.getByText('Open in Jira ↗')
     await fireEvent.click(button)
     expect(openUrl).toHaveBeenCalledWith('https://jira.example.com/browse/PROJ-123')
+  })
+
+  it('renders Merge button when PR is ready to merge', async () => {
+    const readyPr = createPullRequest({
+      ci_status: 'success',
+      review_status: 'approved',
+      mergeable: true,
+      mergeable_state: 'clean',
+    })
+
+    ticketPrs.set(new Map([['T-42', [readyPr]]]))
+
+    render(TaskInfoPanel, { props: { task: baseTask, worktreePath: null, jiraBaseUrl: '' } })
+
+    await screen.findByRole('button', { name: 'Merge' })
+    expect(screen.getByText(/Ready to Merge/)).toBeTruthy()
+  })
+
+  it('does not render Merge button when PR is queued for merge', async () => {
+    const queuedPr = createPullRequest({
+      ci_status: 'success',
+      review_status: 'approved',
+      mergeable: true,
+      mergeable_state: 'clean',
+      is_queued: true,
+    })
+
+    ticketPrs.set(new Map([['T-42', [queuedPr]]]))
+
+    render(TaskInfoPanel, { props: { task: baseTask, worktreePath: null, jiraBaseUrl: '' } })
+
+    await new Promise((r) => setTimeout(r, 10))
+    expect(screen.queryByRole('button', { name: 'Merge' })).toBeNull()
+  })
+
+  it('calls mergePullRequest with repo coordinates when Merge is clicked', async () => {
+    const readyPr = createPullRequest({
+      ci_status: 'success',
+      review_status: 'approved',
+      mergeable: true,
+      mergeable_state: 'clean',
+    })
+
+    ticketPrs.set(new Map([['T-42', [readyPr]]]))
+    vi.mocked(getPullRequests).mockResolvedValue([readyPr])
+
+    render(TaskInfoPanel, { props: { task: baseTask, worktreePath: null, jiraBaseUrl: '' } })
+
+    await fireEvent.click(await screen.findByRole('button', { name: 'Merge' }))
+
+    expect(mergePullRequest).toHaveBeenCalledWith('owner', 'repo', 42)
+  })
+
+  it('shows loading state while merging', async () => {
+    const readyPr = createPullRequest({
+      ci_status: 'success',
+      review_status: 'approved',
+      mergeable: true,
+      mergeable_state: 'clean',
+    })
+
+    let resolveMerge: (() => void) | undefined
+    vi.mocked(mergePullRequest).mockImplementationOnce(() => new Promise<void>((resolve) => {
+      resolveMerge = resolve
+    }))
+    ticketPrs.set(new Map([['T-42', [readyPr]]]))
+    vi.mocked(getPullRequests).mockResolvedValue([readyPr])
+
+    render(TaskInfoPanel, { props: { task: baseTask, worktreePath: null, jiraBaseUrl: '' } })
+
+    await fireEvent.click(await screen.findByRole('button', { name: 'Merge' }))
+
+    const mergeButton = await screen.findByRole('button', { name: 'Merging...' })
+    expect((mergeButton as HTMLButtonElement).disabled).toBe(true)
+    resolveMerge?.()
+  })
+
+  it('shows an inline error when merge fails', async () => {
+    const readyPr = createPullRequest({
+      ci_status: 'success',
+      review_status: 'approved',
+      mergeable: true,
+      mergeable_state: 'clean',
+    })
+
+    vi.mocked(mergePullRequest).mockRejectedValueOnce(new Error('merge blocked by branch protection'))
+    ticketPrs.set(new Map([['T-42', [readyPr]]]))
+
+    render(TaskInfoPanel, { props: { task: baseTask, worktreePath: null, jiraBaseUrl: '' } })
+
+    await fireEvent.click(await screen.findByRole('button', { name: 'Merge' }))
+
+    expect(await screen.findByText('merge blocked by branch protection')).toBeTruthy()
+  })
+
+  it('refreshes task pull requests after a successful merge', async () => {
+    const readyPr = createPullRequest({
+      ci_status: 'success',
+      review_status: 'approved',
+      mergeable: true,
+      mergeable_state: 'clean',
+    })
+    const mergedPr = { ...readyPr, state: 'merged', merged_at: 3000 }
+
+    ticketPrs.set(new Map([['T-42', [readyPr]]]))
+    vi.mocked(getPullRequests).mockResolvedValue([mergedPr])
+
+    render(TaskInfoPanel, { props: { task: baseTask, worktreePath: null, jiraBaseUrl: '' } })
+
+    await fireEvent.click(await screen.findByRole('button', { name: 'Merge' }))
+
+    expect(getPullRequests).toHaveBeenCalled()
+    expect(await screen.findByText(/Merged on/)).toBeTruthy()
   })
 })

@@ -145,6 +145,10 @@ export async function markCommentAddressed(commentId: number): Promise<void> {
   return invoke("mark_comment_addressed", { commentId });
 }
 
+export async function mergePullRequest(owner: string, repo: string, prNumber: number): Promise<void> {
+  return invoke<void>("merge_pull_request", { owner, repo, prNumber });
+}
+
 export async function checkOpenCodeInstalled(): Promise<{ installed: boolean; path: string | null; version: string | null }> {
   return invoke("check_opencode_installed");
 }
