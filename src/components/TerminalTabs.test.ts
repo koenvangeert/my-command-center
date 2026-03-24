@@ -92,6 +92,7 @@ vi.mock('../lib/terminalPool', () => ({
   attach: vi.fn(),
   detach: vi.fn(),
   release: releaseMock,
+  focusTerminal: vi.fn(),
 }))
 
 // Mock TaskTerminal to avoid complex terminal setup in tab tests
