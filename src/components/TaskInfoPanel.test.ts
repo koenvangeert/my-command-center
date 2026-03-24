@@ -291,6 +291,38 @@ describe('TaskInfoPanel', () => {
     expect(screen.getByText(/Ready to Merge/)).toBeTruthy()
   })
 
+  it('renders Merge button when PR requires no review and is mergeable', async () => {
+    const readyPr = createPullRequest({
+      ci_status: 'success',
+      review_status: 'none',
+      mergeable: true,
+      mergeable_state: 'clean',
+    })
+
+    ticketPrs.set(new Map([['T-42', [readyPr]]]))
+
+    render(TaskInfoPanel, { props: { task: baseTask, worktreePath: null, jiraBaseUrl: '' } })
+
+    await screen.findByRole('button', { name: 'Merge' })
+    expect(screen.getByText(/Ready to Merge/)).toBeTruthy()
+  })
+
+  it('renders Merge button when GitHub reports the PR as mergeable even if review is still required', async () => {
+    const readyPr = createPullRequest({
+      ci_status: 'success',
+      review_status: 'review_required',
+      mergeable: true,
+      mergeable_state: 'clean',
+    })
+
+    ticketPrs.set(new Map([['T-42', [readyPr]]]))
+
+    render(TaskInfoPanel, { props: { task: baseTask, worktreePath: null, jiraBaseUrl: '' } })
+
+    await screen.findByRole('button', { name: 'Merge' })
+    expect(screen.getByText(/Ready to Merge/)).toBeTruthy()
+  })
+
   it('does not render Merge button when PR is queued for merge', async () => {
     const queuedPr = createPullRequest({
       ci_status: 'success',

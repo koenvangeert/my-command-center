@@ -103,11 +103,11 @@ export function hasMergeConflicts(pr: MergeStatusInfo): boolean {
   return mergeableState === 'dirty' || mergeableState === 'conflicting'
 }
 
-/** Check if a PR is ready to merge (open + CI green + approved) */
+/** Check if a PR is ready to merge (open + CI green + positive mergeability + no conflicts) */
 export function isReadyToMerge(pr: PullRequestInfo): boolean {
   return pr.state === 'open'
     && pr.ci_status === 'success'
-    && pr.review_status === 'approved'
+    && pr.mergeable === true
     && !hasMergeConflicts(pr);
 }
 
