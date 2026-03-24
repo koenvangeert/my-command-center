@@ -13,6 +13,14 @@ vi.mock('../lib/ipc', () => ({
   setProjectConfig: vi.fn().mockResolvedValue(undefined),
 }))
 
+vi.mock('../lib/boardFilters', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../lib/boardFilters')>()
+  return {
+    ...actual,
+    loadFocusFilterStates: vi.fn().mockResolvedValue(['needs-input', 'ci-failed', 'changes-requested', 'sad']),
+  }
+})
+
 const makeTask = (id: string, status: string, prompt: string): Task => ({
   id,
   initial_prompt: prompt,
@@ -113,31 +121,31 @@ describe('FocusBoard', () => {
   it('changes list when In progress chip is clicked', async () => {
     renderBoard()
 
-    await fireEvent.click(await screen.findByRole('button', { name: /In progress 3/i }))
+    await fireEvent.click(await screen.findByRole('button', { name: /In progress 2/i }))
 
-    expect(screen.getByText('Focus task')).toBeTruthy()
+    expect(screen.getAllByText('Focus task').length).toBeGreaterThan(0)
     expect(screen.getByText('Doing task')).toBeTruthy()
     expect(screen.getByText('Backlog task')).toBeTruthy()
     expect(screen.queryByText('Done task')).toBeNull()
   })
 
-  it('shows only done tasks when Done chip is clicked', async () => {
+  it('shows only backlog tasks when Backlog chip is clicked', async () => {
     renderBoard()
 
-    await fireEvent.click(await screen.findByRole('button', { name: /Done 1/i }))
+    await fireEvent.click(await screen.findByRole('button', { name: /Backlog 1/i }))
 
-    expect(screen.getByText('Done task')).toBeTruthy()
+    expect(screen.getAllByText('Backlog task').length).toBeGreaterThan(0)
     expect(screen.queryByText('Focus task')).toBeNull()
     expect(screen.queryByText('Doing task')).toBeNull()
+    expect(screen.queryByText('Done task')).toBeNull()
   })
 
-  it('shows task detail pane after selecting task', async () => {
+  it('auto-selects the focused task in detail pane on mount', async () => {
     renderBoard()
 
-    expect(screen.getByText('Select a task to see details')).toBeTruthy()
-    await fireEvent.click(await screen.findByText('Focus task'))
-
-    expect(screen.queryByText('Select a task to see details')).toBeNull()
+    await waitFor(() => {
+      expect(screen.queryByText('Select a task to see details')).toBeNull()
+    })
     expect(screen.getByText('// INITIAL_PROMPT')).toBeTruthy()
   })
 
@@ -178,13 +186,12 @@ describe('FocusBoard', () => {
     expect(within(focused as HTMLElement).getByText('Focus task')).toBeTruthy()
   })
 
-  it('selects focused task on Enter', async () => {
+  it('opens focused task on Enter', async () => {
     renderBoard()
 
     await fireEvent.keyDown(window, { key: 'Enter' })
 
-    expect(screen.queryByText('Select a task to see details')).toBeNull()
-    expect(screen.getByText('// INITIAL_PROMPT')).toBeTruthy()
+    expect(onOpenTask).toHaveBeenCalledWith('T-1')
   })
 
   it('calls onOpenTask when Enter is pressed on already-selected task', async () => {
@@ -199,11 +206,35 @@ describe('FocusBoard', () => {
   it('closes detail pane on Escape', async () => {
     renderBoard()
 
-    await fireEvent.keyDown(window, { key: 'Enter' })
-    expect(screen.queryByText('Select a task to see details')).toBeNull()
+    await waitFor(() => {
+      expect(screen.queryByText('Select a task to see details')).toBeNull()
+    })
 
     await fireEvent.keyDown(window, { key: 'Escape' })
     expect(screen.getByText('Select a task to see details')).toBeTruthy()
+  })
+
+  it('auto-selects task in detail pane when vim j is pressed', async () => {
+    renderBoard({
+      tasks: [taskFocus, taskDoing, taskDone],
+      sessions: new Map([
+        [taskFocus.id, makeSession(taskFocus.id, 'paused', 'needs-review')],
+        [taskDoing.id, makeSession(taskDoing.id, 'failed', null)],
+      ]),
+      prs: new Map(),
+    })
+
+    await waitFor(() => {
+      expect(screen.queryByText('Select a task to see details')).toBeNull()
+    })
+
+    await fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.getByText('Select a task to see details')).toBeTruthy()
+
+    await fireEvent.keyDown(window, { key: 'j' })
+    await waitFor(() => {
+      expect(screen.queryByText('Select a task to see details')).toBeNull()
+    })
   })
 
   it('renders Needs attention header when focus filter is active', async () => {
@@ -224,22 +255,24 @@ describe('FocusBoard', () => {
   it('opens task context menu on right click', async () => {
     renderBoard()
 
-    await fireEvent.click(await screen.findByRole('button', { name: /In progress 3/i }))
-    await fireEvent.contextMenu(screen.getByText('Backlog task'))
+    await fireEvent.click(await screen.findByRole('button', { name: /In progress 2/i }))
+    await fireEvent.contextMenu(screen.getByText('Doing task'))
 
     expect(screen.getByRole('menu')).toBeTruthy()
     expect(screen.getByText('Delete')).toBeTruthy()
   })
 
-  it('clears selected task when filter changes and selected task is excluded', async () => {
+  it('shows backlog task in detail pane when switching to Backlog filter', async () => {
     renderBoard()
 
-    await fireEvent.keyDown(window, { key: 'Enter' })
-    expect(screen.queryByText('Select a task to see details')).toBeNull()
+    await waitFor(() => {
+      expect(screen.queryByText('Select a task to see details')).toBeNull()
+    })
 
-    await fireEvent.click(await screen.findByRole('button', { name: /Done 1/i }))
+    await fireEvent.click(await screen.findByRole('button', { name: /Backlog 1/i }))
 
-    expect(screen.getByText('Select a task to see details')).toBeTruthy()
+    expect(screen.getAllByText('Backlog task').length).toBeGreaterThan(0)
+    expect(screen.queryByText('Focus task')).toBeNull()
   })
 
   it('computes focus count with unaddressed PR comments', async () => {
@@ -250,6 +283,6 @@ describe('FocusBoard', () => {
     })
 
     expect(await screen.findByRole('button', { name: /Focus now 1/i })).toBeTruthy()
-    expect(screen.getByText('Backlog task')).toBeTruthy()
+    expect(screen.getAllByText('Backlog task').length).toBeGreaterThan(0)
   })
 })

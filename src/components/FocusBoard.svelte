@@ -1,9 +1,10 @@
 <script lang="ts">
   import { untrack } from 'svelte'
-  import { filterTasks, getFilterCounts } from '../lib/boardFilters'
+  import { filterTasks, getFilterCounts, DEFAULT_FOCUS_STATES, loadFocusFilterStates } from '../lib/boardFilters'
   import type { BoardFilter } from '../lib/boardFilters'
   import { getTaskReasonText } from '../lib/taskReason'
   import { computeTaskState } from '../lib/taskState'
+  import type { TaskState } from '../lib/taskState'
   import { sortBySessionActivity } from '../lib/taskSort'
   import { useVimNavigation } from '../lib/useVimNavigation.svelte'
   import { isInputFocused } from '../lib/domUtils'
@@ -24,7 +25,7 @@
   const FILTER_OPTIONS = [
     { value: 'focus' as BoardFilter, label: 'Focus now' },
     { value: 'in-progress' as BoardFilter, label: 'In progress' },
-    { value: 'done' as BoardFilter, label: 'Done' },
+    { value: 'backlog' as BoardFilter, label: 'Backlog' },
   ] as const
 
   let { tasks, activeSessions, ticketPrs, onOpenTask, onRunAction }: Props = $props()
@@ -34,13 +35,14 @@
   let paneHasFocus = $state(false)
   let contextMenu = $state({ visible: false, x: 0, y: 0, taskId: '' })
   let projectActions = $state<Action[]>([])
+  let focusStates = $state<TaskState[]>(DEFAULT_FOCUS_STATES)
 
   let filteredTasks = $derived.by(() => {
-    const filtered = filterTasks(tasks, activeFilter, activeSessions, ticketPrs)
+    const filtered = filterTasks(tasks, activeFilter, activeSessions, ticketPrs, focusStates)
     return sortBySessionActivity(filtered, activeSessions)
   })
 
-  let filterCounts = $derived.by(() => getFilterCounts(tasks, activeSessions, ticketPrs))
+  let filterCounts = $derived.by(() => getFilterCounts(tasks, activeSessions, ticketPrs, focusStates))
 
   let selectedTask = $derived.by(() => {
     if (!selectedTaskIdLocal) return null
@@ -57,17 +59,10 @@
     getItemCount: () => filteredTasks.length,
     onSelect: (index) => {
       const task = filteredTasks[index]
-      if (!task) return
-      if (selectedTaskIdLocal === task.id) {
-        onOpenTask(task.id)
-      } else {
-        selectedTaskIdLocal = task.id
-      }
+      if (task) onOpenTask(task.id)
     },
     onBack: () => {
-      if (selectedTaskIdLocal !== null) {
-        selectedTaskIdLocal = null
-      }
+      selectedTaskIdLocal = null
     },
     onAction: (index) => {
       const task = filteredTasks[index]
@@ -93,6 +88,14 @@
   })
 
   $effect(() => {
+    const idx = vim.focusedIndex
+    const task = filteredTasks[idx]
+    if (task) {
+      selectedTaskIdLocal = task.id
+    }
+  })
+
+  $effect(() => {
     const projectId = tasks.find(t => t.project_id !== null)?.project_id
     if (!projectId) {
       projectActions = []
@@ -105,6 +108,15 @@
       .catch(() => {
         projectActions = []
       })
+  })
+
+  $effect(() => {
+    const projectId = tasks.find(t => t.project_id !== null)?.project_id
+    if (projectId) {
+      loadFocusFilterStates(projectId).then(states => {
+        focusStates = states
+      })
+    }
   })
 
   function handleKeydown(e: KeyboardEvent) {
@@ -150,7 +162,7 @@
   </div>
 
   <div class="flex gap-6 flex-1 min-h-0">
-    <div class="flex flex-col gap-4 w-[420px] overflow-y-auto flex-shrink-0">
+    <div class="flex flex-col gap-4 flex-1 min-w-0 overflow-y-auto">
       {#if activeFilter === 'focus'}
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
@@ -177,12 +189,7 @@
             isSelected={selectedTaskIdLocal === task.id}
             isFocused={vim.focusedIndex === i}
             onSelect={() => {
-              if (selectedTaskIdLocal === task.id) {
-                onOpenTask(task.id)
-              } else {
-                selectedTaskIdLocal = task.id
-                vim.setFocusedIndex(i)
-              }
+              onOpenTask(task.id)
             }}
             onContextMenu={(e) => handleContextMenu(e, task.id)}
           />
@@ -190,7 +197,7 @@
       {/if}
     </div>
 
-    <div class="flex-1 min-w-0" onfocusin={() => paneHasFocus = true} onfocusout={() => paneHasFocus = false}>
+    <div class="w-2/5 flex-shrink-0" onfocusin={() => paneHasFocus = true} onfocusout={() => paneHasFocus = false}>
       <TaskDetailPane
         task={selectedTask}
         pullRequests={selectedTask ? ticketPrs.get(selectedTask.id) ?? [] : []}
