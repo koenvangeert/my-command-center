@@ -86,9 +86,9 @@ describe('pull request merge conflict helpers', () => {
     expect(isReadyToMerge(createPullRequest({ ci_status: 'failure', mergeable_state: 'clean' }))).toBe(true)
   })
 
-  // ISOLATION: mergeable_state: 'unstable' — currently FAILS
-  it('considers a PR with unstable mergeable_state ready to merge (non-required checks failing)', () => {
-    expect(isReadyToMerge(createPullRequest({ mergeable_state: 'unstable' }))).toBe(true)
+  // ISOLATION: mergeable_state: 'unstable' — CI is failing
+  it('does not consider a PR with unstable mergeable_state ready to merge (CI is failing)', () => {
+    expect(isReadyToMerge(createPullRequest({ mergeable_state: 'unstable' }))).toBe(false)
   })
 
   // ISOLATION: mergeable_state: 'clean' with mergeable: false — currently FAILS
@@ -101,8 +101,8 @@ describe('pull request merge conflict helpers', () => {
     expect(isReadyToMerge(createPullRequest({ mergeable_state: 'CLEAN' }))).toBe(true)
   })
 
-  it('handles uppercase mergeable_state values for unstable', () => {
-    expect(isReadyToMerge(createPullRequest({ mergeable_state: 'UNSTABLE' }))).toBe(true)
+  it('does not consider PR with uppercase UNSTABLE ready to merge', () => {
+    expect(isReadyToMerge(createPullRequest({ mergeable_state: 'UNSTABLE' }))).toBe(false)
   })
 
   // NOT READY cases — explicit documentation

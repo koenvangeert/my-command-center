@@ -438,11 +438,11 @@ describe('computeTaskState - mergeable_state based ready-to-merge (PART 5)', () 
     expect(computeTaskState(task, session, prs)).toBe('ready-to-merge')
   })
 
-  it('test 2: mergeable_state unstable → ready-to-merge', () => {
+  it('test 2: mergeable_state unstable + ci failing → ci-failed', () => {
     const task = createTask({ status: 'doing' })
     const session = createSession({ status: 'completed' })
-    const prs = [createPr({ state: 'open', mergeable_state: 'unstable' })]
-    expect(computeTaskState(task, session, prs)).toBe('ready-to-merge')
+    const prs = [createPr({ state: 'open', mergeable_state: 'unstable', ci_status: 'failure' })]
+    expect(computeTaskState(task, session, prs)).toBe('ci-failed')
   })
 
   it('test 3: mergeable_state clean + is_queued → pr-queued', () => {
@@ -452,11 +452,11 @@ describe('computeTaskState - mergeable_state based ready-to-merge (PART 5)', () 
     expect(computeTaskState(task, session, prs)).toBe('pr-queued')
   })
 
-  it('test 4: mergeable_state unstable + is_queued → pr-queued', () => {
+  it('test 4: mergeable_state unstable + ci failing + is_queued → ci-failed (queued does not override CI failure)', () => {
     const task = createTask({ status: 'doing' })
     const session = createSession({ status: 'completed' })
-    const prs = [createPr({ state: 'open', mergeable_state: 'unstable', is_queued: true })]
-    expect(computeTaskState(task, session, prs)).toBe('pr-queued')
+    const prs = [createPr({ state: 'open', mergeable_state: 'unstable', ci_status: 'failure', is_queued: true })]
+    expect(computeTaskState(task, session, prs)).toBe('ci-failed')
   })
 
   it('test 5: ISOLATION — mergeable_state clean with ci_status failure → ready-to-merge (trusts GitHub)', () => {

@@ -1,4 +1,5 @@
 import type { Task, AgentSession, PullRequestInfo } from './types'
+import { isReadyToMerge } from './types'
 
 export type TaskState =
   | 'egg' | 'idle' | 'active' | 'needs-input' | 'resting' | 'celebrating' | 'sad' | 'frozen' | 'done'
@@ -15,8 +16,7 @@ function getPrState(prs: PullRequestInfo[]): TaskState | null {
   if (pr.state === 'merged') return 'pr-merged'
 
   // GitHub's source of truth: mergeable_state tells us if all requirements are met
-  const mergeableState = pr.mergeable_state?.toLowerCase() ?? null
-  if (mergeableState === 'clean' || mergeableState === 'unstable' || mergeableState === 'behind')
+  if (isReadyToMerge(pr))
     return pr.is_queued ? 'pr-queued' : 'ready-to-merge'
 
   // Open PR checks in priority order (when not merge-ready)
