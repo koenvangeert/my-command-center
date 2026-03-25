@@ -52,6 +52,9 @@ export const actionItemCount = writable<number>(0);
 /** Per-task review mode state — preserved across navigation */
 export const taskReviewModes = writable<Map<string, boolean>>(new Map());
 
+/** Per-task terminal panel open state — preserved across navigation */
+export const taskTerminalOpen = writable<Map<string, boolean>>(new Map());
+
 /** Per-task draft note text — preserved across navigation */
 export const taskDraftNotes = writable<Map<string, string>>(new Map());
 
