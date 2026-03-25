@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte'
+  import { onMount, onDestroy } from 'svelte'
   import { get } from 'svelte/store'
   import type { Task, Action } from '../lib/types'
   import { activeSessions, activeProjectId, startingTasks, taskReviewModes } from '../lib/stores'
@@ -72,10 +72,19 @@
     if (bottomPanelOpen) terminalEverOpened = true
   })
 
+  let prevTerminalTaskId: string | null = null
+
   $effect(() => {
     const taskId = task.id
-    return () => {
-      releaseAllForTask(taskId)
+    if (prevTerminalTaskId !== null && prevTerminalTaskId !== taskId) {
+      releaseAllForTask(prevTerminalTaskId)
+    }
+    prevTerminalTaskId = taskId
+  })
+
+  onDestroy(() => {
+    if (prevTerminalTaskId) {
+      releaseAllForTask(prevTerminalTaskId)
     }
   })
 
