@@ -1,3 +1,4 @@
+use std::path::Path;
 use std::sync::{Mutex, Arc};
 use tauri::State;
 use crate::opencode_client::OpenCodeClient;
@@ -7,6 +8,47 @@ use crate::command_discovery::{
     scan_skills_directory,
     search_project_files,
 };
+
+fn load_project_context(
+    db: &State<'_, Arc<Mutex<db::Database>>>,
+    project_id: &str,
+) -> Result<(String, Option<String>), String> {
+    let db = crate::db::acquire_db(db);
+    let provider = db.resolve_ai_provider(project_id);
+    let project_path = db
+        .get_project(project_id)
+        .map_err(|e| format!("Failed to get project: {}", e))?
+        .map(|p| p.path);
+
+    Ok((provider, project_path))
+}
+
+async fn ensure_project_discovery_server(
+    db: &State<'_, Arc<Mutex<db::Database>>>,
+    server_mgr: &State<'_, server_manager::ServerManager>,
+    project_id: &str,
+) -> Result<Option<u16>, String> {
+    let (provider, project_path) = load_project_context(db, project_id)?;
+    if provider != "opencode" {
+        return Ok(None);
+    }
+
+    let discovery_task_id = server_manager::discovery_server_task_id(project_id);
+    if let Some(port) = server_mgr.get_server_port(&discovery_task_id).await {
+        return Ok(Some(port));
+    }
+
+    let Some(project_path) = project_path else {
+        return Ok(None);
+    };
+
+    let port = server_mgr
+        .spawn_server(&discovery_task_id, Path::new(&project_path))
+        .await
+        .map_err(|e| format!("Failed to start discovery server: {}", e))?;
+
+    Ok(Some(port))
+}
 
 /// Get list of available agents from OpenCode server
 #[tauri::command]
@@ -51,19 +93,13 @@ pub async fn list_opencode_commands(
     server_mgr: State<'_, server_manager::ServerManager>,
     project_id: String,
 ) -> Result<Vec<crate::opencode_client::CommandInfo>, String> {
-    // Detect provider — branch to filesystem scanning for claude-code
     let provider = {
         let db = crate::db::acquire_db(&db);
         db.resolve_ai_provider(&project_id)
     };
 
     if provider == "claude-code" {
-        let project_path = {
-            let db = crate::db::acquire_db(&db);
-            db.get_project(&project_id)
-                .map_err(|e| format!("Failed to get project: {}", e))?
-                .map(|p| p.path)
-        };
+        let (_, project_path) = load_project_context(&db, &project_id)?;
 
         let provider = crate::providers::claude_code::ClaudeCodeProvider::new(
             crate::pty_manager::PtyManager::new()
@@ -71,23 +107,11 @@ pub async fn list_opencode_commands(
         return Ok(provider.list_commands(project_path.as_deref()));
     }
 
-    // Get task IDs for the project
-    let task_ids: Vec<String> = {
-        let db = crate::db::acquire_db(&db);
-        db.get_tasks_for_project(&project_id)
-            .map_err(|e| format!("Failed to get tasks: {}", e))?
-            .into_iter()
-            .map(|t| t.id)
-            .collect()
+    let port = match ensure_project_discovery_server(&db, &server_mgr, &project_id).await? {
+        Some(port) => port,
+        None => return Ok(vec![]),
     };
 
-    // Find any running server
-    let port = match server_mgr.get_any_server_port_for_project(&task_ids).await {
-        Some(p) => p,
-        None => return Ok(vec![]),  // Graceful degradation
-    };
-
-    // Query the server
     let client = OpenCodeClient::with_base_url(format!("http://127.0.0.1:{}", port));
     client.list_commands().await
         .map_err(|e| format!("Failed to list commands: {}", e))
@@ -101,19 +125,13 @@ pub async fn search_opencode_files(
     project_id: String,
     query: String,
 ) -> Result<Vec<String>, String> {
-    // Detect provider — branch to git index search for claude-code
     let provider = {
         let db = crate::db::acquire_db(&db);
         db.resolve_ai_provider(&project_id)
     };
 
     if provider == "claude-code" {
-        let project_path = {
-            let db = crate::db::acquire_db(&db);
-            db.get_project(&project_id)
-                .map_err(|e| format!("Failed to get project: {}", e))?
-                .map(|p| p.path)
-        };
+        let (_, project_path) = load_project_context(&db, &project_id)?;
 
         if let Some(path) = project_path {
             return Ok(search_project_files(&path, &query, 10));
@@ -121,23 +139,11 @@ pub async fn search_opencode_files(
         return Ok(vec![]);
     }
 
-    // Get task IDs for the project
-    let task_ids: Vec<String> = {
-        let db = crate::db::acquire_db(&db);
-        db.get_tasks_for_project(&project_id)
-            .map_err(|e| format!("Failed to get tasks: {}", e))?
-            .into_iter()
-            .map(|t| t.id)
-            .collect()
+    let port = match ensure_project_discovery_server(&db, &server_mgr, &project_id).await? {
+        Some(port) => port,
+        None => return Ok(vec![]),
     };
 
-    // Find any running server
-    let port = match server_mgr.get_any_server_port_for_project(&task_ids).await {
-        Some(p) => p,
-        None => return Ok(vec![]),  // Graceful degradation
-    };
-
-    // Query the server
     let client = OpenCodeClient::with_base_url(format!("http://127.0.0.1:{}", port));
     client.find_files(&query, true, 10).await
         .map_err(|e| format!("Failed to search files: {}", e))
@@ -150,19 +156,13 @@ pub async fn list_opencode_agents(
     server_mgr: State<'_, server_manager::ServerManager>,
     project_id: String,
 ) -> Result<Vec<crate::opencode_client::AgentInfo>, String> {
-    // Detect provider — branch to filesystem scanning for claude-code
     let provider = {
         let db = crate::db::acquire_db(&db);
         db.resolve_ai_provider(&project_id)
     };
 
     if provider == "claude-code" {
-        let project_path = {
-            let db = crate::db::acquire_db(&db);
-            db.get_project(&project_id)
-                .map_err(|e| format!("Failed to get project: {}", e))?
-                .map(|p| p.path)
-        };
+        let (_, project_path) = load_project_context(&db, &project_id)?;
 
         let provider = crate::providers::claude_code::ClaudeCodeProvider::new(
             crate::pty_manager::PtyManager::new()
@@ -170,23 +170,11 @@ pub async fn list_opencode_agents(
         return Ok(provider.list_agents(project_path.as_deref()));
     }
 
-    // Get task IDs for the project
-    let task_ids: Vec<String> = {
-        let db = crate::db::acquire_db(&db);
-        db.get_tasks_for_project(&project_id)
-            .map_err(|e| format!("Failed to get tasks: {}", e))?
-            .into_iter()
-            .map(|t| t.id)
-            .collect()
+    let port = match ensure_project_discovery_server(&db, &server_mgr, &project_id).await? {
+        Some(port) => port,
+        None => return Ok(vec![]),
     };
 
-    // Find any running server
-    let port = match server_mgr.get_any_server_port_for_project(&task_ids).await {
-        Some(p) => p,
-        None => return Ok(vec![]),  // Graceful degradation
-    };
-
-    // Query the server
     let client = OpenCodeClient::with_base_url(format!("http://127.0.0.1:{}", port));
     client.list_agents().await
         .map_err(|e| format!("Failed to list agents: {}", e))
@@ -198,25 +186,8 @@ pub async fn list_shepherd_agents(
     server_mgr: State<'_, server_manager::ServerManager>,
     project_id: String,
 ) -> Result<Vec<crate::opencode_client::AgentInfo>, String> {
-    let shepherd_task_id = format!("shepherd-{}", project_id);
-    if let Some(port) = server_mgr.get_server_port(&shepherd_task_id).await {
-        let client = OpenCodeClient::with_base_url(format!("http://127.0.0.1:{}", port));
-        if let Ok(agents) = client.list_agents().await {
-            return Ok(agents);
-        }
-    }
-
-    let task_ids: Vec<String> = {
-        let db = crate::db::acquire_db(&db);
-        db.get_tasks_for_project(&project_id)
-            .map_err(|e| format!("Failed to get tasks: {}", e))?
-            .into_iter()
-            .map(|t| t.id)
-            .collect()
-    };
-
-    let port = match server_mgr.get_any_server_port_for_project(&task_ids).await {
-        Some(p) => p,
+    let port = match ensure_project_discovery_server(&db, &server_mgr, &project_id).await? {
+        Some(port) => port,
         None => return Ok(vec![]),
     };
 
@@ -233,25 +204,8 @@ pub async fn list_opencode_models(
     server_mgr: State<'_, server_manager::ServerManager>,
     project_id: String,
 ) -> Result<Vec<crate::opencode_client::ProviderModelInfo>, String> {
-    let shepherd_task_id = format!("shepherd-{}", project_id);
-    if let Some(port) = server_mgr.get_server_port(&shepherd_task_id).await {
-        let client = OpenCodeClient::with_base_url(format!("http://127.0.0.1:{}", port));
-        if let Ok(models) = client.list_providers().await {
-            return Ok(models);
-        }
-    }
-
-    let task_ids: Vec<String> = {
-        let db = crate::db::acquire_db(&db);
-        db.get_tasks_for_project(&project_id)
-            .map_err(|e| format!("Failed to get tasks: {}", e))?
-            .into_iter()
-            .map(|t| t.id)
-            .collect()
-    };
-
-    let port = match server_mgr.get_any_server_port_for_project(&task_ids).await {
-        Some(p) => p,
+    let port = match ensure_project_discovery_server(&db, &server_mgr, &project_id).await? {
+        Some(port) => port,
         None => return Ok(vec![]),
     };
 
@@ -273,27 +227,12 @@ pub async fn list_opencode_skills(
     project_id: String,
 ) -> Result<Vec<crate::opencode_client::SkillInfo>, String> {
     // Get the project path for filesystem scanning and level detection
-    let project_path = {
-        let db = crate::db::acquire_db(&db);
-        db.get_project(&project_id)
-            .map_err(|e| format!("Failed to get project: {}", e))?
-            .map(|p| p.path)
-    };
-
-    // Get task IDs for the project
-    let task_ids: Vec<String> = {
-        let db = crate::db::acquire_db(&db);
-        db.get_tasks_for_project(&project_id)
-            .map_err(|e| format!("Failed to get tasks: {}", e))?
-            .into_iter()
-            .map(|t| t.id)
-            .collect()
-    };
+    let (_, project_path) = load_project_context(&db, &project_id)?;
 
     // Collect skills from OpenCode API (if server is running)
     let mut skills_map = std::collections::HashMap::<String, crate::opencode_client::SkillInfo>::new();
 
-    if let Some(port) = server_mgr.get_any_server_port_for_project(&task_ids).await {
+    if let Some(port) = ensure_project_discovery_server(&db, &server_mgr, &project_id).await? {
         let client = OpenCodeClient::with_base_url(format!("http://127.0.0.1:{}", port));
         if let Ok(commands) = client.list_commands().await {
             for cmd in commands {
@@ -418,5 +357,3 @@ pub async fn save_skill_content(
 
     Ok(())
 }
-
-
