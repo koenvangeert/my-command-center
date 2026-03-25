@@ -85,7 +85,7 @@ vi.mock('../lib/useCommentSelection.svelte', () => ({
 }))
 
 import { render, screen, waitFor, fireEvent } from '@testing-library/svelte'
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { writable, get } from 'svelte/store'
 
 vi.mock('../lib/stores', () => ({
@@ -140,6 +140,10 @@ vi.mock('@tauri-apps/api/event', () => ({
   listen: vi.fn().mockResolvedValue(() => {}),
 }))
 
+const { taskTabSessions } = vi.hoisted(() => ({
+  taskTabSessions: new Map<string, { tabs: Array<{ index: number, key: string, label: string }>, activeTabIndex: number, nextIndex: number }>(),
+}))
+
 vi.mock('../lib/terminalPool', () => ({
   acquire: vi.fn().mockResolvedValue({
     taskId: '',
@@ -153,11 +157,51 @@ vi.mock('../lib/terminalPool', () => ({
     visibilityObserver: null,
     resizeTimeout: null,
     attached: false,
+    spawnPending: false,
+    currentPtyInstance: null,
   }),
   attach: vi.fn(),
   detach: vi.fn(),
   release: vi.fn(),
+  releaseAllForTask: vi.fn().mockReturnValue(0),
   focusTerminal: vi.fn(),
+  shouldSpawnPty: vi.fn((entry) => !entry.ptyActive && !entry.spawnPending && !entry.needsClear),
+  markPtySpawnPending: vi.fn((entry) => {
+    entry.spawnPending = true
+  }),
+  clearPtySpawnPending: vi.fn((entry) => {
+    entry.spawnPending = false
+  }),
+  setCurrentPtyInstance: vi.fn((entry, instanceId) => {
+    entry.currentPtyInstance = instanceId
+  }),
+  getShellLifecycleState: vi.fn((taskId: string) => ({
+    ptyActive: false,
+    shellExited: false,
+    currentPtyInstance: null,
+    taskId,
+  })),
+  updateShellLifecycleState: vi.fn(),
+  isShellExited: vi.fn((taskId: string) => {
+    return taskId.endsWith('-shell-0') ? false : false
+  }),
+  getTaskTerminalTabsSession: vi.fn((taskId: string) => {
+    const existing = taskTabSessions.get(taskId)
+    if (existing) return existing
+    const session = {
+      tabs: [{ index: 0, key: `${taskId}-shell-0`, label: 'Shell 1' }],
+      activeTabIndex: 0,
+      nextIndex: 1,
+    }
+    taskTabSessions.set(taskId, session)
+    return session
+  }),
+  updateTaskTerminalTabsSession: vi.fn((taskId: string, session) => {
+    taskTabSessions.set(taskId, session)
+  }),
+  clearTaskTerminalTabsSession: vi.fn((taskId: string) => {
+    taskTabSessions.delete(taskId)
+  }),
 }))
 
 vi.mock('../lib/navigation', () => ({
@@ -355,44 +399,33 @@ describe('TaskDetailView', () => {
     expect(breadcrumbRoot?.textContent).toContain('T-42')
   })
 
-  it('shows terminal toggle when worktree exists', async () => {
-    const { getWorktreeForTask } = await import('../lib/ipc')
-    vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/path/to/worktree', repo_path: '/repo', branch_name: 'branch' } as any)
-
-    render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
-    await waitFor(() => {
-      expect(screen.getByText('Info')).toBeTruthy()
-      expect(screen.getByText('Terminal')).toBeTruthy()
-    })
-    vi.mocked(getWorktreeForTask).mockResolvedValue(null)
-  })
-
-  it('hides terminal toggle when no worktree', async () => {
-    render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
-    await waitFor(() => {
-      expect(screen.queryByText('Terminal')).toBeNull()
-    })
-  })
-
   it('shows TaskInfoPanel by default', async () => {
     render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
     expect(screen.getByText('// INITIAL_PROMPT')).toBeTruthy()
   })
 
-  it('switches to terminal view when Terminal tab clicked', async () => {
+  it('Info panel always visible in code_view mode (no tab toggle)', async () => {
     const { getWorktreeForTask } = await import('../lib/ipc')
     vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/path/to/worktree', repo_path: '/repo', branch_name: 'branch' } as any)
 
     render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
     await waitFor(() => {
-      expect(screen.getByText('Terminal')).toBeTruthy()
+      expect(screen.getByText('// INITIAL_PROMPT')).toBeTruthy()
     })
-    await fireEvent.click(screen.getByText('Terminal'))
-    await waitFor(() => {
-      const shellWrapper = document.querySelector('.shell-terminal-wrapper')
-      expect(shellWrapper).toBeTruthy()
-    })
+    expect(screen.queryByRole('button', { name: /^Info$/ })).toBeNull()
     vi.mocked(getWorktreeForTask).mockResolvedValue(null)
+  })
+
+  it('bottom panel NOT visible initially', async () => {
+    render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
+    await waitFor(() => {
+      expect(screen.queryByTestId('resizable-bottom-panel')).toBeNull()
+    })
+  })
+
+  it('rightPanelMode state does NOT exist — Info always visible', async () => {
+    render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
+    expect(screen.getByText('// INITIAL_PROMPT')).toBeTruthy()
   })
 
   it('falls back to first line of prompt when title is empty', () => {
@@ -436,164 +469,182 @@ describe('TaskDetailView', () => {
     expect(vi.mocked(detach)).toHaveBeenCalled()
   })
 
-  it('shows fullscreen button when terminal tab is active and worktree exists', async () => {
+  it('⌘J opens bottom panel', async () => {
     const { getWorktreeForTask } = await import('../lib/ipc')
     vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/path/to/worktree', repo_path: '/repo', branch_name: 'branch' } as any)
 
     render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
+    await waitFor(() => expect(screen.getByText('code_view')).toBeTruthy())
+
+    expect(screen.queryByTestId('resizable-bottom-panel')).toBeNull()
+
+    await fireEvent.keyDown(window, { code: 'KeyJ', metaKey: true })
+
     await waitFor(() => {
-      expect(screen.getByText('Terminal')).toBeTruthy()
-    })
-    await fireEvent.click(screen.getByText('Terminal'))
-    await waitFor(() => {
-      expect(screen.getByLabelText('Fullscreen terminal')).toBeTruthy()
+      expect(screen.getByTestId('resizable-bottom-panel')).toBeTruthy()
     })
     vi.mocked(getWorktreeForTask).mockResolvedValue(null)
   })
 
-  it('hides fullscreen button when info tab is active', async () => {
+  it('⌘E focuses the first shell tab when terminal panel has never been opened', async () => {
+    const { getWorktreeForTask } = await import('../lib/ipc')
+    const { focusTerminal } = await import('../lib/terminalPool')
+    vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/path/to/worktree', repo_path: '/repo', branch_name: 'branch' } as any)
+    vi.mocked(focusTerminal).mockClear()
+
+    render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
+    await waitFor(() => expect(screen.getByText('code_view')).toBeTruthy())
+
+    await fireEvent.keyDown(window, { key: 'e', metaKey: true })
+
+    expect(focusTerminal).toHaveBeenCalledWith('T-42-shell-0')
+    vi.mocked(getWorktreeForTask).mockResolvedValue(null)
+  })
+
+  it('⌘J closes bottom panel when already open', async () => {
     const { getWorktreeForTask } = await import('../lib/ipc')
     vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/path/to/worktree', repo_path: '/repo', branch_name: 'branch' } as any)
 
     render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
+    await waitFor(() => expect(screen.getByText('code_view')).toBeTruthy())
+
+    await fireEvent.keyDown(window, { code: 'KeyJ', metaKey: true })
+    await waitFor(() => expect(screen.getByTestId('resizable-bottom-panel')).toBeTruthy())
+
+    await fireEvent.keyDown(window, { code: 'KeyJ', metaKey: true })
     await waitFor(() => {
-      expect(screen.getByText('Info')).toBeTruthy()
+      const panel = screen.getByTestId('resizable-bottom-panel')
+      expect(panel.closest('.hidden')).not.toBeNull()
     })
-    // Info tab is default — fullscreen button should not be visible
-    expect(screen.queryByLabelText('Fullscreen terminal')).toBeNull()
     vi.mocked(getWorktreeForTask).mockResolvedValue(null)
   })
 
-  it('clicking fullscreen hides AgentPanel and shows terminal filling content area', async () => {
+  it('⌘+1 when panel closed opens bottom panel', async () => {
     const { getWorktreeForTask } = await import('../lib/ipc')
     vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/path/to/worktree', repo_path: '/repo', branch_name: 'branch' } as any)
 
     render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
+    await waitFor(() => expect(screen.getByText('code_view')).toBeTruthy())
+
+    expect(screen.queryByTestId('resizable-bottom-panel')).toBeNull()
+
+    await fireEvent.keyDown(window, { code: 'Digit1', metaKey: true, shiftKey: false })
+
     await waitFor(() => {
-      expect(screen.getByText('Terminal')).toBeTruthy()
-    })
-    await fireEvent.click(screen.getByText('Terminal'))
-    await waitFor(() => {
-      expect(screen.getByLabelText('Fullscreen terminal')).toBeTruthy()
-    })
-    await fireEvent.click(screen.getByLabelText('Fullscreen terminal'))
-    await waitFor(() => {
-      // Fullscreen container should be visible with minimize button
-      expect(screen.getByLabelText('Exit fullscreen')).toBeTruthy()
-      // AgentPanel's empty state should not be visible
-      expect(screen.queryByText('No active agent session')).toBeNull()
+      expect(screen.getByTestId('resizable-bottom-panel')).toBeTruthy()
     })
     vi.mocked(getWorktreeForTask).mockResolvedValue(null)
   })
 
-  it('clicking minimize exits fullscreen and restores normal layout', async () => {
+  it('⌘+Shift+1 → code_view (NOT terminal tab)', async () => {
+    const { getWorktreeForTask } = await import('../lib/ipc')
+    vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' } as any)
+
+    render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
+    await waitFor(() => expect(screen.getByText('review_view')).toBeTruthy())
+
+    await fireEvent.keyDown(window, { code: 'Digit2', metaKey: true, shiftKey: true })
+    const breadcrumb = screen.getByText('$ cd board').closest('div')
+    await waitFor(() => expect(breadcrumb?.textContent).toContain('self_review'))
+
+    await fireEvent.keyDown(window, { code: 'Digit1', metaKey: true, shiftKey: true })
+    await waitFor(() => {
+      expect(breadcrumb?.textContent).toContain('code')
+      expect(breadcrumb?.textContent).not.toContain('self_review')
+    })
+    vi.mocked(getWorktreeForTask).mockResolvedValue(null)
+  })
+
+  it('⌘+Shift+2 → review_view (NOT terminal tab)', async () => {
+    const { getWorktreeForTask } = await import('../lib/ipc')
+    vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' } as any)
+
+    render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
+    await waitFor(() => expect(screen.getByText('review_view')).toBeTruthy())
+
+    const breadcrumb = screen.getByText('$ cd board').closest('div')
+    expect(breadcrumb?.textContent).toContain('code')
+
+    await fireEvent.keyDown(window, { code: 'Digit2', metaKey: true, shiftKey: true })
+    await waitFor(() => expect(breadcrumb?.textContent).toContain('self_review'))
+    vi.mocked(getWorktreeForTask).mockResolvedValue(null)
+  })
+
+  it('review mode shows SelfReviewView and bottom panel persists', async () => {
     const { getWorktreeForTask } = await import('../lib/ipc')
     vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/path/to/worktree', repo_path: '/repo', branch_name: 'branch' } as any)
 
     render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
+    await waitFor(() => expect(screen.getByText('review_view')).toBeTruthy())
+
+    await fireEvent.keyDown(window, { code: 'KeyJ', metaKey: true })
+    await waitFor(() => expect(screen.getByTestId('resizable-bottom-panel')).toBeTruthy())
+
+    await fireEvent.keyDown(window, { code: 'Digit2', metaKey: true, shiftKey: true })
     await waitFor(() => {
-      expect(screen.getByText('Terminal')).toBeTruthy()
-    })
-    await fireEvent.click(screen.getByText('Terminal'))
-    await waitFor(() => {
-      expect(screen.getByLabelText('Fullscreen terminal')).toBeTruthy()
-    })
-    await fireEvent.click(screen.getByLabelText('Fullscreen terminal'))
-    await waitFor(() => {
-      expect(screen.getByLabelText('Exit fullscreen')).toBeTruthy()
-    })
-    // Click minimize
-    await fireEvent.click(screen.getByLabelText('Exit fullscreen'))
-    await waitFor(() => {
-      // Should be back to normal layout with AgentPanel
-      expect(screen.getByText('No active agent session')).toBeTruthy()
-      // Fullscreen button should reappear (still on terminal tab)
-      expect(screen.getByLabelText('Fullscreen terminal')).toBeTruthy()
+      const breadcrumb = screen.getByText('$ cd board').closest('div')
+      expect(breadcrumb?.textContent).toContain('self_review')
+      expect(screen.getByTestId('resizable-bottom-panel')).toBeTruthy()
     })
     vi.mocked(getWorktreeForTask).mockResolvedValue(null)
   })
 
-  it('Cmd+f toggles fullscreen when terminal tab is active', async () => {
+  it('⌘F toggles fullscreen when bottom panel is open and not in review mode', async () => {
+    taskReviewModes.set(new Map())
     const { getWorktreeForTask } = await import('../lib/ipc')
     vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/path/to/worktree', repo_path: '/repo', branch_name: 'branch' } as any)
 
     render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
+    await waitFor(() => expect(screen.getByText('code_view')).toBeTruthy())
+
+    await fireEvent.keyDown(window, { code: 'KeyJ', metaKey: true })
+    await waitFor(() => expect(screen.getByTestId('resizable-bottom-panel')).toBeTruthy())
+
+    await fireEvent.keyDown(window, { code: 'KeyF', metaKey: true })
     await waitFor(() => {
-      expect(screen.getByText('Terminal')).toBeTruthy()
-    })
-    await fireEvent.click(screen.getByText('Terminal'))
-    await waitFor(() => {
-      expect(screen.getByLabelText('Fullscreen terminal')).toBeTruthy()
+      expect(screen.queryByTestId('upper-area')).toBeNull()
+      expect(screen.getByTestId('resizable-bottom-panel')).toBeTruthy()
     })
 
-    // Press Cmd+f to enter fullscreen
-    await fireEvent.keyDown(window, { key: 'f', metaKey: true })
+    await fireEvent.keyDown(window, { code: 'KeyF', metaKey: true })
     await waitFor(() => {
-      expect(screen.getByLabelText('Exit fullscreen')).toBeTruthy()
-    })
-
-    // Press Cmd+f again to exit fullscreen
-    await fireEvent.keyDown(window, { key: 'f', metaKey: true })
-    await waitFor(() => {
-      expect(screen.getByLabelText('Fullscreen terminal')).toBeTruthy()
-      expect(screen.queryByLabelText('Exit fullscreen')).toBeNull()
+      expect(screen.getByTestId('upper-area')).toBeTruthy()
     })
     vi.mocked(getWorktreeForTask).mockResolvedValue(null)
   })
 
-  it('Cmd+f does nothing when no worktree or on info tab', async () => {
+  it('⌘F does nothing when bottom panel is closed', async () => {
     render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
-    // No worktree — Cmd+f should not create fullscreen elements
-    await fireEvent.keyDown(window, { key: 'f', metaKey: true })
-    expect(screen.queryByLabelText('Exit fullscreen')).toBeNull()
-    expect(screen.queryByLabelText('Fullscreen terminal')).toBeNull()
+    await waitFor(() => expect(screen.getByTestId('upper-area')).toBeTruthy())
+    await fireEvent.keyDown(window, { code: 'KeyF', metaKey: true })
+    expect(screen.getByTestId('upper-area')).toBeTruthy()
   })
 
-  it('] switches from info to terminal tab', async () => {
+  it('⌘J exits fullscreen first when terminalFullscreen is true', async () => {
+    taskReviewModes.set(new Map())
     const { getWorktreeForTask } = await import('../lib/ipc')
     vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/path/to/worktree', repo_path: '/repo', branch_name: 'branch' } as any)
 
     render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
+    await waitFor(() => expect(screen.getByText('code_view')).toBeTruthy())
+
+    await fireEvent.keyDown(window, { code: 'KeyJ', metaKey: true })
+    await waitFor(() => expect(screen.getByTestId('resizable-bottom-panel')).toBeTruthy())
+
+    await fireEvent.keyDown(window, { code: 'KeyF', metaKey: true })
     await waitFor(() => {
-      expect(screen.getByText('Info')).toBeTruthy()
+      expect(screen.queryByTestId('upper-area')).toBeNull()
     })
-    // Default is info tab — press ] to switch to terminal
-    await fireEvent.keyDown(window, { key: ']' })
+
+    await fireEvent.keyDown(window, { code: 'KeyJ', metaKey: true })
     await waitFor(() => {
-      const shellWrapper = document.querySelector('.shell-terminal-wrapper')
-      expect(shellWrapper).toBeTruthy()
+      expect(screen.getByTestId('upper-area')).toBeTruthy()
+      expect(screen.getByTestId('resizable-bottom-panel')).toBeTruthy()
     })
     vi.mocked(getWorktreeForTask).mockResolvedValue(null)
   })
 
-  it('[ switches from terminal to info tab', async () => {
-    const { getWorktreeForTask } = await import('../lib/ipc')
-    vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/path/to/worktree', repo_path: '/repo', branch_name: 'branch' } as any)
 
-    render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
-    await waitFor(() => {
-      expect(screen.getByText('Terminal')).toBeTruthy()
-    })
-    // Switch to terminal first
-    await fireEvent.click(screen.getByText('Terminal'))
-    await waitFor(() => {
-      const shellWrapper = document.querySelector('.shell-terminal-wrapper')
-      expect(shellWrapper).toBeTruthy()
-    })
-    // Press [ to switch back to info
-    await fireEvent.keyDown(window, { key: '[' })
-    await waitFor(() => {
-      expect(screen.getByText('// INITIAL_PROMPT')).toBeTruthy()
-    })
-    vi.mocked(getWorktreeForTask).mockResolvedValue(null)
-  })
-
-  it('[/] does nothing when no worktree', async () => {
-    render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
-    // No worktree — ] should not cause errors or show terminal
-    await fireEvent.keyDown(window, { key: ']' })
-    expect(screen.queryByText('Terminal')).toBeNull()
-  })
 
   it('navigates to board when task is moved to done', async () => {
     const doingTask: Task = { ...baseTask, status: 'doing' }
@@ -633,6 +684,10 @@ describe('TaskDetailView', () => {
   })
 
   describe('keyboard shortcuts', () => {
+    beforeEach(() => {
+      taskReviewModes.set(new Map())
+    })
+
     it('l key switches to review mode when worktree exists', async () => {
       const { getWorktreeForTask } = await import('../lib/ipc')
       vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' } as any)
@@ -712,7 +767,7 @@ describe('TaskDetailView', () => {
       vi.mocked(getWorktreeForTask).mockResolvedValue(null)
     })
 
-    it('Cmd+2 switches to review mode when worktree exists', async () => {
+    it('Cmd+Shift+2 switches to review mode when worktree exists', async () => {
       const { getWorktreeForTask } = await import('../lib/ipc')
       vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' } as any)
 
@@ -724,7 +779,7 @@ describe('TaskDetailView', () => {
       const breadcrumb = screen.getByText('$ cd board').closest('div')
       expect(breadcrumb?.textContent).toContain('code')
 
-      await fireEvent.keyDown(window, { key: '2', metaKey: true })
+      await fireEvent.keyDown(window, { code: 'Digit2', metaKey: true, shiftKey: true })
 
       await waitFor(() => {
         expect(breadcrumb?.textContent).toContain('self_review')
@@ -733,7 +788,7 @@ describe('TaskDetailView', () => {
       vi.mocked(getWorktreeForTask).mockResolvedValue(null)
     })
 
-    it('Cmd+1 switches back to code mode from review', async () => {
+    it('Cmd+Shift+1 switches back to code mode from review', async () => {
       const { getWorktreeForTask } = await import('../lib/ipc')
       vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' } as any)
 
@@ -742,13 +797,13 @@ describe('TaskDetailView', () => {
         expect(screen.getByText('review_view')).toBeTruthy()
       })
 
-      await fireEvent.keyDown(window, { key: '2', metaKey: true })
+      await fireEvent.keyDown(window, { code: 'Digit2', metaKey: true, shiftKey: true })
       const breadcrumb = screen.getByText('$ cd board').closest('div')
       await waitFor(() => {
         expect(breadcrumb?.textContent).toContain('self_review')
       })
 
-      await fireEvent.keyDown(window, { key: '1', metaKey: true })
+      await fireEvent.keyDown(window, { code: 'Digit1', metaKey: true, shiftKey: true })
       await waitFor(() => {
         expect(breadcrumb?.textContent).toContain('code')
         expect(breadcrumb?.textContent).not.toContain('self_review')
@@ -757,7 +812,7 @@ describe('TaskDetailView', () => {
       vi.mocked(getWorktreeForTask).mockResolvedValue(null)
     })
 
-    it('Cmd+1/2 work even when an input element is focused', async () => {
+    it('Cmd+Shift+1/2 work even when an input element is focused', async () => {
       const { getWorktreeForTask } = await import('../lib/ipc')
       vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' } as any)
 
@@ -775,12 +830,12 @@ describe('TaskDetailView', () => {
 
         const breadcrumb = screen.getByText('$ cd board').closest('div')
 
-        await fireEvent.keyDown(window, { key: '2', metaKey: true })
+        await fireEvent.keyDown(window, { code: 'Digit2', metaKey: true, shiftKey: true })
         await waitFor(() => {
           expect(breadcrumb?.textContent).toContain('self_review')
         })
 
-        await fireEvent.keyDown(window, { key: '1', metaKey: true })
+        await fireEvent.keyDown(window, { code: 'Digit1', metaKey: true, shiftKey: true })
         await waitFor(() => {
           expect(breadcrumb?.textContent).toContain('code')
         })
@@ -790,15 +845,60 @@ describe('TaskDetailView', () => {
       }
     })
 
-    it('Cmd+1/2 are ignored when no worktree exists', async () => {
+    it('Cmd+Shift+1/2 are ignored when no worktree exists', async () => {
       render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
 
       const breadcrumb = screen.getByText('$ cd board').closest('div')
       expect(breadcrumb?.textContent).toContain('code')
 
-      await fireEvent.keyDown(window, { key: '2', metaKey: true })
+      await fireEvent.keyDown(window, { code: 'Digit2', metaKey: true, shiftKey: true })
       expect(breadcrumb?.textContent).toContain('code')
       expect(breadcrumb?.textContent).not.toContain('self_review')
+    })
+
+    it('Cmd+1 (without shift) does not switch to code mode', async () => {
+      const { getWorktreeForTask } = await import('../lib/ipc')
+      vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' } as any)
+
+      render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
+      await waitFor(() => {
+        expect(screen.getByText('review_view')).toBeTruthy()
+      })
+
+      const breadcrumb = screen.getByText('$ cd board').closest('div')
+
+      await fireEvent.keyDown(window, { code: 'Digit2', metaKey: true, shiftKey: true })
+      await waitFor(() => {
+        expect(breadcrumb?.textContent).toContain('self_review')
+      })
+
+      await fireEvent.keyDown(window, { code: 'Digit1', metaKey: true, shiftKey: false })
+      expect(breadcrumb?.textContent).toContain('self_review')
+
+      vi.mocked(getWorktreeForTask).mockResolvedValue(null)
+    })
+
+    it('Cmd+2 (without shift) does not switch to review mode', async () => {
+      const { getWorktreeForTask } = await import('../lib/ipc')
+      vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' } as any)
+
+      render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
+      await waitFor(() => {
+        expect(screen.getByText('review_view')).toBeTruthy()
+      })
+
+      const breadcrumb = screen.getByText('$ cd board').closest('div')
+      await waitFor(() => {
+        expect(breadcrumb?.textContent).toContain('code')
+      })
+
+      await fireEvent.keyDown(window, { code: 'Digit2', metaKey: true, shiftKey: false })
+      await waitFor(() => {
+        expect(breadcrumb?.textContent).toContain('code')
+        expect(breadcrumb?.textContent).not.toContain('self_review')
+      })
+
+      vi.mocked(getWorktreeForTask).mockResolvedValue(null)
     })
 
     it('shows shortcut hints on view toggle buttons when CMD is held', async () => {
@@ -815,8 +915,8 @@ describe('TaskDetailView', () => {
       await waitFor(() => {
         const codeBtn = screen.getByText('code_view').closest('button')
         const reviewBtn = screen.getByText('review_view').closest('button')
-        expect(codeBtn?.textContent).toContain('⌘1')
-        expect(reviewBtn?.textContent).toContain('⌘2')
+        expect(codeBtn?.textContent).toContain('⌘⇧1')
+        expect(reviewBtn?.textContent).toContain('⌘⇧2')
       })
 
       commandHeld.set(false)
@@ -837,8 +937,8 @@ describe('TaskDetailView', () => {
       await waitFor(() => {
         const codeBtn = screen.getByText('code_view').closest('button')
         const reviewBtn = screen.getByText('review_view').closest('button')
-        expect(codeBtn?.textContent).not.toContain('⌘1')
-        expect(reviewBtn?.textContent).not.toContain('⌘2')
+        expect(codeBtn?.textContent).not.toContain('⌘⇧1')
+        expect(reviewBtn?.textContent).not.toContain('⌘⇧2')
       })
 
       vi.mocked(getWorktreeForTask).mockResolvedValue(null)
@@ -932,247 +1032,67 @@ describe('TaskDetailView', () => {
          expect(breadcrumb?.textContent).not.toContain('self_review')
        })
 
-       vi.mocked(getWorktreeForTask).mockResolvedValue(null)
-     })
-   })
+        vi.mocked(getWorktreeForTask).mockResolvedValue(null)
+      })
+    })
 
-   describe('panel shortcuts (⌘I / ⌘J / ⌘E)', () => {
-     beforeEach(() => {
-       taskReviewModes.set(new Map())
-     })
+    describe('terminal cleanup on navigate-away', () => {
+      it('calls releaseAllForTask when component unmounts', async () => {
+        const { getWorktreeForTask } = await import('../lib/ipc')
+        const { releaseAllForTask } = await import('../lib/terminalPool')
+        
+        vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' } as any)
+        vi.mocked(releaseAllForTask).mockClear()
+        
+        const { unmount } = render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
+        
+        await waitFor(() => expect(screen.getByText('code_view')).toBeTruthy())
+        
+        unmount()
+        
+        expect(releaseAllForTask).toHaveBeenCalledWith('T-42')
+        
+        vi.mocked(getWorktreeForTask).mockResolvedValue(null)
+      })
 
-     async function setupWithWorktree() {
-       const { getWorktreeForTask } = await import('../lib/ipc')
-       vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' } as any)
-       return () => vi.mocked(getWorktreeForTask).mockResolvedValue(null)
-     }
+      it('calls releaseAllForTask when task prop changes', async () => {
+        const { getWorktreeForTask } = await import('../lib/ipc')
+        const { releaseAllForTask } = await import('../lib/terminalPool')
+        
+        vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' } as any)
+        vi.mocked(releaseAllForTask).mockClear()
+        
+        const { rerender } = render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
+        
+        await waitFor(() => expect(screen.getByText('code_view')).toBeTruthy())
+        
+        const newTask = { ...baseTask, id: 'T-99', initial_prompt: 'New task' }
+        rerender({ task: newTask, onRunAction: mockOnRunAction })
+        
+        await waitFor(() => {
+          expect(releaseAllForTask).toHaveBeenCalledWith('T-42')
+        })
+        
+        vi.mocked(getWorktreeForTask).mockResolvedValue(null)
+      })
 
-     it('⌘I switches to info tab when terminal is active', async () => {
-       const cleanup = await setupWithWorktree()
+      it('cleanup only releases shell entries, not agent terminal', async () => {
+        const { getWorktreeForTask } = await import('../lib/ipc')
+        const { releaseAllForTask } = await import('../lib/terminalPool')
+        
+        vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' } as any)
+        vi.mocked(releaseAllForTask).mockClear()
+        
+        const { unmount } = render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
+        
+        await waitFor(() => expect(screen.getByText('code_view')).toBeTruthy())
+        
+        unmount()
+        
+        expect(releaseAllForTask).toHaveBeenCalledWith('T-42')
+        
+        vi.mocked(getWorktreeForTask).mockResolvedValue(null)
+      })
+    })
 
-       render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
-       await waitFor(() => {
-         expect(screen.getByText('Terminal')).toBeTruthy()
-       })
-
-       await fireEvent.click(screen.getByText('Terminal'))
-       await waitFor(() => {
-         const shellWrapper = document.querySelector('.shell-terminal-wrapper')
-         expect(shellWrapper).toBeTruthy()
-       })
-
-       await fireEvent.keyDown(window, { key: 'i', metaKey: true })
-       await waitFor(() => {
-         expect(screen.getByText('// INITIAL_PROMPT')).toBeTruthy()
-       })
-
-       cleanup()
-     })
-
-     it('⌘J switches to terminal tab when info is active', async () => {
-       const cleanup = await setupWithWorktree()
-       const { focusTerminal } = await import('../lib/terminalPool')
-       vi.mocked(focusTerminal).mockClear()
-
-       render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
-       await waitFor(() => {
-         expect(screen.getByText('Info')).toBeTruthy()
-       })
-
-       await fireEvent.keyDown(window, { key: 'j', metaKey: true })
-       await waitFor(() => {
-         const shellWrapper = document.querySelector('.shell-terminal-wrapper')
-         expect(shellWrapper).toBeTruthy()
-       })
-       expect(focusTerminal).toHaveBeenCalledWith('T-42-shell')
-
-       cleanup()
-     })
-
-     it('⌘J focuses the shell terminal when terminal tab is already active', async () => {
-       const cleanup = await setupWithWorktree()
-       const { focusTerminal } = await import('../lib/terminalPool')
-
-       render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
-       await waitFor(() => {
-         expect(screen.getByText('Info')).toBeTruthy()
-       })
-
-       // Switch to terminal first
-       await fireEvent.keyDown(window, { key: 'j', metaKey: true })
-       await waitFor(() => {
-         const shellWrapper = document.querySelector('.shell-terminal-wrapper')
-         expect(shellWrapper).toBeTruthy()
-       })
-
-       vi.mocked(focusTerminal).mockClear()
-
-       // Press ⌘J again — should still call focusTerminal
-       await fireEvent.keyDown(window, { key: 'j', metaKey: true })
-       expect(focusTerminal).toHaveBeenCalledWith('T-42-shell')
-
-       cleanup()
-     })
-
-     it('⌘E calls focusTerminal to focus the agent panel', async () => {
-       const { focusTerminal } = await import('../lib/terminalPool')
-       vi.mocked(focusTerminal).mockClear()
-
-       render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
-
-       await fireEvent.keyDown(window, { key: 'e', metaKey: true })
-
-       expect(focusTerminal).toHaveBeenCalledWith('T-42')
-     })
-
-     it('⌘I/⌘J are ignored when no worktree exists', async () => {
-       const { getWorktreeForTask } = await import('../lib/ipc')
-       vi.mocked(getWorktreeForTask).mockResolvedValue(null)
-
-       render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
-       await waitFor(() => {
-         expect(screen.queryByText('Terminal')).toBeNull()
-       })
-
-       await fireEvent.keyDown(window, { key: 'i', metaKey: true })
-       expect(screen.queryByText('Terminal')).toBeNull()
-
-       await fireEvent.keyDown(window, { key: 'j', metaKey: true })
-       expect(screen.queryByText('Terminal')).toBeNull()
-     })
-
-     it('⌘I exits review mode and shows info tab', async () => {
-       const cleanup = await setupWithWorktree()
-
-       render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
-       await waitFor(() => {
-         expect(screen.getByText('review_view')).toBeTruthy()
-       })
-
-       await fireEvent.keyDown(window, { key: '2', metaKey: true })
-       const breadcrumb = screen.getByText('$ cd board').closest('div')
-       await waitFor(() => {
-         expect(breadcrumb?.textContent).toContain('self_review')
-       })
-
-       await fireEvent.keyDown(window, { key: 'i', metaKey: true })
-       await waitFor(() => {
-         expect(breadcrumb?.textContent).toContain('code')
-         expect(screen.getByText('// INITIAL_PROMPT')).toBeTruthy()
-       })
-
-       cleanup()
-     })
-
-     it('⌘J exits review mode and shows terminal tab', async () => {
-       const cleanup = await setupWithWorktree()
-
-       render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
-       await waitFor(() => {
-         expect(screen.getByText('review_view')).toBeTruthy()
-       })
-
-       await fireEvent.keyDown(window, { key: '2', metaKey: true })
-       const breadcrumb = screen.getByText('$ cd board').closest('div')
-       await waitFor(() => {
-         expect(breadcrumb?.textContent).toContain('self_review')
-       })
-
-       await fireEvent.keyDown(window, { key: 'j', metaKey: true })
-       await waitFor(() => {
-         expect(breadcrumb?.textContent).toContain('code')
-         const shellWrapper = document.querySelector('.shell-terminal-wrapper')
-         expect(shellWrapper).toBeTruthy()
-       })
-
-       cleanup()
-     })
-
-     it('⌘I exits terminal fullscreen', async () => {
-       const cleanup = await setupWithWorktree()
-
-       render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
-       await waitFor(() => {
-         expect(screen.getByText('Terminal')).toBeTruthy()
-       })
-
-       await fireEvent.click(screen.getByText('Terminal'))
-       await waitFor(() => {
-         expect(screen.getByLabelText('Fullscreen terminal')).toBeTruthy()
-       })
-       await fireEvent.click(screen.getByLabelText('Fullscreen terminal'))
-       await waitFor(() => {
-         expect(screen.getByLabelText('Exit fullscreen')).toBeTruthy()
-       })
-
-       await fireEvent.keyDown(window, { key: 'i', metaKey: true })
-       await waitFor(() => {
-         expect(screen.queryByLabelText('Exit fullscreen')).toBeNull()
-         expect(screen.getByText('// INITIAL_PROMPT')).toBeTruthy()
-       })
-
-       cleanup()
-     })
-   })
-
-   describe('CMD-hold hint badges', () => {
-     afterEach(() => {
-       commandHeld.set(false)
-     })
-
-     it('shows ⌘I/⌘J hints on panel tabs when commandHeld is true', async () => {
-       const { getWorktreeForTask } = await import('../lib/ipc')
-       vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' } as any)
-
-       render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
-       await waitFor(() => {
-         expect(screen.getByText('Info')).toBeTruthy()
-       })
-
-       commandHeld.set(true)
-
-       await waitFor(() => {
-         const kbds = document.querySelectorAll('kbd')
-         const hintTexts = Array.from(kbds).map(k => k.textContent)
-          expect(hintTexts).toContain('⌘I')
-          expect(hintTexts).toContain('⌘J')
-       })
-
-       vi.mocked(getWorktreeForTask).mockResolvedValue(null)
-     })
-
-     it('shows ⌘E hint on agent panel when commandHeld is true', async () => {
-       render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
-
-       commandHeld.set(true)
-
-       await waitFor(() => {
-         const kbds = document.querySelectorAll('kbd')
-         const hintTexts = Array.from(kbds).map(k => k.textContent)
-         expect(hintTexts).toContain('E')
-       })
-     })
-
-     it('hides hint badges when commandHeld is false', async () => {
-       const { getWorktreeForTask } = await import('../lib/ipc')
-       vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' } as any)
-
-       render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
-       await waitFor(() => {
-         expect(screen.getByText('Info')).toBeTruthy()
-       })
-
-       commandHeld.set(false)
-
-       await waitFor(() => {
-         const kbds = document.querySelectorAll('kbd')
-         const hintTexts = Array.from(kbds).map(k => k.textContent)
-         expect(hintTexts).not.toContain('I')
-         expect(hintTexts).not.toContain('J')
-         expect(hintTexts).not.toContain('E')
-       })
-
-       vi.mocked(getWorktreeForTask).mockResolvedValue(null)
-     })
-   })
 })
