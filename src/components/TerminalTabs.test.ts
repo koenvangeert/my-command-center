@@ -63,6 +63,10 @@ const { releaseMock } = vi.hoisted(() => ({
   releaseMock: vi.fn(),
 }))
 
+const { taskTabSessions } = vi.hoisted(() => ({
+  taskTabSessions: new Map<string, { tabs: Array<{ index: number, key: string, label: string }>, activeTabIndex: number, nextIndex: number }>(),
+}))
+
 vi.mock('../lib/terminalPool', () => ({
   acquire: vi.fn().mockResolvedValue({
     taskId: '',
@@ -88,11 +92,39 @@ vi.mock('../lib/terminalPool', () => ({
     visibilityObserver: null,
     resizeTimeout: null,
     attached: false,
+    spawnPending: false,
+    currentPtyInstance: null,
   }),
   attach: vi.fn(),
   detach: vi.fn(),
   release: releaseMock,
   focusTerminal: vi.fn(),
+  setCurrentPtyInstance: vi.fn((entry, instanceId) => {
+    entry.currentPtyInstance = instanceId
+  }),
+  getShellLifecycleState: vi.fn(() => ({
+    ptyActive: false,
+    shellExited: false,
+    currentPtyInstance: null,
+  })),
+  updateShellLifecycleState: vi.fn(),
+  getTaskTerminalTabsSession: vi.fn((taskId: string) => {
+      const existing = taskTabSessions.get(taskId)
+      if (existing) return existing
+      const session = {
+        tabs: [{ index: 0, key: `${taskId}-shell-0`, label: 'Shell 1' }],
+        activeTabIndex: 0,
+        nextIndex: 1,
+      }
+      taskTabSessions.set(taskId, session)
+      return session
+    }),
+    updateTaskTerminalTabsSession: vi.fn((taskId: string, session) => {
+      taskTabSessions.set(taskId, session)
+    }),
+    clearTaskTerminalTabsSession: vi.fn((taskId: string) => {
+      taskTabSessions.delete(taskId)
+    }),
 }))
 
 // Mock TaskTerminal to avoid complex terminal setup in tab tests
@@ -107,6 +139,7 @@ describe('TerminalTabs', () => {
     vi.clearAllMocks()
     killPtyMock.mockResolvedValue(undefined)
     releaseMock.mockReturnValue(undefined)
+    taskTabSessions.clear()
   })
 
   it('renders with 1 tab "Shell 1" on mount', async () => {
@@ -463,6 +496,46 @@ describe('TerminalTabs', () => {
     await vi.waitFor(() => {
       // Should have switched to Shell 1 (index 0)
       expect(onTabChange).toHaveBeenCalledWith(0)
+    })
+  })
+
+  it('preserves tabs across TerminalTabs remount for the same task', async () => {
+    const first = render(TerminalTabs, {
+      props: {
+        taskId: 'T-1',
+        worktreePath: '/path/to/worktree',
+        isFullscreen: false,
+        onFullscreenToggle: null,
+        onTabChange: null,
+        onTabCountChange: null,
+      },
+    })
+
+    await vi.waitFor(() => {
+      expect(screen.getByText('Shell 1')).toBeTruthy()
+    })
+
+    await fireEvent.click(screen.getByRole('button', { name: '+' }))
+
+    await vi.waitFor(() => {
+      expect(screen.getByText('Shell 2')).toBeTruthy()
+    })
+
+    first.unmount()
+
+    render(TerminalTabs, {
+      props: {
+        taskId: 'T-1',
+        worktreePath: '/path/to/worktree',
+        isFullscreen: false,
+        onFullscreenToggle: null,
+        onTabChange: null,
+        onTabCountChange: null,
+      },
+    })
+
+    await vi.waitFor(() => {
+      expect(screen.getByText('Shell 2')).toBeTruthy()
     })
   })
 })
