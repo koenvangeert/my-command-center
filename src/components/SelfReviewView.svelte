@@ -2,7 +2,7 @@
   import { onMount, onDestroy } from 'svelte'
   import { get } from 'svelte/store'
   import { selfReviewDiffFiles, selfReviewGeneralComments } from '../lib/stores'
-  import { getTaskFileContents, getTaskBatchFileContents, openUrl } from '../lib/ipc'
+  import { getTaskFileContents, getTaskBatchFileContents, getCommitFileContents, getCommitBatchFileContents, openUrl } from '../lib/ipc'
   import { timeAgo } from '../lib/timeAgo'
   import { createDiffLoader } from '../lib/useDiffLoader.svelte'
   import { createCommentSelection } from '../lib/useCommentSelection.svelte'
@@ -29,11 +29,9 @@
   let includeUncommitted = $state(false)
   let showAddressed = $state(false)
 
-  // Sidebar state
   let sidebarVisible = $state(false)
   let sidebarTab = $state<'pr' | 'notes'>('pr')
 
-  // Composables
   const diffLoader = createDiffLoader({
     getTaskId: () => task.id,
     getIncludeUncommitted: () => includeUncommitted,
@@ -61,6 +59,17 @@
   }
 
   async function fetchTaskFileContents(file: PrFileDiff): Promise<FileContents> {
+    const sha = diffLoader.selectedCommitSha
+    if (sha !== null) {
+      const [oldContent, newContent] = await getCommitFileContents(
+        task.id,
+        sha,
+        file.filename,
+        file.previous_filename,
+        file.status,
+      )
+      return { oldContent, newContent }
+    }
     const [oldContent, newContent] = await getTaskFileContents(
       task.id,
       file.filename,
@@ -73,7 +82,12 @@
 
   async function batchFetchTaskFileContents(files: PrFileDiff[]): Promise<Map<string, FileContents>> {
     const requests = files.map(f => ({ path: f.filename, oldPath: f.previous_filename ?? null, status: f.status }))
-    const results = await getTaskBatchFileContents(task.id, requests, includeUncommitted)
+    const sha = diffLoader.selectedCommitSha
+
+    const results = sha !== null
+      ? await getCommitBatchFileContents(task.id, sha, requests)
+      : await getTaskBatchFileContents(task.id, requests, includeUncommitted)
+
     const map = new Map<string, FileContents>()
     files.forEach((file, i) => {
       const [oldContent, newContent] = results[i]
@@ -82,12 +96,18 @@
     return map
   }
 
+  async function handleCommitChange(e: Event) {
+    const sha = (e.target as HTMLSelectElement).value || null
+    await diffLoader.selectCommit(sha)
+  }
+
   onMount(async () => {
     await diffLoader.loadDiff()
     if (get(selfReviewDiffFiles).length === 0 && !includeUncommitted) {
       includeUncommitted = true
       await diffLoader.refresh()
     }
+    await diffLoader.loadCommits()
   })
 
   onDestroy(() => {
@@ -261,11 +281,25 @@
   </div>
 
   {#if !diffLoader.isLoading && !diffLoader.error}
-    <div class="flex items-center gap-2 px-3 py-1.5 border-t border-base-300 bg-base-200 text-xs">
-      <label class="flex items-center gap-1.5 cursor-pointer">
-        <input type="checkbox" class="checkbox checkbox-xs" checked={includeUncommitted} onchange={(e: Event) => { includeUncommitted = (e.target as HTMLInputElement).checked; diffLoader.refresh() }} />
-        <span class="text-base-content/70">Include uncommitted changes</span>
-      </label>
+    <div class="flex items-center gap-3 px-3 py-1.5 border-t border-base-300 bg-base-200 text-xs">
+      {#if diffLoader.commits.length > 0}
+        <select
+          class="select select-xs select-bordered max-w-xs"
+          value={diffLoader.selectedCommitSha ?? ''}
+          onchange={handleCommitChange}
+        >
+          <option value="">All changes</option>
+          {#each diffLoader.commits as commit (commit.sha)}
+            <option value={commit.sha}>{commit.short_sha} — {commit.message.length > 60 ? commit.message.slice(0, 60) + '…' : commit.message}</option>
+          {/each}
+        </select>
+      {/if}
+      {#if diffLoader.selectedCommitSha === null}
+        <label class="flex items-center gap-1.5 cursor-pointer">
+          <input type="checkbox" class="checkbox checkbox-xs" checked={includeUncommitted} onchange={(e: Event) => { includeUncommitted = (e.target as HTMLInputElement).checked; diffLoader.refresh() }} />
+          <span class="text-base-content/70">Include uncommitted changes</span>
+        </label>
+      {/if}
     </div>
   {/if}
 
