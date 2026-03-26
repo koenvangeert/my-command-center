@@ -1033,10 +1033,11 @@
                <span>Loading tasks...</span>
              </div>
            {:else if boardLayout === 'focus'}
-              <FocusBoard
-                projectName={activeProject?.name ?? ''}
-                tasks={$tasks}
-                activeSessions={$activeSessions}
+               <FocusBoard
+                 projectId={$activeProjectId}
+                 projectName={activeProject?.name ?? ''}
+                 tasks={$tasks}
+                 activeSessions={$activeSessions}
                 ticketPrs={$ticketPrs}
                 onOpenTask={handleOpenTask}
                 onRunAction={handleRunAction}
