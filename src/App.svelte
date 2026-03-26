@@ -400,8 +400,10 @@
       case 'move-to-done':
         if (task) {
           resetToBoard()
-          await updateTaskStatus(task.id, 'done')
-          await loadTasks()
+          void updateTaskStatus(task.id, 'done').catch((e) => {
+            console.error('Failed to update task status:', e)
+            $error = 'Task completion may have succeeded, but background cleanup failed.'
+          })
         }
         break
       case 'delete-task':
