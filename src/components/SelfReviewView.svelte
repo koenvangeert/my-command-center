@@ -11,6 +11,7 @@
   import type { FileContents } from '../lib/diffAdapter'
   import FileTree from './FileTree.svelte'
   import ResizablePanel from './ResizablePanel.svelte'
+  import ResizableBottomPanel from './ResizableBottomPanel.svelte'
   import DiffViewer from './DiffViewer.svelte'
   import GeneralCommentsSidebar from './GeneralCommentsSidebar.svelte'
   import SendToAgentPanel from './SendToAgentPanel.svelte'
@@ -96,8 +97,7 @@
     return map
   }
 
-  async function handleCommitChange(e: Event) {
-    const sha = (e.target as HTMLSelectElement).value || null
+  async function handleCommitSelect(sha: string | null) {
     await diffLoader.selectCommit(sha)
   }
 
@@ -127,43 +127,116 @@
         <span class="text-5xl">⚠</span>
         <span>{diffLoader.error}</span>
       </div>
-    {:else if $selfReviewDiffFiles.length === 0}
-      <div class="flex flex-col items-center justify-center flex-1 gap-4 text-base-content/50 text-center p-10">
-        <span class="text-6xl">📂</span>
-        <h3 class="text-xl font-semibold text-base-content m-0">No changes on this branch yet</h3>
-        <p class="text-sm m-0">Make some changes and they will appear here automatically.</p>
-      </div>
     {:else}
       <div class="flex flex-1 overflow-hidden">
-        {#if fileTreeVisible}
-          <ResizablePanel storageKey="self-review-file-tree" defaultWidth={260} minWidth={160} maxWidth={500} side="left">
-            <FileTree files={$selfReviewDiffFiles} onSelectFile={handleFileSelect} />
-          </ResizablePanel>
-        {/if}
-          <DiffViewer
-            bind:this={diffViewer}
-            files={$selfReviewDiffFiles}
-            existingComments={inlineReviewComments}
-            {fileTreeVisible}
-            onToggleFileTree={() => { fileTreeVisible = !fileTreeVisible }}
-            fetchFileContents={fetchTaskFileContents}
-            batchFetchFileContents={batchFetchTaskFileContents}
-            {includeUncommitted}
-          >
-            {#snippet toolbarExtra()}
-              <div class="w-px h-5 bg-base-300 mx-1 self-center"></div>
-              <button
-                class="btn btn-ghost btn-xs gap-1 {sidebarVisible ? 'text-primary bg-primary/10 border border-primary' : 'text-base-content/50'}"
-                onclick={() => { sidebarVisible = !sidebarVisible }}
-                title={sidebarVisible ? 'Hide comments panel' : 'Show comments panel'}
-              >
-                Comments
-                {#if commentSelection.unaddressedCount > 0 && !sidebarVisible}
-                  <span class="badge badge-error badge-xs">{commentSelection.unaddressedCount}</span>
+        <ResizablePanel storageKey="self-review-file-tree" defaultWidth={260} minWidth={160} maxWidth={500} side="left">
+          <div class="flex flex-col h-full bg-base-100 border-r border-base-300">
+            <div class="px-2 py-1.5 text-[0.65rem] uppercase tracking-wider font-semibold text-base-content/50 border-b border-base-300 bg-base-200">Files</div>
+            <div class="flex-1 overflow-hidden">
+              {#if fileTreeVisible}
+                <FileTree files={$selfReviewDiffFiles} onSelectFile={handleFileSelect} />
+              {:else}
+                <div class="h-full flex flex-col items-center justify-center gap-2 text-center px-3 text-base-content/50">
+                  <div class="text-xs">File explorer hidden</div>
+                  <button class="btn btn-ghost btn-xs" onclick={() => { fileTreeVisible = true }}>Show files</button>
+                </div>
+              {/if}
+            </div>
+            <ResizableBottomPanel
+              storageKey="self-review-commit-history"
+              defaultHeight={160}
+              minHeight={110}
+              maxHeight={320}
+              fillParent={false}
+              panelTestId="self-review-commit-history-panel"
+              handleTestId="self-review-commit-history-handle"
+            >
+              <div class="h-full flex flex-col border-t border-base-300 bg-base-200/70">
+                <div class="px-2 py-1.5 text-[0.65rem] uppercase tracking-wider font-semibold text-base-content/50 border-b border-base-300 bg-base-200">Commit history</div>
+                <div class="px-2 py-1.5 border-b border-base-300 bg-base-100/50">
+                  {#if diffLoader.selectedCommitSha === null}
+                    <label class="flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        class="checkbox checkbox-xs"
+                        checked={includeUncommitted}
+                        onchange={(e: Event) => {
+                          includeUncommitted = (e.target as HTMLInputElement).checked
+                          diffLoader.refresh()
+                        }}
+                      />
+                      <span class="text-base-content/70 text-[0.65rem]">Include uncommitted changes</span>
+                    </label>
+                  {:else}
+                    <button
+                      class="btn btn-ghost btn-xs h-6 min-h-0 px-2 text-[0.65rem] justify-start"
+                      onclick={() => handleCommitSelect(null)}
+                    >
+                      Show all changes
+                    </button>
+                  {/if}
+                </div>
+                <div class="flex-1 overflow-y-auto py-1">
+                  <button
+                    class="w-full text-left px-2 py-1.5 text-[0.65rem] leading-tight hover:bg-base-300/60 transition-colors {diffLoader.selectedCommitSha === null ? 'bg-primary/10 text-primary font-semibold' : 'text-base-content'}"
+                    onclick={() => handleCommitSelect(null)}
+                  >
+                    <div class="truncate">All changes</div>
+                    <div class="text-[0.6rem] text-base-content/60">merge-base..HEAD</div>
+                  </button>
+                  {#each diffLoader.commits as commit (commit.sha)}
+                    <button
+                      class="w-full text-left px-2 py-1.5 text-[0.65rem] leading-tight hover:bg-base-300/60 transition-colors {diffLoader.selectedCommitSha === commit.sha ? 'bg-primary/10 text-primary font-semibold' : 'text-base-content'}"
+                      onclick={() => handleCommitSelect(commit.sha)}
+                      title={commit.message}
+                    >
+                      <div class="font-mono text-[0.6rem] opacity-70">{commit.short_sha}</div>
+                      <div class="truncate">{commit.message}</div>
+                    </button>
+                  {/each}
+                </div>
+              </div>
+            </ResizableBottomPanel>
+          </div>
+        </ResizablePanel>
+          {#if $selfReviewDiffFiles.length === 0}
+            <div class="flex flex-col items-center justify-center flex-1 gap-4 text-base-content/50 text-center p-10">
+              <span class="text-6xl">📂</span>
+              <h3 class="text-xl font-semibold text-base-content m-0">No changes for current selection</h3>
+              <p class="text-sm m-0">
+                {#if diffLoader.selectedCommitSha === null}
+                  Make changes or enable uncommitted changes from the commit history pane.
+                {:else}
+                  This commit has no displayable diff. Switch back to All changes from the commit history pane.
                 {/if}
-              </button>
-            {/snippet}
-          </DiffViewer>
+              </p>
+            </div>
+          {:else}
+            <DiffViewer
+              bind:this={diffViewer}
+              files={$selfReviewDiffFiles}
+              existingComments={inlineReviewComments}
+              {fileTreeVisible}
+              onToggleFileTree={() => { fileTreeVisible = !fileTreeVisible }}
+              fetchFileContents={fetchTaskFileContents}
+              batchFetchFileContents={batchFetchTaskFileContents}
+              {includeUncommitted}
+            >
+              {#snippet toolbarExtra()}
+                <div class="w-px h-5 bg-base-300 mx-1 self-center"></div>
+                <button
+                  class="btn btn-ghost btn-xs gap-1 {sidebarVisible ? 'text-primary bg-primary/10 border border-primary' : 'text-base-content/50'}"
+                  onclick={() => { sidebarVisible = !sidebarVisible }}
+                  title={sidebarVisible ? 'Hide comments panel' : 'Show comments panel'}
+                >
+                  Comments
+                  {#if commentSelection.unaddressedCount > 0 && !sidebarVisible}
+                    <span class="badge badge-error badge-xs">{commentSelection.unaddressedCount}</span>
+                  {/if}
+                </button>
+              {/snippet}
+            </DiffViewer>
+          {/if}
         {#if sidebarVisible}
           <ResizablePanel storageKey="self-review-comments" defaultWidth={360} minWidth={240} maxWidth={600} side="right">
             <div class="border-l border-base-300 overflow-hidden flex flex-col h-full bg-base-100">
@@ -279,29 +352,6 @@
       </div>
     {/if}
   </div>
-
-  {#if !diffLoader.isLoading && !diffLoader.error}
-    <div class="flex items-center gap-3 px-3 py-1.5 border-t border-base-300 bg-base-200 text-xs">
-      {#if diffLoader.commits.length > 0}
-        <select
-          class="select select-xs select-bordered max-w-xs"
-          value={diffLoader.selectedCommitSha ?? ''}
-          onchange={handleCommitChange}
-        >
-          <option value="">All changes</option>
-          {#each diffLoader.commits as commit (commit.sha)}
-            <option value={commit.sha}>{commit.short_sha} — {commit.message.length > 60 ? commit.message.slice(0, 60) + '…' : commit.message}</option>
-          {/each}
-        </select>
-      {/if}
-      {#if diffLoader.selectedCommitSha === null}
-        <label class="flex items-center gap-1.5 cursor-pointer">
-          <input type="checkbox" class="checkbox checkbox-xs" checked={includeUncommitted} onchange={(e: Event) => { includeUncommitted = (e.target as HTMLInputElement).checked; diffLoader.refresh() }} />
-          <span class="text-base-content/70">Include uncommitted changes</span>
-        </label>
-      {/if}
-    </div>
-  {/if}
 
   <SendToAgentPanel
     taskId={task.id}
