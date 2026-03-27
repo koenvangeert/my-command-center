@@ -140,7 +140,7 @@
       return
     }
 
-    if (e.metaKey && e.shiftKey && !e.ctrlKey && !e.altKey && e.code === 'KeyT') {
+    if (e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey && e.code === 'KeyT') {
       e.preventDefault()
       if (!bottomPanelOpen) setBottomPanelOpen(true)
       return

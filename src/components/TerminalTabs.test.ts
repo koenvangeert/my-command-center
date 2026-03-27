@@ -348,7 +348,30 @@ describe('TerminalTabs', () => {
     })
   })
 
-  it('⌘+Shift+T creates new terminal tab', async () => {
+  it('⌘T creates new terminal tab', async () => {
+    render(TerminalTabs, {
+      props: {
+        taskId: 'T-1',
+        worktreePath: '/path/to/worktree',
+        isFullscreen: false,
+        onFullscreenToggle: null,
+        onTabChange: null,
+        onTabCountChange: null,
+      },
+    })
+
+    await vi.waitFor(() => {
+      expect(screen.getByText('Shell 1')).toBeTruthy()
+    })
+
+    await fireEvent.keyDown(document, { code: 'KeyT', metaKey: true })
+
+    await vi.waitFor(() => {
+      expect(screen.getByText('Shell 2')).toBeTruthy()
+    })
+  })
+
+  it('⌘+Shift+T does nothing', async () => {
     render(TerminalTabs, {
       props: {
         taskId: 'T-1',
@@ -366,9 +389,9 @@ describe('TerminalTabs', () => {
 
     await fireEvent.keyDown(document, { code: 'KeyT', metaKey: true, shiftKey: true })
 
-    await vi.waitFor(() => {
-      expect(screen.getByText('Shell 2')).toBeTruthy()
-    })
+    // Wait a moment and verify no new tab was created
+    await new Promise(resolve => setTimeout(resolve, 100))
+    expect(screen.queryByText('Shell 2')).toBeNull()
   })
 
   it('onTabChange callback fires when active tab changes', async () => {

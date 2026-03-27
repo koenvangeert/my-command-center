@@ -448,7 +448,7 @@
       localStorage.setItem('appSidebarCollapsed', String(appSidebarCollapsed))
     })
 
-    shortcuts.register('⌘t', () => {
+    shortcuts.register('⌘n', () => {
       if (!showAddDialog) {
         editingTask = null
         showAddDialog = true
@@ -1060,7 +1060,7 @@
           </div>
           <div class="flex items-center justify-between">
             <span class="text-sm text-base-content">New task</span>
-            <kbd class="kbd kbd-sm">⌘T</kbd>
+            <kbd class="kbd kbd-sm">⌘N</kbd>
           </div>
           <div class="flex items-center justify-between">
             <span class="text-sm text-base-content">Go back</span>
@@ -1145,12 +1145,16 @@
               <span class="text-sm text-base-content">Code / Review view</span>
               <div class="flex gap-0.5"><kbd class="kbd kbd-sm">⌘1</kbd><kbd class="kbd kbd-sm">⌘2</kbd></div>
             </div>
-            <div class="flex items-center justify-between">
-              <span class="text-sm text-base-content">Fullscreen terminal</span>
-              <kbd class="kbd kbd-sm">⌘F</kbd>
-            </div>
-          </div>
-        </div>
+             <div class="flex items-center justify-between">
+               <span class="text-sm text-base-content">Fullscreen terminal</span>
+               <kbd class="kbd kbd-sm">⌘F</kbd>
+             </div>
+             <div class="flex items-center justify-between">
+               <span class="text-sm text-base-content">New terminal tab</span>
+               <kbd class="kbd kbd-sm">⌘T</kbd>
+             </div>
+           </div>
+         </div>
       {/if}
 
       <!-- Board-specific shortcuts -->
