@@ -117,19 +117,7 @@
 
 <div class="flex flex-col w-full h-full overflow-hidden">
   <div class="flex flex-1 overflow-hidden">
-    {#if diffLoader.isLoading}
-      <div class="flex flex-col items-center justify-center flex-1 gap-3 text-base-content/50 text-sm">
-        <span class="loading loading-spinner loading-md text-primary"></span>
-        <span>Loading diff...</span>
-      </div>
-    {:else if diffLoader.error}
-      <div class="flex flex-col items-center justify-center flex-1 gap-3 text-error text-sm text-center p-5">
-        <span class="text-5xl">⚠</span>
-        <span>{diffLoader.error}</span>
-      </div>
-    {:else}
-      <div class="flex flex-1 overflow-hidden">
-        <ResizablePanel storageKey="self-review-file-tree" defaultWidth={260} minWidth={160} maxWidth={500} side="left">
+    <ResizablePanel storageKey="self-review-file-tree" defaultWidth={260} minWidth={160} maxWidth={500} side="left">
           <div class="flex flex-col h-full bg-base-100 border-r border-base-300">
             <div class="px-2 py-1.5 text-[0.65rem] uppercase tracking-wider font-semibold text-base-content/50 border-b border-base-300 bg-base-200">Files</div>
             <div class="flex-1 overflow-hidden">
@@ -178,28 +166,39 @@
                 </div>
                 <div class="flex-1 overflow-y-auto py-1">
                   <button
-                    class="w-full text-left px-2 py-1.5 text-[0.65rem] leading-tight hover:bg-base-300/60 transition-colors {diffLoader.selectedCommitSha === null ? 'bg-primary/10 text-primary font-semibold' : 'text-base-content'}"
+                    class="flex flex-col w-full text-left px-3 py-2.5 gap-1 border-b border-base-200 last:border-b-0 hover:bg-base-300/50 transition-colors {diffLoader.selectedCommitSha === null ? 'bg-primary/5 text-primary' : 'text-base-content'}"
                     onclick={() => handleCommitSelect(null)}
                   >
-                    <div class="truncate">All changes</div>
-                    <div class="text-[0.6rem] text-base-content/60">merge-base..HEAD</div>
+                    <div class="text-xs font-semibold leading-snug">All changes</div>
+                    <div class="font-mono text-[10px] opacity-60">merge-base..HEAD</div>
                   </button>
                   {#each diffLoader.commits as commit (commit.sha)}
                     <button
-                      class="w-full text-left px-2 py-1.5 text-[0.65rem] leading-tight hover:bg-base-300/60 transition-colors {diffLoader.selectedCommitSha === commit.sha ? 'bg-primary/10 text-primary font-semibold' : 'text-base-content'}"
+                      class="flex flex-col w-full text-left px-3 py-2.5 gap-1 border-b border-base-200 last:border-b-0 hover:bg-base-300/50 transition-colors {diffLoader.selectedCommitSha === commit.sha ? 'bg-primary/5 text-primary' : 'text-base-content'}"
                       onclick={() => handleCommitSelect(commit.sha)}
                       title={commit.message}
                     >
-                      <div class="font-mono text-[0.6rem] opacity-70">{commit.short_sha}</div>
-                      <div class="truncate">{commit.message}</div>
+                      <div class="font-mono text-[10px] font-medium opacity-70">{commit.short_sha}</div>
+                      <div class="text-xs font-medium truncate w-full leading-snug">{commit.message}</div>
                     </button>
                   {/each}
                 </div>
               </div>
             </ResizableBottomPanel>
           </div>
-        </ResizablePanel>
-          {#if $selfReviewDiffFiles.length === 0}
+    </ResizablePanel>
+    <div class="flex flex-col flex-1 overflow-hidden bg-base-100">
+      {#if diffLoader.isLoading}
+        <div class="flex flex-col items-center justify-center flex-1 gap-3 text-base-content/50 text-sm">
+          <span class="loading loading-spinner loading-md text-primary"></span>
+          <span>Loading diff...</span>
+        </div>
+      {:else if diffLoader.error}
+        <div class="flex flex-col items-center justify-center flex-1 gap-3 text-error text-sm text-center p-5">
+          <span class="text-5xl">⚠</span>
+          <span>{diffLoader.error}</span>
+        </div>
+      {:else if $selfReviewDiffFiles.length === 0}
             <div class="flex flex-col items-center justify-center flex-1 gap-4 text-base-content/50 text-center p-10">
               <span class="text-6xl">📂</span>
               <h3 class="text-xl font-semibold text-base-content m-0">No changes for current selection</h3>
@@ -237,8 +236,9 @@
               {/snippet}
             </DiffViewer>
           {/if}
-        {#if sidebarVisible}
-          <ResizablePanel storageKey="self-review-comments" defaultWidth={360} minWidth={240} maxWidth={600} side="right">
+    </div>
+    {#if sidebarVisible}
+      <ResizablePanel storageKey="self-review-comments" defaultWidth={360} minWidth={240} maxWidth={600} side="right">
             <div class="border-l border-base-300 overflow-hidden flex flex-col h-full bg-base-100">
               <div class="flex items-center border-b border-base-300 bg-base-200 shrink-0">
                 <button class="flex-1 px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-center transition-colors {sidebarTab === 'pr' ? 'text-primary border-b-2 border-primary bg-base-100' : 'text-base-content/50 hover:text-base-content hover:bg-base-content/5'}"
@@ -347,9 +347,7 @@
                 <GeneralCommentsSidebar taskId={task.id} />
               </div>
             </div>
-          </ResizablePanel>
-        {/if}
-      </div>
+        </ResizablePanel>
     {/if}
   </div>
 
