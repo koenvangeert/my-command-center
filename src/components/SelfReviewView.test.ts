@@ -269,6 +269,30 @@ describe('SelfReviewView integration — performance fixes', () => {
     vi.clearAllMocks()
   })
 
+  it('commit history pane remains visible while loading diffs', async () => {
+    // Start with a mock that won't resolve immediately
+    let resolveTaskDiff: (val: PrFileDiff[]) => void = () => {}
+    const diffPromise = new Promise<PrFileDiff[]>((resolve) => {
+      resolveTaskDiff = resolve
+    })
+    vi.mocked(getTaskDiff).mockReturnValue(diffPromise)
+
+    render(SelfReviewView, {
+      props: { task: baseTask, agentStatus: null, onSendToAgent: vi.fn() },
+    })
+
+    // Wait for the loading spinner to appear
+    await screen.findByText('Loading diff...')
+
+    // Crucially, the File and Commit history panes should STILL be visible!
+    // (This will fail currently because the whole view is gated on isLoading)
+    expect(screen.getByText('Commit history')).toBeTruthy()
+    expect(screen.getByText('Files')).toBeTruthy()
+
+    // Let it finish to clean up
+    resolveTaskDiff([baseDiff])
+  })
+
   it('getTaskDiff called exactly once on mount', async () => {
     const mockGetTaskDiff = vi.mocked(getTaskDiff).mockResolvedValue([baseDiff])
 
