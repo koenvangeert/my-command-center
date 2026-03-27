@@ -7,6 +7,7 @@
   import ActionDropdown from './ActionDropdown.svelte'
   import { useAutocomplete } from '../lib/useAutocomplete.svelte'
   import { getProjectConfig } from '../lib/ipc'
+  import { useListNavigation } from '../lib/useListNavigation.svelte'
   import { onMount } from 'svelte'
 
   interface Props {
@@ -139,29 +140,22 @@
   }
 
   // ── Keyboard handler ──────────────────────────────────────────────────────────
+  const listNav = useListNavigation({
+    get itemCount() { return ac.autocompleteItems.length },
+    get selectedIndex() { return ac.selectedIndex },
+    set selectedIndex(index: number) { ac.setSelectedIndex(index) },
+    wrap: false,
+    onSelect() {
+      const item = ac.autocompleteItems[ac.selectedIndex]
+      if (item) handleSelect(item)
+    },
+    onCancel() { ac.closePopover() }
+  })
+
   function handleKeydown(e: KeyboardEvent) {
     if (ac.popoverVisible) {
-      if (e.key === 'ArrowDown') {
-        e.preventDefault()
-        ac.setSelectedIndex(Math.min(ac.selectedIndex + 1, ac.autocompleteItems.length - 1))
-        return
-      }
-      if (e.key === 'ArrowUp') {
-        e.preventDefault()
-        ac.setSelectedIndex(Math.max(ac.selectedIndex - 1, 0))
-        return
-      }
-      if (e.key === 'Enter') {
-        e.preventDefault()
-        const item = ac.autocompleteItems[ac.selectedIndex]
-        if (item) handleSelect(item)
-        return
-      }
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        ac.closePopover()
-        return
-      }
+      const handled = listNav.handleKeydown(e)
+      if (handled) return
     }
 
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
