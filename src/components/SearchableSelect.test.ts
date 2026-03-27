@@ -148,4 +148,24 @@ describe('SearchableSelect', () => {
       expect(spaceSpy).toHaveBeenCalled()
     })
   })
+
+  describe('List Navigation with vim bindings', () => {
+    it('selects next/prev option on Ctrl+J and Ctrl+K', async () => {
+      Element.prototype.scrollIntoView = vi.fn()
+
+      const onSelect = vi.fn()
+      render(SearchableSelect, { props: { options, value: '', onSelect } })
+      await fireEvent.click(screen.getByRole('combobox'))
+
+      const input = screen.getByPlaceholderText('Search...')
+      
+      await fireEvent.keyDown(input, { key: 'j', ctrlKey: true })
+      await fireEvent.keyDown(input, { key: 'j', ctrlKey: true })
+      await fireEvent.keyDown(input, { key: 'k', ctrlKey: true })
+      
+      await fireEvent.keyDown(input, { key: 'Enter' })
+
+      expect(onSelect).toHaveBeenCalledWith('coder')
+    })
+  })
 })

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { tick } from 'svelte'
+  import { useListNavigation } from '../lib/useListNavigation.svelte'
 
   interface Option {
     value: string
@@ -60,26 +61,22 @@
     closeDropdown()
   }
 
-  function handleKeydown(e: KeyboardEvent) {
-    if (!open) return
-    if (e.key === 'ArrowDown') {
-      e.preventDefault()
-      e.stopPropagation()
-      highlightedIndex = Math.min(highlightedIndex + 1, filtered.length - 1)
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault()
-      e.stopPropagation()
-      highlightedIndex = Math.max(highlightedIndex - 1, 0)
-    } else if (e.key === 'Enter') {
-      e.preventDefault()
-      e.stopPropagation()
+  const listNav = useListNavigation({
+    get itemCount() { return filtered.length },
+    get selectedIndex() { return highlightedIndex },
+    set selectedIndex(index: number) { highlightedIndex = index },
+    wrap: false,
+    onSelect() {
       const opt = filtered[highlightedIndex]
       if (opt) selectOption(opt)
-    } else if (e.key === 'Escape') {
-      e.preventDefault()
-      e.stopPropagation()
-      closeDropdown()
-    }
+    },
+    onCancel() { closeDropdown() }
+  })
+
+  function handleKeydown(e: KeyboardEvent) {
+    if (!open) return
+    const handled = listNav.handleKeydown(e)
+    if (handled) return
   }
 </script>
 
