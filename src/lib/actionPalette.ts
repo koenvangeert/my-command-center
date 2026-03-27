@@ -71,7 +71,7 @@ export function getGlobalActions(): PaletteAction[] {
     {
       id: 'new-task',
       label: 'New Task',
-      shortcut: '⌘T',
+      shortcut: '⌘N',
       category: 'general',
       keywords: ['create', 'add', 'task'],
     },

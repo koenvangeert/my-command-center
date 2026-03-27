@@ -103,7 +103,7 @@
      }
 
   function handleKeyDown(e: KeyboardEvent) {
-    if (e.metaKey && e.shiftKey && e.code === 'KeyT' && !e.ctrlKey && !e.altKey) {
+    if (e.metaKey && e.code === 'KeyT' && !e.ctrlKey && !e.altKey && !e.shiftKey) {
       e.preventDefault()
       addTab()
     }
