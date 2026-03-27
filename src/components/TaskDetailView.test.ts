@@ -498,6 +498,23 @@ describe('TaskDetailView', () => {
     vi.mocked(getWorktreeForTask).mockResolvedValue(null)
   })
 
+  it('⌘T opens bottom panel', async () => {
+    const { getWorktreeForTask } = await import('../lib/ipc')
+    vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/path/to/worktree', repo_path: '/repo', branch_name: 'branch' } as any)
+
+    render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
+    await waitFor(() => expect(screen.getByText('code_view')).toBeTruthy())
+
+    expect(screen.queryByTestId('resizable-bottom-panel')).toBeNull()
+
+    await fireEvent.keyDown(window, { code: 'KeyT', metaKey: true })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('resizable-bottom-panel')).toBeTruthy()
+    })
+    vi.mocked(getWorktreeForTask).mockResolvedValue(null)
+  })
+
   it('⌘E focuses the first shell tab when terminal panel has never been opened', async () => {
     const { getWorktreeForTask } = await import('../lib/ipc')
     const { focusTerminal } = await import('../lib/terminalPool')

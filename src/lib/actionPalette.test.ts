@@ -83,6 +83,13 @@ describe('getGlobalActions', () => {
 
     expect(searchTasks?.shortcut).toBe('⌘⇧F')
   })
+
+  it('uses CMD+N for New Task', () => {
+    const actions = getGlobalActions()
+    const newTask = actions.find(action => action.id === 'new-task')
+
+    expect(newTask?.shortcut).toBe('⌘N')
+  })
 })
 
 describe('getAvailableActions', () => {
