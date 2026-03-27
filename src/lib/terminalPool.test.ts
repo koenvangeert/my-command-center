@@ -6,6 +6,23 @@ const unlistenFns: Array<ReturnType<typeof vi.fn>> = []
 let webLinksHandler: ((event: MouseEvent, uri: string) => void) | null = null
 let webglContextLossHandler: (() => void) | null = null
 
+interface TerminalMockOptions {
+  fontFamily?: string
+}
+
+function getTerminalFontFamily(terminal: unknown): string | undefined {
+  if (typeof terminal !== 'object' || terminal === null || !('options' in terminal)) {
+    return undefined
+  }
+
+  const options = terminal.options
+  if (typeof options !== 'object' || options === null || !('fontFamily' in options)) {
+    return undefined
+  }
+
+  return typeof options.fontFamily === 'string' ? options.fontFamily : undefined
+}
+
 vi.mock('@tauri-apps/api/event', () => ({
   listen: vi.fn(async (eventName: string, cb: (event: unknown) => void) => {
     listenCallbacks.set(eventName, cb)
@@ -17,6 +34,10 @@ vi.mock('@tauri-apps/api/event', () => ({
 
 vi.mock('@xterm/xterm', () => {
   class Terminal {
+    options: TerminalMockOptions
+    constructor(options: TerminalMockOptions = {}) {
+      this.options = options
+    }
     open = vi.fn()
     write = vi.fn()
     dispose = vi.fn()
@@ -125,6 +146,11 @@ describe('terminalPool', () => {
     expect(entry.hostDiv).toBeInstanceOf(HTMLDivElement)
     expect(entry.attached).toBe(false)
     expect(_getPool().has('task-1')).toBe(true)
+  })
+
+  it('initializes terminal with the correct font family stack including JetBrains Mono and Nerd Font fallback', async () => {
+    const entry = await acquire('task-font-check')
+    expect(getTerminalFontFamily(entry.terminal)).toBe("'JetBrains Mono', 'Symbols Nerd Font', 'Symbols Nerd Font Mono', 'SF Mono', 'Fira Code', 'Consolas', monospace")
   })
 
   it('acquire returns existing entry on second call', async () => {
