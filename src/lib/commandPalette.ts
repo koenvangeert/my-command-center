@@ -1,7 +1,7 @@
 import { get } from 'svelte/store'
 import type { Task, AgentSession, Project } from './types'
 import { pendingTask, activeProjectId, currentView, selectedTaskId } from './stores'
-import { pushNavState } from './navigation'
+import { pushNavState } from './router.svelte'
 
 export function matchesSearch(task: Task, query: string, projectMap?: Map<string, Project>): boolean {
   if (!query) return true
