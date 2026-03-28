@@ -100,6 +100,13 @@
   })
 
   $effect(() => {
+    const taskId = $selectedTaskId
+    if (taskId && !selectedTask) {
+      $selectedTaskId = null
+    }
+  })
+
+  $effect(() => {
     const projectId = $activeProjectId
     if (projectId && projectId !== previousActiveProjectId) {
       const nextFilters = new Map($focusBoardFilters)
@@ -369,7 +376,6 @@
       case 'delete-task':
         if (task) {
           await deleteTask(task.id)
-          $selectedTaskId = null
           await loadTasks()
         }
         break
@@ -806,9 +812,6 @@
       await listen<{ action: string; task_id: string }>('task-changed', (event) => {
         if (event.payload.action === 'deleted') {
           const taskId = event.payload.task_id
-          if ($selectedTaskId === taskId) {
-            $selectedTaskId = null
-          }
           const updated = new Map($activeSessions)
           updated.delete(taskId)
           $activeSessions = updated
