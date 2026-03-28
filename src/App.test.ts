@@ -417,6 +417,106 @@ describe('App onMount initialization order', () => {
     expect(firstListen).toBeLessThan(firstGetAppMode)
   }, 15000)
 
+  describe('selected task clearing', () => {
+    it('clears selectedTaskId when the selected task disappears', async () => {
+      const App = (await import('./App.svelte')).default
+      const stores = await import('./lib/stores')
+      const selectedTask: Task = {
+        id: 'task-123',
+        initial_prompt: 'Selected task',
+        prompt: null,
+        summary: null,
+        status: 'doing',
+        jira_key: null,
+        jira_title: null,
+        jira_status: null,
+        jira_assignee: null,
+        jira_description: null,
+        agent: null,
+        permission_mode: null,
+        project_id: 'proj-1',
+        created_at: 1000,
+        updated_at: 1000,
+      }
+
+      stores.tasks.set([selectedTask])
+      stores.pendingTask.set(null)
+      stores.selectedTaskId.set(selectedTask.id)
+
+      render(App)
+
+      stores.tasks.set([])
+
+      await vi.waitFor(() => {
+        expect(get(stores.selectedTaskId)).toBeNull()
+      })
+    })
+
+    it('keeps selectedTaskId when the selected task is still present', async () => {
+      const App = (await import('./App.svelte')).default
+      const stores = await import('./lib/stores')
+      const selectedTask: Task = {
+        id: 'task-456',
+        initial_prompt: 'Selected task',
+        prompt: null,
+        summary: null,
+        status: 'doing',
+        jira_key: null,
+        jira_title: null,
+        jira_status: null,
+        jira_assignee: null,
+        jira_description: null,
+        agent: null,
+        permission_mode: null,
+        project_id: 'proj-1',
+        created_at: 1000,
+        updated_at: 1000,
+      }
+
+      stores.tasks.set([selectedTask])
+      stores.pendingTask.set(null)
+      stores.selectedTaskId.set(selectedTask.id)
+
+      render(App)
+
+      await vi.waitFor(() => {
+        expect(get(stores.selectedTaskId)).toBe(selectedTask.id)
+      })
+    })
+
+    it('keeps selectedTaskId when the selected task is pending', async () => {
+      const App = (await import('./App.svelte')).default
+      const stores = await import('./lib/stores')
+      const pendingTask: Task = {
+        id: 'task-pending',
+        initial_prompt: 'Pending task',
+        prompt: null,
+        summary: null,
+        status: 'backlog',
+        jira_key: null,
+        jira_title: null,
+        jira_status: null,
+        jira_assignee: null,
+        jira_description: null,
+        agent: null,
+        permission_mode: null,
+        project_id: 'proj-1',
+        created_at: 1000,
+        updated_at: 1000,
+      }
+
+      stores.tasks.set([])
+      stores.pendingTask.set(pendingTask)
+      stores.selectedTaskId.set(pendingTask.id)
+
+      render(App)
+
+      await vi.waitFor(() => {
+        expect(get(stores.selectedTaskId)).toBe(pendingTask.id)
+      })
+    })
+  })
+
   describe('keyboard shortcuts', () => {
     beforeEach(() => {
       vi.clearAllMocks()
