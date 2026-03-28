@@ -88,6 +88,42 @@ fn persist_session_completed(app: &AppHandle, task_id: &str) {
     };
 }
 
+fn persist_session_interrupted(app: &AppHandle, task_id: &str, reason: &str) {
+    let db = app.state::<Arc<std::sync::Mutex<db::Database>>>();
+    if let Ok(db_lock) = db.lock() {
+        if let Ok(Some(session)) = db_lock.get_latest_session_for_ticket(task_id) {
+            if let Err(e) = db_lock.update_agent_session(
+                &session.id,
+                &session.stage,
+                "interrupted",
+                None,
+                Some(reason),
+            ) {
+                error!(
+                    "[SSE] Failed to persist interrupted status for task {}: {}",
+                    task_id, e
+                );
+            }
+        }
+    };
+}
+
+fn emit_session_interrupted(app: &AppHandle, task_id: &str) {
+    if let Err(e) = app.emit(
+        "agent-status-changed",
+        serde_json::json!({
+            "task_id": task_id,
+            "status": "interrupted",
+            "provider": "opencode"
+        }),
+    ) {
+        warn!(
+            "[SSE] Failed to emit interrupted status for task {}: {}",
+            task_id, e
+        );
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum DescendantPollOutcome {
     AllIdle,
@@ -99,7 +135,7 @@ enum DescendantPollOutcome {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum CompletionAction {
     EmitComplete,
-    KeepRunning,
+    MarkInterrupted,
 }
 
 fn completion_action_for_descendant_outcome(outcome: DescendantPollOutcome) -> CompletionAction {
@@ -107,12 +143,53 @@ fn completion_action_for_descendant_outcome(outcome: DescendantPollOutcome) -> C
         DescendantPollOutcome::AllIdle => CompletionAction::EmitComplete,
         DescendantPollOutcome::LookupFailed
         | DescendantPollOutcome::MissingRootSessionId
-        | DescendantPollOutcome::TimedOut => CompletionAction::KeepRunning,
+        | DescendantPollOutcome::TimedOut => CompletionAction::MarkInterrupted,
+    }
+}
+
+fn interruption_reason_for_descendant_outcome(outcome: DescendantPollOutcome) -> &'static str {
+    match outcome {
+        DescendantPollOutcome::AllIdle => "",
+        DescendantPollOutcome::LookupFailed => {
+            "OpenCode child session status lookup failed during idle reconciliation"
+        }
+        DescendantPollOutcome::MissingRootSessionId => {
+            "OpenCode session id unavailable during idle reconciliation"
+        }
+        DescendantPollOutcome::TimedOut => {
+            "OpenCode idle reconciliation timed out before completion was confirmed"
+        }
     }
 }
 
 fn should_persist_completed_status(spawned_child_poll: bool, child_poll_in_progress: bool) -> bool {
     !spawned_child_poll && !child_poll_in_progress
+}
+
+fn is_status_event_type(event_type: &str) -> bool {
+    matches!(
+        event_type,
+        "session.idle"
+            | "session.status"
+            | "session.error"
+            | "permission.asked"
+            | "permission.updated"
+            | "permission.replied"
+            | "question.asked"
+            | "question.replied"
+            | "question.rejected"
+            | "question.answered"
+    )
+}
+
+fn map_checkpoint_event_to_session_status(event_type: &str) -> Option<&'static str> {
+    match event_type {
+        "permission.asked" | "permission.updated" | "question.asked" => Some("paused"),
+        "permission.replied" | "question.replied" | "question.rejected" | "question.answered" => {
+            Some("running")
+        }
+        _ => None,
+    }
 }
 
 fn collect_descendant_ids(
@@ -349,11 +426,7 @@ impl SseBridgeManager {
                                     .and_then(|s| s.as_str())
                                     .map(|s| s.to_string());
 
-                                let is_status_event = matches!(real_event_type,
-                                    "session.idle" | "session.status" | "session.error" |
-                                    "permission.updated" | "permission.replied" |
-                                    "question.asked" | "question.answered"
-                                );
+                                let is_status_event = is_status_event_type(real_event_type);
 
                                 if is_status_event {
                                     if let (Some(ref our_session_id), Some(ref event_sid)) = (&opencode_session_id_clone, &event_session_id) {
@@ -394,16 +467,31 @@ impl SseBridgeManager {
                                                 }
                                             };
 
+                                            let mark_interrupted = |app: &AppHandle, task_id: &str, outcome: DescendantPollOutcome| {
+                                                let reason = interruption_reason_for_descendant_outcome(outcome);
+                                                warn!(
+                                                    "[SSE] Descendant polling ended without confirmed completion for task {} ({:?}) — marking interrupted",
+                                                    task_id, outcome
+                                                );
+                                                persist_session_interrupted(app, task_id, reason);
+                                                emit_session_interrupted(app, task_id);
+                                            };
+
                                             let our_session_id = match our_session_id_opt {
                                                 Some(ref id) => id.clone(),
                                                 None => {
-                                                    warn!("[SSE] No session ID available for task {} — keeping task running", task_id_for_poll);
                                                     match completion_action_for_descendant_outcome(DescendantPollOutcome::MissingRootSessionId) {
                                                         CompletionAction::EmitComplete => {
                                                             emit_complete(&app_for_poll, &task_id_for_poll);
                                                             persist_session_completed(&app_for_poll, &task_id_for_poll);
                                                         }
-                                                        CompletionAction::KeepRunning => {}
+                                                        CompletionAction::MarkInterrupted => {
+                                                            mark_interrupted(
+                                                                &app_for_poll,
+                                                                &task_id_for_poll,
+                                                                DescendantPollOutcome::MissingRootSessionId,
+                                                            );
+                                                        }
                                                     }
                                                     poll_flag.store(false, Ordering::SeqCst);
                                                     return;
@@ -457,8 +545,8 @@ impl SseBridgeManager {
                                                     emit_complete(&app_for_poll, &task_id_for_poll);
                                                     persist_session_completed(&app_for_poll, &task_id_for_poll);
                                                 }
-                                                CompletionAction::KeepRunning => {
-                                                    warn!("[SSE] Descendant polling ended without confirmed completion for task {} ({:?})", task_id_for_poll, poll_outcome);
+                                                CompletionAction::MarkInterrupted => {
+                                                    mark_interrupted(&app_for_poll, &task_id_for_poll, poll_outcome);
                                                 }
                                             }
 
@@ -496,10 +584,10 @@ impl SseBridgeManager {
                                     }
                                 } else if real_event_type == "session.error" {
                                     Some("failed")
-                                } else if real_event_type == "permission.updated" || real_event_type == "question.asked" {
-                                    Some("paused")
-                                } else if real_event_type == "permission.replied" || real_event_type == "question.answered" {
-                                    Some("running")
+                                } else if let Some(session_status) =
+                                    map_checkpoint_event_to_session_status(real_event_type)
+                                {
+                                    Some(session_status)
                                 } else {
                                     None
                                 };
@@ -687,26 +775,26 @@ mod tests {
     }
 
     #[test]
-    fn test_child_lookup_failure_keeps_session_running() {
+    fn test_child_lookup_failure_marks_session_interrupted() {
         assert_eq!(
             completion_action_for_descendant_outcome(DescendantPollOutcome::LookupFailed),
-            CompletionAction::KeepRunning,
+            CompletionAction::MarkInterrupted,
         );
     }
 
     #[test]
-    fn test_polling_timeout_keeps_session_running() {
+    fn test_polling_timeout_marks_session_interrupted() {
         assert_eq!(
             completion_action_for_descendant_outcome(DescendantPollOutcome::TimedOut),
-            CompletionAction::KeepRunning,
+            CompletionAction::MarkInterrupted,
         );
     }
 
     #[test]
-    fn test_missing_root_session_id_keeps_session_running() {
+    fn test_missing_root_session_id_marks_session_interrupted() {
         assert_eq!(
             completion_action_for_descendant_outcome(DescendantPollOutcome::MissingRootSessionId),
-            CompletionAction::KeepRunning,
+            CompletionAction::MarkInterrupted,
         );
     }
 
@@ -778,6 +866,39 @@ mod tests {
             .and_then(|s| s.get("type"))
             .and_then(|t| t.as_str());
         assert_eq!(status_type, Some("idle"));
+    }
+
+    #[test]
+    fn test_input_requested_event_types_include_current_opencode_names() {
+        assert!(is_status_event_type("permission.asked"));
+        assert!(is_status_event_type("question.asked"));
+        assert_eq!(
+            map_checkpoint_event_to_session_status("permission.asked"),
+            Some("paused")
+        );
+        assert_eq!(
+            map_checkpoint_event_to_session_status("question.asked"),
+            Some("paused")
+        );
+    }
+
+    #[test]
+    fn test_input_resolved_event_types_include_current_opencode_names() {
+        assert!(is_status_event_type("permission.replied"));
+        assert!(is_status_event_type("question.replied"));
+        assert!(is_status_event_type("question.rejected"));
+        assert_eq!(
+            map_checkpoint_event_to_session_status("permission.replied"),
+            Some("running")
+        );
+        assert_eq!(
+            map_checkpoint_event_to_session_status("question.replied"),
+            Some("running")
+        );
+        assert_eq!(
+            map_checkpoint_event_to_session_status("question.rejected"),
+            Some("running")
+        );
     }
 
     #[test]
