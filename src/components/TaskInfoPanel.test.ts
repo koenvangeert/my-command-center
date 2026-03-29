@@ -4,7 +4,7 @@ import { writable } from 'svelte/store'
 import TaskInfoPanel from './TaskInfoPanel.svelte'
 import type { Task, PullRequestInfo } from '../lib/types'
 import { ticketPrs } from '../lib/stores'
-import { getPullRequests, mergePullRequest, openUrl } from '../lib/ipc'
+import { forceGithubSync, getPullRequests, mergePullRequest, openUrl } from '../lib/ipc'
 
 vi.mock('../lib/stores', () => ({
   ticketPrs: writable(new Map()),
@@ -503,5 +503,130 @@ describe('TaskInfoPanel', () => {
     expect(taskBPrs).toHaveLength(1)
     expect(taskBPrs[0].id).toBe(99)
     expect(taskBPrs[0].mergeable_state).toBe('clean')
+  })
+
+  it('shows warning when forceGithubSync reports errors after merge', async () => {
+    const readyPr = createPullRequest({
+      ci_status: 'success',
+      review_status: 'approved',
+      mergeable: true,
+      mergeable_state: 'clean',
+    })
+
+    vi.mocked(forceGithubSync).mockResolvedValueOnce({
+      new_comments: 0,
+      ci_changes: 0,
+      review_changes: 0,
+      pr_changes: 0,
+      errors: 1,
+      rate_limited: false,
+      rate_limit_reset_at: null,
+    })
+    ticketPrs.set(new Map([['T-42', [readyPr]]]))
+
+    render(TaskInfoPanel, { props: { task: baseTask, worktreePath: null, jiraBaseUrl: '' } })
+    await fireEvent.click(await screen.findByRole('button', { name: 'Merge' }))
+
+    expect(await screen.findByText(/GitHub sync reported errors after merge/)).toBeTruthy()
+    expect(getPullRequests).not.toHaveBeenCalled()
+  })
+
+  it('shows rate-limit warning when forceGithubSync is rate limited after merge', async () => {
+    const readyPr = createPullRequest({
+      ci_status: 'success',
+      review_status: 'approved',
+      mergeable: true,
+      mergeable_state: 'clean',
+    })
+
+    vi.mocked(forceGithubSync).mockResolvedValueOnce({
+      new_comments: 0,
+      ci_changes: 0,
+      review_changes: 0,
+      pr_changes: 0,
+      errors: 0,
+      rate_limited: true,
+      rate_limit_reset_at: 9999999,
+    })
+    ticketPrs.set(new Map([['T-42', [readyPr]]]))
+
+    render(TaskInfoPanel, { props: { task: baseTask, worktreePath: null, jiraBaseUrl: '' } })
+    await fireEvent.click(await screen.findByRole('button', { name: 'Merge' }))
+
+    expect(await screen.findByText(/GitHub sync was rate limited after merge/)).toBeTruthy()
+    expect(getPullRequests).not.toHaveBeenCalled()
+  })
+
+  it('shows warning when forceGithubSync throws after merge', async () => {
+    const readyPr = createPullRequest({
+      ci_status: 'success',
+      review_status: 'approved',
+      mergeable: true,
+      mergeable_state: 'clean',
+    })
+
+    vi.mocked(forceGithubSync).mockRejectedValueOnce(new Error('network timeout'))
+    ticketPrs.set(new Map([['T-42', [readyPr]]]))
+
+    render(TaskInfoPanel, { props: { task: baseTask, worktreePath: null, jiraBaseUrl: '' } })
+    await fireEvent.click(await screen.findByRole('button', { name: 'Merge' }))
+
+    expect(await screen.findByText(/Pull request merged, but refresh failed: network timeout/)).toBeTruthy()
+    expect(getPullRequests).not.toHaveBeenCalled()
+  })
+
+  it('does not show Merge button when PR has transient null mergeable_state', async () => {
+    const transientPr = createPullRequest({
+      ci_status: 'success',
+      review_status: 'approved',
+      mergeable: null,
+      mergeable_state: null,
+    })
+
+    ticketPrs.set(new Map([['T-42', [transientPr]]]))
+
+    render(TaskInfoPanel, { props: { task: baseTask, worktreePath: null, jiraBaseUrl: '' } })
+
+    await new Promise((r) => setTimeout(r, 10))
+    expect(screen.queryByRole('button', { name: 'Merge' })).toBeNull()
+    expect(screen.queryByText(/Ready to Merge/)).toBeNull()
+  })
+
+  it('does not show Merge button when PR has unknown mergeable_state', async () => {
+    const unknownPr = createPullRequest({
+      ci_status: 'success',
+      review_status: 'approved',
+      mergeable: null,
+      mergeable_state: 'unknown',
+    })
+
+    ticketPrs.set(new Map([['T-42', [unknownPr]]]))
+
+    render(TaskInfoPanel, { props: { task: baseTask, worktreePath: null, jiraBaseUrl: '' } })
+
+    await new Promise((r) => setTimeout(r, 10))
+    expect(screen.queryByRole('button', { name: 'Merge' })).toBeNull()
+    expect(screen.queryByText(/Ready to Merge/)).toBeNull()
+  })
+
+  it('shows Merge button again once GitHub resolves transient null to clean', async () => {
+    const transientPr = createPullRequest({
+      ci_status: 'success',
+      review_status: 'approved',
+      mergeable: null,
+      mergeable_state: null,
+    })
+    const resolvedPr = { ...transientPr, mergeable: true, mergeable_state: 'clean' }
+
+    ticketPrs.set(new Map([['T-42', [transientPr]]]))
+
+    const { unmount } = render(TaskInfoPanel, { props: { task: baseTask, worktreePath: null, jiraBaseUrl: '' } })
+    await new Promise((r) => setTimeout(r, 10))
+    expect(screen.queryByRole('button', { name: 'Merge' })).toBeNull()
+    unmount()
+
+    ticketPrs.set(new Map([['T-42', [resolvedPr]]]))
+    render(TaskInfoPanel, { props: { task: baseTask, worktreePath: null, jiraBaseUrl: '' } })
+    await screen.findByRole('button', { name: 'Merge' })
   })
 })

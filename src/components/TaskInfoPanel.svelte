@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Task, PullRequestInfo } from '../lib/types'
-  import { parseCheckRuns, splitCheckRuns, isReadyToMerge, isQueuedForMerge, hasMergeConflicts } from '../lib/types'
+  import { parseCheckRuns, splitCheckRuns, isReadyToMerge, isQueuedForMerge, hasMergeConflicts, preservePullRequestState } from '../lib/types'
   import { ticketPrs } from '../lib/stores'
   import { forceGithubSync, getPullRequests, mergePullRequest, openUrl } from '../lib/ipc'
   import MarkdownContent from './MarkdownContent.svelte'
@@ -48,7 +48,13 @@
 
   async function refreshTaskPullRequests(taskId: string) {
     const prs = await getPullRequests()
-    setTaskPullRequests(taskId, prs.filter((pr) => pr.ticket_id === taskId))
+    const taskPrsToUpdate = prs.filter((pr) => pr.ticket_id === taskId)
+    const currentTaskPrs = $ticketPrs.get(taskId) || []
+    
+    setTaskPullRequests(taskId, taskPrsToUpdate.map(pr => {
+      const oldPr = currentTaskPrs.find(p => p.id === pr.id)
+      return preservePullRequestState(oldPr, pr)
+    }))
   }
 
   async function handleMerge(pr: PullRequestInfo) {
