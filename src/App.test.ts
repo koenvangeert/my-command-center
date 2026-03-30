@@ -108,7 +108,6 @@ vi.mock('./lib/ipc', () => ({
   updateTaskStatus: vi.fn(async () => undefined),
   deleteTask: vi.fn(),
   clearDoneTasks: vi.fn(),
-  refreshJiraInfo: vi.fn(),
   getAgents: vi.fn(),
   listOpenCodeAgents: vi.fn().mockResolvedValue([]),
   createProject: vi.fn(),
@@ -175,6 +174,10 @@ vi.mock('./components/ActionPalette.svelte', () => ({ default: vi.fn() }))
 
 vi.mock('./lib/doingStatus', () => ({
   computeDoingStatus: vi.fn(() => 'idle'),
+}))
+
+vi.mock('./lib/moveToComplete', () => ({
+  moveTaskToComplete: vi.fn(async () => undefined),
 }))
 
 const mockRouterPushNavState = vi.fn()
@@ -428,11 +431,6 @@ describe('App onMount initialization order', () => {
         prompt: null,
         summary: null,
         status: 'doing',
-        jira_key: null,
-        jira_title: null,
-        jira_status: null,
-        jira_assignee: null,
-        jira_description: null,
         agent: null,
         permission_mode: null,
         project_id: 'proj-1',
@@ -462,11 +460,6 @@ describe('App onMount initialization order', () => {
         prompt: null,
         summary: null,
         status: 'doing',
-        jira_key: null,
-        jira_title: null,
-        jira_status: null,
-        jira_assignee: null,
-        jira_description: null,
         agent: null,
         permission_mode: null,
         project_id: 'proj-1',
@@ -494,11 +487,6 @@ describe('App onMount initialization order', () => {
         prompt: null,
         summary: null,
         status: 'backlog',
-        jira_key: null,
-        jira_title: null,
-        jira_status: null,
-        jira_assignee: null,
-        jira_description: null,
         agent: null,
         permission_mode: null,
         project_id: 'proj-1',
@@ -536,6 +524,20 @@ describe('App onMount initialization order', () => {
 
       // Simulate being on a task detail view
       stores.selectedTaskId.set('task-123')
+      stores.tasks.set([
+        {
+          id: 'task-123',
+          initial_prompt: 'Finish task',
+          prompt: null,
+          summary: null,
+          status: 'doing',
+          agent: null,
+          permission_mode: null,
+          project_id: 'proj-1',
+          created_at: 1000,
+          updated_at: 1000,
+        },
+      ])
       stores.currentView.set('settings')
 
       vi.mocked(nav.resetToBoard).mockClear()
@@ -637,11 +639,11 @@ describe('App onMount initialization order', () => {
       })
     })
 
-  it('action palette move-to-done resets to board for the selected task view', async () => {
+    it('action palette move-to-done does not navigate directly from App', async () => {
       const App = (await import('./App.svelte')).default
       const stores = await import('./lib/stores')
       const nav = await import('./lib/router.svelte')
-      const { getTasksForProject, updateTaskStatus } = await import('./lib/ipc')
+      const { getTasksForProject } = await import('./lib/ipc')
       const actionPaletteModule = await import('./components/ActionPalette.svelte')
 
       const selectedTask: Task = {
@@ -650,11 +652,6 @@ describe('App onMount initialization order', () => {
         prompt: null,
         summary: null,
         status: 'doing',
-        jira_key: null,
-        jira_title: null,
-        jira_status: null,
-        jira_assignee: null,
-        jira_description: null,
         agent: null,
         permission_mode: null,
         project_id: 'proj-1',
@@ -711,170 +708,158 @@ describe('App onMount initialization order', () => {
 
       await propsCandidate.onExecute('move-to-done')
 
-    expect(updateTaskStatus).toHaveBeenCalledWith('task-123', 'done')
-    expect(nav.resetToBoard).toHaveBeenCalled()
+    expect(nav.resetToBoard).not.toHaveBeenCalled()
   })
 
-  it('action palette move-to-done uses the task that was selected when the palette opened', async () => {
-    const App = (await import('./App.svelte')).default
-    const stores = await import('./lib/stores')
-    const nav = await import('./lib/router.svelte')
-    const { getTasksForProject, updateTaskStatus } = await import('./lib/ipc')
-    const actionPaletteModule = await import('./components/ActionPalette.svelte')
-
-    const selectedTask: Task = {
-      id: 'task-124',
-      initial_prompt: 'Finish task after palette opens',
-      prompt: null,
-      summary: null,
-      status: 'doing',
-      jira_key: null,
-      jira_title: null,
-      jira_status: null,
-      jira_assignee: null,
-      jira_description: null,
-      agent: null,
-      permission_mode: null,
-      project_id: 'proj-1',
-      created_at: 1000,
-      updated_at: 1000,
-    }
-
-    vi.mocked(getTasksForProject).mockResolvedValue([
-      selectedTask,
-    ])
-
-    stores.tasks.set([selectedTask])
-    stores.pendingTask.set(null)
-    stores.selectedTaskId.set(selectedTask.id)
-
-    render(App)
-
-    await vi.waitFor(() => {
-      expect(getTasksForProject).toHaveBeenCalled()
-    })
-
-    await fireEvent.keyDown(window, { key: 'k', metaKey: true, bubbles: true })
-
-    await vi.waitFor(() => {
-      expect(actionPaletteModule.default).toHaveBeenCalled()
-    })
-
-    const lastCall = vi.mocked(actionPaletteModule.default).mock.calls.at(-1)
-    if (!lastCall) throw new Error('Expected ActionPalette to receive props')
-
-    const propsCandidate = lastCall
-      .flatMap((arg) => {
-        if (typeof arg !== 'object' || arg === null) return []
-        if ('props' in arg && typeof arg.props === 'object' && arg.props !== null) return [arg, arg.props]
-        return [arg]
-      })
-      .find((arg): arg is { onExecute: (actionId: string) => Promise<void> } => 'onExecute' in arg && typeof arg.onExecute === 'function')
-
-    if (!propsCandidate) throw new Error('Expected ActionPalette props to include onExecute')
-
-    stores.selectedTaskId.set(null)
-    vi.mocked(nav.resetToBoard).mockClear()
-
-    await propsCandidate.onExecute('move-to-done')
-
-    expect(updateTaskStatus).toHaveBeenCalledWith('task-124', 'done')
-    expect(nav.resetToBoard).toHaveBeenCalled()
-  })
-
-  it('action palette move-to-done navigates immediately without waiting for backend cleanup', async () => {
-    const App = (await import('./App.svelte')).default
-    const stores = await import('./lib/stores')
-    const nav = await import('./lib/router.svelte')
-    const { getTasksForProject, updateTaskStatus } = await import('./lib/ipc')
-    const actionPaletteModule = await import('./components/ActionPalette.svelte')
-
-    const selectedTask: Task = {
-      id: 'task-123',
-      initial_prompt: 'Finish task',
-      prompt: null,
-      summary: null,
-      status: 'doing',
-      jira_key: null,
-      jira_title: null,
-      jira_status: null,
-      jira_assignee: null,
-      jira_description: null,
-      agent: null,
-      permission_mode: null,
-      project_id: 'proj-1',
-      created_at: 1000,
-      updated_at: 1000,
-    }
-
-    vi.mocked(getTasksForProject).mockResolvedValue([
-      selectedTask,
-    ])
-
-    stores.tasks.set([selectedTask])
-    stores.pendingTask.set(null)
-    stores.selectedTaskId.set(selectedTask.id)
-
-    let resolveUpdate: (() => void) | undefined
-    vi.mocked(updateTaskStatus).mockImplementationOnce(
-      () => new Promise<void>((resolve) => {
-        resolveUpdate = resolve
-      }),
-    )
-
-    render(App)
-
-    await vi.waitFor(() => {
-      expect(getTasksForProject).toHaveBeenCalled()
-    })
-
-    await fireEvent.keyDown(window, { key: 'k', metaKey: true, bubbles: true })
-
-    await vi.waitFor(() => {
-      expect(actionPaletteModule.default).toHaveBeenCalled()
-    })
-
-    const lastCall = vi.mocked(actionPaletteModule.default).mock.calls.at(-1)
-    expect(lastCall).toBeTruthy()
-
-    if (!lastCall) {
-      throw new Error('Expected ActionPalette to receive props')
-    }
-
-    const propsCandidate = lastCall
-      .flatMap((arg) => {
-        if (typeof arg !== 'object' || arg === null) {
-          return []
-        }
-
-        if ('props' in arg && typeof arg.props === 'object' && arg.props !== null) {
-          return [arg, arg.props]
-        }
-
-        return [arg]
-      })
-      .find((arg): arg is { onExecute: (actionId: string) => Promise<void> } => 'onExecute' in arg && typeof arg.onExecute === 'function')
-
-    if (!propsCandidate) {
-      throw new Error('Expected ActionPalette props to include onExecute')
-    }
-
-    vi.mocked(nav.resetToBoard).mockClear()
-
-    const execution = propsCandidate.onExecute('move-to-done')
-
-    expect(updateTaskStatus).toHaveBeenCalledWith('task-123', 'done')
-    expect(nav.resetToBoard).toHaveBeenCalled()
-
-    resolveUpdate?.()
-    await execution
-  })
-
-    it('action palette move-to-done navigates before IPC call', async () => {
+    it('action palette move-to-done uses the task that was selected when the palette opened', async () => {
       const App = (await import('./App.svelte')).default
       const stores = await import('./lib/stores')
       const nav = await import('./lib/router.svelte')
-      const { getTasksForProject, updateTaskStatus } = await import('./lib/ipc')
+      const { getTasksForProject } = await import('./lib/ipc')
+      const { moveTaskToComplete } = await import('./lib/moveToComplete')
+      const actionPaletteModule = await import('./components/ActionPalette.svelte')
+
+      const selectedTask: Task = {
+        id: 'task-124',
+        initial_prompt: 'Finish task after palette opens',
+        prompt: null,
+        summary: null,
+        status: 'doing',
+        agent: null,
+        permission_mode: null,
+        project_id: 'proj-1',
+        created_at: 1000,
+        updated_at: 1000,
+      }
+
+      vi.mocked(getTasksForProject).mockResolvedValue([selectedTask])
+
+      stores.tasks.set([selectedTask])
+      stores.pendingTask.set(null)
+      stores.selectedTaskId.set(selectedTask.id)
+
+      render(App)
+
+      await vi.waitFor(() => {
+        expect(getTasksForProject).toHaveBeenCalled()
+      })
+
+      await fireEvent.keyDown(window, { key: 'k', metaKey: true, bubbles: true })
+
+      await vi.waitFor(() => {
+        expect(actionPaletteModule.default).toHaveBeenCalled()
+      })
+
+      const lastCall = vi.mocked(actionPaletteModule.default).mock.calls.at(-1)
+      if (!lastCall) throw new Error('Expected ActionPalette to receive props')
+
+      const propsCandidate = lastCall
+        .flatMap((arg) => {
+          if (typeof arg !== 'object' || arg === null) return []
+          if ('props' in arg && typeof arg.props === 'object' && arg.props !== null) return [arg, arg.props]
+          return [arg]
+        })
+        .find((arg): arg is { onExecute: (actionId: string) => Promise<void> } => 'onExecute' in arg && typeof arg.onExecute === 'function')
+
+      if (!propsCandidate) throw new Error('Expected ActionPalette props to include onExecute')
+
+      stores.selectedTaskId.set(null)
+      vi.mocked(nav.resetToBoard).mockClear()
+
+      await propsCandidate.onExecute('move-to-done')
+
+      expect(moveTaskToComplete).toHaveBeenCalledWith('task-124')
+      expect(nav.resetToBoard).not.toHaveBeenCalled()
+    })
+
+    it('action palette move-to-done delegates to moveTaskToComplete', async () => {
+      const App = (await import('./App.svelte')).default
+      const stores = await import('./lib/stores')
+      const nav = await import('./lib/router.svelte')
+      const { getTasksForProject } = await import('./lib/ipc')
+      const { moveTaskToComplete } = await import('./lib/moveToComplete')
+      const actionPaletteModule = await import('./components/ActionPalette.svelte')
+
+      const selectedTask: Task = {
+        id: 'task-123',
+        initial_prompt: 'Finish task',
+        prompt: null,
+        summary: null,
+        status: 'doing',
+        agent: null,
+        permission_mode: null,
+        project_id: 'proj-1',
+        created_at: 1000,
+        updated_at: 1000,
+      }
+
+      vi.mocked(getTasksForProject).mockResolvedValue([selectedTask])
+
+      stores.tasks.set([selectedTask])
+      stores.pendingTask.set(null)
+      stores.selectedTaskId.set(selectedTask.id)
+
+      let resolveMove: (() => void) | undefined
+      vi.mocked(moveTaskToComplete).mockImplementationOnce(
+        () => new Promise<void>((resolve) => {
+          resolveMove = resolve
+        }),
+      )
+
+      render(App)
+
+      await vi.waitFor(() => {
+        expect(getTasksForProject).toHaveBeenCalled()
+      })
+
+      await fireEvent.keyDown(window, { key: 'k', metaKey: true, bubbles: true })
+
+      await vi.waitFor(() => {
+        expect(actionPaletteModule.default).toHaveBeenCalled()
+      })
+
+      const lastCall = vi.mocked(actionPaletteModule.default).mock.calls.at(-1)
+      expect(lastCall).toBeTruthy()
+
+      if (!lastCall) {
+        throw new Error('Expected ActionPalette to receive props')
+      }
+
+      const propsCandidate = lastCall
+        .flatMap((arg) => {
+          if (typeof arg !== 'object' || arg === null) {
+            return []
+          }
+
+          if ('props' in arg && typeof arg.props === 'object' && arg.props !== null) {
+            return [arg, arg.props]
+          }
+
+          return [arg]
+        })
+        .find((arg): arg is { onExecute: (actionId: string) => Promise<void> } => 'onExecute' in arg && typeof arg.onExecute === 'function')
+
+      if (!propsCandidate) {
+        throw new Error('Expected ActionPalette props to include onExecute')
+      }
+
+      vi.mocked(nav.resetToBoard).mockClear()
+
+      const execution = propsCandidate.onExecute('move-to-done')
+
+      expect(moveTaskToComplete).toHaveBeenCalledWith('task-123')
+      expect(nav.resetToBoard).not.toHaveBeenCalled()
+
+      resolveMove?.()
+      await execution
+    })
+
+    it('action palette move-to-done awaits moveTaskToComplete', async () => {
+      const App = (await import('./App.svelte')).default
+      const stores = await import('./lib/stores')
+      const nav = await import('./lib/router.svelte')
+      const { getTasksForProject } = await import('./lib/ipc')
+      const { moveTaskToComplete } = await import('./lib/moveToComplete')
       const actionPaletteModule = await import('./components/ActionPalette.svelte')
 
       const selectedTask: Task = {
@@ -883,11 +868,6 @@ describe('App onMount initialization order', () => {
         prompt: null,
         summary: null,
         status: 'doing',
-        jira_key: null,
-        jira_title: null,
-        jira_status: null,
-        jira_assignee: null,
-        jira_description: null,
         agent: null,
         permission_mode: null,
         project_id: 'proj-1',
@@ -905,7 +885,7 @@ describe('App onMount initialization order', () => {
 
       const callOrder: string[] = []
       vi.mocked(nav.resetToBoard).mockImplementation(() => { callOrder.push('resetToBoard') })
-      vi.mocked(updateTaskStatus).mockImplementation(async () => { callOrder.push('updateTaskStatus') })
+      vi.mocked(moveTaskToComplete).mockImplementation(async () => { callOrder.push('moveTaskToComplete') })
 
       render(App)
 
@@ -934,11 +914,11 @@ describe('App onMount initialization order', () => {
 
       await propsCandidate.onExecute('move-to-done')
 
-      expect(callOrder).toEqual(['resetToBoard', 'updateTaskStatus'])
+      expect(callOrder).toEqual(['moveTaskToComplete'])
 
       vi.mocked(nav.resetToBoard).mockReset()
-      vi.mocked(updateTaskStatus).mockReset()
-      vi.mocked(updateTaskStatus).mockResolvedValue(undefined)
+      vi.mocked(moveTaskToComplete).mockReset()
+      vi.mocked(moveTaskToComplete).mockResolvedValue(undefined)
     })
 
     it('CMD+SHIFT+F opens search tasks', async () => {
@@ -1229,15 +1209,15 @@ describe('App onMount initialization order', () => {
 
       vi.mocked(ipc.getProjects).mockResolvedValue([])
       vi.mocked(ipc.getTasksForProject).mockResolvedValue([])
-      vi.mocked(ipc.getSessions).mockResolvedValue(new Map())
-      vi.mocked(ipc.getProjectAttention).mockResolvedValue({
+      vi.mocked(ipc.getLatestSessions).mockResolvedValue([])
+      vi.mocked(ipc.getProjectAttention).mockResolvedValue([{
         project_id: 'proj-1',
         needs_input: 0,
         running_agents: 0,
         ci_failures: 0,
         unaddressed_comments: 0,
         completed_agents: 0
-      })
+      }])
       vi.mocked(ipc.getProjectConfig).mockResolvedValue(null)
 
       const prA: PullRequestInfo = {

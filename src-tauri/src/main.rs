@@ -10,8 +10,6 @@ mod git_worktree;
 mod github_client;
 mod github_poller;
 mod http_server;
-mod jira_client;
-mod jira_sync;
 mod mcp_installer;
 mod migration;
 mod opencode_client;
@@ -24,7 +22,6 @@ mod server_manager;
 mod sse_bridge;
 mod whisper_manager;
 use github_client::GitHubClient;
-use jira_client::JiraClient;
 use log::{debug, error, info, warn};
 use opencode_client::OpenCodeClient;
 use pty_manager::PtyManager;
@@ -621,7 +618,6 @@ fn main() {
             app.manage(db_arc.clone());
 
             info!("Database initialized successfully");
-            let jira_client = JiraClient::new();
             let github_client = GitHubClient::new();
             let opencode_client =
                 OpenCodeClient::with_base_url("http://127.0.0.1:4096".to_string());
@@ -631,7 +627,6 @@ fn main() {
             let whisper_manager = WhisperManager::with_active_model(whisper_model_pref);
 
             app.manage(opencode_client);
-            app.manage(jira_client);
             app.manage(github_client);
             app.manage(server_manager);
             app.manage(sse_bridge_manager);
@@ -648,13 +643,6 @@ fn main() {
             }
 
             info!("Server manager initialized");
-
-            let app_handle = app.handle().clone();
-            tauri::async_runtime::spawn(async move {
-                jira_sync::start_jira_sync(app_handle).await;
-            });
-
-            debug!("JIRA sync task started");
 
             let app_handle_github = app.handle().clone();
             tauri::async_runtime::spawn(async move {
@@ -732,7 +720,6 @@ fn main() {
             commands::orchestration::start_implementation,
             commands::orchestration::abort_implementation,
             commands::orchestration::finalize_claude_session,
-            commands::jira::refresh_jira_info,
             commands::github::force_github_sync,
             commands::github::get_pull_requests,
             commands::github::get_pr_comments,
@@ -930,7 +917,6 @@ mod tests {
             .create_task(
                 "Resume me",
                 "backlog",
-                None,
                 Some(&project.id),
                 Some("Resume me"),
                 None,
@@ -1024,7 +1010,6 @@ mod tests {
             .create_task(
                 "Workspace-backed",
                 "doing",
-                None,
                 Some(&project.id),
                 None,
                 None,
@@ -1035,7 +1020,6 @@ mod tests {
             .create_task(
                 "Legacy worktree",
                 "doing",
-                None,
                 Some(&project.id),
                 None,
                 None,
