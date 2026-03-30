@@ -6,7 +6,7 @@
   import { getProjects, getTasksForProject, getPullRequests, startImplementation, getSessionStatus, getLatestSession, getLatestSessions, forceGithubSync, createTask, updateTask, deleteTask, getProjectAttention, getAppMode, finalizeClaudeSession, getConfig, getProjectConfig, listOpenCodeAgents, getReviewPrs, getAuthoredPrs } from './lib/ipc'
   import { writePtyWithSubmit } from './lib/ptySubmit'
   import SearchableSelect from './components/SearchableSelect.svelte'
-  import { hasMergeConflicts } from './lib/types'
+  import { hasMergeConflicts, preservePullRequestState } from './lib/types'
   import type { Task, PullRequestInfo, AgentEvent, ProjectAttention, AppView, PermissionMode, AgentSession } from './lib/types'
   import { moveTaskToComplete } from './lib/moveToComplete'
   import FocusBoard from './components/FocusBoard.svelte'
@@ -79,6 +79,7 @@
   let appSidebarCollapsed = $state(localStorage.getItem('appSidebarCollapsed') === 'true')
   let showCommandPalette = $state(false)
   let showActionPalette = $state(false)
+  let actionPaletteTask = $state<Task | null>(null)
   let actionPaletteActions = $state<Action[]>([])
   let workQueueRefreshTrigger = $state(0)
   let router = useAppRouter()
@@ -225,9 +226,13 @@
       const prs = await getPullRequests()
       const grouped = new Map<string, PullRequestInfo[]>()
       for (const pr of prs) {
-        const existing = grouped.get(pr.ticket_id) || []
-        existing.push(pr)
-        grouped.set(pr.ticket_id, existing)
+        const oldList = $ticketPrs.get(pr.ticket_id) || []
+        const oldPr = oldList.find(p => p.id === pr.id)
+        const preservedPr = preservePullRequestState(oldPr, pr)
+
+        const existing = grouped.get(preservedPr.ticket_id) || []
+        existing.push(preservedPr)
+        grouped.set(preservedPr.ticket_id, existing)
       }
       $ticketPrs = grouped
     } catch (e) {
@@ -344,11 +349,19 @@
     }
   }
 
+  function closeActionPalette() {
+    showActionPalette = false
+    actionPaletteTask = null
+  }
+
   async function openActionPalette() {
     if (showActionPalette) {
-      showActionPalette = false
+      closeActionPalette()
       return
     }
+
+    actionPaletteTask = selectedTask
+
     if ($activeProjectId) {
       try {
         const all = await loadActions($activeProjectId)
@@ -361,8 +374,8 @@
   }
 
   async function executeAction(actionId: string) {
-    showActionPalette = false
-    const task = selectedTask
+    const task = actionPaletteTask
+    closeActionPalette()
 
     switch (actionId) {
       case 'start-task':
@@ -1043,9 +1056,9 @@
 
 {#if showActionPalette}
   <ActionPalette
-    task={selectedTask}
+    task={actionPaletteTask}
     customActions={actionPaletteActions}
-    onClose={() => showActionPalette = false}
+    onClose={closeActionPalette}
     onExecute={executeAction}
   />
 {/if}

@@ -171,6 +171,17 @@ fn build_hooks_json(port: u16) -> Value {
 mod tests {
     use super::*;
     use std::fs;
+    use std::sync::{LazyLock, Mutex};
+
+    static HOME_ENV_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
+
+    fn restore_home(home_backup: Option<String>) {
+        if let Some(home) = home_backup {
+            std::env::set_var("HOME", home);
+        } else {
+            std::env::remove_var("HOME");
+        }
+    }
 
     #[test]
     fn test_hooks_json_structure() {
@@ -228,6 +239,7 @@ mod tests {
 
     #[test]
     fn test_file_creation() {
+        let _home_lock = HOME_ENV_LOCK.lock().unwrap();
         let temp_dir = std::env::temp_dir().join("claude_hooks_test");
         let _ = fs::remove_dir_all(&temp_dir);
         fs::create_dir_all(&temp_dir).unwrap();
@@ -240,9 +252,7 @@ mod tests {
 
         let result = generate_hooks_settings(17422);
 
-        if let Some(home) = home_backup {
-            std::env::set_var("HOME", home);
-        }
+        restore_home(home_backup);
 
         assert!(result.is_ok());
         let path = result.unwrap();
@@ -260,6 +270,7 @@ mod tests {
 
     #[test]
     fn test_file_overwrite() {
+        let _home_lock = HOME_ENV_LOCK.lock().unwrap();
         let temp_dir = std::env::temp_dir().join("claude_hooks_overwrite_test");
         let _ = fs::remove_dir_all(&temp_dir);
         fs::create_dir_all(&temp_dir).unwrap();
@@ -270,9 +281,7 @@ mod tests {
         let result1 = generate_hooks_settings(17422);
         let result2 = generate_hooks_settings(9999);
 
-        if let Some(home) = home_backup {
-            std::env::set_var("HOME", home);
-        }
+        restore_home(home_backup);
 
         assert!(result1.is_ok());
         assert!(result2.is_ok());

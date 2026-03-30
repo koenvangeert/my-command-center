@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { Task, AgentSession, PullRequestInfo } from './types'
-import { computeTaskState, taskStateToBorderClass } from './taskState'
+import { computeTaskState, taskStateToBorderClass, getStateDrivingPr } from './taskState'
 
 // ============================================================================
 // Factory Helpers
@@ -425,7 +425,7 @@ describe('taskStateToBorderClass', () => {
   })
 
   it('maps unaddressed-comments to unaddressed-comments', () => {
-    expect(taskStateToBorderClass('unaddressed-comments' as any)).toBe('unaddressed-comments')
+    expect(taskStateToBorderClass('unaddressed-comments')).toBe('unaddressed-comments')
   })
 })
 
@@ -608,6 +608,86 @@ describe('computeTaskState - mergeable_state based ready-to-merge (PART 5)', () 
 })
 
 // ============================================================================
+// PART 5b: transient mergeable_state: null — Merge button must not vanish
+// ============================================================================
+
+describe('computeTaskState - transient null mergeability (PART 5b)', () => {
+  it('test 1: mergeable_state null + ci pending → ci-running (not ready-to-merge)', () => {
+    // Regression: during GitHub async recompute window, mergeable_state is null.
+    // If ci is pending the task should show ci-running, never ready-to-merge.
+    const task = createTask({ status: 'doing' })
+    const session = createSession({ status: 'completed' })
+    const prs = [createPr({ state: 'open', mergeable_state: null, ci_status: 'pending' })]
+    expect(computeTaskState(task, session, prs)).toBe('ci-running')
+  })
+
+  it('test 2: mergeable_state null + ci null → pr-open (conservative fallback)', () => {
+    // mergeable_state: null means GitHub hasn't computed it yet.
+    // With no CI data either, fall back to pr-open — not ready-to-merge.
+    const task = createTask({ status: 'doing' })
+    const session = createSession({ status: 'completed' })
+    const prs = [createPr({ state: 'open', mergeable_state: null, ci_status: null })]
+    expect(computeTaskState(task, session, prs)).toBe('pr-open')
+  })
+
+  it('test 3: mergeable_state null + ci success + approved → pr-open (null is not clean)', () => {
+    // Even if CI passes and review is approved, null mergeable_state means GitHub
+    // hasn't confirmed mergeability — must not show Merge button.
+    const task = createTask({ status: 'doing' })
+    const session = createSession({ status: 'completed' })
+    const prs = [createPr({ state: 'open', mergeable_state: null, ci_status: 'success', review_status: 'approved' })]
+    expect(computeTaskState(task, session, prs)).not.toBe('ready-to-merge')
+  })
+
+  it('test 4: mergeable_state transitions null→clean → becomes ready-to-merge', () => {
+    // When GitHub finishes recomputing and returns clean, the state must update.
+    const task = createTask({ status: 'doing' })
+    const session = createSession({ status: 'completed' })
+
+    const prTransient = createPr({ state: 'open', mergeable_state: null, ci_status: 'success', review_status: 'approved' })
+    expect(computeTaskState(task, session, [prTransient])).not.toBe('ready-to-merge')
+
+    const prClean = { ...prTransient, mergeable_state: 'clean' }
+    expect(computeTaskState(task, session, [prClean])).toBe('ready-to-merge')
+  })
+
+  it('test 5: mergeable_state unknown + ci success → pr-open (unknown ≠ clean)', () => {
+    // GitHub returns "unknown" when it cannot determine mergeability.
+    // This must be treated conservatively — not ready-to-merge.
+    const task = createTask({ status: 'doing' })
+    const session = createSession({ status: 'completed' })
+    const prs = [createPr({ state: 'open', mergeable_state: 'unknown', ci_status: 'success', review_status: 'approved' })]
+    expect(computeTaskState(task, session, prs)).toBe('pr-open')
+  })
+
+  it('test 6: mergeable_state null + ci failure → ci-failed (failure still takes priority)', () => {
+    const task = createTask({ status: 'doing' })
+    const session = createSession({ status: 'completed' })
+    const prs = [createPr({ state: 'open', mergeable_state: null, ci_status: 'failure' })]
+    expect(computeTaskState(task, session, prs)).toBe('ci-failed')
+  })
+
+  it('test 7: mergeable_state null + changes_requested → changes-requested', () => {
+    const task = createTask({ status: 'doing' })
+    const session = createSession({ status: 'completed' })
+    const prs = [createPr({ state: 'open', mergeable_state: null, review_status: 'changes_requested' })]
+    expect(computeTaskState(task, session, prs)).toBe('changes-requested')
+  })
+
+  it('test 8: mergeable_state null + is_queued — queued badge still shown', () => {
+    // A PR can be in merge queue even while GitHub recomputes mergeability.
+    // is_queued takes effect via isQueuedForMerge which is independent of mergeable_state.
+    // But pr-queued path requires isReadyToMerge — so it falls through to pr-open, not pr-queued.
+    const task = createTask({ status: 'doing' })
+    const session = createSession({ status: 'completed' })
+    const prs = [createPr({ state: 'open', mergeable_state: null, is_queued: true })]
+    // With null mergeability, isReadyToMerge returns false, so pr-queued won't fire.
+    // The PR stays as pr-open (most accurate conservative state).
+    expect(computeTaskState(task, session, prs)).toBe('pr-open')
+  })
+})
+
+// ============================================================================
 // PART 6: merge conflicts
 // ============================================================================
 
@@ -652,5 +732,48 @@ describe('computeTaskState - merge-conflict (PART 6)', () => {
     const session = createSession({ status: 'completed' })
     const prs = [createPr({ state: 'closed', mergeable_state: 'dirty' })]
     expect(computeTaskState(task, session, prs)).toBe('agent-done') // fallback since no open PR
+  })
+})
+
+// ============================================================================
+// PART 7: getStateDrivingPr — exported PR selection helper
+// ============================================================================
+
+describe('getStateDrivingPr', () => {
+  it('returns null for empty array', () => {
+    expect(getStateDrivingPr([])).toBeNull()
+  })
+
+  it('returns null when all PRs are closed (not merged)', () => {
+    const prs = [createPr({ state: 'closed' })]
+    expect(getStateDrivingPr(prs)).toBeNull()
+  })
+
+  it('returns the open PR', () => {
+    const pr = createPr({ state: 'open', id: 5 })
+    expect(getStateDrivingPr([pr])).toBe(pr)
+  })
+
+  it('returns the merged PR when no open PR exists', () => {
+    const merged = createPr({ state: 'merged', id: 3, merged_at: 9000 })
+    expect(getStateDrivingPr([merged])).toBe(merged)
+  })
+
+  it('prefers open PR over merged PR when both present', () => {
+    const merged = createPr({ state: 'merged', id: 1, merged_at: 9000 })
+    const open = createPr({ state: 'open', id: 2 })
+    expect(getStateDrivingPr([merged, open])).toBe(open)
+  })
+
+  it('with multiple open PRs returns the first open PR (array order)', () => {
+    const first = createPr({ state: 'open', id: 10 })
+    const second = createPr({ state: 'open', id: 20 })
+    expect(getStateDrivingPr([first, second])).toBe(first)
+  })
+
+  it('ignores closed PRs and returns open PR later in array', () => {
+    const closed = createPr({ state: 'closed', id: 1 })
+    const open = createPr({ state: 'open', id: 2 })
+    expect(getStateDrivingPr([closed, open])).toBe(open)
   })
 })

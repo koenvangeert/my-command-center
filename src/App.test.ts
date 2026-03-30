@@ -57,6 +57,7 @@ vi.mock('./lib/stores', () => ({
 }))
 
 vi.mock('./lib/ipc', () => ({
+  getSessions: vi.fn(),
   getProjects: vi.fn(async () => {
     callOrder.push('getProjects')
     return [{ id: 'proj-1', name: 'Test Project', path: '/test' }]
@@ -710,6 +711,67 @@ describe('App onMount initialization order', () => {
     expect(nav.resetToBoard).not.toHaveBeenCalled()
   })
 
+    it('action palette move-to-done uses the task that was selected when the palette opened', async () => {
+      const App = (await import('./App.svelte')).default
+      const stores = await import('./lib/stores')
+      const nav = await import('./lib/router.svelte')
+      const { getTasksForProject } = await import('./lib/ipc')
+      const { moveTaskToComplete } = await import('./lib/moveToComplete')
+      const actionPaletteModule = await import('./components/ActionPalette.svelte')
+
+      const selectedTask: Task = {
+        id: 'task-124',
+        initial_prompt: 'Finish task after palette opens',
+        prompt: null,
+        summary: null,
+        status: 'doing',
+        agent: null,
+        permission_mode: null,
+        project_id: 'proj-1',
+        created_at: 1000,
+        updated_at: 1000,
+      }
+
+      vi.mocked(getTasksForProject).mockResolvedValue([selectedTask])
+
+      stores.tasks.set([selectedTask])
+      stores.pendingTask.set(null)
+      stores.selectedTaskId.set(selectedTask.id)
+
+      render(App)
+
+      await vi.waitFor(() => {
+        expect(getTasksForProject).toHaveBeenCalled()
+      })
+
+      await fireEvent.keyDown(window, { key: 'k', metaKey: true, bubbles: true })
+
+      await vi.waitFor(() => {
+        expect(actionPaletteModule.default).toHaveBeenCalled()
+      })
+
+      const lastCall = vi.mocked(actionPaletteModule.default).mock.calls.at(-1)
+      if (!lastCall) throw new Error('Expected ActionPalette to receive props')
+
+      const propsCandidate = lastCall
+        .flatMap((arg) => {
+          if (typeof arg !== 'object' || arg === null) return []
+          if ('props' in arg && typeof arg.props === 'object' && arg.props !== null) return [arg, arg.props]
+          return [arg]
+        })
+        .find((arg): arg is { onExecute: (actionId: string) => Promise<void> } => 'onExecute' in arg && typeof arg.onExecute === 'function')
+
+      if (!propsCandidate) throw new Error('Expected ActionPalette props to include onExecute')
+
+      stores.selectedTaskId.set(null)
+      vi.mocked(nav.resetToBoard).mockClear()
+
+      await propsCandidate.onExecute('move-to-done')
+
+      expect(moveTaskToComplete).toHaveBeenCalledWith('task-124')
+      expect(nav.resetToBoard).not.toHaveBeenCalled()
+    })
+
     it('action palette move-to-done delegates to moveTaskToComplete', async () => {
       const App = (await import('./App.svelte')).default
       const stores = await import('./lib/stores')
@@ -870,13 +932,13 @@ describe('App onMount initialization order', () => {
       expect(commandPaletteModule.default).toHaveBeenCalled()
     })
 
-    it('? opens the keyboard shortcuts dialog', async () => {
+    it('Shift+/ opens the keyboard shortcuts dialog', async () => {
       const App = (await import('./App.svelte')).default
       const modalModule = await import('./components/Modal.svelte')
 
       render(App)
 
-      await fireEvent.keyDown(window, { key: '?', bubbles: true })
+      await fireEvent.keyDown(window, { key: '?', shiftKey: true, bubbles: true })
 
       expect(modalModule.default).toHaveBeenCalled()
     })
@@ -1084,7 +1146,7 @@ describe('App onMount initialization order', () => {
       expect(get(stores.activeProjectId)).toBe('proj-1')
     })
 
-    it('? does NOT open dialog when input is focused', async () => {
+    it('Shift+/ does NOT open dialog when input is focused', async () => {
       const App = (await import('./App.svelte')).default
       render(App)
 
@@ -1094,7 +1156,7 @@ describe('App onMount initialization order', () => {
       input.focus()
 
       // Dispatch ? key and check if preventDefault was called
-      const event = new KeyboardEvent('keydown', { key: '?', bubbles: true })
+      const event = new KeyboardEvent('keydown', { key: '?', shiftKey: true, bubbles: true })
       const preventDefaultSpy = vi.spyOn(event, 'preventDefault')
       window.dispatchEvent(event)
 
@@ -1118,12 +1180,12 @@ describe('App onMount initialization order', () => {
       expect(get(stores.currentView)).toBe('board')
     })
 
-    it('? opens dialog when input is NOT focused', async () => {
+    it('Shift+/ opens dialog when input is NOT focused', async () => {
       const App = (await import('./App.svelte')).default
       render(App)
 
       // Dispatch ? key and check if preventDefault was called
-      const event = new KeyboardEvent('keydown', { key: '?', bubbles: true })
+      const event = new KeyboardEvent('keydown', { key: '?', shiftKey: true, bubbles: true })
       const preventDefaultSpy = vi.spyOn(event, 'preventDefault')
       window.dispatchEvent(event)
 
@@ -1131,5 +1193,91 @@ describe('App onMount initialization order', () => {
       expect(preventDefaultSpy).toHaveBeenCalled()
     })
 
+  })
+
+  describe('github-sync-complete', () => {
+    it('preserves locally merged state and definitive mergeability during background sync', async () => {
+      const App = (await import('./App.svelte')).default
+      const stores = await import('./lib/stores')
+      const ipc = await import('./lib/ipc')
+      const { get } = await import('svelte/store')
+
+      stores.projects.set([])
+      stores.tasks.set([])
+      stores.ticketPrs.set(new Map())
+      stores.activeProjectId.set('proj-1')
+
+      vi.mocked(ipc.getProjects).mockResolvedValue([])
+      vi.mocked(ipc.getTasksForProject).mockResolvedValue([])
+      vi.mocked(ipc.getLatestSessions).mockResolvedValue([])
+      vi.mocked(ipc.getProjectAttention).mockResolvedValue([{
+        project_id: 'proj-1',
+        needs_input: 0,
+        running_agents: 0,
+        ci_failures: 0,
+        unaddressed_comments: 0,
+        completed_agents: 0
+      }])
+      vi.mocked(ipc.getProjectConfig).mockResolvedValue(null)
+
+      const prA: PullRequestInfo = {
+        id: 42,
+        ticket_id: 'T-42',
+        repo_owner: 'owner',
+        repo_name: 'repo',
+        title: 'PR A',
+        url: 'https://example.com',
+        state: 'merged',
+        merged_at: 1000,
+        head_sha: 'abc',
+        ci_status: null,
+        ci_check_runs: null,
+        review_status: null,
+        mergeable: true,
+        mergeable_state: 'clean',
+        created_at: 0,
+        updated_at: 0,
+        draft: false,
+        is_queued: false,
+        unaddressed_comment_count: 0
+      }
+      const prB: PullRequestInfo = {
+        ...prA,
+        id: 99,
+        ticket_id: 'T-99',
+        title: 'PR B',
+        state: 'open',
+        merged_at: null,
+        mergeable: false,
+        mergeable_state: 'dirty'
+      }
+      
+      stores.ticketPrs.set(new Map([
+        ['T-42', [prA]],
+        ['T-99', [prB]]
+      ]))
+
+      const transientPrA = { ...prA, state: 'open', merged_at: null }
+      const transientPrB = { ...prB, mergeable: null, mergeable_state: 'unknown' }
+      vi.mocked(ipc.getPullRequests).mockResolvedValue([transientPrA, transientPrB])
+
+      render(App)
+
+      const syncCallback = eventListeners.get('github-sync-complete')
+      expect(syncCallback).toBeDefined()
+      await syncCallback!()
+
+      await new Promise(r => setTimeout(r, 0))
+
+      const map = get(stores.ticketPrs)
+      const newPrA = map.get('T-42')?.[0]
+      const newPrB = map.get('T-99')?.[0]
+
+      expect(newPrA?.state).toBe('merged')
+      expect(newPrA?.merged_at).toBe(1000)
+
+      expect(newPrB?.mergeable).toBe(false)
+      expect(newPrB?.mergeable_state).toBe('dirty')
+    })
   })
 })
