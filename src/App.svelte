@@ -527,6 +527,10 @@
       handleNavigate('skills')
     })
 
+    shortcuts.register('⌘f', () => {
+      handleNavigate('files')
+    })
+
     shortcuts.register('⌘,', () => {
       handleNavigate('settings')
     })
