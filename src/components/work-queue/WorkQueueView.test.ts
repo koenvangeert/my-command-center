@@ -270,7 +270,11 @@ describe('WorkQueueView', () => {
     expect(screen.getByText('T-1')).toBeTruthy()
     expect(screen.queryByText('Loading...')).toBeNull()
 
-    requireDefined(resolveRefresh)([makeEntry({ id: 'T-1' }), makeEntry({ id: 'T-2', initial_prompt: 'New task' })])
+    if (!resolveRefresh) {
+      throw new Error('Expected refresh callback to be registered')
+    }
+
+    resolveRefresh([makeEntry({ id: 'T-1' }), makeEntry({ id: 'T-2', initial_prompt: 'New task' })])
 
     await waitFor(() => {
       expect(screen.getByText('T-2')).toBeTruthy()
