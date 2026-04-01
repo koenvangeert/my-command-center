@@ -74,10 +74,11 @@ describe('TaskInfoPanel', () => {
     }
   }
 
-  it('renders Initial Prompt section with task prompt', () => {
+  it('renders Initial Prompt section with task initial_prompt', () => {
     render(TaskInfoPanel, { props: { task: baseTask, worktreePath: null } })
     expect(screen.getByText('// INITIAL_PROMPT')).toBeTruthy()
-    expect(screen.getByText('Build the auth middleware implementation with JWT support')).toBeTruthy()
+    expect(screen.getByText('Implement auth middleware')).toBeTruthy()
+    expect(screen.queryByText('Build the auth middleware implementation with JWT support')).toBeNull()
   })
 
   it('renders prompt as read-only text (no input elements in prompt section)', () => {
