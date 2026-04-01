@@ -1,11 +1,10 @@
 <script lang="ts">
-  import type { Task, PullRequestInfo } from '../../lib/types'
-  import { parseCheckRuns, splitCheckRuns, isReadyToMerge, isQueuedForMerge, hasMergeConflicts, preservePullRequestState } from '../../lib/types'
+  import type { Task } from '../../lib/types'
   import { ticketPrs } from '../../lib/stores'
-  import { forceGithubSync, getPullRequests, mergePullRequest, openUrl } from '../../lib/ipc'
   import CopyButton from '../shared/ui/CopyButton.svelte'
   import TaskPromptSummary from './TaskPromptSummary.svelte'
   import TaskPullRequestStatus from './TaskPullRequestStatus.svelte'
+  import TaskMergeStatus from './TaskMergeStatus.svelte'
 
   interface Props {
     task: Task
@@ -13,127 +12,9 @@
     worktreePath?: string | null
   }
 
-  interface MergeFeedback {
-    kind: 'success' | 'warning' | 'error'
-    message: string
-  }
-
-  type MergeSmokeOutcome = 'success' | 'warning' | 'error'
-
   let { task, workspacePath = null, worktreePath = null }: Props = $props()
 
   let resolvedWorkspacePath = $derived(workspacePath ?? worktreePath)
-
-  let mergeFeedbackByPr = $state<Map<number, MergeFeedback>>(new Map())
-  let mergingPrId = $state<number | null>(null)
-  const showMergeSmokeControls = typeof window !== 'undefined' && window.location.protocol.startsWith('http')
-
-  function setMergeFeedback(prId: number, feedback: MergeFeedback | null) {
-    const nextFeedback = new Map(mergeFeedbackByPr)
-
-    if (feedback) {
-      nextFeedback.set(prId, feedback)
-    } else {
-      nextFeedback.delete(prId)
-    }
-
-    mergeFeedbackByPr = nextFeedback
-  }
-
-  function setTaskPullRequests(taskId: string, nextPrs: PullRequestInfo[]) {
-    const nextTicketPrs = new Map($ticketPrs)
-    nextTicketPrs.set(taskId, nextPrs)
-    ticketPrs.set(nextTicketPrs)
-  }
-
-  async function refreshTaskPullRequests(taskId: string) {
-    const prs = await getPullRequests()
-    const taskPrsToUpdate = prs.filter((pr) => pr.ticket_id === taskId)
-    const currentTaskPrs = $ticketPrs.get(taskId) || []
-    
-    setTaskPullRequests(taskId, taskPrsToUpdate.map(pr => {
-      const oldPr = currentTaskPrs.find(p => p.id === pr.id)
-      return preservePullRequestState(oldPr, pr)
-    }))
-  }
-
-  async function handleMerge(pr: PullRequestInfo) {
-    const taskId = task.id
-    mergingPrId = pr.id
-    setMergeFeedback(pr.id, null)
-
-    try {
-      await mergePullRequest(pr.repo_owner, pr.repo_name, pr.id)
-
-      setTaskPullRequests(
-        taskId,
-        taskPrs.map((taskPr) => taskPr.id === pr.id
-          ? { ...taskPr, state: 'merged', merged_at: Math.floor(Date.now() / 1000) }
-          : taskPr)
-      )
-
-      setMergeFeedback(pr.id, { kind: 'success', message: 'Pull request merged successfully.' })
-
-      try {
-        const result = await forceGithubSync()
-
-        if (result.errors > 0 || result.rate_limited) {
-          const reason = result.rate_limited ? 'GitHub sync was rate limited after merge.' : 'GitHub sync reported errors after merge.'
-          setMergeFeedback(pr.id, {
-            kind: 'warning',
-            message: `${reason} Pull request state may take a moment to fully refresh.`,
-          })
-        } else {
-          await refreshTaskPullRequests(taskId)
-        }
-      } catch (e) {
-        setMergeFeedback(pr.id, {
-          kind: 'warning',
-          message: `Pull request merged, but refresh failed: ${e instanceof Error ? e.message : String(e)}`,
-        })
-      }
-    } catch (e) {
-      setMergeFeedback(pr.id, {
-        kind: 'error',
-        message: e instanceof Error ? e.message : String(e),
-      })
-    } finally {
-      mergingPrId = null
-    }
-  }
-
-  function runMergeSmokeTest(pr: PullRequestInfo, outcome: MergeSmokeOutcome) {
-    if (outcome === 'success') {
-      setTaskPullRequests(
-        task.id,
-        taskPrs.map((taskPr) => taskPr.id === pr.id
-          ? { ...taskPr, state: 'merged', merged_at: Math.floor(Date.now() / 1000) }
-          : taskPr)
-      )
-      setMergeFeedback(pr.id, { kind: 'success', message: 'Smoke test: merge success message.' })
-      return
-    }
-
-    if (outcome === 'warning') {
-      setTaskPullRequests(
-        task.id,
-        taskPrs.map((taskPr) => taskPr.id === pr.id
-          ? { ...taskPr, state: 'merged', merged_at: Math.floor(Date.now() / 1000) }
-          : taskPr)
-      )
-      setMergeFeedback(pr.id, { kind: 'warning', message: 'Smoke test: merged, but refresh warning.' })
-      return
-    }
-
-    setMergeFeedback(pr.id, { kind: 'error', message: 'Smoke test: merge failure message.' })
-  }
-
-  function formatDate(timestamp: number): string {
-    return new Date(timestamp * 1000).toLocaleDateString()
-  }
-
-
-
   let taskPrs = $derived($ticketPrs.get(task.id) || [])
 </script>
 
@@ -150,87 +31,7 @@
     </section>
   {/if}
 
-  <!-- Merge Status Section -->
-  {#if taskPrs.some(pr => pr.state === 'merged' || hasMergeConflicts(pr) || isReadyToMerge(pr) || isQueuedForMerge(pr))}
-    <section class="flex flex-col gap-2.5">
-      <h3 class="text-[10px] font-bold text-primary font-mono tracking-[1.2px] m-0" aria-label="Merge Status">// MERGE_STATUS</h3>
-      {#each taskPrs as pr (pr.id)}
-        {#if pr.state === 'merged'}
-          <div class="mb-3">
-            <div class="flex items-center justify-between gap-2">
-              <span class="text-xs text-base-content/50">{pr.title}</span>
-              <span class="text-[0.65rem] font-semibold px-1.5 py-0.5 rounded bg-secondary/15 text-secondary">&#x2714; Merged</span>
-            </div>
-            {#if pr.merged_at}
-              <div class="text-[0.7rem] text-base-content/50 mt-1">
-                Merged on {formatDate(pr.merged_at)}
-              </div>
-            {/if}
-            {#if mergeFeedbackByPr.has(pr.id)}
-              {@const feedback = mergeFeedbackByPr.get(pr.id)}
-              {#if feedback}
-                <div class="text-[0.7rem] mt-1 {feedback.kind === 'success' ? 'text-success' : feedback.kind === 'warning' ? 'text-warning' : 'text-error'}">
-                  {feedback.message}
-                </div>
-              {/if}
-            {/if}
-          </div>
-        {:else if hasMergeConflicts(pr)}
-          <div class="mb-3">
-            <div class="flex items-center justify-between gap-2">
-              <span class="text-xs text-base-content/50">{pr.title}</span>
-              <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 bg-[var(--chip-error-bg)]">
-                <span class="w-1.5 h-1.5 rounded-full bg-[var(--chip-error-dot)]"></span>
-                <span class="text-[10px] font-medium text-[var(--chip-error-text)]">Merge Conflict</span>
-              </span>
-            </div>
-          </div>
-        {:else if isQueuedForMerge(pr)}
-          <div class="mb-3">
-            <div class="flex items-center justify-between gap-2">
-              <span class="text-xs text-base-content/50">{pr.title}</span>
-              <span class="text-[0.65rem] font-semibold px-1.5 py-0.5 rounded bg-info/15 text-info merge-ready">&#x25CF; In Merge Queue</span>
-            </div>
-          </div>
-        {:else if isReadyToMerge(pr)}
-          <div class="mb-3">
-            <div class="flex items-center justify-between gap-2">
-              <span class="text-xs text-base-content/50">{pr.title}</span>
-              <span class="text-[0.65rem] font-semibold px-1.5 py-0.5 rounded bg-info/15 text-info animate-pulse">&#x25CF; Ready to Merge</span>
-            </div>
-            <div class="mt-1.5 flex items-center gap-2">
-              <button
-                class="btn btn-success btn-xs"
-                disabled={mergingPrId === pr.id}
-                onclick={() => handleMerge(pr)}
-              >
-                {#if mergingPrId === pr.id}
-                  <span class="loading loading-spinner loading-xs"></span>
-                  Merging...
-                {:else}
-                  Merge
-                {/if}
-              </button>
-              {#if mergeFeedbackByPr.has(pr.id)}
-                {@const feedback = mergeFeedbackByPr.get(pr.id)}
-                {#if feedback}
-                  <span class="text-[0.7rem] {feedback.kind === 'success' ? 'text-success' : feedback.kind === 'warning' ? 'text-warning' : 'text-error'}">{feedback.message}</span>
-                {/if}
-              {/if}
-            </div>
-            {#if showMergeSmokeControls}
-              <div class="mt-2 flex flex-wrap items-center gap-1.5 rounded-md border border-base-300 bg-base-100 px-2 py-1.5">
-                <span class="text-[0.65rem] font-mono text-base-content/50">smoke:</span>
-                <button class="btn btn-ghost btn-xs" onclick={() => runMergeSmokeTest(pr, 'success')}>Success</button>
-                <button class="btn btn-ghost btn-xs" onclick={() => runMergeSmokeTest(pr, 'warning')}>Warning</button>
-                <button class="btn btn-ghost btn-xs" onclick={() => runMergeSmokeTest(pr, 'error')}>Failure</button>
-              </div>
-            {/if}
-          </div>
-        {/if}
-      {/each}
-    </section>
-  {/if}
+  <TaskMergeStatus {task} {taskPrs} />
 
   <TaskPullRequestStatus {taskPrs} />
 
