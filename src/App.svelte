@@ -10,6 +10,7 @@
   import { hasMergeConflicts, preservePullRequestState } from './lib/types'
   import type { Task, PullRequestInfo, AgentEvent, ProjectAttention, AppView, PermissionMode, AgentSession } from './lib/types'
   import { moveTaskToComplete } from './lib/moveToComplete'
+  import { getTaskPromptText } from './lib/taskPrompt'
   import FocusBoard from './components/focus-board/FocusBoard.svelte'
   import TaskDetailView from './components/task-detail/TaskDetailView.svelte'
    import PromptInput from './components/prompt/PromptInput.svelte'
@@ -862,9 +863,6 @@
           if ($checkpointNotification?.ticketId === taskId) {
             $checkpointNotification = null
           }
-        } else if (event.payload.action === 'created') {
-          // Trigger toast for newly created task (spawned by agent)
-          $taskSpawned = { taskId: event.payload.task_id, initial_prompt: event.payload.task_id }
         }
         loadTasks()
       })
@@ -958,7 +956,7 @@
           <div class="p-4 overflow-visible">
             <PromptInput
               projectId={$activeProjectId}
-              value={editingTask ? editingTask.initial_prompt : ''}
+               value={editingTask ? getTaskPromptText(editingTask) : ''}
               autofocus={true}
               actions={editingTask ? [] : dialogActions}
               onSubmit={async (prompt) => {
