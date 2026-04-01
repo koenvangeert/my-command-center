@@ -107,6 +107,7 @@ interface MockSelectionOptions {
 class MockSelection implements Selection {
   readonly anchorNode
   readonly anchorOffset = 0
+  readonly direction = 'none'
   readonly focusNode
   readonly focusOffset = 0
   readonly isCollapsed
@@ -158,6 +159,10 @@ class MockSelection implements Selection {
 
   getRangeAt(_index: number): Range {
     throw new Error('MockSelection.getRangeAt is not implemented for this test')
+  }
+
+  getComposedRanges(_options?: GetComposedRangesOptions): StaticRange[] {
+    return []
   }
 
   modify(_alter?: string, _direction?: string, _granularity?: string): void {
