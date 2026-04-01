@@ -5,6 +5,8 @@
   import { forceGithubSync, getPullRequests, mergePullRequest, openUrl } from '../../lib/ipc'
   import MarkdownContent from '../shared/content/MarkdownContent.svelte'
   import CopyButton from '../shared/ui/CopyButton.svelte'
+  import { getPrStatusChips } from '../../lib/prStatusPresentation'
+  import PrStatusChip from '../shared/ui/PrStatusChip.svelte'
 
   interface Props {
     task: Task
@@ -171,10 +173,13 @@
       <h3 class="text-[10px] font-bold text-primary font-mono tracking-[1.2px] m-0" aria-label="Merge Status">// MERGE_STATUS</h3>
       {#each taskPrs as pr (pr.id)}
         {#if pr.state === 'merged'}
+          {@const mergeChip = getPrStatusChips(pr, 'detail').find(c => c.type === 'merge' && c.variant === 'merged')}
           <div class="mb-3">
             <div class="flex items-center justify-between gap-2">
               <span class="text-xs text-base-content/50">{pr.title}</span>
-              <span class="text-[0.65rem] font-semibold px-1.5 py-0.5 rounded bg-secondary/15 text-secondary">&#x2714; Merged</span>
+              {#if mergeChip}
+                <PrStatusChip chip={mergeChip} />
+              {/if}
             </div>
             {#if pr.merged_at}
               <div class="text-[0.7rem] text-base-content/50 mt-1">
@@ -191,27 +196,33 @@
             {/if}
           </div>
         {:else if hasMergeConflicts(pr)}
+          {@const mergeChip = getPrStatusChips(pr, 'detail').find(c => c.type === 'merge')}
           <div class="mb-3">
             <div class="flex items-center justify-between gap-2">
               <span class="text-xs text-base-content/50">{pr.title}</span>
-              <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 bg-[var(--chip-error-bg)]">
-                <span class="w-1.5 h-1.5 rounded-full bg-[var(--chip-error-dot)]"></span>
-                <span class="text-[10px] font-medium text-[var(--chip-error-text)]">Merge Conflict</span>
-              </span>
+              {#if mergeChip}
+                <PrStatusChip chip={mergeChip} />
+              {/if}
             </div>
           </div>
         {:else if isQueuedForMerge(pr)}
+          {@const mergeChip = getPrStatusChips(pr, 'detail').find(c => c.type === 'merge')}
           <div class="mb-3">
             <div class="flex items-center justify-between gap-2">
               <span class="text-xs text-base-content/50">{pr.title}</span>
-              <span class="text-[0.65rem] font-semibold px-1.5 py-0.5 rounded bg-info/15 text-info merge-ready">&#x25CF; In Merge Queue</span>
+              {#if mergeChip}
+                <PrStatusChip chip={mergeChip} />
+              {/if}
             </div>
           </div>
         {:else if isReadyToMerge(pr)}
+          {@const mergeChip = getPrStatusChips(pr, 'detail').find(c => c.type === 'merge')}
           <div class="mb-3">
             <div class="flex items-center justify-between gap-2">
               <span class="text-xs text-base-content/50">{pr.title}</span>
-              <span class="text-[0.65rem] font-semibold px-1.5 py-0.5 rounded bg-info/15 text-info animate-pulse">&#x25CF; Ready to Merge</span>
+              {#if mergeChip}
+                <PrStatusChip chip={mergeChip} />
+              {/if}
             </div>
             <div class="mt-1.5 flex items-center gap-2">
               <button
@@ -258,9 +269,9 @@
               <span class="text-[0.65rem] font-semibold uppercase px-1.5 py-0.5 rounded tracking-wider {pr.state === 'open' ? 'bg-success text-success-content' : pr.state === 'merged' ? 'bg-secondary text-secondary-content' : 'bg-error text-error-content'}">
                 {pr.state}
               </span>
-              {#if pr.draft && pr.state === 'open'}
-                <span class="text-[0.65rem] font-semibold px-1.5 py-0.5 rounded text-base-content/50 bg-base-200 border border-base-300">Draft</span>
-              {/if}
+              {#each getPrStatusChips(pr, 'compact').filter(c => c.type === 'draft') as chip}
+                <PrStatusChip {chip} />
+              {/each}
               <span class="text-sm text-base-content font-medium">{pr.title}</span>
             </div>
             <button class="btn btn-link btn-xs p-0 h-auto min-h-0 text-primary no-underline hover:underline text-[0.7rem] break-all text-left justify-start" onclick={() => openUrl(pr.url)}>
@@ -280,16 +291,21 @@
         {#if pr.ci_status}
           {@const checkRuns = parseCheckRuns(pr.ci_check_runs)}
           {@const { visible, passingCount } = splitCheckRuns(checkRuns)}
+          {@const ciChip = getPrStatusChips(pr, 'detail').find(c => c.type === 'ci')}
           <div class="mb-3">
             <div class="flex items-center justify-between gap-2 mb-1.5">
               <span class="text-xs text-base-content/50">{pr.title}</span>
-              <span class="text-[0.65rem] font-semibold px-1.5 py-0.5 rounded {pr.ci_status === 'success' ? 'bg-success/15 text-success' : pr.ci_status === 'failure' ? 'bg-error/15 text-error' : pr.ci_status === 'pending' ? 'bg-warning/15 text-warning' : 'bg-base-content/15 text-base-content/50'}">
-                {#if pr.ci_status === 'success'}✓ Passing
-                {:else if pr.ci_status === 'failure'}✗ Failing
-                {:else if pr.ci_status === 'pending'}⏳ Running
-                {:else if pr.ci_status === 'none'}— No CI
-                {/if}
-              </span>
+              {#if ciChip}
+                <PrStatusChip chip={ciChip} />
+              {:else if pr.ci_status}
+                <span class="text-[0.65rem] font-semibold px-1.5 py-0.5 rounded {pr.ci_status === 'success' ? 'bg-success/15 text-success' : pr.ci_status === 'failure' ? 'bg-error/15 text-error' : pr.ci_status === 'pending' ? 'bg-warning/15 text-warning' : 'bg-base-content/15 text-base-content/50'} flex items-center gap-1 w-fit">
+                  {#if pr.ci_status === 'success'}Passing
+                  {:else if pr.ci_status === 'failure'}Failing
+                  {:else if pr.ci_status === 'pending'}Running
+                  {:else if pr.ci_status === 'none'}— No CI
+                  {/if}
+                </span>
+              {/if}
             </div>
             {#if visible.length > 0 || passingCount > 0}
               <div class="flex flex-col gap-1">
@@ -323,15 +339,20 @@
       <h3 class="text-[10px] font-bold text-primary font-mono tracking-[1.2px] m-0" aria-label="Review Status">// REVIEW_STATUS</h3>
       {#each taskPrs as pr (pr.id)}
         {#if pr.review_status && pr.review_status !== 'none'}
+          {@const reviewChip = getPrStatusChips(pr, 'detail').find(c => c.type === 'review')}
           <div class="mb-3">
             <div class="flex items-center justify-between gap-2 mb-1.5">
               <span class="text-xs text-base-content/50">{pr.title}</span>
-              <span class="text-[0.65rem] font-semibold px-1.5 py-0.5 rounded {pr.review_status === 'approved' ? 'bg-success/15 text-success' : pr.review_status === 'changes_requested' ? 'bg-warning/15 text-warning' : 'bg-base-content/15 text-base-content/50'}">
-                {#if pr.review_status === 'approved'}✓ Approved
-                {:else if pr.review_status === 'changes_requested'}✗ Changes Requested
-                {:else if pr.review_status === 'review_required'}⏳ Review Required
-                {/if}
-              </span>
+              {#if reviewChip}
+                <PrStatusChip chip={reviewChip} />
+              {:else}
+                <span class="text-[0.65rem] font-semibold px-1.5 py-0.5 rounded {pr.review_status === 'approved' ? 'bg-success/15 text-success' : pr.review_status === 'changes_requested' ? 'bg-warning/15 text-warning' : 'bg-base-content/15 text-base-content/50'} flex items-center gap-1 w-fit">
+                  {#if pr.review_status === 'approved'}Approved
+                  {:else if pr.review_status === 'changes_requested'}Changes Requested
+                  {:else if pr.review_status === 'review_required'}Review Required
+                  {/if}
+                </span>
+              {/if}
             </div>
           </div>
         {/if}
