@@ -1,8 +1,9 @@
 <script lang="ts">
   import type { ReviewPullRequest } from '../../../lib/types'
-  import { hasMergeConflicts } from '../../../lib/types'
   import Card from '../../shared/ui/Card.svelte'
   import { timeAgoFromSeconds } from '../../../lib/timeAgo'
+  import { getPrStatusChips } from '../../../lib/prStatusPresentation'
+  import PrStatusChip from '../../shared/ui/PrStatusChip.svelte'
 
   interface Props {
     pr: ReviewPullRequest
@@ -11,8 +12,6 @@
   }
 
   let { pr, selected = false, onClick }: Props = $props()
-
-  let hasConflict = $derived(hasMergeConflicts(pr))
 
 </script>
 
@@ -41,10 +40,12 @@
   </div>
 
   <div class="flex items-center gap-2 text-xs">
-    {#if hasConflict}
-      <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 bg-[var(--chip-error-bg)]"><span class="w-1.5 h-1.5 rounded-full bg-[var(--chip-error-dot)]"></span><span class="text-[10px] font-medium text-[var(--chip-error-text)]">Merge Conflict</span></span>
-      <span class="text-base-300">•</span>
-    {/if}
+    {#each getPrStatusChips(pr, 'compact') as chip}
+      {#if chip.type !== 'draft'}
+        <PrStatusChip {chip} />
+        <span class="text-base-300">•</span>
+      {/if}
+    {/each}
     <span class="font-medium text-base-content/50">{pr.changed_files} {pr.changed_files === 1 ? 'file' : 'files'}</span>
     <span class="text-base-300">•</span>
     <span class="font-medium text-success">+{pr.additions}</span>

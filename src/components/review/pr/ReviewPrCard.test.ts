@@ -94,7 +94,7 @@ describe('ReviewPrCard', () => {
 
   it('shows Merge Conflict badge when the PR cannot merge cleanly', () => {
     const onClick = () => {}
-    const conflictedPr = { ...basePr, mergeable: false, mergeable_state: 'dirty' }
+    const conflictedPr = { ...basePr, mergeable: false, mergeable_state: 'dirty', state: 'open' }
     render(ReviewPrCard, { props: { pr: conflictedPr, selected: false, onClick } })
     expect(screen.getByText('Merge Conflict')).toBeTruthy()
   })

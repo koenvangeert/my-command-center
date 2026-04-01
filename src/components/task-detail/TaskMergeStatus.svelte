@@ -1,7 +1,9 @@
 <script lang="ts">
   import type { Task, PullRequestInfo } from '../../lib/types'
   import { hasMergeConflicts, isReadyToMerge, isQueuedForMerge } from '../../lib/types'
+  import { getPrStatusChips } from '../../lib/prStatusPresentation'
   import { useMergeOrchestration } from './useMergeOrchestration.svelte'
+  import PrStatusChip from '../shared/ui/PrStatusChip.svelte'
 
   interface Props {
     task: Task
@@ -24,10 +26,13 @@
     <h3 class="text-[10px] font-bold text-primary font-mono tracking-[1.2px] m-0" aria-label="Merge Status">// MERGE_STATUS</h3>
     {#each taskPrs as pr (pr.id)}
       {#if pr.state === 'merged'}
+        {@const mergeChip = getPrStatusChips(pr, 'detail').find(c => c.type === 'merge' && c.variant === 'merged')}
         <div class="mb-3">
           <div class="flex items-center justify-between gap-2">
             <span class="text-xs text-base-content/50">{pr.title}</span>
-            <span class="text-[0.65rem] font-semibold px-1.5 py-0.5 rounded bg-secondary/15 text-secondary">&#x2714; Merged</span>
+            {#if mergeChip}
+              <PrStatusChip chip={mergeChip} />
+            {/if}
           </div>
           {#if pr.merged_at}
             <div class="text-[0.7rem] text-base-content/50 mt-1">
@@ -44,27 +49,33 @@
           {/if}
         </div>
       {:else if hasMergeConflicts(pr)}
+        {@const mergeChip = getPrStatusChips(pr, 'detail').find(c => c.type === 'merge')}
         <div class="mb-3">
           <div class="flex items-center justify-between gap-2">
             <span class="text-xs text-base-content/50">{pr.title}</span>
-            <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 bg-[var(--chip-error-bg)]">
-              <span class="w-1.5 h-1.5 rounded-full bg-[var(--chip-error-dot)]"></span>
-              <span class="text-[10px] font-medium text-[var(--chip-error-text)]">Merge Conflict</span>
-            </span>
+            {#if mergeChip}
+              <PrStatusChip chip={mergeChip} />
+            {/if}
           </div>
         </div>
       {:else if isQueuedForMerge(pr)}
+        {@const mergeChip = getPrStatusChips(pr, 'detail').find(c => c.type === 'merge')}
         <div class="mb-3">
           <div class="flex items-center justify-between gap-2">
             <span class="text-xs text-base-content/50">{pr.title}</span>
-            <span class="text-[0.65rem] font-semibold px-1.5 py-0.5 rounded bg-info/15 text-info merge-ready">&#x25CF; In Merge Queue</span>
+            {#if mergeChip}
+              <PrStatusChip chip={mergeChip} />
+            {/if}
           </div>
         </div>
       {:else if isReadyToMerge(pr)}
+        {@const mergeChip = getPrStatusChips(pr, 'detail').find(c => c.type === 'merge')}
         <div class="mb-3">
           <div class="flex items-center justify-between gap-2">
             <span class="text-xs text-base-content/50">{pr.title}</span>
-            <span class="text-[0.65rem] font-semibold px-1.5 py-0.5 rounded bg-info/15 text-info animate-pulse">&#x25CF; Ready to Merge</span>
+            {#if mergeChip}
+              <PrStatusChip chip={mergeChip} />
+            {/if}
           </div>
           <div class="mt-1.5 flex items-center gap-2">
             <button

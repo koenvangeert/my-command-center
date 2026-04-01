@@ -106,10 +106,10 @@ describe('AuthoredPrCard', () => {
     expect(screen.getByText('Changes Req.')).toBeTruthy()
   })
 
-  it('shows Pending Review badge when review_status is pending', () => {
+  it('shows Needs Review badge when review_status is pending', () => {
     const prWithReview = { ...basePr, review_status: 'pending' }
     render(AuthoredPrCard, { props: { pr: prWithReview, selected: false, onClick: () => {} } })
-    expect(screen.getByText('Pending Review')).toBeTruthy()
+    expect(screen.getByText('Needs Review')).toBeTruthy()
   })
 
   it('shows Merge Conflict badge when the PR cannot merge cleanly', () => {

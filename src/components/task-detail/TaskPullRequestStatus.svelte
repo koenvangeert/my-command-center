@@ -2,6 +2,8 @@
   import type { PullRequestInfo } from '../../lib/types'
   import { parseCheckRuns, splitCheckRuns } from '../../lib/types'
   import { openUrl } from '../../lib/ipc'
+  import { getPrStatusChips } from '../../lib/prStatusPresentation'
+  import PrStatusChip from '../shared/ui/PrStatusChip.svelte'
 
   interface Props {
     taskPrs: PullRequestInfo[]
@@ -20,9 +22,9 @@
             <span class="text-[0.65rem] font-semibold uppercase px-1.5 py-0.5 rounded tracking-wider {pr.state === 'open' ? 'bg-success text-success-content' : pr.state === 'merged' ? 'bg-secondary text-secondary-content' : 'bg-error text-error-content'}">
               {pr.state}
             </span>
-            {#if pr.draft && pr.state === 'open'}
-              <span class="text-[0.65rem] font-semibold px-1.5 py-0.5 rounded text-base-content/50 bg-base-200 border border-base-300">Draft</span>
-            {/if}
+            {#each getPrStatusChips(pr, 'compact').filter(c => c.type === 'draft') as chip}
+              <PrStatusChip {chip} />
+            {/each}
             <span class="text-sm text-base-content font-medium">{pr.title}</span>
           </div>
           <button class="btn btn-link btn-xs p-0 h-auto min-h-0 text-primary no-underline hover:underline text-[0.7rem] break-all text-left justify-start" onclick={() => openUrl(pr.url)}>
@@ -41,16 +43,13 @@
       {#if pr.ci_status}
         {@const checkRuns = parseCheckRuns(pr.ci_check_runs)}
         {@const { visible, passingCount } = splitCheckRuns(checkRuns)}
+        {@const ciChip = getPrStatusChips(pr, 'detail').find(c => c.type === 'ci')}
         <div class="mb-3">
           <div class="flex items-center justify-between gap-2 mb-1.5">
             <span class="text-xs text-base-content/50">{pr.title}</span>
-            <span class="text-[0.65rem] font-semibold px-1.5 py-0.5 rounded {pr.ci_status === 'success' ? 'bg-success/15 text-success' : pr.ci_status === 'failure' ? 'bg-error/15 text-error' : pr.ci_status === 'pending' ? 'bg-warning/15 text-warning' : 'bg-base-content/15 text-base-content/50'}">
-              {#if pr.ci_status === 'success'}✓ Passing
-              {:else if pr.ci_status === 'failure'}✗ Failing
-              {:else if pr.ci_status === 'pending'}⏳ Running
-              {:else if pr.ci_status === 'none'}— No CI
-              {/if}
-            </span>
+            {#if ciChip}
+              <PrStatusChip chip={ciChip} />
+            {/if}
           </div>
           {#if visible.length > 0 || passingCount > 0}
             <div class="flex flex-col gap-1">
@@ -83,15 +82,13 @@
     <h3 class="text-[10px] font-bold text-primary font-mono tracking-[1.2px] m-0" aria-label="Review Status">// REVIEW_STATUS</h3>
     {#each taskPrs as pr (pr.id)}
       {#if pr.review_status && pr.review_status !== 'none'}
+        {@const reviewChip = getPrStatusChips(pr, 'detail').find(c => c.type === 'review')}
         <div class="mb-3">
           <div class="flex items-center justify-between gap-2 mb-1.5">
             <span class="text-xs text-base-content/50">{pr.title}</span>
-            <span class="text-[0.65rem] font-semibold px-1.5 py-0.5 rounded {pr.review_status === 'approved' ? 'bg-success/15 text-success' : pr.review_status === 'changes_requested' ? 'bg-warning/15 text-warning' : 'bg-base-content/15 text-base-content/50'}">
-              {#if pr.review_status === 'approved'}✓ Approved
-              {:else if pr.review_status === 'changes_requested'}✗ Changes Requested
-              {:else if pr.review_status === 'review_required'}⏳ Review Required
-              {/if}
-            </span>
+            {#if reviewChip}
+              <PrStatusChip chip={reviewChip} />
+            {/if}
           </div>
         </div>
       {/if}
