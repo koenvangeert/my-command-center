@@ -7,7 +7,7 @@
   import { writePtyWithSubmit } from './lib/ptySubmit'
   import SearchableSelect from './components/shared/ui/SearchableSelect.svelte'
   import { applyProjectOrder } from './lib/projectOrder'
-  import { hasMergeConflicts, preservePullRequestState, isReadyToMerge } from './lib/types'
+  import { hasMergeConflicts, preservePullRequestState, isQueuedForMerge, isReadyToMerge } from './lib/types'
   import type { Task, PullRequestInfo, AgentEvent, ProjectAttention, AppView, PermissionMode, AgentSession } from './lib/types'
   import { moveTaskToComplete } from './lib/moveToComplete'
   import { getTaskPromptText } from './lib/taskPrompt'
@@ -413,8 +413,9 @@
         break
       case 'merge-pr': {
         const prs = task ? ($ticketPrs.get(task.id) || []) : []
-        const pr = prs.find(candidate => isReadyToMerge(candidate) && !candidate.is_queued)
-        if (task && pr) {
+        const readyPrs = prs.filter(candidate => isReadyToMerge(candidate) && !isQueuedForMerge(candidate))
+        if (task && readyPrs.length === 1) {
+          const pr = readyPrs[0]
           try {
             await mergePullRequest(pr.repo_owner, pr.repo_name, pr.id)
             const nextMap = new Map($ticketPrs)
@@ -428,6 +429,8 @@
             console.error('Failed to merge PR:', e)
             $error = String(e)
           }
+        } else if (task && readyPrs.length > 1) {
+          $error = 'Multiple pull requests are ready to merge. Open the task details to choose the correct PR.'
         }
         break
       }
