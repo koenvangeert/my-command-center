@@ -35,12 +35,14 @@ describe('isInputFocused', () => {
   })
 
   it('returns false for a non-HTMLElement active element without reading contentEditable', () => {
-    const active = {
-      tagName: 'svg',
-      get isContentEditable() {
+    const active = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+
+    Object.defineProperty(active, 'isContentEditable', {
+      configurable: true,
+      get() {
         throw new Error('should not read isContentEditable')
       },
-    } as Element
+    })
 
     Object.defineProperty(document, 'activeElement', {
       configurable: true,
