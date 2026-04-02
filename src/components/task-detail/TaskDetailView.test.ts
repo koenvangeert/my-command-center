@@ -75,9 +75,9 @@ vi.mock('../../lib/useCommentSelection.svelte', () => ({
   })),
 }))
 
-import { render, screen, waitFor, fireEvent } from '@testing-library/svelte'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { writable, get } from 'svelte/store'
+import { fireEvent, render, screen, waitFor } from '@testing-library/svelte'
+import { get, writable } from 'svelte/store'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../lib/stores', () => ({
   selectedTaskId: writable(null),
@@ -174,9 +174,7 @@ vi.mock('../../lib/terminalPool', () => ({
     taskId,
   })),
   updateShellLifecycleState: vi.fn(),
-  isShellExited: vi.fn((taskId: string) => {
-    return taskId.endsWith('-shell-0') ? false : false
-  }),
+  isShellExited: vi.fn((_taskId: string) => false),
   getTaskTerminalTabsSession: vi.fn((taskId: string) => {
     const existing = taskTabSessions.get(taskId)
     if (existing) return existing
@@ -219,9 +217,9 @@ vi.mock('../../lib/actions', () => ({
   getEnabledActions: vi.fn((actions: { enabled: boolean }[]) => actions.filter(a => a.enabled)),
 }))
 
+import { activeSessions, commandHeld, taskReviewModes, taskTerminalOpen } from '../../lib/stores'
+import type { AgentSession, Task, WorktreeInfo } from '../../lib/types'
 import TaskDetailView from './TaskDetailView.svelte'
-import type { Task, AgentSession } from '../../lib/types'
-import { activeSessions, taskReviewModes, taskTerminalOpen, commandHeld } from '../../lib/stores'
 
 const baseTask: Task = {
   id: 'T-42',
@@ -257,6 +255,35 @@ const baseSession: AgentSession = {
   provider: 'opencode',
   claude_session_id: null,
 }
+
+function createWorktreeInfo(overrides: Partial<WorktreeInfo> = {}): WorktreeInfo {
+  return {
+    id: 1,
+    task_id: 'T-42',
+    project_id: 'project-1',
+    repo_path: '/repo',
+    worktree_path: '/path/to/worktree',
+    branch_name: 'branch',
+    opencode_port: null,
+    opencode_pid: null,
+    status: 'ready',
+    created_at: 1000,
+    updated_at: 2000,
+    ...overrides,
+  }
+}
+
+describe('createWorktreeInfo', () => {
+  it('applies overrides while keeping a valid typed worktree shape', () => {
+    expect(createWorktreeInfo({ worktree_path: '/tmp/wt', branch_name: 'feature/task' })).toMatchObject({
+      task_id: 'T-42',
+      repo_path: '/repo',
+      worktree_path: '/tmp/wt',
+      branch_name: 'feature/task',
+      status: 'ready',
+    })
+  })
+})
 
 describe('TaskDetailView', () => {
   beforeEach(() => {
@@ -406,7 +433,7 @@ describe('TaskDetailView', () => {
 
   it('Info panel always visible in code_view mode (no tab toggle)', async () => {
     const { getWorktreeForTask } = await import('../../lib/ipc')
-    vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/path/to/worktree', repo_path: '/repo', branch_name: 'branch' } as any)
+    vi.mocked(getWorktreeForTask).mockResolvedValue(createWorktreeInfo({ worktree_path: '/path/to/worktree', repo_path: '/repo', branch_name: 'branch' }))
 
     render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
     await waitFor(() => {
@@ -471,7 +498,7 @@ describe('TaskDetailView', () => {
 
   it('⌘J opens bottom panel', async () => {
     const { getWorktreeForTask } = await import('../../lib/ipc')
-    vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/path/to/worktree', repo_path: '/repo', branch_name: 'branch' } as any)
+    vi.mocked(getWorktreeForTask).mockResolvedValue(createWorktreeInfo({ worktree_path: '/path/to/worktree', repo_path: '/repo', branch_name: 'branch' }))
 
     render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
     await waitFor(() => expect(screen.getByText('code_view')).toBeTruthy())
@@ -488,7 +515,7 @@ describe('TaskDetailView', () => {
 
   it('⌘T opens bottom panel', async () => {
     const { getWorktreeForTask } = await import('../../lib/ipc')
-    vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/path/to/worktree', repo_path: '/repo', branch_name: 'branch' } as any)
+    vi.mocked(getWorktreeForTask).mockResolvedValue(createWorktreeInfo({ worktree_path: '/path/to/worktree', repo_path: '/repo', branch_name: 'branch' }))
 
     render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
     await waitFor(() => expect(screen.getByText('code_view')).toBeTruthy())
@@ -506,7 +533,7 @@ describe('TaskDetailView', () => {
   it('⌘E focuses the first shell tab when terminal panel has never been opened', async () => {
     const { getWorktreeForTask } = await import('../../lib/ipc')
     const { focusTerminal } = await import('../../lib/terminalPool')
-    vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/path/to/worktree', repo_path: '/repo', branch_name: 'branch' } as any)
+    vi.mocked(getWorktreeForTask).mockResolvedValue(createWorktreeInfo({ worktree_path: '/path/to/worktree', repo_path: '/repo', branch_name: 'branch' }))
     vi.mocked(focusTerminal).mockClear()
 
     render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
@@ -520,7 +547,7 @@ describe('TaskDetailView', () => {
 
   it('⌘J closes bottom panel when already open', async () => {
     const { getWorktreeForTask } = await import('../../lib/ipc')
-    vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/path/to/worktree', repo_path: '/repo', branch_name: 'branch' } as any)
+    vi.mocked(getWorktreeForTask).mockResolvedValue(createWorktreeInfo({ worktree_path: '/path/to/worktree', repo_path: '/repo', branch_name: 'branch' }))
 
     render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
     await waitFor(() => expect(screen.getByText('code_view')).toBeTruthy())
@@ -538,7 +565,7 @@ describe('TaskDetailView', () => {
 
   it('⌘+1 switches to code_view', async () => {
     const { getWorktreeForTask } = await import('../../lib/ipc')
-    vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/path/to/worktree', repo_path: '/repo', branch_name: 'branch' } as any)
+    vi.mocked(getWorktreeForTask).mockResolvedValue(createWorktreeInfo({ worktree_path: '/path/to/worktree', repo_path: '/repo', branch_name: 'branch' }))
 
     render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
     await waitFor(() => expect(screen.getByText('code_view')).toBeTruthy())
@@ -559,7 +586,7 @@ describe('TaskDetailView', () => {
 
   it('⌘+1 → code_view', async () => {
     const { getWorktreeForTask } = await import('../../lib/ipc')
-    vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' } as any)
+    vi.mocked(getWorktreeForTask).mockResolvedValue(createWorktreeInfo({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' }))
 
     render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
     await waitFor(() => expect(screen.getByText('review_view')).toBeTruthy())
@@ -578,7 +605,7 @@ describe('TaskDetailView', () => {
 
   it('⌘+2 → review_view', async () => {
     const { getWorktreeForTask } = await import('../../lib/ipc')
-    vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' } as any)
+    vi.mocked(getWorktreeForTask).mockResolvedValue(createWorktreeInfo({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' }))
 
     render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
     await waitFor(() => expect(screen.getByText('review_view')).toBeTruthy())
@@ -593,7 +620,7 @@ describe('TaskDetailView', () => {
 
   it('review mode shows SelfReviewView and bottom panel persists', async () => {
     const { getWorktreeForTask } = await import('../../lib/ipc')
-    vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/path/to/worktree', repo_path: '/repo', branch_name: 'branch' } as any)
+    vi.mocked(getWorktreeForTask).mockResolvedValue(createWorktreeInfo({ worktree_path: '/path/to/worktree', repo_path: '/repo', branch_name: 'branch' }))
 
     render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
     await waitFor(() => expect(screen.getByText('review_view')).toBeTruthy())
@@ -613,7 +640,7 @@ describe('TaskDetailView', () => {
   it('⌘F toggles fullscreen when bottom panel is open and not in review mode', async () => {
     taskReviewModes.set(new Map())
     const { getWorktreeForTask } = await import('../../lib/ipc')
-    vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/path/to/worktree', repo_path: '/repo', branch_name: 'branch' } as any)
+    vi.mocked(getWorktreeForTask).mockResolvedValue(createWorktreeInfo({ worktree_path: '/path/to/worktree', repo_path: '/repo', branch_name: 'branch' }))
 
     render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
     await waitFor(() => expect(screen.getByText('code_view')).toBeTruthy())
@@ -644,7 +671,7 @@ describe('TaskDetailView', () => {
   it('⌘J exits fullscreen first when terminalFullscreen is true', async () => {
     taskReviewModes.set(new Map())
     const { getWorktreeForTask } = await import('../../lib/ipc')
-    vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/path/to/worktree', repo_path: '/repo', branch_name: 'branch' } as any)
+    vi.mocked(getWorktreeForTask).mockResolvedValue(createWorktreeInfo({ worktree_path: '/path/to/worktree', repo_path: '/repo', branch_name: 'branch' }))
 
     render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
     await waitFor(() => expect(screen.getByText('code_view')).toBeTruthy())
@@ -756,7 +783,7 @@ describe('TaskDetailView', () => {
 
     it('l key switches to review mode when worktree exists', async () => {
       const { getWorktreeForTask } = await import('../../lib/ipc')
-      vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' } as any)
+      vi.mocked(getWorktreeForTask).mockResolvedValue(createWorktreeInfo({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' }))
 
       render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
       await waitFor(() => {
@@ -777,7 +804,7 @@ describe('TaskDetailView', () => {
 
     it('h key switches back to code mode from review', async () => {
       const { getWorktreeForTask } = await import('../../lib/ipc')
-      vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' } as any)
+      vi.mocked(getWorktreeForTask).mockResolvedValue(createWorktreeInfo({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' }))
 
       render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
       await waitFor(() => {
@@ -812,7 +839,7 @@ describe('TaskDetailView', () => {
 
     it('h and l keys are ignored when modifier keys are held', async () => {
       const { getWorktreeForTask } = await import('../../lib/ipc')
-      vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' } as any)
+      vi.mocked(getWorktreeForTask).mockResolvedValue(createWorktreeInfo({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' }))
 
       render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
       await waitFor(() => {
@@ -835,7 +862,7 @@ describe('TaskDetailView', () => {
 
     it('Cmd+2 switches to review mode when worktree exists', async () => {
       const { getWorktreeForTask } = await import('../../lib/ipc')
-      vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' } as any)
+      vi.mocked(getWorktreeForTask).mockResolvedValue(createWorktreeInfo({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' }))
 
       render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
       await waitFor(() => {
@@ -856,7 +883,7 @@ describe('TaskDetailView', () => {
 
     it('Cmd+1 switches back to code mode from review', async () => {
       const { getWorktreeForTask } = await import('../../lib/ipc')
-      vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' } as any)
+      vi.mocked(getWorktreeForTask).mockResolvedValue(createWorktreeInfo({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' }))
 
       render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
       await waitFor(() => {
@@ -880,7 +907,7 @@ describe('TaskDetailView', () => {
 
     it('Cmd+1/2 work even when an input element is focused', async () => {
       const { getWorktreeForTask } = await import('../../lib/ipc')
-      vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' } as any)
+      vi.mocked(getWorktreeForTask).mockResolvedValue(createWorktreeInfo({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' }))
 
       render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
       await waitFor(() => {
@@ -923,7 +950,7 @@ describe('TaskDetailView', () => {
 
     it('shows shortcut hints on view toggle buttons when CMD is held', async () => {
       const { getWorktreeForTask } = await import('../../lib/ipc')
-      vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' } as any)
+      vi.mocked(getWorktreeForTask).mockResolvedValue(createWorktreeInfo({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' }))
 
       render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
       await waitFor(() => {
@@ -945,7 +972,7 @@ describe('TaskDetailView', () => {
 
     it('hides shortcut hints on view toggle buttons when CMD is not held', async () => {
       const { getWorktreeForTask } = await import('../../lib/ipc')
-      vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' } as any)
+      vi.mocked(getWorktreeForTask).mockResolvedValue(createWorktreeInfo({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' }))
 
       render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
       await waitFor(() => {
@@ -992,7 +1019,7 @@ describe('TaskDetailView', () => {
 
      it('l key writes true to taskReviewModes store for the task', async () => {
        const { getWorktreeForTask } = await import('../../lib/ipc')
-       vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' } as any)
+       vi.mocked(getWorktreeForTask).mockResolvedValue(createWorktreeInfo({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' }))
 
        render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
        await waitFor(() => expect(screen.getByText('review_view')).toBeTruthy())
@@ -1008,7 +1035,7 @@ describe('TaskDetailView', () => {
 
      it('h key writes false to taskReviewModes store for the task', async () => {
        const { getWorktreeForTask } = await import('../../lib/ipc')
-       vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' } as any)
+       vi.mocked(getWorktreeForTask).mockResolvedValue(createWorktreeInfo({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' }))
 
        taskReviewModes.set(new Map([['T-42', true]]))
        render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
@@ -1025,7 +1052,7 @@ describe('TaskDetailView', () => {
 
      it('restores review mode from store when task is rendered', async () => {
        const { getWorktreeForTask } = await import('../../lib/ipc')
-       vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' } as any)
+       vi.mocked(getWorktreeForTask).mockResolvedValue(createWorktreeInfo({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' }))
 
        taskReviewModes.set(new Map([['T-42', true]]))
        render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
@@ -1040,7 +1067,7 @@ describe('TaskDetailView', () => {
 
      it('review mode is task-scoped: Task A review does not affect Task B', async () => {
        const { getWorktreeForTask } = await import('../../lib/ipc')
-       vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' } as any)
+       vi.mocked(getWorktreeForTask).mockResolvedValue(createWorktreeInfo({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' }))
 
        taskReviewModes.set(new Map([['T-42', true]]))
        render(TaskDetailView, { props: { task: secondaryTask, onRunAction: mockOnRunAction } })
@@ -1062,7 +1089,7 @@ describe('TaskDetailView', () => {
 
       it('⌘J writes true to taskTerminalOpen store when opening', async () => {
         const { getWorktreeForTask } = await import('../../lib/ipc')
-        vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' } as any)
+        vi.mocked(getWorktreeForTask).mockResolvedValue(createWorktreeInfo({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' }))
 
         render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
         await waitFor(() => expect(screen.getByText('code_view')).toBeTruthy())
@@ -1078,7 +1105,7 @@ describe('TaskDetailView', () => {
 
       it('⌘J writes false to taskTerminalOpen store when closing', async () => {
         const { getWorktreeForTask } = await import('../../lib/ipc')
-        vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' } as any)
+        vi.mocked(getWorktreeForTask).mockResolvedValue(createWorktreeInfo({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' }))
 
         taskTerminalOpen.set(new Map([['T-42', true]]))
         render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
@@ -1097,7 +1124,7 @@ describe('TaskDetailView', () => {
 
       it('restores terminal open state from store when task is rendered', async () => {
         const { getWorktreeForTask } = await import('../../lib/ipc')
-        vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' } as any)
+        vi.mocked(getWorktreeForTask).mockResolvedValue(createWorktreeInfo({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' }))
 
         taskTerminalOpen.set(new Map([['T-42', true]]))
         render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
@@ -1111,7 +1138,7 @@ describe('TaskDetailView', () => {
 
       it('terminal open state is task-scoped: Task A open does not affect Task B', async () => {
         const { getWorktreeForTask } = await import('../../lib/ipc')
-        vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' } as any)
+        vi.mocked(getWorktreeForTask).mockResolvedValue(createWorktreeInfo({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' }))
 
         taskTerminalOpen.set(new Map([['T-42', true]]))
         render(TaskDetailView, { props: { task: secondaryTask, onRunAction: mockOnRunAction } })
@@ -1129,7 +1156,7 @@ describe('TaskDetailView', () => {
         const { getWorktreeForTask } = await import('../../lib/ipc')
         const { releaseAllForTask } = await import('../../lib/terminalPool')
         
-        vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' } as any)
+        vi.mocked(getWorktreeForTask).mockResolvedValue(createWorktreeInfo({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' }))
         vi.mocked(releaseAllForTask).mockClear()
         
         const { unmount } = render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
@@ -1147,7 +1174,7 @@ describe('TaskDetailView', () => {
         const { getWorktreeForTask } = await import('../../lib/ipc')
         const { releaseAllForTask } = await import('../../lib/terminalPool')
         
-        vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' } as any)
+        vi.mocked(getWorktreeForTask).mockResolvedValue(createWorktreeInfo({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' }))
         vi.mocked(releaseAllForTask).mockClear()
         
         const { rerender } = render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
@@ -1168,7 +1195,7 @@ describe('TaskDetailView', () => {
         const { getWorktreeForTask } = await import('../../lib/ipc')
         const { releaseAllForTask } = await import('../../lib/terminalPool')
         
-        vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' } as any)
+        vi.mocked(getWorktreeForTask).mockResolvedValue(createWorktreeInfo({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' }))
         vi.mocked(releaseAllForTask).mockClear()
         
         const { rerender } = render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
@@ -1189,7 +1216,7 @@ describe('TaskDetailView', () => {
         const { getWorktreeForTask } = await import('../../lib/ipc')
         const { releaseAllForTask } = await import('../../lib/terminalPool')
         
-        vi.mocked(getWorktreeForTask).mockResolvedValue({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' } as any)
+        vi.mocked(getWorktreeForTask).mockResolvedValue(createWorktreeInfo({ worktree_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' }))
         vi.mocked(releaseAllForTask).mockClear()
         
         const { unmount } = render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
