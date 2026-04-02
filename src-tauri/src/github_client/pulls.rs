@@ -6,6 +6,15 @@ use super::error::GitHubError;
 use super::types::*;
 use super::GitHubClient;
 
+fn decode_base64_content(content: &str) -> Result<String, GitHubError> {
+    let decoded = general_purpose::STANDARD
+        .decode(content.replace('\n', ""))
+        .map_err(|e| GitHubError::ParseError(format!("Base64 decode error: {}", e)))?;
+
+    String::from_utf8(decoded)
+        .map_err(|e| GitHubError::ParseError(format!("UTF-8 decode error: {}", e)))
+}
+
 impl GitHubClient {
     pub async fn merge_pr(
         &self,
@@ -449,14 +458,56 @@ impl GitHubClient {
             .await
             .map_err(|e| GitHubError::ParseError(e.to_string()))?;
 
-        // Decode base64 content
-        let decoded = general_purpose::STANDARD
-            .decode(blob.content.replace('\n', ""))
-            .map_err(|e| GitHubError::ParseError(format!("Base64 decode error: {}", e)))?;
+        decode_base64_content(&blob.content)
+    }
 
-        let content = String::from_utf8(decoded)
-            .map_err(|e| GitHubError::ParseError(format!("UTF-8 decode error: {}", e)))?;
+    pub async fn get_file_at_ref(
+        &self,
+        owner: &str,
+        repo: &str,
+        path: &str,
+        ref_sha: &str,
+        token: &str,
+    ) -> Result<String, GitHubError> {
+        let url = format!(
+            "https://api.github.com/repos/{}/{}/contents/{}?ref={}",
+            owner, repo, path, ref_sha
+        );
 
-        Ok(content)
+        let response = self.send_github(self.github_get(&url, token)).await?;
+
+        if !response.status().is_success() {
+            return Err(Self::api_error_from_response(response).await);
+        }
+
+        let blob: BlobResponse = response
+            .json()
+            .await
+            .map_err(|e| GitHubError::ParseError(e.to_string()))?;
+
+        decode_base64_content(&blob.content)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn decode_base64_content_decodes_multiline_base64() {
+        let decoded = decode_base64_content("SGVsbG8gV29y\nbGQ=").unwrap();
+
+        assert_eq!(decoded, "Hello World");
+    }
+
+    #[test]
+    fn decode_base64_content_rejects_invalid_utf8() {
+        let encoded = base64::engine::general_purpose::STANDARD.encode([0xff, 0xfe, 0xfd]);
+
+        let err = decode_base64_content(&encoded).unwrap_err();
+
+        assert!(
+            matches!(err, GitHubError::ParseError(message) if message.contains("UTF-8 decode error"))
+        );
     }
 }
