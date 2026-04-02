@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import AddTaskDialog from './AddTaskDialog.svelte'
-import type { Task } from '../lib/types'
+import type { Action, Task } from '../lib/types'
 import { createTask, updateTask, getProjectConfig, listOpenCodeAgents } from '../lib/ipc'
 import { loadActions } from '../lib/actions'
 
@@ -28,9 +28,9 @@ vi.mock('../lib/ipc', () => ({
 
 vi.mock('../lib/actions', () => ({
   loadActions: vi.fn().mockResolvedValue([
-    { id: 'act-1', name: 'Test Action', prompt: 'Do test', enabled: true },
+    { id: 'act-1', name: 'Test Action', prompt: 'Do test', builtin: false, enabled: true },
   ]),
-  getEnabledActions: vi.fn((actions) => actions.filter(action => action.enabled)),
+  getEnabledActions: vi.fn((actions: Action[]) => actions.filter((action: Action) => action.enabled)),
 }))
 
 vi.mock('../lib/stores', () => {
@@ -62,7 +62,7 @@ describe('AddTaskDialog', () => {
       { name: 'agent-2', hidden: false, mode: null },
     ])
     vi.mocked(loadActions).mockResolvedValue([
-      { id: 'act-1', name: 'Test Action', prompt: 'Do test', enabled: true },
+      { id: 'act-1', name: 'Test Action', prompt: 'Do test', builtin: false, enabled: true },
     ])
   })
 
@@ -71,9 +71,31 @@ describe('AddTaskDialog', () => {
     expect(screen.getByRole('heading', { name: 'Create Task' })).toBeTruthy()
     // Wait for PromptInput to be ready
     await waitFor(() => {
-      const textbox = screen.getByRole('textbox')
+      const textbox = screen.getByRole('textbox') as HTMLTextAreaElement
       expect(textbox.value).toBe('')
     })
+  })
+
+  it('closes before awaiting the async start flow', async () => {
+    let resolveRunAction = () => {}
+    const onClose = vi.fn()
+    const onRunAction = vi.fn(() => new Promise<void>((resolve) => {
+      resolveRunAction = resolve
+    }))
+
+    render(AddTaskDialog, { props: { mode: 'create', onClose, onRunAction } })
+
+    const textbox = await screen.findByRole('textbox')
+    await fireEvent.input(textbox, { target: { value: 'Start me' } })
+    await fireEvent.click(await screen.findByRole('button', { name: /Start Task/ }))
+
+    await waitFor(() => {
+      expect(createTask).toHaveBeenCalledWith('Start me', 'backlog', 'test-project-id', null, 'default')
+      expect(onClose).toHaveBeenCalledTimes(1)
+      expect(onRunAction).toHaveBeenCalledWith('T-1', '', null)
+    })
+
+    resolveRunAction()
   })
 
   it('calls createTask with correct arguments on submit via PromptInput', async () => {

@@ -78,7 +78,9 @@
         )
 
         if (autoStart && onRunAction) {
+          onClose?.()
           await onRunAction(savedTask.id, actionPrompt || '', agent)
+          return
         } else {
           await onTaskSaved?.(savedTask)
         }
