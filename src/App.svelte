@@ -1104,21 +1104,13 @@
               <kbd class="kbd kbd-sm">⌘I</kbd>
             </div>
             <div class="flex items-center justify-between">
-              <span class="text-sm text-base-content">Terminal panel</span>
-              <kbd class="kbd kbd-sm">⌘J</kbd>
-            </div>
-            <div class="flex items-center justify-between">
               <span class="text-sm text-base-content">Focus agent</span>
               <kbd class="kbd kbd-sm">⌘E</kbd>
             </div>
             <div class="flex items-center justify-between">
-              <span class="text-sm text-base-content">Code / Review view</span>
-              <div class="flex gap-0.5"><kbd class="kbd kbd-sm">⌘1</kbd><kbd class="kbd kbd-sm">⌘2</kbd></div>
+              <span class="text-sm text-base-content">Code / Review / Terminal</span>
+              <div class="flex gap-0.5"><kbd class="kbd kbd-sm">⌘1</kbd><kbd class="kbd kbd-sm">⌘2</kbd><kbd class="kbd kbd-sm">⌘3</kbd></div>
             </div>
-             <div class="flex items-center justify-between">
-               <span class="text-sm text-base-content">Fullscreen terminal</span>
-               <kbd class="kbd kbd-sm">⌘F</kbd>
-             </div>
              <div class="flex items-center justify-between">
                <span class="text-sm text-base-content">New terminal tab</span>
                <kbd class="kbd kbd-sm">⌘T</kbd>

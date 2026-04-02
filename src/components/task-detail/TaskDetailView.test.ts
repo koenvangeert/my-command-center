@@ -90,8 +90,6 @@ vi.mock('../../lib/stores', () => ({
   selfReviewGeneralComments: writable([]),
   selfReviewArchivedComments: writable([]),
   pendingManualComments: writable([]),
-  taskReviewModes: writable(new Map()),
-  taskTerminalOpen: writable(new Map()),
   taskActiveView: writable(new Map()),
   taskDraftNotes: writable(new Map()),
   commandHeld: writable(false),
