@@ -1,11 +1,16 @@
-import { describe, it, expect, afterEach } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { isInputFocused } from './domUtils'
 
 describe('isInputFocused', () => {
   let element: HTMLElement
+  const activeElementDescriptor = Object.getOwnPropertyDescriptor(Document.prototype, 'activeElement')
 
   afterEach(() => {
     element?.remove()
+
+    if (activeElementDescriptor) {
+      Object.defineProperty(document, 'activeElement', activeElementDescriptor)
+    }
   })
 
   it('returns true when an input is focused', () => {
@@ -27,5 +32,21 @@ describe('isInputFocused', () => {
     document.body.appendChild(element)
     element.focus()
     expect(isInputFocused()).toBe(true)
+  })
+
+  it('returns false for a non-HTMLElement active element without reading contentEditable', () => {
+    const active = {
+      tagName: 'svg',
+      get isContentEditable() {
+        throw new Error('should not read isContentEditable')
+      },
+    } as Element
+
+    Object.defineProperty(document, 'activeElement', {
+      configurable: true,
+      get: () => active,
+    })
+
+    expect(isInputFocused()).toBe(false)
   })
 })
