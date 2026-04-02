@@ -205,7 +205,7 @@ pub async fn get_file_content(
 #[tauri::command]
 pub async fn get_file_at_ref(
     _db: State<'_, Arc<Mutex<db::Database>>>,
-    _github_client: State<'_, GitHubClient>,
+    github_client: State<'_, GitHubClient>,
     owner: String,
     repo: String,
     path: String,
@@ -215,45 +215,10 @@ pub async fn get_file_at_ref(
         .map_err(|e| format!("Failed to get config: {}", e))?
         .ok_or("github_token not configured".to_string())?;
 
-    let url = format!(
-        "https://api.github.com/repos/{}/{}/contents/{}?ref={}",
-        owner, repo, path, ref_sha
-    );
-
-    let response = reqwest::Client::new()
-        .get(&url)
-        .header("Authorization", format!("token {}", token))
-        .header("User-Agent", "openforge")
-        .send()
+    github_client
+        .get_file_at_ref(&owner, &repo, &path, &ref_sha, &token)
         .await
-        .map_err(|e| format!("Network error: {}", e))?;
-
-    if !response.status().is_success() {
-        let status = response.status();
-        let body = response
-            .text()
-            .await
-            .unwrap_or_else(|_| "Unable to read response body".to_string());
-        return Err(format!("API error (status {}): {}", status, body));
-    }
-
-    let json: serde_json::Value = response
-        .json()
-        .await
-        .map_err(|e| format!("Parse error: {}", e))?;
-
-    let content_b64 = json
-        .get("content")
-        .and_then(|c| c.as_str())
-        .ok_or("No content field in response")?;
-
-    let decoded = base64::Engine::decode(
-        &base64::engine::general_purpose::STANDARD,
-        content_b64.replace('\n', ""),
-    )
-    .map_err(|e| format!("Base64 decode error: {}", e))?;
-
-    String::from_utf8(decoded).map_err(|e| format!("UTF-8 decode error: {}", e))
+        .map_err(|e| format!("Failed to get file at ref: {}", e))
 }
 
 #[tauri::command]
