@@ -797,6 +797,58 @@ fn main() {
             commands::plugins::set_plugin_enabled,
             commands::plugins::get_enabled_plugins,
         ])
+        .register_uri_scheme_protocol("plugin", |app, request| {
+            let uri = request.uri().to_string();
+            let path = uri.strip_prefix("plugin://").unwrap_or(&uri);
+            
+            if path.starts_with("host-runtime/") {
+                return tauri::http::Response::builder()
+                    .status(404)
+                    .header("Content-Type", "application/javascript")
+                    .body(b"// host-runtime not implemented yet".to_vec())
+                    .unwrap();
+            }
+
+            let mut parts = path.splitn(2, '/');
+            let plugin_id = parts.next().unwrap_or("");
+            let rel_path = parts.next().unwrap_or("");
+
+            let app_data_dir = match app.app_handle().path().app_data_dir() {
+                Ok(dir) => dir,
+                Err(_) => return tauri::http::Response::builder().status(500).body(b"Failed to get app_data_dir".to_vec()).unwrap(),
+            };
+            
+            if rel_path.contains("..") {
+                return tauri::http::Response::builder().status(403).body(b"Forbidden".to_vec()).unwrap();
+            }
+
+            let file_path = app_data_dir.join("plugins").join(plugin_id).join(rel_path);
+
+            match std::fs::read(&file_path) {
+                Ok(content) => {
+                    let ext = file_path.extension().and_then(|e: &std::ffi::OsStr| e.to_str()).unwrap_or("");
+                    let mime_type = match ext {
+                        "js" | "mjs" => "application/javascript",
+                        "json" => "application/json",
+                        "css" => "text/css",
+                        "html" => "text/html",
+                        _ => "application/octet-stream",
+                    };
+                    tauri::http::Response::builder()
+                        .status(200)
+                        .header("Content-Type", mime_type)
+                        .header("Access-Control-Allow-Origin", "*")
+                        .body(content)
+                        .unwrap()
+                }
+                Err(_) => {
+                    tauri::http::Response::builder()
+                        .status(404)
+                        .body(b"File not found".to_vec())
+                        .unwrap()
+                }
+            }
+        })
         .build(tauri_context())
         .expect("error while building tauri application");
 
