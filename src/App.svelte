@@ -37,7 +37,7 @@
   import { useCommandHeld } from './lib/useCommandHeld.svelte'
   import { getOpenCodeSessionUpdate } from './lib/opencodeSessionEvents'
   import { useShortcutRegistry } from './lib/shortcuts.svelte'
-  import { ICON_RAIL_HIDDEN_VIEWS, VIEWS } from './lib/views'
+  import { ICON_RAIL_HIDDEN_VIEWS, NAVIGATION_SHORTCUT_ITEMS, VIEWS } from './lib/views'
   
   let unlisteners: UnlistenFn[] = []
   let showAddDialog = $state(false)
@@ -521,32 +521,23 @@
       showFileQuickOpen = !showFileQuickOpen
     })
 
-    shortcuts.register('⌘r', () => {
-      router.navigate('workqueue')
-    })
-    shortcuts.register('⌃r', () => {
-      router.navigate('workqueue')
-    })
+    for (const { view, shortcutBindings } of NAVIGATION_SHORTCUT_ITEMS) {
+      for (const shortcut of shortcutBindings) {
+        shortcuts.register(shortcut, () => {
+          if (view === 'board') {
+            router.resetToBoard()
+            return
+          }
 
-    shortcuts.register('⌘h', () => {
-      router.resetToBoard()
-    })
+          if (view === 'workqueue') {
+            router.navigate('workqueue')
+            return
+          }
 
-    shortcuts.register('⌘g', () => {
-      handleNavigate('pr_review')
-    })
-
-    shortcuts.register('⌘l', () => {
-      handleNavigate('skills')
-    })
-
-    shortcuts.register('⌘o', () => {
-      handleNavigate('files')
-    })
-
-    shortcuts.register('⌘,', () => {
-      handleNavigate('settings')
-    })
+          handleNavigate(view)
+        })
+      }
+    }
 
     shortcuts.register('⌃n', () => {
       cycleActiveProject('next', { boardOnly: true })
