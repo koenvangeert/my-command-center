@@ -235,6 +235,7 @@ vi.mock('lucide-svelte', () => {
     ListChecks: stub,
     Settings: stub,
     Plus: stub,
+    FolderOpen: stub,
     LayoutDashboard: stub,
     GitPullRequest: stub,
     Sparkles: stub,
