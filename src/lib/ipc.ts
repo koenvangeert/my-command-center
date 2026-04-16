@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Task, AgentSession, PrComment, PollResult, PullRequestInfo, AgentInfo, Project, ProjectAttention, WorktreeInfo, TaskWorkspaceInfo, ImplementationStatus, ReviewPullRequest, AuthoredPullRequest, PrFileDiff, ReviewComment, ReviewSubmissionComment, SelfReviewComment, AgentReviewComment, CommandInfo, AutocompleteAgentInfo, PrOverviewComment, TranscriptionResult, WhisperModelStatus, WhisperModelSizeId, SkillInfo, WorkQueueEntry, ProviderModelInfo, CommitInfo, BoardStatus, FileEntry, FileContent } from "./types";
-import { normalizeTask, normalizeWorkQueueEntry } from './boardStatus'
+import { normalizeTask, normalizeWorkQueueEntry } from "./boardStatus"
+import type { AgentInfo, AgentReviewComment, AgentSession, AuthoredPullRequest, AutocompleteAgentInfo, BoardStatus, CommandInfo, CommitInfo, FileContent, FileEntry, ImplementationStatus, PollResult, PrComment, PrFileDiff, PrOverviewComment, Project, ProjectAttention, ProviderModelInfo, PullRequestInfo, ReviewComment, ReviewPullRequest, ReviewSubmissionComment, SelfReviewComment, SkillInfo, Task, TaskWorkspaceInfo, TranscriptionResult, WhisperModelSizeId, WhisperModelStatus, WorkQueueEntry, WorktreeInfo } from "./types";
 
 type RawTask = Omit<Task, 'status'> & { status: string }
 type RawWorkQueueEntry = Omit<WorkQueueEntry, 'task'> & { task: RawTask }
@@ -482,4 +482,8 @@ export async function setPluginEnabled(projectId: string, pluginId: string, enab
 export async function getEnabledPlugins(projectId: string): Promise<NormalizedPluginRow[]> {
   const rows = await invoke<PluginRowSnake[]>("get_enabled_plugins", { projectId });
   return rows.map(normalizePluginRow);
+}
+
+export async function pluginInvoke(pluginId: string, command: string, payload: unknown): Promise<unknown> {
+  return invoke("plugin_invoke", { pluginId, command, payload: payload ?? null })
 }

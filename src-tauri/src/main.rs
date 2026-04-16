@@ -14,6 +14,7 @@ mod mcp_installer;
 mod migration;
 mod opencode_client;
 mod plugin_host;
+mod plugin_rpc;
 pub mod providers;
 mod pty_manager;
 pub mod review_parser;
@@ -806,11 +807,12 @@ fn main() {
             commands::plugins::list_plugins,
             commands::plugins::set_plugin_enabled,
             commands::plugins::get_enabled_plugins,
+            commands::plugins::plugin_invoke,
         ])
         .register_uri_scheme_protocol("plugin", |app, request| {
             let uri = request.uri().to_string();
             let path = uri.strip_prefix("plugin://").unwrap_or(&uri);
-            
+
             if path.starts_with("host-runtime/") {
                 return tauri::http::Response::builder()
                     .status(404)
@@ -825,18 +827,29 @@ fn main() {
 
             let app_data_dir = match app.app_handle().path().app_data_dir() {
                 Ok(dir) => dir,
-                Err(_) => return tauri::http::Response::builder().status(500).body(b"Failed to get app_data_dir".to_vec()).unwrap(),
+                Err(_) => {
+                    return tauri::http::Response::builder()
+                        .status(500)
+                        .body(b"Failed to get app_data_dir".to_vec())
+                        .unwrap()
+                }
             };
-            
+
             if rel_path.contains("..") {
-                return tauri::http::Response::builder().status(403).body(b"Forbidden".to_vec()).unwrap();
+                return tauri::http::Response::builder()
+                    .status(403)
+                    .body(b"Forbidden".to_vec())
+                    .unwrap();
             }
 
             let file_path = app_data_dir.join("plugins").join(plugin_id).join(rel_path);
 
             match std::fs::read(&file_path) {
                 Ok(content) => {
-                    let ext = file_path.extension().and_then(|e: &std::ffi::OsStr| e.to_str()).unwrap_or("");
+                    let ext = file_path
+                        .extension()
+                        .and_then(|e: &std::ffi::OsStr| e.to_str())
+                        .unwrap_or("");
                     let mime_type = match ext {
                         "js" | "mjs" => "application/javascript",
                         "json" => "application/json",
@@ -851,12 +864,10 @@ fn main() {
                         .body(content)
                         .unwrap()
                 }
-                Err(_) => {
-                    tauri::http::Response::builder()
-                        .status(404)
-                        .body(b"File not found".to_vec())
-                        .unwrap()
-                }
+                Err(_) => tauri::http::Response::builder()
+                    .status(404)
+                    .body(b"File not found".to_vec())
+                    .unwrap(),
             }
         })
         .build(tauri_context())

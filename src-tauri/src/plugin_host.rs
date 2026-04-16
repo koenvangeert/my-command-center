@@ -70,7 +70,9 @@ impl Default for HostRuntime {
 
 impl HostRuntime {
     fn next_restart_delay(&mut self) -> Option<Duration> {
-        let delay = RESTART_BACKOFFS.get(self.retry_attempts as usize).copied()?;
+        let delay = RESTART_BACKOFFS
+            .get(self.retry_attempts as usize)
+            .copied()?;
         self.retry_attempts += 1;
         Some(delay)
     }
@@ -166,11 +168,17 @@ impl<R: Runtime + 'static> PluginHost<R> {
 
         let pid = self.runtime_lock()?.pid;
         if let Some(pid) = pid {
-            warn!("[plugin_host] sidecar PID {} did not stop gracefully, force killing", pid);
+            warn!(
+                "[plugin_host] sidecar PID {} did not stop gracefully, force killing",
+                pid
+            );
             force_kill_process(pid)?;
         }
 
-        if timeout(FORCE_KILL_TIMEOUT, self.wait_for_stopped()).await.is_ok() {
+        if timeout(FORCE_KILL_TIMEOUT, self.wait_for_stopped())
+            .await
+            .is_ok()
+        {
             return Ok(());
         }
 
@@ -280,7 +288,10 @@ impl<R: Runtime + 'static> PluginHost<R> {
         let retry = match self.record_exit_state(session_id, process_token) {
             Ok(retry) => retry,
             Err(error) => {
-                error!("[plugin_host] failed to update sidecar exit state: {}", error);
+                error!(
+                    "[plugin_host] failed to update sidecar exit state: {}",
+                    error
+                );
                 None
             }
         };
@@ -404,7 +415,10 @@ impl<R: Runtime + 'static> PluginHost<R> {
                     }
                 }
                 Err(lock_error) => {
-                    error!("[plugin_host] failed to update restart state: {}", lock_error);
+                    error!(
+                        "[plugin_host] failed to update restart state: {}",
+                        lock_error
+                    );
                     None
                 }
             };
@@ -457,7 +471,10 @@ impl<R: Runtime + 'static> PluginHost<R> {
         };
 
         if let Err(emit_error) = self.app_handle.emit(SIDECAR_FAILED_EVENT, payload) {
-            warn!("[plugin_host] failed to emit sidecar failure event: {}", emit_error);
+            warn!(
+                "[plugin_host] failed to emit sidecar failure event: {}",
+                emit_error
+            );
         }
     }
 
@@ -646,9 +663,18 @@ mod tests {
 
         host.mark_running_for_test(1234);
 
-        assert_eq!(host.handle_unexpected_exit_for_test(), Some(Duration::from_secs(1)));
-        assert_eq!(host.handle_unexpected_exit_for_test(), Some(Duration::from_secs(2)));
-        assert_eq!(host.handle_unexpected_exit_for_test(), Some(Duration::from_secs(4)));
+        assert_eq!(
+            host.handle_unexpected_exit_for_test(),
+            Some(Duration::from_secs(1))
+        );
+        assert_eq!(
+            host.handle_unexpected_exit_for_test(),
+            Some(Duration::from_secs(2))
+        );
+        assert_eq!(
+            host.handle_unexpected_exit_for_test(),
+            Some(Duration::from_secs(4))
+        );
         assert_eq!(host.handle_unexpected_exit_for_test(), None);
         assert_eq!(host.get_state(), SidecarState::Crashed);
     }

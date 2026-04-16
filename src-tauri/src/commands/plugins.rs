@@ -86,3 +86,33 @@ pub async fn get_enabled_plugins(
     db.get_enabled_plugins(&project_id)
         .map_err(|e| format!("Failed to get enabled plugins: {}", e))
 }
+
+#[tauri::command]
+pub async fn plugin_invoke(
+    plugin_id: String,
+    command: String,
+    payload: serde_json::Value,
+) -> Result<serde_json::Value, String> {
+    let (id, _request) = crate::plugin_rpc::format_request(&plugin_id, &command, payload);
+    let timeout = crate::plugin_rpc::DEFAULT_TIMEOUT;
+    let message =
+        crate::plugin_rpc::rpc_error_from_code(-32601, "plugin backend transport not connected");
+    let raw_response = serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": id,
+        "error": {
+            "code": -32601,
+            "message": message,
+        }
+    })
+    .to_string();
+
+    match crate::plugin_rpc::parse_response(&raw_response) {
+        Ok(crate::plugin_rpc::RpcResult::Success(value)) => Ok(value),
+        Ok(crate::plugin_rpc::RpcResult::Error(_code, _message)) => Err(format!(
+            "Plugin backend not yet connected: {} (timeout {:?})",
+            plugin_id, timeout
+        )),
+        Err(error) => Err(error.0),
+    }
+}
