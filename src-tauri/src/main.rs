@@ -28,6 +28,7 @@ use log::{debug, error, info, warn};
 use opencode_client::OpenCodeClient;
 use pty_manager::PtyManager;
 use std::collections::{HashMap, HashSet};
+use std::path::{Component, Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use tauri::{Emitter, Manager};
 use whisper_manager::{WhisperManager, WhisperModelSize};
@@ -81,6 +82,36 @@ fn opencode_resume_persistence(
         Some("idle") => ResumeSessionPersistence::Completed,
         _ => ResumeSessionPersistence::LeaveExisting,
     }
+}
+
+fn validate_plugin_id(plugin_id: &str) -> Result<(), String> {
+    if plugin_id.is_empty() {
+        return Err("Invalid plugin id: empty".to_string());
+    }
+
+    if plugin_id.contains('/') || plugin_id.contains('\\') {
+        return Err("Invalid plugin id: path separators are not allowed".to_string());
+    }
+
+    let mut components = Path::new(plugin_id).components();
+    match (components.next(), components.next()) {
+        (Some(Component::Normal(_)), None) => Ok(()),
+        _ => Err("Invalid plugin id".to_string()),
+    }
+}
+
+fn resolve_plugin_asset_path(
+    app_data_dir: &Path,
+    plugin_id: &str,
+    rel_path: &str,
+) -> Result<PathBuf, String> {
+    validate_plugin_id(plugin_id)?;
+
+    if rel_path.contains("..") {
+        return Err("Forbidden".to_string());
+    }
+
+    Ok(app_data_dir.join("plugins").join(plugin_id).join(rel_path))
 }
 
 async fn resolve_resume_session_persistence(
@@ -835,14 +866,21 @@ fn main() {
                 }
             };
 
-            if rel_path.contains("..") {
-                return tauri::http::Response::builder()
-                    .status(403)
-                    .body(b"Forbidden".to_vec())
-                    .unwrap();
-            }
-
-            let file_path = app_data_dir.join("plugins").join(plugin_id).join(rel_path);
+            let file_path = match resolve_plugin_asset_path(&app_data_dir, plugin_id, rel_path) {
+                Ok(path) => path,
+                Err(error) if error == "Forbidden" => {
+                    return tauri::http::Response::builder()
+                        .status(403)
+                        .body(b"Forbidden".to_vec())
+                        .unwrap();
+                }
+                Err(error) => {
+                    return tauri::http::Response::builder()
+                        .status(403)
+                        .body(error.into_bytes())
+                        .unwrap();
+                }
+            };
 
             match std::fs::read(&file_path) {
                 Ok(content) => {
@@ -916,13 +954,15 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::{
-        load_resume_targets, opencode_resume_persistence, restore_resumed_session_state,
-        should_start_project_root_server, ResumeSessionPersistence, ResumeTarget,
+        load_resume_targets, opencode_resume_persistence, resolve_plugin_asset_path,
+        restore_resumed_session_state, should_start_project_root_server,
+        ResumeSessionPersistence, ResumeTarget,
     };
     use crate::db::test_helpers::make_test_db;
     use crate::opencode_client::SessionStatusInfo;
     use std::collections::HashMap;
     use std::fs;
+    use std::path::Path;
     use tauri::test::{mock_builder, mock_context, noop_assets};
 
     #[test]
@@ -1174,5 +1214,26 @@ mod tests {
 
         drop(db);
         let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn resolve_plugin_asset_path_rejects_invalid_plugin_ids() {
+        let app_data_dir = Path::new("/tmp/app-data");
+
+        for plugin_id in ["", "..", "foo/bar", "foo\\bar"] {
+            let err = resolve_plugin_asset_path(app_data_dir, plugin_id, "assets/index.js")
+                .expect_err("invalid plugin id should be rejected");
+            assert!(err.contains("plugin id"), "unexpected error: {err}");
+        }
+    }
+
+    #[test]
+    fn resolve_plugin_asset_path_allows_valid_plugin_id() {
+        let app_data_dir = Path::new("/tmp/app-data");
+
+        let path = resolve_plugin_asset_path(app_data_dir, "my-plugin", "assets/index.js")
+            .expect("valid plugin id should be accepted");
+
+        assert_eq!(path, Path::new("/tmp/app-data/plugins/my-plugin/assets/index.js"));
     }
 }
