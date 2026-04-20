@@ -445,10 +445,7 @@ enum SyncOpenPrsError {
 
 impl SyncOpenPrsError {
     fn should_increment_rate_limit_count(&self) -> bool {
-        matches!(
-            self,
-            Self::GitHub(crate::github_client::GitHubError::ApiError { status: 429, .. })
-        )
+        matches!(self, Self::GitHub(error) if error.is_rate_limited())
     }
 }
 
@@ -1615,7 +1612,7 @@ mod tests {
             status: 403,
             message: "Forbidden".to_string(),
         });
-        assert!(!forbidden.should_increment_rate_limit_count());
+        assert!(forbidden.should_increment_rate_limit_count());
 
         let non_rate_limited = SyncOpenPrsError::Db("boom".to_string());
         assert!(!non_rate_limited.should_increment_rate_limit_count());
