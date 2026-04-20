@@ -1,16 +1,7 @@
-import type { PluginActivationResult, PluginContext } from '../../../src/lib/plugin/types'
+import type { PluginActivationResult, PluginContext } from '@openforge/plugin-sdk'
 import FilesView from '../../../src/components/FilesView.svelte'
 
-interface ActivatedViewContribution {
-  id: string
-  component: typeof FilesView
-}
-
-interface FileViewerActivationResult {
-  contributions: Omit<PluginActivationResult['contributions'], 'views'> & {
-    views: ActivatedViewContribution[]
-  }
-}
+type FileViewerActivationResult = PluginActivationResult
 
 export const FilesViewComponent = FilesView
 

@@ -14,6 +14,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@openforge/plugin-sdk": "workspace:*",
     "@fontsource/inter": "^5.2.8",
     "@fontsource/jetbrains-mono": "^5.2.8",
     "@git-diff-view/core": "^0.0.39",

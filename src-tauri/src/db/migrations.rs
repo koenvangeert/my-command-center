@@ -775,6 +775,17 @@ CREATE TABLE IF NOT EXISTS project_plugins (
 
         Ok(())
     }),
+    M::up(
+        r#"
+CREATE TABLE IF NOT EXISTS plugin_storage (
+    plugin_id TEXT NOT NULL,
+    key TEXT NOT NULL,
+    value TEXT NOT NULL,
+    PRIMARY KEY (plugin_id, key),
+    FOREIGN KEY (plugin_id) REFERENCES plugins(id) ON DELETE CASCADE
+);
+        "#,
+    ),
 );
 
 /// Detects existing databases (created before the migration system) and sets
@@ -1624,7 +1635,7 @@ mod tests {
         {
             let conn = rusqlite::Connection::open(&path).expect("open raw db");
             conn.execute(
-                &format!("PRAGMA user_version = {}", LATEST_USER_VERSION - 1),
+                &format!("PRAGMA user_version = {}", LATEST_USER_VERSION - 2),
                 [],
             )
             .expect("set pre-upgrade user_version");
@@ -1670,7 +1681,7 @@ mod tests {
         {
             let conn = rusqlite::Connection::open(&path).expect("open raw db");
             conn.execute(
-                &format!("PRAGMA user_version = {}", LATEST_USER_VERSION - 1),
+                &format!("PRAGMA user_version = {}", LATEST_USER_VERSION - 2),
                 [],
             )
             .expect("set pre-upgrade user_version");

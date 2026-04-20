@@ -1,11 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { get } from 'svelte/store'
 
-const { installPluginMock, uninstallPluginIpcMock, getEnabledPluginsMock, fsReadFileMock } = vi.hoisted(() => ({
+const {
+  installPluginMock,
+  uninstallPluginIpcMock,
+  getEnabledPluginsMock,
+  fsReadFileMock,
+  pluginInvokeMock,
+  getPluginStorageMock,
+  setPluginStorageMock,
+} = vi.hoisted(() => ({
   installPluginMock: vi.fn(),
   uninstallPluginIpcMock: vi.fn(),
   getEnabledPluginsMock: vi.fn(),
   fsReadFileMock: vi.fn(),
+  pluginInvokeMock: vi.fn(),
+  getPluginStorageMock: vi.fn(),
+  setPluginStorageMock: vi.fn(),
 }))
 
 vi.mock('../ipc', () => ({
@@ -15,6 +26,9 @@ vi.mock('../ipc', () => ({
   listPlugins: vi.fn().mockResolvedValue([]),
   setPluginEnabled: vi.fn(),
   fsReadFile: fsReadFileMock,
+  pluginInvoke: pluginInvokeMock,
+  getPluginStorage: getPluginStorageMock,
+  setPluginStorage: setPluginStorageMock,
 }))
 
 const {
@@ -37,6 +51,8 @@ vi.mock('./pluginLoader', () => ({
 }))
 
 import {
+  deactivatePluginById,
+  emitPluginHostEvent,
   installPluginFromManifest,
   installPluginFromNpm,
   uninstallPlugin,
@@ -86,6 +102,9 @@ describe('pluginRegistry', () => {
     uninstallPluginIpcMock.mockReset()
     getEnabledPluginsMock.mockReset()
     fsReadFileMock.mockReset()
+    pluginInvokeMock.mockReset()
+    getPluginStorageMock.mockReset()
+    setPluginStorageMock.mockReset()
     loadPluginFrontendMock.mockReset()
     activatePluginLoaderMock.mockReset()
     deactivatePluginLoaderMock.mockReset()
@@ -140,6 +159,9 @@ describe('pluginRegistry', () => {
     installedPlugins.set(new Map([['test-plugin', { manifest, state: 'installed', error: null }]]))
     loadPluginFrontendMock.mockResolvedValue({ pluginId: 'test-plugin', module: {}, activationResult: null })
     activatePluginLoaderMock.mockResolvedValue({ contributions: {} })
+    pluginInvokeMock.mockResolvedValue('backend-result')
+    getPluginStorageMock.mockResolvedValue('stored-value')
+    setPluginStorageMock.mockResolvedValue(undefined)
 
     const result = await activatePlugin('test-plugin')
 
@@ -149,6 +171,108 @@ describe('pluginRegistry', () => {
     const [calledId, calledCtx] = activatePluginLoaderMock.mock.calls[0]
     expect(calledId).toBe('test-plugin')
     expect(calledCtx).toBeDefined()
+
+    await expect(calledCtx.invokeBackend('ping', { ok: true })).resolves.toBe('backend-result')
+    expect(pluginInvokeMock).toHaveBeenCalledWith('test-plugin', 'ping', { ok: true })
+
+    await expect(calledCtx.storage.get('plugin-key')).resolves.toBe('stored-value')
+    expect(getPluginStorageMock).toHaveBeenCalledWith('test-plugin', 'plugin-key')
+
+    await calledCtx.storage.set('plugin-key', 'plugin-value')
+    expect(setPluginStorageMock).toHaveBeenCalledWith('test-plugin', 'plugin-key', 'plugin-value')
+  })
+
+  it('activatePlugin exposes a host context command surface and real event subscription', async () => {
+    const manifest = makeManifest()
+    installedPlugins.set(new Map([['test-plugin', { manifest, state: 'installed', error: null }]]))
+    loadPluginFrontendMock.mockResolvedValue({ pluginId: 'test-plugin', module: {}, activationResult: null })
+
+    activatePluginLoaderMock.mockImplementation(async (_pluginId, _context) => {
+      return { contributions: {} }
+    })
+
+    await activatePlugin('test-plugin')
+
+    const activationCall = activatePluginLoaderMock.mock.calls[0]
+    expect(activationCall).toBeDefined()
+    const context = activationCall?.[1]
+    if (context === undefined) {
+      throw new Error('Expected plugin context to be passed to activatePluginLoader')
+    }
+
+    await expect(context.invokeHost('getContext')).resolves.toEqual({
+      activeProjectId: null,
+      currentView: 'board',
+      selectedTaskId: null,
+    })
+
+    const handler = vi.fn()
+    const unsubscribe = context.onEvent('selection-changed', handler)
+    emitPluginHostEvent('selection-changed', { selectedTaskId: 'T-123' })
+    expect(handler).toHaveBeenCalledWith({ selectedTaskId: 'T-123' })
+
+    unsubscribe?.()
+    emitPluginHostEvent('selection-changed', { selectedTaskId: 'T-456' })
+    expect(handler).toHaveBeenCalledTimes(1)
+  })
+
+  it('deactivatePluginById clears host event subscriptions for the plugin', async () => {
+    const manifest = makeManifest()
+    installedPlugins.set(new Map([['test-plugin', { manifest, state: 'installed', error: null }]]))
+    loadPluginFrontendMock.mockResolvedValue({ pluginId: 'test-plugin', module: {}, activationResult: null })
+    deactivatePluginLoaderMock.mockResolvedValue(undefined)
+
+    activatePluginLoaderMock.mockImplementation(async (_pluginId, _context) => {
+      return { contributions: {} }
+    })
+
+    await activatePlugin('test-plugin')
+
+    const context = activatePluginLoaderMock.mock.calls[0]?.[1]
+    if (context === undefined) {
+      throw new Error('Expected plugin context to be passed to activatePluginLoader')
+    }
+
+    const handler = vi.fn()
+    context.onEvent('selection-changed', handler)
+    emitPluginHostEvent('selection-changed', { selectedTaskId: 'T-123' })
+    expect(handler).toHaveBeenCalledTimes(1)
+
+    await deactivatePluginById('test-plugin')
+    emitPluginHostEvent('selection-changed', { selectedTaskId: 'T-456' })
+
+    expect(deactivatePluginLoaderMock).toHaveBeenCalledWith('test-plugin')
+    expect(handler).toHaveBeenCalledTimes(1)
+  })
+
+  it('uninstallPlugin clears host event subscriptions for loaded plugins', async () => {
+    const manifest = makeManifest()
+    installedPlugins.set(new Map([['test-plugin', { manifest, state: 'active', error: null }]]))
+    loadPluginFrontendMock.mockResolvedValue({ pluginId: 'test-plugin', module: {}, activationResult: null })
+    deactivatePluginLoaderMock.mockResolvedValue(undefined)
+    uninstallPluginIpcMock.mockResolvedValue(undefined)
+    isPluginLoadedMock.mockReturnValue(true)
+
+    activatePluginLoaderMock.mockImplementation(async (_pluginId, _context) => {
+      return { contributions: {} }
+    })
+
+    await activatePlugin('test-plugin')
+
+    const context = activatePluginLoaderMock.mock.calls[0]?.[1]
+    if (context === undefined) {
+      throw new Error('Expected plugin context to be passed to activatePluginLoader')
+    }
+
+    const handler = vi.fn()
+    context.onEvent('selection-changed', handler)
+    emitPluginHostEvent('selection-changed', { selectedTaskId: 'T-123' })
+    expect(handler).toHaveBeenCalledTimes(1)
+
+    await uninstallPlugin('test-plugin')
+    emitPluginHostEvent('selection-changed', { selectedTaskId: 'T-456' })
+
+    expect(handler).toHaveBeenCalledTimes(1)
   })
 
   it('activatePlugin returns false for plugin not in store', async () => {
