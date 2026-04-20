@@ -1,11 +1,12 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
-vi.mock('../../src/lib/ipc', () => ({
+vi.mock('../../../src/lib/ipc', () => ({
   pluginInvoke: vi.fn(async () => 'backend-result'),
 }))
 
 import { PluginContextImpl } from './context'
-import { isPluginViewContribution, isPluginCommandContribution, getViewContributions } from './helpers'
+import { getViewContributions, isPluginCommandContribution, isPluginViewContribution } from './helpers'
+import { MAX_SUPPORTED_API_VERSION, validatePluginManifest } from './index'
 
 describe('Plugin SDK', () => {
   describe('PluginContextImpl', () => {
@@ -40,6 +41,28 @@ describe('Plugin SDK', () => {
       const ctx = makeContext()
       const result = await ctx.storageGet('my-key')
       expect(result).toBeNull()
+    })
+
+    it('calls storageSetFn with both key and value', async () => {
+      const storageSet = vi.fn(async () => {})
+      const ctx = new PluginContextImpl({
+        pluginId: 'test-plugin',
+        invokeHost: vi.fn(async () => 'host-result'),
+        onEvent: vi.fn(() => () => {}),
+        storageGet: vi.fn(async () => null),
+        storageSet,
+      })
+
+      await ctx.storageSet('my-key', 'my-value')
+
+      expect(storageSet).toHaveBeenCalledWith('my-key', 'my-value')
+    })
+  })
+
+  describe('index re-exports', () => {
+    it('re-exports host plugin helpers from the app source tree', () => {
+      expect(typeof validatePluginManifest).toBe('function')
+      expect(MAX_SUPPORTED_API_VERSION).toBeGreaterThan(0)
     })
   })
 

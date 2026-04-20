@@ -1,23 +1,22 @@
 // Re-export all plugin types from the host
-export type {
-  PluginManifest,
-  PluginContext,
-  PluginActivationResult,
-  PluginContributionPoints,
-  PluginViewContribution,
-  PluginTaskPaneTabContribution,
-  PluginSidebarPanelContribution,
-  PluginCommandContribution,
-  PluginSettingsSection,
-  PluginBackgroundService,
-  PluginState,
-  PluginEntry,
-  PluginViewKey,
-} from '../../src/lib/plugin/types'
-
-export { MAX_SUPPORTED_API_VERSION } from '../../src/lib/plugin/types'
-export { validatePluginManifest, isValidShortcutFormat, normalizeShortcut } from '../../src/lib/plugin/manifest'
+export { isValidShortcutFormat, normalizeShortcut, validatePluginManifest } from '../../../src/lib/plugin/manifest'
+export {
+  MAX_SUPPORTED_API_VERSION,
+  type PluginActivationResult,
+  type PluginBackgroundService,
+  type PluginCommandContribution,
+  type PluginContext,
+  type PluginContributionPoints,
+  type PluginEntry,
+  type PluginManifest,
+  type PluginSettingsSection,
+  type PluginSidebarPanelContribution,
+  type PluginState,
+  type PluginTaskPaneTabContribution,
+  type PluginViewContribution,
+  type PluginViewKey,
+} from '../../../src/lib/plugin/types'
 
 // SDK-specific exports
 export { PluginContextImpl } from './context'
-export { isPluginViewContribution, isPluginCommandContribution } from './helpers'
+export { isPluginCommandContribution, isPluginViewContribution } from './helpers'

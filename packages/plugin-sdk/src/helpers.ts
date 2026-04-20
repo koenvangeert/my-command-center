@@ -1,4 +1,4 @@
-import type { PluginViewContribution, PluginCommandContribution, PluginContributionPoints } from '../../src/lib/plugin/types'
+import type { PluginCommandContribution, PluginContributionPoints, PluginViewContribution } from '../../../src/lib/plugin/types'
 
 export function isPluginViewContribution(contribution: unknown): contribution is PluginViewContribution {
   return typeof contribution === 'object' && contribution !== null

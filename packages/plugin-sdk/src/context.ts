@@ -1,4 +1,4 @@
-import { pluginInvoke } from '../../src/lib/ipc'
+import { pluginInvoke } from '../../../src/lib/ipc'
 
 export class PluginContextImpl {
   readonly pluginId: string
@@ -38,6 +38,6 @@ export class PluginContextImpl {
   }
 
   async storageSet(key: string, value: string): Promise<void> {
-    return this.storageSetFn(value)
+    return this.storageSetFn(key, value)
   }
 }
