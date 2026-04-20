@@ -23,5 +23,6 @@ export {
 } from './types'
 
 export { isValidShortcutFormat, normalizeShortcut, validatePluginManifest, isPluginManifest, ALLOWED_ICON_KEYS } from './manifest'
+export type { ValidationError } from './manifest'
 export { PluginContextImpl } from './context'
 export { isPluginCommandContribution, isPluginViewContribution, getViewContributions, getCommandContributions } from './helpers'
