@@ -144,6 +144,8 @@ impl<R: Runtime + 'static> PluginHost<R> {
             self.start_sidecar().await?;
         }
 
+        self.wait_for_transport_ready().await?;
+
         let backend_path = backend_path.to_string_lossy().into_owned();
         let params = json!({
             "pluginId": plugin_id,
@@ -179,6 +181,48 @@ impl<R: Runtime + 'static> PluginHost<R> {
             .map_err(|_| format!("plugin backend transport closed while invoking {plugin_id}.{command}"))?;
 
         response
+    }
+
+    async fn wait_for_transport_ready(&self) -> Result<(), String> {
+        loop {
+            let notified = self.state_change.notified();
+
+            let (state, desired_running, session_id, process_token) = {
+                let runtime = self.runtime_lock()?;
+                (
+                    runtime.state.clone(),
+                    runtime.desired_running,
+                    runtime.session_id,
+                    runtime.process_token,
+                )
+            };
+
+            let writer_ready = {
+                let transport = self.transport_lock()?;
+                transport.writer.is_some()
+                    && transport.session_id == session_id
+                    && transport.process_token == process_token
+            };
+
+            match state {
+                SidecarState::Running if writer_ready => return Ok(()),
+                SidecarState::Running | SidecarState::Starting if desired_running => {
+                    notified.await;
+                }
+                SidecarState::Running | SidecarState::Starting => {
+                    return Err("plugin sidecar is not accepting backend invocations".to_string());
+                }
+                SidecarState::Stopping => {
+                    return Err("plugin sidecar is stopping".to_string());
+                }
+                SidecarState::Stopped => {
+                    return Err("plugin sidecar is not running".to_string());
+                }
+                SidecarState::Crashed => {
+                    return Err("plugin sidecar crashed before transport became ready".to_string());
+                }
+            }
+        }
     }
 
     pub async fn start_sidecar(&self) -> Result<(), String> {
@@ -988,5 +1032,80 @@ rl.on('close', () => process.exit(0));"#,
         std::env::remove_var(ENTRYPOINT_ENV);
 
         assert_eq!(result["echoed"], "hello");
+    }
+
+    #[tokio::test]
+    async fn concurrent_first_invoke_calls_wait_for_transport_readiness() {
+        let temp = tempdir().expect("tempdir should create");
+        let sidecar_path = temp.path().join("sidecar.js");
+        let backend_path = temp.path().join("backend.mjs");
+        let bun_shim_path = temp.path().join("bun-shim");
+
+        fs::write(
+            &sidecar_path,
+            r#"const readline = require('node:readline');
+const { pathToFileURL } = require('node:url');
+const backends = new Map();
+async function loadBackend(path) {
+  if (backends.has(path)) return backends.get(path);
+  const mod = await import(pathToFileURL(path).href);
+  backends.set(path, mod);
+  return mod;
+}
+const rl = readline.createInterface({ input: process.stdin, crlfDelay: Infinity });
+rl.on('line', async (line) => {
+  if (!line.trim()) return;
+  const request = JSON.parse(line);
+  const mod = await loadBackend(request.params.backendPath);
+  const result = await mod[request.params.command](request.params.payload);
+  process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id: request.id, result }) + '\n');
+});
+rl.on('close', () => process.exit(0));"#,
+        )
+        .expect("sidecar should write");
+        fs::write(
+            &backend_path,
+            "export async function ping(payload) { return { echoed: payload.message }; }",
+        )
+        .expect("backend should write");
+        fs::write(
+            &bun_shim_path,
+            "#!/bin/sh\nif [ \"$1\" = \"run\" ]; then shift; fi\nexec node \"$@\"\n",
+        )
+        .expect("bun shim should write");
+        #[cfg(unix)]
+        {
+            let mut permissions = fs::metadata(&bun_shim_path)
+                .expect("metadata should read")
+                .permissions();
+            permissions.set_mode(0o755);
+            fs::set_permissions(&bun_shim_path, permissions).expect("permissions should set");
+        }
+
+        std::env::set_var(BUN_PATH_ENV, &bun_shim_path);
+        std::env::set_var(ENTRYPOINT_ENV, &sidecar_path);
+
+        let host = build_plugin_host();
+        let (first, second) = tokio::join!(
+            host.invoke_backend(
+                "com.example.echo",
+                "ping",
+                &backend_path,
+                json!({ "message": "hello" }),
+            ),
+            host.invoke_backend(
+                "com.example.echo",
+                "ping",
+                &backend_path,
+                json!({ "message": "world" }),
+            )
+        );
+        host.stop_sidecar().await.expect("sidecar should stop");
+
+        std::env::remove_var(BUN_PATH_ENV);
+        std::env::remove_var(ENTRYPOINT_ENV);
+
+        assert_eq!(first.expect("first invoke should succeed")["echoed"], "hello");
+        assert_eq!(second.expect("second invoke should succeed")["echoed"], "world");
     }
 }
