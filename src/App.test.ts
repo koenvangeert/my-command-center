@@ -312,6 +312,22 @@ describe('App onMount initialization order', () => {
     vi.clearAllMocks()
   })
 
+  it('still loads projects when builtin plugin persistence fails', async () => {
+    const { installPlugin, getProjects } = await import('./lib/ipc')
+    const stores = await import('./lib/stores')
+
+    vi.mocked(installPlugin).mockRejectedValue(new Error('Failed to install plugin: no such table: plugins'))
+
+    const App = (await import('./App.svelte')).default
+    render(App)
+
+    await vi.waitFor(() => {
+      expect(getProjects).toHaveBeenCalled()
+    })
+
+    expect(get(stores.projects)).toEqual([{ id: 'proj-1', name: 'Test Project', path: '/test' }])
+  })
+
   it('initializes reviewRequestCount from DB on startup', async () => {
     const { getReviewPrs } = await import('./lib/ipc')
     const stores = await import('./lib/stores')

@@ -906,6 +906,43 @@ pub(super) fn ensure_mergeability_columns(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
+pub(super) fn ensure_plugin_tables(conn: &Connection) -> Result<()> {
+    conn.execute_batch(
+        r#"
+CREATE TABLE IF NOT EXISTS plugins (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    version TEXT NOT NULL,
+    api_version INTEGER NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    permissions TEXT NOT NULL DEFAULT '[]',
+    contributes TEXT NOT NULL DEFAULT '{}',
+    frontend_entry TEXT NOT NULL,
+    backend_entry TEXT,
+    install_path TEXT NOT NULL,
+    installed_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    is_builtin INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS project_plugins (
+    project_id TEXT NOT NULL,
+    plugin_id TEXT NOT NULL,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (project_id, plugin_id),
+    FOREIGN KEY (plugin_id) REFERENCES plugins(id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS plugin_storage (
+    plugin_id TEXT NOT NULL,
+    key TEXT NOT NULL,
+    value TEXT NOT NULL,
+    PRIMARY KEY (plugin_id, key),
+    FOREIGN KEY (plugin_id) REFERENCES plugins(id) ON DELETE CASCADE
+);
+        "#,
+    )?;
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -945,13 +982,13 @@ mod tests {
 
         let table_count: i32 = conn
             .query_row(
-                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name IN ('tasks', 'agent_sessions', 'pull_requests', 'pr_comments', 'config', 'projects', 'project_config', 'worktrees', 'task_workspaces', 'review_prs', 'self_review_comments', 'agent_review_comments', 'authored_prs', 'shepherd_messages', 'action_items')",
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name IN ('tasks', 'agent_sessions', 'pull_requests', 'pr_comments', 'config', 'projects', 'project_config', 'worktrees', 'task_workspaces', 'review_prs', 'self_review_comments', 'agent_review_comments', 'authored_prs', 'shepherd_messages', 'action_items', 'plugins', 'project_plugins', 'plugin_storage')",
                 [],
                 |row| row.get(0),
             )
             .expect("Failed to count tables");
 
-        assert_eq!(table_count, 15, "All 15 tables should be created");
+        assert_eq!(table_count, 18, "All 18 tables should be created");
 
         let config_count: i32 = conn
             .query_row("SELECT COUNT(*) FROM config", [], |row| row.get(0))
@@ -1178,6 +1215,78 @@ mod tests {
             uv, LATEST_USER_VERSION,
             "Fresh DB should have user_version={} after migrations, got {}",
             LATEST_USER_VERSION, uv
+        );
+
+        drop(conn);
+        drop(db);
+        let _ = fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_recreates_missing_plugin_tables_for_upgraded_db() {
+        let path = std::env::temp_dir().join(format!(
+            "test_recreate_plugin_tables_mig_{}.db",
+            std::process::id()
+        ));
+        let _ = fs::remove_file(&path);
+
+        {
+            let db = Database::new(path.clone()).expect("Database::new");
+            let conn = db.connection();
+            let conn = conn.lock().unwrap();
+
+            conn.execute("DROP TABLE project_plugins", [])
+                .expect("drop project_plugins");
+            conn.execute("DROP TABLE plugins", [])
+                .expect("drop plugins");
+
+            let uv: i32 = conn
+                .query_row("PRAGMA user_version", [], |r| r.get(0))
+                .expect("read user_version");
+            assert_eq!(
+                uv, LATEST_USER_VERSION,
+                "fixture should simulate an upgraded schema version"
+            );
+        }
+
+        let db = Database::new(path.clone()).expect("Database::new should repair schema");
+        let conn = db.connection();
+        let conn = conn.lock().unwrap();
+
+        let has_plugins: bool = conn
+            .query_row(
+                "SELECT COUNT(*) > 0 FROM sqlite_master WHERE type='table' AND name='plugins'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("query sqlite_master for plugins");
+        assert!(
+            has_plugins,
+            "Database::new should recreate missing plugins table for upgraded databases"
+        );
+
+        let has_project_plugins: bool = conn
+            .query_row(
+                "SELECT COUNT(*) > 0 FROM sqlite_master WHERE type='table' AND name='project_plugins'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("query sqlite_master for project_plugins");
+        assert!(
+            has_project_plugins,
+            "Database::new should recreate missing project_plugins table for upgraded databases"
+        );
+
+        let has_plugin_storage: bool = conn
+            .query_row(
+                "SELECT COUNT(*) > 0 FROM sqlite_master WHERE type='table' AND name='plugin_storage'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("query sqlite_master for plugin_storage");
+        assert!(
+            has_plugin_storage,
+            "Database::new should preserve plugin_storage when repairing plugin tables"
         );
 
         drop(conn);

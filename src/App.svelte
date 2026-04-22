@@ -100,6 +100,21 @@
   let activeView = $derived($currentView === 'board' ? null : resolvedViews[$currentView])
   let pluginViewActive = $derived(isPluginViewKey($currentView) && !activeView)
 
+  function registerBuiltinPluginManifest(manifest: PluginManifest) {
+    installedPlugins.update((map) => {
+      const existing = map.get(manifest.id)
+      const next = new Map(map)
+      next.set(manifest.id, {
+        manifest,
+        state: existing?.state ?? 'installed',
+        error: existing?.error ?? null,
+        installPath: existing?.installPath ?? `builtin:${manifest.id}`,
+        isBuiltin: true,
+      })
+      return next
+    })
+  }
+
   async function ensureBuiltinPluginInstalled(manifest: PluginManifest): Promise<void> {
     await installPlugin({
       id: manifest.id,
@@ -985,13 +1000,21 @@
 
     // Phase 2: Load data
     await loadInstalledPlugins()
-    await Promise.all([
-      ensureBuiltinPluginInstalled(FILE_VIEWER_PLUGIN_MANIFEST),
-      ensureBuiltinPluginInstalled(GITHUB_SYNC_PLUGIN_MANIFEST),
-      ensureBuiltinPluginInstalled(SKILLS_VIEWER_PLUGIN_MANIFEST),
-      ensureBuiltinPluginInstalled(TERMINAL_PLUGIN_MANIFEST),
-    ])
-    await loadInstalledPlugins()
+    try {
+      await Promise.all([
+        ensureBuiltinPluginInstalled(FILE_VIEWER_PLUGIN_MANIFEST),
+        ensureBuiltinPluginInstalled(GITHUB_SYNC_PLUGIN_MANIFEST),
+        ensureBuiltinPluginInstalled(SKILLS_VIEWER_PLUGIN_MANIFEST),
+        ensureBuiltinPluginInstalled(TERMINAL_PLUGIN_MANIFEST),
+      ])
+      await loadInstalledPlugins()
+    } catch (e) {
+      console.error('[App] Failed to persist builtin plugins:', e)
+      registerBuiltinPluginManifest(FILE_VIEWER_PLUGIN_MANIFEST)
+      registerBuiltinPluginManifest(GITHUB_SYNC_PLUGIN_MANIFEST)
+      registerBuiltinPluginManifest(SKILLS_VIEWER_PLUGIN_MANIFEST)
+      registerBuiltinPluginManifest(TERMINAL_PLUGIN_MANIFEST)
+    }
     ensureBuiltinPluginEnabled(FILE_VIEWER_PLUGIN_ID)
     ensureBuiltinPluginEnabled(GITHUB_SYNC_PLUGIN_ID)
     ensureBuiltinPluginEnabled(SKILLS_VIEWER_PLUGIN_ID)
