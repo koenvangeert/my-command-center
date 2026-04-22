@@ -289,6 +289,7 @@ describe('TaskDetailView', () => {
   beforeEach(() => {
     taskActiveView.set(new Map())
     commandHeld.set(false)
+    taskTabSessions.clear()
   })
 
   it('renders back button with "back" text', () => {
@@ -944,7 +945,9 @@ describe('TaskDetailView', () => {
 
     it('Cmd+Shift+digit switches terminal tabs when terminal is active', async () => {
       const { getTaskWorkspace } = await import('../../lib/ipc')
+      const { focusTerminal } = await import('../../lib/terminalPool')
       vi.mocked(getTaskWorkspace).mockResolvedValue(createTaskWorkspaceInfo({ workspace_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' }))
+      vi.mocked(focusTerminal).mockClear()
 
       render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
       await waitFor(() => {
@@ -964,14 +967,20 @@ describe('TaskDetailView', () => {
         expect(screen.getByText('Shell 3')).toBeTruthy()
       })
 
+      vi.mocked(focusTerminal).mockClear()
+
       await fireEvent.keyDown(window, { key: '!', code: 'Digit1', metaKey: true, shiftKey: true })
       await waitFor(() => {
-        expect(screen.getByText('Shell 1').closest('button')?.className).toContain('border-primary')
+        expect(focusTerminal).toHaveBeenCalledWith('T-42-shell-0')
+        expect(taskTabSessions.get('T-42')?.activeTabIndex).toBe(0)
       })
+
+      vi.mocked(focusTerminal).mockClear()
 
       await fireEvent.keyDown(window, { key: '#', code: 'Digit3', metaKey: true, shiftKey: true })
       await waitFor(() => {
-        expect(screen.getByText('Shell 3').closest('button')?.className).toContain('border-primary')
+        expect(focusTerminal).toHaveBeenCalledWith('T-42-shell-2')
+        expect(taskTabSessions.get('T-42')?.activeTabIndex).toBe(2)
       })
 
       vi.mocked(getTaskWorkspace).mockResolvedValue(null)
@@ -979,7 +988,9 @@ describe('TaskDetailView', () => {
 
     it('Cmd+Shift+digit is ignored when terminal is not active', async () => {
       const { getTaskWorkspace } = await import('../../lib/ipc')
+      const { focusTerminal } = await import('../../lib/terminalPool')
       vi.mocked(getTaskWorkspace).mockResolvedValue(createTaskWorkspaceInfo({ workspace_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' }))
+      vi.mocked(focusTerminal).mockClear()
 
       render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
       await waitFor(() => {
@@ -998,17 +1009,22 @@ describe('TaskDetailView', () => {
         expect(breadcrumb?.textContent).toContain('code')
       })
 
+      vi.mocked(focusTerminal).mockClear()
+
       await fireEvent.keyDown(window, { key: '@', code: 'Digit2', metaKey: true, shiftKey: true })
 
       expect(breadcrumb?.textContent).toContain('code')
-      expect(screen.getByText('Shell 1').closest('button')?.className).not.toContain('border-primary')
+      expect(focusTerminal).not.toHaveBeenCalled()
+      expect(taskTabSessions.get('T-42')?.activeTabIndex).toBe(0)
 
       vi.mocked(getTaskWorkspace).mockResolvedValue(null)
     })
 
     it('Cmd+Shift+digit still switches terminal tabs when an input element is focused', async () => {
       const { getTaskWorkspace } = await import('../../lib/ipc')
+      const { focusTerminal } = await import('../../lib/terminalPool')
       vi.mocked(getTaskWorkspace).mockResolvedValue(createTaskWorkspaceInfo({ workspace_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' }))
+      vi.mocked(focusTerminal).mockClear()
 
       render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
       await waitFor(() => {
@@ -1032,9 +1048,12 @@ describe('TaskDetailView', () => {
       try {
         input.focus()
 
+        vi.mocked(focusTerminal).mockClear()
+
         await fireEvent.keyDown(window, { key: '!', code: 'Digit1', metaKey: true, shiftKey: true })
 
-        expect(screen.getByText('Shell 1').closest('button')?.className).toContain('border-primary')
+        expect(focusTerminal).toHaveBeenCalledWith('T-42-shell-0')
+        expect(taskTabSessions.get('T-42')?.activeTabIndex).toBe(0)
         expect(screen.getByText('$ cd board').closest('div')?.textContent).toContain('terminal')
       } finally {
         document.body.removeChild(input)
@@ -1044,7 +1063,9 @@ describe('TaskDetailView', () => {
 
     it('Cmd+Shift+digit continues to target shell numbers after a tab is closed', async () => {
       const { getTaskWorkspace } = await import('../../lib/ipc')
+      const { focusTerminal } = await import('../../lib/terminalPool')
       vi.mocked(getTaskWorkspace).mockResolvedValue(createTaskWorkspaceInfo({ workspace_path: '/tmp/wt', repo_path: '/repo', branch_name: 'b' }))
+      vi.mocked(focusTerminal).mockClear()
 
       render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
       await waitFor(() => {
@@ -1075,18 +1096,23 @@ describe('TaskDetailView', () => {
       await fireEvent.click(screen.getByText('Shell 1'))
 
       await waitFor(() => {
-        expect(screen.getByText('Shell 1').closest('button')?.className).toContain('border-primary')
+        expect(taskTabSessions.get('T-42')?.activeTabIndex).toBe(0)
       })
+
+      vi.mocked(focusTerminal).mockClear()
 
       await fireEvent.keyDown(window, { key: '@', code: 'Digit2', metaKey: true, shiftKey: true })
 
-      expect(screen.getByText('Shell 1').closest('button')?.className).toContain('border-primary')
-      expect(screen.getByText('Shell 3').closest('button')?.className).not.toContain('border-primary')
+      expect(focusTerminal).not.toHaveBeenCalled()
+      expect(taskTabSessions.get('T-42')?.activeTabIndex).toBe(0)
+
+      vi.mocked(focusTerminal).mockClear()
 
       await fireEvent.keyDown(window, { key: '#', code: 'Digit3', metaKey: true, shiftKey: true })
 
       await waitFor(() => {
-        expect(screen.getByText('Shell 3').closest('button')?.className).toContain('border-primary')
+        expect(focusTerminal).toHaveBeenCalledWith('T-42-shell-2')
+        expect(taskTabSessions.get('T-42')?.activeTabIndex).toBe(2)
       })
 
       vi.mocked(getTaskWorkspace).mockResolvedValue(null)
