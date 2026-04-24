@@ -974,23 +974,6 @@ CREATE TABLE IF NOT EXISTS plugin_storage (
     Ok(())
 }
 
-pub(super) fn ensure_github_poll_interval(conn: &Connection) -> Result<()> {
-    let has_config_table: bool = conn.query_row(
-        "SELECT COUNT(*) > 0 FROM sqlite_master WHERE type='table' AND name='config'",
-        [],
-        |r| r.get(0),
-    )?;
-
-    if has_config_table {
-        conn.execute(
-            "UPDATE config SET value = '60' WHERE key = 'github_poll_interval' AND value = '15'",
-            [],
-        )?;
-    }
-
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1900,6 +1883,44 @@ mod tests {
 
         drop(conn);
         drop(db);
+        let _ = fs::remove_file(&path);
+    }
+
+    #[test]
+    fn test_github_poll_interval_user_value_persists_across_reopen() {
+        let path = std::env::temp_dir().join(format!(
+            "test_github_poll_interval_persist_reopen_{}.db",
+            std::process::id()
+        ));
+        let _ = fs::remove_file(&path);
+
+        {
+            let db = Database::new(path.clone()).expect("Database::new");
+            let conn = db.connection();
+            let conn = conn.lock().unwrap();
+            conn.execute(
+                "UPDATE config SET value = '15' WHERE key = 'github_poll_interval'",
+                [],
+            )
+            .expect("set user poll interval");
+        }
+
+        let reopened = Database::new(path.clone()).expect("Database::new reopen");
+        let conn = reopened.connection();
+        let conn = conn.lock().unwrap();
+
+        let poll_interval: String = conn
+            .query_row(
+                "SELECT value FROM config WHERE key = 'github_poll_interval'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("github_poll_interval should exist in config");
+
+        assert_eq!(poll_interval, "15");
+
+        drop(conn);
+        drop(reopened);
         let _ = fs::remove_file(&path);
     }
 

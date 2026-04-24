@@ -15,10 +15,23 @@ async fn finalize_agent_pty_exit(
     output_buffers: &Arc<Mutex<HashMap<String, Arc<std::sync::Mutex<RingBuffer>>>>>,
     pid_file: &Path,
     session_key: &str,
+    instance_id: u64,
 ) -> bool {
     let removed_session = {
         let mut sessions = sessions.lock().await;
-        sessions.remove(session_key)
+        let matches_instance = sessions
+            .get(session_key)
+            .map(|session| session.instance_id == instance_id)
+            .unwrap_or(false);
+        if matches_instance {
+            sessions.remove(session_key)
+        } else {
+            None
+        }
+    };
+
+    let Some(mut session) = removed_session else {
+        return false;
     };
 
     {
@@ -32,10 +45,6 @@ async fn finalize_agent_pty_exit(
     }
 
     let _ = std::fs::remove_file(pid_file);
-
-    let Some(mut session) = removed_session else {
-        return false;
-    };
 
     tokio::task::spawn_blocking(move || session.child.wait().map(|status| status.success()).unwrap_or(false))
         .await
@@ -123,6 +132,7 @@ struct PtySession {
     #[allow(dead_code)]
     master: Box<dyn portable_pty::MasterPty + Send>,
     writer: Box<dyn std::io::Write + Send>,
+    instance_id: u64,
 }
 
 // ============================================================================
@@ -246,6 +256,7 @@ impl PtyManager {
                 child,
                 master: pair.master,
                 writer,
+                instance_id,
             },
         );
 
@@ -522,6 +533,7 @@ impl PtyManager {
                 child,
                 master: pair.master,
                 writer,
+                instance_id,
             },
         );
 
@@ -660,6 +672,7 @@ impl PtyManager {
                                     &output_buffers_emitter,
                                     &pid_file_emitter,
                                     &task_id_emitter,
+                                    instance_id_emitter,
                                 ).await;
                                 info!("[PTY] task={} emitter received exit signal", task_id_emitter);
                                 let _ = app_handle.emit(&format!("pty-exit-{}", task_id_emitter), serde_json::json!({"instance_id": instance_id_emitter}));
@@ -769,6 +782,7 @@ impl PtyManager {
                 child,
                 master: pair.master,
                 writer,
+                instance_id,
             },
         );
 
@@ -894,6 +908,7 @@ impl PtyManager {
                                     &output_buffers_emitter,
                                     &pid_file_emitter,
                                     &task_id_emitter,
+                                    instance_id_emitter,
                                 ).await;
                                 info!("[PTY] task={} emitter received exit signal", task_id_emitter);
                                 let _ = app_handle.emit(&format!("pty-exit-{}", task_id_emitter), serde_json::json!({"instance_id": instance_id_emitter}));
@@ -1004,6 +1019,7 @@ impl PtyManager {
                 child,
                 master: pair.master,
                 writer,
+                instance_id,
             },
         );
 
@@ -2131,6 +2147,88 @@ mod tests {
             Some("opencode output data".to_string()),
             "buffer must be replayable on re-attach"
         );
+    }
+
+    #[tokio::test]
+    async fn test_finalize_agent_pty_exit_ignores_stale_instance() {
+        let manager = PtyManager::new();
+        let pty_system = native_pty_system();
+        let size = PtySize {
+            rows: 24,
+            cols: 80,
+            pixel_width: 0,
+            pixel_height: 0,
+        };
+        let pair = pty_system.openpty(size).expect("openpty should succeed");
+
+        let shell = get_shell_path();
+        let mut cmd = CommandBuilder::new(&shell);
+        cmd.arg("-lc");
+        cmd.arg("sleep 1");
+        let child = pair
+            .slave
+            .spawn_command(cmd)
+            .expect("spawn command should succeed");
+        drop(pair.slave);
+
+        let writer = pair.master.take_writer().expect("take writer should succeed");
+
+        {
+            let mut sessions = manager.sessions.lock().await;
+            sessions.insert(
+                "task-1".to_string(),
+                PtySession {
+                    child,
+                    master: pair.master,
+                    writer,
+                    instance_id: 2,
+                },
+            );
+        }
+
+        let ring = Arc::new(std::sync::Mutex::new(RingBuffer::new(128)));
+        {
+            let mut buf = ring.lock().expect("ring buffer should lock");
+            buf.push(b"active output");
+        }
+        {
+            let mut buffers = manager.output_buffers.lock().await;
+            buffers.insert("task-1".to_string(), Arc::clone(&ring));
+        }
+        {
+            let mut times = manager.last_output.lock().await;
+            times.insert("task-1".to_string(), Arc::new(AtomicU64::new(123)));
+        }
+
+        let tmp_dir = tempfile::tempdir().expect("tempdir should succeed");
+        let pid_file = tmp_dir.path().join("task-1-pty.pid");
+        std::fs::write(&pid_file, "1234").expect("pid file should write");
+
+        let success = finalize_agent_pty_exit(
+            &manager.sessions,
+            &manager.last_output,
+            &manager.output_buffers,
+            &pid_file,
+            "task-1",
+            1,
+        )
+        .await;
+
+        assert!(!success, "stale cleanup should not report a successful exit");
+        {
+            let sessions = manager.sessions.lock().await;
+            let session = sessions.get("task-1").expect("newer session should remain");
+            assert_eq!(session.instance_id, 2);
+        }
+        {
+            let buffers = manager.output_buffers.lock().await;
+            assert!(buffers.contains_key("task-1"), "buffer should remain for active instance");
+        }
+        {
+            let times = manager.last_output.lock().await;
+            assert!(times.contains_key("task-1"), "last_output should remain for active instance");
+        }
+        assert!(pid_file.exists(), "stale cleanup must not remove the active pid file");
     }
 
     #[test]
