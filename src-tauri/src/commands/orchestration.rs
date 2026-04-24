@@ -366,24 +366,35 @@ pub async fn finalize_claude_session(
     db: State<'_, Arc<Mutex<db::Database>>>,
     app: tauri::AppHandle,
     task_id: String,
+    success: bool,
 ) -> Result<(), String> {
     let db_lock = crate::db::acquire_db(&db);
     if let Ok(Some(session)) = db_lock.get_latest_session_for_ticket(&task_id) {
-        if session.provider == "claude-code" && session.status == "running" {
+        if matches!(session.provider.as_str(), "claude-code" | "pi") && session.status == "running" {
+            let next_status = if session.provider == "pi" && success {
+                "completed"
+            } else {
+                "interrupted"
+            };
+            let error_message = if next_status == "completed" {
+                None
+            } else {
+                Some("PTY process exited")
+            };
             let _ = db_lock.update_agent_session(
                 &session.id,
                 &session.stage,
-                "interrupted",
+                next_status,
                 None,
-                Some("PTY process exited"),
+                error_message,
             );
             drop(db_lock);
             let _ = app.emit(
                 "agent-status-changed",
                 serde_json::json!({
                     "task_id": task_id,
-                    "status": "interrupted",
-                    "provider": "claude-code"
+                    "status": next_status,
+                    "provider": session.provider
                 }),
             );
         }
