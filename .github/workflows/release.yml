@@ -21,6 +21,7 @@ jobs:
           - platform: macos-latest
             args: "--target x86_64-apple-darwin --bundles dmg"
             target: x86_64-apple-darwin
+    timeout-minutes: 10
     runs-on: ${{ matrix.platform }}
     env:
       SOURCE_DATE_EPOCH: "1"

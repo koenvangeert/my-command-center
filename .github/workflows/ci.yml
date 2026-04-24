@@ -13,6 +13,7 @@ concurrency:
 jobs:
   frontend:
     name: Frontend Tests
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -75,6 +76,7 @@ jobs:
 
   rust:
     name: Rust Tests
+    timeout-minutes: 10
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
