@@ -71,7 +71,53 @@ pub fn parse_skill_frontmatter(content: &str) -> (Option<String>, Option<String>
     (name, desc)
 }
 
-/// Scan a skills directory (e.g. `.claude/skills/` or `.opencode/skills/`) for SKILL.md files.
+pub const GENERIC_SKILLS_SOURCE_DIR: &str = ".agents";
+pub const SKILL_SOURCE_DIRS: [&str; 3] = [GENERIC_SKILLS_SOURCE_DIR, ".claude", ".opencode"];
+
+pub fn generic_skills_dir(root: &Path) -> PathBuf {
+    skill_source_dir(root, GENERIC_SKILLS_SOURCE_DIR)
+}
+
+pub fn skill_source_dir(root: &Path, source_dir: &str) -> PathBuf {
+    root.join(source_dir).join("skills")
+}
+
+pub fn is_supported_skill_source_dir(source_dir: &str) -> bool {
+    SKILL_SOURCE_DIRS.contains(&source_dir)
+}
+
+pub fn find_skill_source_dir(root: &Path, skill_name: &str) -> Option<&'static str> {
+    SKILL_SOURCE_DIRS.iter().copied().find(|source_dir| {
+        skill_source_dir(root, source_dir)
+            .join(skill_name)
+            .join("SKILL.md")
+            .exists()
+    })
+}
+
+pub fn scan_generic_skills_directory(
+    root: &Path,
+    level: &str,
+) -> Vec<crate::opencode_client::SkillInfo> {
+    scan_skills_directory(&generic_skills_dir(root), level, GENERIC_SKILLS_SOURCE_DIR)
+}
+
+pub fn scan_skill_directories_for_root(
+    root: &Path,
+    level: &str,
+) -> Vec<crate::opencode_client::SkillInfo> {
+    let mut skills = Vec::new();
+    for source_dir in SKILL_SOURCE_DIRS {
+        skills.extend(scan_skills_directory(
+            &skill_source_dir(root, source_dir),
+            level,
+            source_dir,
+        ));
+    }
+    skills
+}
+
+/// Scan a skills directory (for example `<root>/.agents/skills/`) for SKILL.md files.
 /// Returns a Vec of SkillInfo with the given level and source_dir.
 pub fn scan_skills_directory(
     dir: &Path,
@@ -733,6 +779,56 @@ mod tests {
             commands[0].description.as_deref(),
             Some("Build a component")
         );
+    }
+
+    // ── generic skill directories ───────────────────────────────────────────
+
+    #[test]
+    fn test_generic_skills_dir_uses_provider_neutral_agents_path() {
+        let root = Path::new("/tmp/project");
+
+        assert_eq!(
+            generic_skills_dir(root),
+            root.join(".agents").join("skills")
+        );
+    }
+
+    #[test]
+    fn test_scan_skill_directories_for_root_keeps_legacy_dirs_discoverable() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+
+        let generic_dir = root.join(".agents").join("skills").join("generic-skill");
+        std::fs::create_dir_all(&generic_dir).unwrap();
+        std::fs::write(
+            generic_dir.join("SKILL.md"),
+            "---\nname: generic-skill\ndescription: Generic path\n---\n# Body",
+        )
+        .unwrap();
+
+        let opencode_dir = root
+            .join(".opencode")
+            .join("skills")
+            .join("legacy-opencode");
+        std::fs::create_dir_all(&opencode_dir).unwrap();
+        std::fs::write(opencode_dir.join("SKILL.md"), "# Legacy OpenCode").unwrap();
+
+        let claude_dir = root.join(".claude").join("skills").join("legacy-claude");
+        std::fs::create_dir_all(&claude_dir).unwrap();
+        std::fs::write(claude_dir.join("SKILL.md"), "# Legacy Claude").unwrap();
+
+        let mut skills = scan_skill_directories_for_root(root, "project");
+        skills.sort_by(|a, b| a.name.cmp(&b.name));
+
+        assert_eq!(skills.len(), 3);
+        assert_eq!(skills[0].name, "generic-skill");
+        assert_eq!(skills[0].description, Some("Generic path".to_string()));
+        assert_eq!(skills[0].level, "project");
+        assert_eq!(skills[0].source_dir, ".agents");
+        assert_eq!(skills[1].name, "legacy-claude");
+        assert_eq!(skills[1].source_dir, ".claude");
+        assert_eq!(skills[2].name, "legacy-opencode");
+        assert_eq!(skills[2].source_dir, ".opencode");
     }
 
     // ── scan_commands_directory ──────────────────────────────────────────────
