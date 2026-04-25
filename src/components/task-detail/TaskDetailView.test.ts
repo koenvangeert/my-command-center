@@ -1404,6 +1404,7 @@ describe('TaskDetailView', () => {
         activeTabIndex: 2,
         nextIndex: 3,
       })
+      registerMockTerminalTaskPaneController('T-42')
 
       vi.mocked(focusTerminal).mockClear()
 
@@ -1446,6 +1447,7 @@ describe('TaskDetailView', () => {
         activeTabIndex: 2,
         nextIndex: 3,
       })
+      registerMockTerminalTaskPaneController('T-42')
 
       vi.mocked(focusTerminal).mockClear()
 

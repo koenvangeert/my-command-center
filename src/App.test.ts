@@ -2,7 +2,7 @@ import { render, fireEvent, screen, cleanup } from '@testing-library/svelte'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { get, writable } from 'svelte/store'
 import type { Task, AgentSession, Project, ProjectAttention, PullRequestInfo, CheckpointNotification, CiFailureNotification, RateLimitNotification, AuthoredPullRequest } from './lib/types'
-import { installPlugin } from './lib/ipc'
+import { forceGithubSync, installPlugin } from './lib/ipc'
 import { requireDefined } from './test-utils/dom'
 
 const callOrder: string[] = []
@@ -75,6 +75,13 @@ const mockWindowDestroy = vi.fn(async () => undefined)
 const mockSelectedTaskIdStore = writable<string | null>(null)
 const mockCurrentViewStore = writable<'board' | 'files' | 'settings' | 'workqueue' | 'global_settings' | 'plugin:com.openforge.file-viewer:files' | 'plugin:com.openforge.github-sync:pr_review' | 'plugin:com.openforge.skills-viewer:skills'>('board')
 const mockSelectedReviewPrStore = writable(null)
+const {
+  mockActivatePlugin,
+  mockExecutePluginCommand,
+} = vi.hoisted(() => ({
+  mockActivatePlugin: vi.fn(async () => true),
+  mockExecutePluginCommand: vi.fn(async (_pluginId: string, _commandId: string) => true),
+}))
 
 vi.mock('@tauri-apps/api/event', () => ({
   listen: vi.fn(async (eventName: string, callback: Function) => {
@@ -95,6 +102,15 @@ vi.mock('@tauri-apps/api/window', () => ({
     destroy: mockWindowDestroy,
   })),
 }))
+
+vi.mock('./lib/plugin/pluginRegistry', async () => {
+  const actual = await vi.importActual<typeof import('./lib/plugin/pluginRegistry')>('./lib/plugin/pluginRegistry')
+  return {
+    ...actual,
+    activatePlugin: mockActivatePlugin,
+    executePluginCommand: mockExecutePluginCommand,
+  }
+})
 
 vi.mock('./lib/stores', () => ({
   tasks: writable<Task[]>([]),
@@ -328,6 +344,13 @@ describe('App onMount initialization order', () => {
     vi.clearAllMocks()
     vi.mocked(installPlugin).mockImplementation(async (plugin) => {
       persistInstalledPluginRow(plugin)
+    })
+    mockActivatePlugin.mockResolvedValue(true)
+    mockExecutePluginCommand.mockImplementation(async (pluginId, commandId) => {
+      if (pluginId === 'com.openforge.github-sync' && commandId === 'refresh') {
+        await forceGithubSync()
+      }
+      return true
     })
   })
 
@@ -1771,6 +1794,10 @@ describe('App onMount initialization order', () => {
       })
 
       render(App)
+
+      await vi.waitFor(() => {
+        expect(eventListeners.has('task-changed')).toBe(true)
+      })
 
       const callback = eventListeners.get('task-changed')
       expect(callback).toBeDefined()
