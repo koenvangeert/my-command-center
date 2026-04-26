@@ -15,6 +15,7 @@ vi.mock('../lib/stores', () => ({
 
 vi.mock('../lib/ipc', () => ({
   listOpenCodeSkills: vi.fn().mockResolvedValue([]),
+  saveSkillContent: vi.fn().mockResolvedValue(undefined),
 }))
 
 import SkillsView from './SkillsView.svelte'
@@ -27,7 +28,7 @@ const projectSkill: SkillInfo = {
   agent: null,
   template: '# Git Master\n\nUse this skill for git operations.',
   level: 'project',
-  source_dir: '.claude',
+  source_dir: '.agents',
 }
 
 const userSkill: SkillInfo = {
@@ -36,7 +37,7 @@ const userSkill: SkillInfo = {
   agent: null,
   template: '# Creating Skills\n\nHow to create SKILL.md files.',
   level: 'user',
-  source_dir: '.claude',
+  source_dir: '.agents',
 }
 
 const userSkill2: SkillInfo = {
@@ -147,6 +148,21 @@ describe('SkillsView', () => {
 
     await waitFor(() => {
       expect(screen.getAllByText('repository').length).toBeGreaterThanOrEqual(1)
+    })
+  })
+
+  it('renders generic and legacy skill source paths during migration', async () => {
+    vi.mocked(listOpenCodeSkills).mockResolvedValue([
+      projectSkill,
+      { ...projectSkill, name: 'legacy-claude', source_dir: '.claude' },
+      { ...projectSkill, name: 'legacy-opencode', source_dir: '.opencode' },
+    ])
+    render(SkillsView)
+
+    await waitFor(() => {
+      expect(screen.getAllByText('.agents/skills').length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText('.claude/skills').length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText('.opencode/skills').length).toBeGreaterThanOrEqual(1)
     })
   })
 

@@ -139,7 +139,7 @@ impl ClaudeCodeProvider {
 
         use crate::command_discovery::{
             builtin_claude_commands, resolve_active_plugins, scan_commands_directory,
-            scan_plugin_agents, scan_plugin_commands, scan_skills_directory,
+            scan_plugin_agents, scan_plugin_commands, scan_skill_directories_for_root,
         };
         use std::collections::HashMap;
 
@@ -184,45 +184,33 @@ impl ClaudeCodeProvider {
 
         // User-level skills
         if let Some(home) = dirs::home_dir() {
-            for (dir, source) in &[
-                (home.join(".agents").join("skills"), ".agents"),
-                (home.join(".claude").join("skills"), ".claude"),
-                (home.join(".opencode").join("skills"), ".opencode"),
-            ] {
-                for skill in scan_skills_directory(dir, "user", source) {
-                    commands_map.entry(skill.name.clone()).or_insert(
-                        crate::opencode_client::CommandInfo {
-                            name: skill.name,
-                            description: skill.description,
-                            source: Some("skill".to_string()),
-                            agent: skill.agent,
-                            extra: serde_json::Map::new(),
-                        },
-                    );
-                }
+            for skill in scan_skill_directories_for_root(&home, "user") {
+                commands_map.entry(skill.name.clone()).or_insert(
+                    crate::opencode_client::CommandInfo {
+                        name: skill.name,
+                        description: skill.description,
+                        source: Some("skill".to_string()),
+                        agent: skill.agent,
+                        extra: serde_json::Map::new(),
+                    },
+                );
             }
         }
 
         // Project-level skills
         if let Some(proj_path) = project_path {
             let proj = std::path::Path::new(proj_path);
-            for (dir, source) in &[
-                (proj.join(".agents").join("skills"), ".agents"),
-                (proj.join(".claude").join("skills"), ".claude"),
-                (proj.join(".opencode").join("skills"), ".opencode"),
-            ] {
-                for skill in scan_skills_directory(dir, "project", source) {
-                    commands_map.insert(
-                        skill.name.clone(),
-                        crate::opencode_client::CommandInfo {
-                            name: skill.name,
-                            description: skill.description,
-                            source: Some("skill".to_string()),
-                            agent: skill.agent,
-                            extra: serde_json::Map::new(),
-                        },
-                    );
-                }
+            for skill in scan_skill_directories_for_root(proj, "project") {
+                commands_map.insert(
+                    skill.name.clone(),
+                    crate::opencode_client::CommandInfo {
+                        name: skill.name,
+                        description: skill.description,
+                        source: Some("skill".to_string()),
+                        agent: skill.agent,
+                        extra: serde_json::Map::new(),
+                    },
+                );
             }
         }
 

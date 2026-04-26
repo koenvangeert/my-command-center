@@ -62,7 +62,7 @@
   let projectGroups = $derived(groupBySource(projectSkills))
   let userGroups = $derived(groupBySource(userSkills))
 
-  // Collapsible state: track collapsed sections by key like "project" / "user" / "project:.claude"
+  // Collapsible state: track collapsed sections by key like "project" / "user" / "project:.agents"
   let collapsed = $state(new Map<string, boolean>())
 
   // Auto-select first filtered skill when current selection is filtered out
