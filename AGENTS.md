@@ -17,3 +17,24 @@ Multi-shell PTY sessions must be keyed per shell tab end-to-end (`${taskId}-shel
 Terminal lifecycle ownership should live in `src/lib/terminalPool.ts`, not be split across `TaskTerminal.svelte` and the pool. Shell liveness/exited state, current PTY instance id, and tab session state must have one authoritative owner in the pool; component-local state should only mirror/render pool state, not invent parallel lifecycle truth.
 `needsClear` is reset/replay state, not a second liveness source. Do not leave entries in contradictory states like `ptyActive = true` with an exited flag still latched. Stale PTY `output` and `exit` events must always be filtered by current `instance_id` in the pool.
 Never use `$effect` return-cleanup to release resources keyed by a prop value. Svelte 5 re-runs the effect (and fires its cleanup) whenever the prop signal changes — including when the parent passes a new object reference with the same logical identity (e.g. `$derived($tasks.find(...))` after a store refresh). Use explicit previous-value comparison inside the effect body, and `onDestroy` for component teardown, so cleanup only fires on actual value change or unmount.
+
+## Babysitter
+
+Project profile: Open Forge is a Tauri v2 desktop command center for coordinating multiple projects and AI coding agents while keeping the user focused on one active thing at a time. Babysitter guidance should preserve that product goal: timely nudges for meaningful handoffs, blocked agents, review readiness, CI failures, and destructive decisions; otherwise stay quiet.
+
+Recommended local Babysitter usage:
+- Use `/babysitter:project-install` to refresh `.a5c/project-profile.json` and `.a5c/project-profile.md` after major architecture, workflow, or product-direction changes.
+- Use TDD-driven iterative convergence for implementation work: write/update focused business-logic tests first, implement incrementally, run the relevant checks, then refine.
+- Use repo mapping before broad changes touching high-churn integration points such as `src/App.svelte`, `src-tauri/src/main.rs`, `src/lib/ipc.ts`, `src/lib/types.ts`, `src-tauri/src/github_poller.rs`, or `src/lib/terminalPool.ts`.
+
+Recommended verification gates:
+- Frontend/type changes: `pnpm exec tsc --noEmit` and `pnpm test`.
+- Rust/backend changes: `cargo test` from `src-tauri/`.
+- Plugin platform changes: include built-in plugin build/runtime verification where relevant (`pnpm build:plugins` plus targeted tests).
+
+Recommended specialties/processes:
+- `rust` skill for Rust/Tauri backend work.
+- `ui-ux-pro-max` for focus-mode, attention queue, notification/nudge, and low-distraction UX decisions.
+- Tauri/Rust desktop, Svelte/TypeScript/Vitest, and iterative TDD processes for most implementation tasks.
+
+CI/CD note: Babysitter GitHub Actions integration was intentionally skipped during project install. Do not add CI babysitter automation unless a future task explicitly asks for a focused workflow such as PR failure diagnosis or scheduled project health checks.
