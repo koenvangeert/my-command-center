@@ -5,6 +5,29 @@ APP_NAME="Open Forge"
 BUNDLE_DIR="src-tauri/target/release/bundle/macos"
 INSTALL_DIR="/Applications"
 
+install_cli_launcher() {
+  local cli_bin_dir="${HOME}/.openforge/bin"
+  local cli_target="${HOME}/Library/Application Support/openforge/mcp-server/cli.js"
+  local zshrc="${HOME}/.zshrc"
+
+  mkdir -p "${cli_bin_dir}"
+  cat > "${cli_bin_dir}/openforge" <<EOF
+#!/bin/sh
+exec node "${cli_target}" "\$@"
+EOF
+  chmod 755 "${cli_bin_dir}/openforge"
+
+  if ! grep -qs '\.openforge/bin' "${zshrc}" 2>/dev/null; then
+    {
+      echo ""
+      echo "# OpenForge CLI"
+      echo 'export PATH="$HOME/.openforge/bin:$PATH"'
+    } >> "${zshrc}"
+  fi
+
+  echo "Installed OpenForge CLI launcher to ${cli_bin_dir}/openforge"
+}
+
 echo "Building ${APP_NAME}..."
 pnpm tauri build
 
@@ -31,4 +54,7 @@ cp -R "$APP_PATH" "${INSTALL_DIR}/"
 # Unsigned apps trigger macOS Gatekeeper — clear quarantine flag
 xattr -rd com.apple.quarantine "${INSTALL_DIR}/${APP_NAME}.app"
 
+install_cli_launcher
+
 echo "Installed ${APP_NAME} to ${INSTALL_DIR}/${APP_NAME}.app"
+echo "Restart your shell or run: source ~/.zshrc"
