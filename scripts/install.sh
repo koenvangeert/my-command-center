@@ -8,6 +8,29 @@ cleanup() {
   fi
 }
 
+install_cli_launcher() {
+  CLI_BIN_DIR="${HOME}/.openforge/bin"
+  CLI_TARGET="${HOME}/Library/Application Support/openforge/mcp-server/cli.js"
+  ZSHRC="${HOME}/.zshrc"
+
+  mkdir -p "${CLI_BIN_DIR}"
+  cat > "${CLI_BIN_DIR}/openforge" <<EOF
+#!/bin/sh
+exec node "${CLI_TARGET}" "\$@"
+EOF
+  chmod 755 "${CLI_BIN_DIR}/openforge"
+
+  if ! grep -qs '\.openforge/bin' "${ZSHRC}" 2>/dev/null; then
+    {
+      echo ""
+      echo "# OpenForge CLI"
+      echo 'export PATH="$HOME/.openforge/bin:$PATH"'
+    } >> "${ZSHRC}"
+  fi
+
+  echo "Installed OpenForge CLI launcher to ${CLI_BIN_DIR}/openforge"
+}
+
 main() {
   REPO="koenvangeert/openforge"
   APP_NAME="Open Forge"
@@ -92,8 +115,11 @@ main() {
   # Clear quarantine attribute
   xattr -rd com.apple.quarantine "${INSTALL_DIR}/${APP_NAME}.app"
 
+  install_cli_launcher
+
   echo "Successfully installed ${APP_NAME} v${VERSION} to ${INSTALL_DIR}/${APP_NAME}.app"
   echo "Launch with: open -a \"${APP_NAME}\""
+  echo "Restart your shell or run: source ~/.zshrc"
 }
 
 main "$@"

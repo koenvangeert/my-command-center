@@ -46,6 +46,18 @@ pnpm tauri:install
 
 This builds a production release, copies `Open Forge.app` to `/Applications`, and removes the macOS quarantine flag. If an existing instance is running it will be closed automatically before the install.
 
+## CLI
+
+The installer creates an `openforge` CLI launcher at `~/.openforge/bin/openforge` and adds `~/.openforge/bin` to `~/.zshrc` if it is not already present. Open Forge also refreshes the launcher on app startup. Restart your shell or run `source ~/.zshrc`, then use:
+
+```bash
+openforge --help
+openforge get-task --task-id T-123
+openforge update-task --task-id T-123 --summary "Done"
+```
+
+The CLI talks to the local Open Forge HTTP bridge and is also used by the auto-installed provider skills/MCP config.
+
 ## What it does
 
 Open Forge is a command center for AI-assisted development. You define coding tasks, an AI agent (Claude Code or OpenCode) implements them in isolated git worktrees on dedicated branches, and the app tracks the full lifecycle: agent progress, CI status, and PR reviews.
