@@ -1,0 +1,9 @@
+{
+  "name": "open-forge-a5c",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@a5c-ai/babysitter-sdk": "latest"
+  }
+}
