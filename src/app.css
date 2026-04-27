@@ -8,9 +8,9 @@
 @import "nerdfonts-web/nf.css";
 @import "tailwindcss";
 
-@plugin "daisyui/index.js";
+@plugin "daisyui";
 
-@plugin "daisyui/theme/index.js" {
+@plugin "daisyui/theme" {
   name: "openforge";
   default: true;
   prefersdark: false;
@@ -47,7 +47,7 @@
   --noise: 0;
 }
 
-@plugin "daisyui/theme/index.js" {
+@plugin "daisyui/theme" {
   name: "openforge-dark";
   default: false;
   prefersdark: true;

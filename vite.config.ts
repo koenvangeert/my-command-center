@@ -1,6 +1,7 @@
 import { svelte } from '@sveltejs/vite-plugin-svelte'
 import tailwindcss from '@tailwindcss/vite'
 import { defineConfig } from 'vite'
+import { createDaisyUiTailwindPluginAliases } from './src/lib/viteDaisyUi'
 import { createOpenForgeChunkGroups, OPEN_FORGE_CHUNK_SIZE_WARNING_LIMIT } from './src/lib/viteChunks'
 import { createOpenForgeViteLogger } from './src/lib/viteLogger'
 
@@ -10,6 +11,9 @@ export default defineConfig({
   // ::highlight(...) warnings until the upstream fix is released through Vite.
   customLogger: createOpenForgeViteLogger(),
   plugins: [tailwindcss(), svelte()],
+  resolve: {
+    alias: createDaisyUiTailwindPluginAliases(),
+  },
   // Vite options tailored for Tauri to prevent too much magic
   clearScreen: false,
   server: {
