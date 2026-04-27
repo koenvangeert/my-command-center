@@ -102,6 +102,8 @@ pnpm tauri:dev
 pnpm dev
 ```
 
+`pnpm tauri:dev` shares Rust build artifacts through the checkout's Git common directory by setting `CARGO_TARGET_DIR` to `.cargo-target` beside the primary `.git` directory. That keeps Tauri/Rust dev boots fast across git worktrees after the first compile. Set `CARGO_TARGET_DIR` yourself to override it, or use `pnpm tauri:dev:raw` for Tauri's default `src-tauri/target` behavior.
+
 ## Testing
 
 ```bash
