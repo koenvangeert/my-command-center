@@ -20,6 +20,8 @@ Never use `$effect` return-cleanup to release resources keyed by a prop value. S
 
 ## Babysitter
 
+At the start of every task in this repository, load the Babysitter `call` skill and follow its instructions, including loading any skill it delegates to.
+
 Project profile: Open Forge is a Tauri v2 desktop command center for coordinating multiple projects and AI coding agents while keeping the user focused on one active thing at a time. Babysitter guidance should preserve that product goal: timely nudges for meaningful handoffs, blocked agents, review readiness, CI failures, and destructive decisions; otherwise stay quiet.
 
 Recommended local Babysitter usage:
