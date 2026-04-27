@@ -60,10 +60,6 @@ pub fn format_request(plugin_id: &str, method: &str, params: Value) -> (u64, Str
     (id, raw)
 }
 
-pub fn parse_response(raw: &str) -> Result<RpcResult, RpcError> {
-    Ok(parse_response_message(raw)?.result)
-}
-
 pub fn parse_response_message(raw: &str) -> Result<ParsedResponse, RpcError> {
     let response: JsonRpcResponse = serde_json::from_str(raw)
         .map_err(|error| RpcError(format!("failed to parse JSON-RPC response: {error}")))?;
@@ -131,10 +127,10 @@ mod tests {
     }
 
     #[test]
-    fn parse_response_success() {
+    fn parse_response_message_success() {
         let raw = r#"{"jsonrpc":"2.0","id":1,"result":{"data":"hello"}}"#;
-        let result = parse_response(raw).expect("response should parse");
-        match result {
+        let parsed = parse_response_message(raw).expect("response should parse");
+        match parsed.result {
             RpcResult::Success(val) => assert_eq!(val["data"], "hello"),
             RpcResult::Error(code, msg) => {
                 panic!("Expected success, got error {}: {}", code, msg)
@@ -143,11 +139,11 @@ mod tests {
     }
 
     #[test]
-    fn parse_response_error() {
+    fn parse_response_message_error() {
         let raw =
             r#"{"jsonrpc":"2.0","id":1,"error":{"code":-32601,"message":"Method not found"}}"#;
-        let result = parse_response(raw).expect("response should parse");
-        match result {
+        let parsed = parse_response_message(raw).expect("response should parse");
+        match parsed.result {
             RpcResult::Success(_) => panic!("Expected error"),
             RpcResult::Error(code, msg) => {
                 assert_eq!(code, -32601);

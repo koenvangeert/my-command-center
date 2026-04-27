@@ -694,22 +694,6 @@ fn find_authoritative_task_id(
     }
 }
 
-pub fn find_matching_task_ids(pr_title: &str, pr_branch: &str, task_ids: &[String]) -> Vec<String> {
-    let mut matched = Vec::new();
-    let mut seen = HashSet::new();
-
-    for task_id in task_ids {
-        if (contains_task_id(pr_title, task_id.as_str())
-            || contains_task_id(pr_branch, task_id.as_str()))
-            && seen.insert(task_id.clone())
-        {
-            matched.push(task_id.clone());
-        }
-    }
-
-    matched
-}
-
 struct PollSinglePrResult {
     pr_id: i64,
     ticket_id: String,
@@ -1671,103 +1655,51 @@ mod tests {
     }
 
     #[test]
-    fn test_find_matching_task_ids_direct_match_in_title() {
-        let pr_title = "Fix bug T-42";
-        let pr_branch = "main";
+    fn test_contains_task_id_matches_boundaries() {
+        assert!(contains_task_id("T-42 fix auth", "T-42"));
+        assert!(contains_task_id("fix auth T-42", "T-42"));
+        assert!(contains_task_id("feature/T-42/auth", "T-42"));
+        assert!(contains_task_id("feature/T-42-auth", "T-42"));
+        assert!(contains_task_id("T-42: fix auth", "T-42"));
+    }
+
+    #[test]
+    fn test_contains_task_id_rejects_substring_false_positive() {
+        assert!(!contains_task_id("fixT-42bug", "T-42"));
+        assert!(!contains_task_id("Fix T-12 issue", "T-1"));
+        assert!(!contains_task_id("feature/T-123", "T-12"));
+    }
+
+    #[test]
+    fn test_classify_task_matches_returns_unique_match() {
         let task_ids = vec!["T-42".to_string(), "T-99".to_string()];
 
-        let matched = find_matching_task_ids(pr_title, pr_branch, &task_ids);
-        assert_eq!(matched.len(), 1);
-        assert_eq!(matched[0], "T-42");
+        match classify_task_matches("Fix bug T-42", &task_ids) {
+            TaskMatchOutcome::Unique(task_id) => assert_eq!(task_id, "T-42"),
+            TaskMatchOutcome::None | TaskMatchOutcome::Ambiguous => {
+                panic!("expected unique task match")
+            }
+        }
     }
 
     #[test]
-    fn test_find_matching_task_ids_direct_match_in_branch() {
-        let pr_title = "Fix authentication";
-        let pr_branch = "feature/T-99-auth";
-        let task_ids = vec!["T-42".to_string(), "T-99".to_string()];
+    fn test_classify_task_matches_rejects_ambiguous_matches() {
+        let task_ids = vec!["T-1".to_string(), "T-2".to_string()];
 
-        let matched = find_matching_task_ids(pr_title, pr_branch, &task_ids);
-        assert_eq!(matched.len(), 1);
-        assert_eq!(matched[0], "T-99");
+        assert!(matches!(
+            classify_task_matches("Fix T-1 and T-2", &task_ids),
+            TaskMatchOutcome::Ambiguous
+        ));
     }
 
     #[test]
-    fn test_find_matching_task_ids_deduplication() {
-        let pr_title = "T-5 implements feature";
-        let pr_branch = "feature/T-5";
-        let task_ids = vec!["T-5".to_string()];
-        let matched = find_matching_task_ids(pr_title, pr_branch, &task_ids);
-        assert_eq!(matched.len(), 1);
-        assert_eq!(matched[0], "T-5");
-    }
-
-    #[test]
-    fn test_find_matching_task_ids_no_matches() {
-        let pr_title = "Update documentation";
-        let pr_branch = "docs-update";
+    fn test_classify_task_matches_returns_none_for_no_matches() {
         let task_ids = vec!["T-100".to_string()];
 
-        let matched = find_matching_task_ids(pr_title, pr_branch, &task_ids);
-        assert_eq!(matched.len(), 0);
-    }
-
-    #[test]
-    fn test_find_matching_task_ids_no_substring_false_positive() {
-        let pr_title = "Fix T-12 issue";
-        let pr_branch = "feature/T-123";
-        let task_ids = vec!["T-1".to_string(), "T-12".to_string(), "T-123".to_string()];
-        let matched = find_matching_task_ids(pr_title, pr_branch, &task_ids);
-        // T-1 must NOT match (T-12 contains T-1 as substring, but boundary check prevents it)
-        assert!(!matched.contains(&"T-1".to_string()));
-        // T-12 SHOULD match in title
-        assert!(matched.contains(&"T-12".to_string()));
-        // T-123 SHOULD match in branch
-        assert!(matched.contains(&"T-123".to_string()));
-    }
-
-    #[test]
-    fn test_find_matching_task_ids_boundary_cases() {
-        let task_ids = vec!["T-42".to_string()];
-
-        // Start of string
-        assert_eq!(
-            find_matching_task_ids("T-42 fix auth", "", &task_ids).len(),
-            1
-        );
-        // End of string
-        assert_eq!(
-            find_matching_task_ids("fix auth T-42", "", &task_ids).len(),
-            1
-        );
-        // Slash-delimited
-        assert_eq!(
-            find_matching_task_ids("", "feature/T-42/auth", &task_ids).len(),
-            1
-        );
-        // Hyphen after number (OK — not a digit)
-        assert_eq!(
-            find_matching_task_ids("", "feature/T-42-auth", &task_ids).len(),
-            1
-        );
-        // Colon-delimited
-        assert_eq!(
-            find_matching_task_ids("T-42: fix auth", "", &task_ids).len(),
-            1
-        );
-        // Alphanumeric before T — should NOT match
-        assert_eq!(find_matching_task_ids("fixT-42bug", "", &task_ids).len(), 0);
-    }
-
-    #[test]
-    fn test_find_matching_task_ids_multiple_ids_in_title() {
-        let pr_title = "Fix T-1 and T-2";
-        let pr_branch = "";
-        let task_ids = vec!["T-1".to_string(), "T-2".to_string()];
-        let matched = find_matching_task_ids(pr_title, pr_branch, &task_ids);
-        assert_eq!(matched.len(), 2);
-        assert!(matched.contains(&"T-1".to_string()));
-        assert!(matched.contains(&"T-2".to_string()));
+        assert!(matches!(
+            classify_task_matches("Update documentation", &task_ids),
+            TaskMatchOutcome::None
+        ));
     }
 
     #[test]
