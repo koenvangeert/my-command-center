@@ -260,8 +260,17 @@
 }
 /* Vim navigation focus highlight */
 .vim-focus {
-  box-shadow: 0 0 0 2px color-mix(in oklch, var(--color-base-content) 25%, transparent);
-  border-radius: var(--radius-box);
+  position: relative;
+}
+
+.vim-focus::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border: 2px solid var(--color-primary);
+  border-radius: inherit;
+  pointer-events: none;
 }
 
 @keyframes border-glow-spin {
