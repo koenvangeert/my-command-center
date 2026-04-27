@@ -1,4 +1,3 @@
-import { type Component, mount, unmount } from 'svelte'
 import { installedPlugins } from './pluginStore'
 import type { PluginActivationResult, PluginContext, PluginState } from './types'
 
@@ -11,11 +10,6 @@ export interface LoadedPlugin {
   pluginId: string
   module: PluginESM
   activationResult: PluginActivationResult | null
-}
-
-export interface MountedPluginComponent {
-  pluginId: string
-  instance: ReturnType<typeof mount>
 }
 
 const loadedPlugins = new Map<string, LoadedPlugin>()
@@ -111,29 +105,4 @@ export function isPluginLoaded(pluginId: string): boolean {
 
 export function getLoadedPlugin(pluginId: string): LoadedPlugin | undefined {
   return loadedPlugins.get(pluginId)
-}
-
-export function mountPluginComponent(
-  pluginId: string,
-  component: Component<Record<string, unknown>>,
-  target: Element,
-  props: Record<string, unknown> = {}
-): MountedPluginComponent | null {
-  try {
-    const instance = mount(component, { target, props })
-    return { pluginId, instance }
-  } catch (error) {
-    setPluginState(pluginId, 'error', normalizeErrorMessage(error))
-    return null
-  }
-}
-
-export async function unmountPluginComponent(mountedComponent: MountedPluginComponent | null): Promise<void> {
-  if (!mountedComponent) return
-
-  try {
-    await unmount(mountedComponent.instance)
-  } catch (error) {
-    console.error(`[pluginLoader] Failed to unmount plugin ${mountedComponent.pluginId}:`, error)
-  }
 }

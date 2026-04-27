@@ -1,5 +1,6 @@
 import { get } from 'svelte/store'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import * as pluginLoader from './pluginLoader'
 import {
   _resetPluginLoaderForTests,
   _setModuleLoader,
@@ -54,6 +55,11 @@ function makeActivationResult(id: string): PluginActivationResult {
 }
 
 describe('pluginLoader', () => {
+  it('exposes only module lifecycle helpers and no imperative component mounting API', () => {
+    expect('mountPluginComponent' in pluginLoader).toBe(false)
+    expect('unmountPluginComponent' in pluginLoader).toBe(false)
+  })
+
   beforeEach(() => {
     installedPlugins.set(new Map())
     _resetPluginLoaderForTests()
