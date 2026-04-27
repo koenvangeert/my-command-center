@@ -504,7 +504,13 @@
   100% { background-position: 0% 50%; }
 }
 .dev-badge-gradient {
-  background: linear-gradient(270deg, #6C63C9, #3B82F6, #A855F7, #6C63C9);
+  background: linear-gradient(
+    270deg,
+    var(--color-primary),
+    var(--color-blue-500),
+    var(--color-purple-500),
+    var(--color-primary)
+  );
   background-size: 300% 300%;
   animation: gradient-shift 4s ease infinite;
 }
