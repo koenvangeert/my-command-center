@@ -1,16 +1,47 @@
+import { listen } from '@tauri-apps/api/event'
 import type { PluginManifest } from './types'
 import { MAX_SUPPORTED_API_VERSION } from './types'
 import { isPluginViewKey } from './types'
 import { makePluginViewKey } from './types'
 import {
+  abortAgentReview,
+  fetchAuthoredPrs,
+  fetchReviewPrs,
   forceGithubSync,
+  fsReadDir,
+  fsReadFile,
+  getAgentReviewComments,
+  getAuthoredPrs,
+  getConfig,
+  getFileAtRef,
+  getFileContent,
   getPluginStorage,
+  getPrFileDiffs,
+  getPrOverviewComments,
+  getProjectConfig,
+  getPtyBuffer,
+  getReviewComments,
+  getReviewPrs,
+  getTaskWorkspace,
   installPlugin,
+  killPty,
+  listOpenCodeSkills,
+  markReviewPrViewed,
   installPluginFromLocal as installPluginFromLocalIpc,
   installPluginFromNpm as installPluginFromNpmIpc,
+  openUrl,
   pluginInvoke,
+  resizePty,
+  saveSkillContent,
+  setConfig,
   setPluginStorage,
+  setProjectConfig,
+  spawnShellPty,
+  startAgentReview,
+  submitPrReview,
   uninstallPlugin as uninstallPluginIpc,
+  updateAgentReviewCommentStatus,
+  writePty,
 } from '../ipc'
 import {
   installedPlugins,
@@ -48,7 +79,7 @@ function isAppView(value: unknown): value is AppView {
   return typeof value === 'string' && (STATIC_APP_VIEWS.has(value as AppView) || isPluginViewKey(value))
 }
 
-type PluginHostEventName = 'context-changed' | 'navigation-changed' | 'selection-changed'
+type PluginHostEventName = string
 
 type PluginHostContextSnapshot = {
   activeProjectId: string | null
@@ -58,7 +89,16 @@ type PluginHostContextSnapshot = {
 
 type PluginHostListener = (payload: unknown) => void
 
+type TauriEventSubscription = {
+  listeners: Set<PluginHostListener>
+  ready: Promise<void>
+  unlisten: (() => void) | null
+  disposed: boolean
+}
+
+const HOST_EVENT_NAMES = new Set(['context-changed', 'navigation-changed', 'selection-changed'])
 const pluginHostListeners = new Map<PluginHostEventName, Set<PluginHostListener>>()
+const tauriEventSubscriptions = new Map<string, TauriEventSubscription>()
 const pluginHostUnsubscribers = new Map<string, Set<() => void>>()
 const activationPromises = new Map<string, Promise<boolean>>()
 const pluginCommandHandlers = new Map<string, PluginActivatedCommandContribution['execute']>()
@@ -238,21 +278,90 @@ async function deactivateLoadedPluginModule(pluginId: string): Promise<void> {
   await deactivatePluginLoader(pluginId)
 }
 
-function subscribeToPluginHostEvent(pluginId: string, event: string, handler: PluginHostListener): () => void {
-  const typedEvent = event as PluginHostEventName
-  const listeners = pluginHostListeners.get(typedEvent) ?? new Set<PluginHostListener>()
-  listeners.add(handler)
-  pluginHostListeners.set(typedEvent, listeners)
+function ensureTauriEventSubscription(event: string): TauriEventSubscription {
+  const existing = tauriEventSubscriptions.get(event)
+  if (existing) return existing
 
-  const unsubscribe = () => {
-    const currentListeners = pluginHostListeners.get(typedEvent)
-    currentListeners?.delete(handler)
-    if (currentListeners && currentListeners.size === 0) {
-      pluginHostListeners.delete(typedEvent)
-    }
+  const subscription: TauriEventSubscription = {
+    listeners: new Set(),
+    ready: Promise.resolve(),
+    unlisten: null,
+    disposed: false,
   }
 
+  subscription.ready = listen(event, (tauriEvent) => {
+    for (const listener of Array.from(subscription.listeners)) {
+      listener(tauriEvent.payload)
+    }
+  }).then((unlisten) => {
+    subscription.unlisten = unlisten
+    if (subscription.disposed || subscription.listeners.size === 0) {
+      unlisten()
+      tauriEventSubscriptions.delete(event)
+    }
+  }).catch((error) => {
+    tauriEventSubscriptions.delete(event)
+    console.error(`[pluginRegistry] Failed to subscribe to host event ${event}:`, error)
+  })
+
+  tauriEventSubscriptions.set(event, subscription)
+  return subscription
+}
+
+function removeTauriEventListener(event: string, handler: PluginHostListener): void {
+  const subscription = tauriEventSubscriptions.get(event)
+  if (!subscription) return
+
+  subscription.listeners.delete(handler)
+  if (subscription.listeners.size > 0) return
+
+  if (subscription.unlisten) {
+    subscription.unlisten()
+    tauriEventSubscriptions.delete(event)
+    return
+  }
+
+  subscription.disposed = true
+}
+
+async function waitForTauriEventSubscription(event: string): Promise<void> {
+  await tauriEventSubscriptions.get(event)?.ready
+}
+
+async function waitForTerminalEventSubscriptions(commandPayload: Record<string, unknown> | undefined): Promise<void> {
+  const taskId = typeof commandPayload?.taskId === 'string' ? commandPayload.taskId : ''
+  const terminalIndex = Number(commandPayload?.terminalIndex)
+  if (!taskId || !Number.isInteger(terminalIndex) || terminalIndex < 0) return
+
+  const terminalKey = `${taskId}-shell-${terminalIndex}`
+  await Promise.all([
+    waitForTauriEventSubscription(`pty-output-${terminalKey}`),
+    waitForTauriEventSubscription(`pty-exit-${terminalKey}`),
+  ])
+}
+
+function subscribeToPluginHostEvent(pluginId: string, event: string, handler: PluginHostListener): () => void {
   const cleanupCallbacks = pluginHostUnsubscribers.get(pluginId) ?? new Set<() => void>()
+  let unsubscribe = () => {}
+
+  if (HOST_EVENT_NAMES.has(event)) {
+    const typedEvent = event as PluginHostEventName
+    const listeners = pluginHostListeners.get(typedEvent) ?? new Set<PluginHostListener>()
+    listeners.add(handler)
+    pluginHostListeners.set(typedEvent, listeners)
+    unsubscribe = () => {
+      const currentListeners = pluginHostListeners.get(typedEvent)
+      currentListeners?.delete(handler)
+      if (currentListeners && currentListeners.size === 0) {
+        pluginHostListeners.delete(typedEvent)
+      }
+    }
+  } else {
+    const subscription = ensureTauriEventSubscription(event)
+    subscription.listeners.add(handler)
+    unsubscribe = () => removeTauriEventListener(event, handler)
+  }
+
   const cleanup = () => {
     unsubscribe()
     cleanupCallbacks.delete(cleanup)
@@ -373,6 +482,73 @@ async function invokePluginHostCommand(command: string, payload: unknown): Promi
     }
     case 'forceGithubSync':
       return forceGithubSync()
+    case 'openUrl':
+      return openUrl(String(commandPayload?.url ?? ''))
+    case 'fsReadDir':
+      return fsReadDir(String(commandPayload?.projectId ?? ''), typeof commandPayload?.dirPath === 'string' ? commandPayload.dirPath : null)
+    case 'fsReadFile':
+      return fsReadFile(String(commandPayload?.projectId ?? ''), String(commandPayload?.filePath ?? ''))
+    case 'listOpenCodeSkills':
+      return listOpenCodeSkills(String(commandPayload?.projectId ?? ''))
+    case 'saveSkillContent':
+      return saveSkillContent(
+        String(commandPayload?.projectId ?? ''),
+        String(commandPayload?.name ?? ''),
+        commandPayload?.level === 'user' ? 'user' : 'project',
+        String(commandPayload?.sourceDir ?? ''),
+        String(commandPayload?.content ?? '')
+      )
+    case 'fetchReviewPrs':
+      return fetchReviewPrs()
+    case 'getReviewPrs':
+      return getReviewPrs()
+    case 'fetchAuthoredPrs':
+      return fetchAuthoredPrs()
+    case 'getAuthoredPrs':
+      return getAuthoredPrs()
+    case 'markReviewPrViewed':
+      return markReviewPrViewed(Number(commandPayload?.prId), String(commandPayload?.headSha ?? ''))
+    case 'getPrFileDiffs':
+      return getPrFileDiffs(String(commandPayload?.owner ?? ''), String(commandPayload?.repo ?? ''), Number(commandPayload?.prNumber))
+    case 'getFileContent':
+      return getFileContent(String(commandPayload?.owner ?? ''), String(commandPayload?.repo ?? ''), String(commandPayload?.sha ?? ''))
+    case 'getFileAtRef':
+      return getFileAtRef(String(commandPayload?.owner ?? ''), String(commandPayload?.repo ?? ''), String(commandPayload?.path ?? ''), String(commandPayload?.refSha ?? ''))
+    case 'getReviewComments':
+      return getReviewComments(String(commandPayload?.owner ?? ''), String(commandPayload?.repo ?? ''), Number(commandPayload?.prNumber))
+    case 'getPrOverviewComments':
+      return getPrOverviewComments(String(commandPayload?.owner ?? ''), String(commandPayload?.repo ?? ''), Number(commandPayload?.prNumber))
+    case 'submitPrReview':
+      return submitPrReview(String(commandPayload?.owner ?? ''), String(commandPayload?.repo ?? ''), Number(commandPayload?.prNumber), String(commandPayload?.event ?? ''), String(commandPayload?.body ?? ''), Array.isArray(commandPayload?.comments) ? commandPayload.comments as never : [], String(commandPayload?.commitId ?? ''))
+    case 'startAgentReview':
+      return startAgentReview(String(commandPayload?.repoOwner ?? ''), String(commandPayload?.repoName ?? ''), Number(commandPayload?.prNumber), String(commandPayload?.headRef ?? ''), String(commandPayload?.baseRef ?? ''), String(commandPayload?.prTitle ?? ''), typeof commandPayload?.prBody === 'string' ? commandPayload.prBody : null, Number(commandPayload?.reviewPrId))
+    case 'getAgentReviewComments':
+      return getAgentReviewComments(Number(commandPayload?.reviewPrId))
+    case 'updateAgentReviewCommentStatus':
+      return updateAgentReviewCommentStatus(Number(commandPayload?.commentId), String(commandPayload?.status ?? ''))
+    case 'abortAgentReview':
+      return abortAgentReview(String(commandPayload?.reviewSessionKey ?? ''))
+    case 'getProjectConfig':
+      return getProjectConfig(String(commandPayload?.projectId ?? ''), String(commandPayload?.key ?? ''))
+    case 'setProjectConfig':
+      return setProjectConfig(String(commandPayload?.projectId ?? ''), String(commandPayload?.key ?? ''), String(commandPayload?.value ?? ''))
+    case 'spawnShellPty':
+      await waitForTerminalEventSubscriptions(commandPayload)
+      return spawnShellPty(String(commandPayload?.taskId ?? ''), String(commandPayload?.cwd ?? ''), Number(commandPayload?.cols), Number(commandPayload?.rows), Number(commandPayload?.terminalIndex))
+    case 'writePty':
+      return writePty(String(commandPayload?.taskId ?? ''), String(commandPayload?.data ?? ''))
+    case 'resizePty':
+      return resizePty(String(commandPayload?.taskId ?? ''), Number(commandPayload?.cols), Number(commandPayload?.rows))
+    case 'killPty':
+      return killPty(String(commandPayload?.taskId ?? ''))
+    case 'getPtyBuffer':
+      return getPtyBuffer(String(commandPayload?.taskId ?? ''))
+    case 'getTaskWorkspace':
+      return getTaskWorkspace(String(commandPayload?.taskId ?? ''))
+    case 'getConfig':
+      return getConfig(String(commandPayload?.key ?? ''))
+    case 'setConfig':
+      return setConfig(String(commandPayload?.key ?? ''), String(commandPayload?.value ?? ''))
     default:
       throw new Error(`Unknown plugin host command: ${command}`)
   }
