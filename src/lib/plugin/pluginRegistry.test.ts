@@ -51,12 +51,17 @@ const {
   getBuiltinPluginModuleMock: vi.fn(),
 }))
 
-vi.mock('./pluginLoader', () => ({
-  loadPluginFrontend: loadPluginFrontendMock,
-  activatePlugin: activatePluginLoaderMock,
-  deactivatePlugin: deactivatePluginLoaderMock,
-  isPluginLoaded: isPluginLoadedMock,
-}))
+vi.mock('./pluginLoader', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./pluginLoader')>()
+
+  return {
+    ...actual,
+    loadPluginFrontend: loadPluginFrontendMock,
+    activatePlugin: activatePluginLoaderMock,
+    deactivatePlugin: deactivatePluginLoaderMock,
+    isPluginLoaded: isPluginLoadedMock,
+  }
+})
 
 vi.mock('./builtinPluginModules', () => ({
   getBuiltinPluginModule: getBuiltinPluginModuleMock,
