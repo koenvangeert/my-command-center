@@ -25,12 +25,14 @@ describe('ResizableBottomPanel', () => {
     expect(panel.style.height).toBe('250px')
   })
 
-  it('renders the drag handle', () => {
-    const { container } = render(ResizableBottomPanel, {
+  it('exposes a keyboard-focusable resize separator when resizable', () => {
+    const { getByRole } = render(ResizableBottomPanel, {
       props: { storageKey: 'test-panel', defaultHeight: 250, minHeight: null, maxHeight: null, fillParent: false },
     })
-    const handle = container.querySelector('[data-testid="resize-handle"]')
-    expect(handle).toBeTruthy()
+    const handle = requireElement(getByRole('separator'), HTMLElement)
+    expect(handle.dataset.testid).toBe('resize-handle')
+    expect(handle.getAttribute('aria-orientation')).toBe('horizontal')
+    expect(handle.tabIndex).toBe(0)
   })
 
   it('restores height from localStorage', () => {
@@ -257,29 +259,21 @@ describe('ResizableBottomPanel', () => {
     expect(panel.style.height).toBe(String(expectedMax) + 'px')
   })
 
-  it('hides drag handle when fillParent is true', () => {
-    const { container } = render(ResizableBottomPanel, {
+  it('does not expose resize controls when filling the parent', () => {
+    const { queryByRole } = render(ResizableBottomPanel, {
       props: { storageKey: 'test-fillparent', defaultHeight: 250, minHeight: null, maxHeight: null, fillParent: true },
     })
-    const handle = container.querySelector('[data-testid="resize-handle"]')
-    expect(handle).toBeNull()
+
+    expect(queryByRole('separator')).toBeNull()
   })
 
-  it('uses flex-1 class when fillParent is true', () => {
+  it('ignores saved panel height when filling the parent', () => {
+    localStorage.setItem('resizable-panel:test-fillparent-height', '320')
     const { container } = render(ResizableBottomPanel, {
-      props: { storageKey: 'test-fillparent-flex', defaultHeight: 250, minHeight: null, maxHeight: null, fillParent: true },
+      props: { storageKey: 'test-fillparent-height', defaultHeight: 250, minHeight: null, maxHeight: null, fillParent: true },
     })
     const panel = getPanel(container)
-    expect(panel.classList.contains('flex-1')).toBe(true)
-    expect(panel.classList.contains('shrink-0')).toBe(false)
-  })
 
-  it('uses shrink-0 class when fillParent is false', () => {
-    const { container } = render(ResizableBottomPanel, {
-      props: { storageKey: 'test-fillparent-shrink', defaultHeight: 250, minHeight: null, maxHeight: null, fillParent: false },
-    })
-    const panel = getPanel(container)
-    expect(panel.classList.contains('shrink-0')).toBe(true)
-    expect(panel.classList.contains('flex-1')).toBe(false)
+    expect(panel.style.height).toBe('')
   })
 })
