@@ -307,11 +307,6 @@ impl<R: Runtime + 'static> PluginHost<R> {
         Ok(())
     }
 
-    pub async fn restart_sidecar(&self) -> Result<(), String> {
-        self.stop_sidecar().await?;
-        self.start_sidecar().await
-    }
-
     pub fn is_sidecar_running(&self) -> bool {
         matches!(self.get_state(), SidecarState::Running)
     }
@@ -968,11 +963,6 @@ mod tests {
         host.mark_running_for_test(1234);
 
         assert!(host.is_sidecar_running());
-    }
-
-    #[test]
-    fn restart_method_is_part_of_public_api() {
-        let _restart = PluginHost::<tauri::test::MockRuntime>::restart_sidecar;
     }
 
     #[tokio::test]
