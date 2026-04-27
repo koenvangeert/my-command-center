@@ -11,7 +11,8 @@
     "lint": "node scripts/check-svelte-unused-imports.mjs",
     "preview": "vite preview",
     "tauri": "tauri",
-    "tauri:dev": "tauri dev",
+    "tauri:dev": "node scripts/tauri-dev.mjs",
+    "tauri:dev:raw": "tauri dev",
     "tauri:build": "tauri build",
     "tauri:install": "bash scripts/install-mac.sh",
     "test": "vitest run"
