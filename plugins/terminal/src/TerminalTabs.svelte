@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { commandHeld } from './lib/stores'
+  import { commandHeld, setupCommandHeldListeners } from './lib/stores'
   import { killPty } from './lib/ipc'
   import { release, focusTerminal, getTaskTerminalTabsSession, updateTaskTerminalTabsSession, type TerminalTab, type TaskTerminalTabsSession } from './lib/terminalPool'
   import TaskTerminal from './TaskTerminal.svelte'
@@ -117,8 +117,13 @@
     }
 
   onMount(() => {
+    const cleanupCommandHeld = setupCommandHeldListeners()
     hydrateFromSession(taskId)
     onTabCountChange?.(tabs.length)
+
+    return () => {
+      cleanupCommandHeld()
+    }
   })
 </script>
 

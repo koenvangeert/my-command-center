@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { onDestroy } from 'svelte'
+  import { onDestroy, onMount } from 'svelte'
   import { getTaskWorkspace } from './lib/ipc'
   import TerminalTabs from './TerminalTabs.svelte'
   import { registerTerminalTaskPaneController, unregisterTerminalTaskPaneController } from './terminalTaskPaneController'
+  import { handleTerminalShortcutKeydown } from './terminalShortcuts'
 
   interface Props {
     taskId: string
@@ -28,6 +29,10 @@
     },
   }
 
+  function handleWindowKeydown(event: KeyboardEvent) {
+    handleTerminalShortcutKeydown(event, controller)
+  }
+
   $effect(() => {
     if (taskId === previousTaskId) {
       return
@@ -44,6 +49,13 @@
     void getTaskWorkspace(taskId).then((workspace) => {
       workspacePath = workspace?.workspace_path ?? null
     })
+  })
+
+  onMount(() => {
+    window.addEventListener('keydown', handleWindowKeydown, { capture: true })
+    return () => {
+      window.removeEventListener('keydown', handleWindowKeydown, { capture: true })
+    }
   })
 
   onDestroy(() => {
