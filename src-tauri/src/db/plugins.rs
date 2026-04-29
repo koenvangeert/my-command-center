@@ -19,14 +19,26 @@ pub struct PluginRow {
 }
 
 impl super::Database {
-    /// Insert a plugin record. Replaces if id already exists.
+    /// Insert a plugin record. Updates metadata if id already exists.
     pub fn install_plugin(&self, plugin: &PluginRow) -> Result<()> {
         let conn = self.conn.lock().unwrap();
         conn.execute(
-            "INSERT OR REPLACE INTO plugins
+            "INSERT INTO plugins
                 (id, name, version, api_version, description, permissions, contributes,
                  frontend_entry, backend_entry, install_path, installed_at, is_builtin)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
+             ON CONFLICT(id) DO UPDATE SET
+                name = excluded.name,
+                version = excluded.version,
+                api_version = excluded.api_version,
+                description = excluded.description,
+                permissions = excluded.permissions,
+                contributes = excluded.contributes,
+                frontend_entry = excluded.frontend_entry,
+                backend_entry = excluded.backend_entry,
+                install_path = excluded.install_path,
+                installed_at = excluded.installed_at,
+                is_builtin = excluded.is_builtin",
             rusqlite::params![
                 plugin.id,
                 plugin.name,
@@ -249,6 +261,21 @@ mod tests {
         db.set_plugin_enabled("proj1", "q", true).unwrap();
         db.set_plugin_enabled("proj1", "q", false).unwrap();
         assert!(!db.is_plugin_enabled("proj1", "q").unwrap());
+    }
+
+    #[test]
+    fn reinstall_plugin_preserves_project_enabled_state() {
+        let (db, _tmp) = make_test_db("plugins_reinstall_preserves_enabled");
+        let mut plugin = sample_plugin("upgraded");
+        db.install_plugin(&plugin).unwrap();
+        db.set_plugin_enabled("proj1", "upgraded", true).unwrap();
+
+        plugin.version = "2.0.0".to_string();
+        plugin.installed_at = 2000;
+        db.install_plugin(&plugin).unwrap();
+
+        assert!(db.is_plugin_enabled("proj1", "upgraded").unwrap());
+        assert_eq!(db.get_plugin("upgraded").unwrap().unwrap().version, "2.0.0");
     }
 
     #[test]
