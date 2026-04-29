@@ -202,7 +202,7 @@
 
 </script>
 
-<svelte:window onkeydowncapture={handleTaskDetailKeydown} />
+<svelte:window onkeydown={handleTaskDetailKeydown} />
 
 <div class="flex flex-col flex-1 h-full bg-base-100 overflow-hidden">
     <header class="flex flex-col border-b border-base-300 shrink-0" style="background-color: var(--project-bg-alt, oklch(var(--b2)))">

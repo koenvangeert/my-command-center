@@ -1127,6 +1127,28 @@ describe('TaskDetailView', () => {
       expect(resetToBoard).toHaveBeenCalled()
     })
 
+    it('does not navigate back before an open modal handles Escape', async () => {
+      const { resetToBoard } = await import('../../lib/router.svelte')
+      vi.mocked(resetToBoard).mockClear()
+      render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
+
+      const modal = document.createElement('div')
+      modal.setAttribute('role', 'dialog')
+      modal.setAttribute('aria-modal', 'true')
+      modal.tabIndex = -1
+      modal.addEventListener('keydown', (event) => {
+        event.stopPropagation()
+      })
+      document.body.appendChild(modal)
+
+      try {
+        await fireEvent.keyDown(modal, { key: 'Escape' })
+        expect(resetToBoard).not.toHaveBeenCalled()
+      } finally {
+        modal.remove()
+      }
+    })
+
      it('q triggers reset to board', async () => {
     const { resetToBoard } = await import('../../lib/router.svelte')
        vi.mocked(resetToBoard).mockClear()
