@@ -1,6 +1,9 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte'
   import TerminalTabs from './TerminalTabs.svelte'
-  import { getProjectTerminalTaskId } from './lib/projectTerminal'
+  import { killPty } from './lib/ipc'
+  import { cleanupProjectTerminalTask, getProjectTerminalTaskId } from './lib/projectTerminal'
+  import { clearTaskTerminalTabsSession, getTaskTerminalTabsSession, releaseAllForTask } from './lib/terminalPool'
 
   interface Props {
     projectId?: string | null
@@ -11,6 +14,35 @@
   let { projectId = null, projectName = '', projectPath = '' }: Props = $props()
 
   const terminalTaskId = $derived(projectId ? getProjectTerminalTaskId(projectId) : null)
+  let previousTerminalTaskId = $state<string | null>(null)
+
+  function cleanupTerminalTask(taskId: string) {
+    void cleanupProjectTerminalTask(taskId, {
+      getTaskTerminalTabsSession,
+      killPty,
+      releaseAllForTask,
+      clearTaskTerminalTabsSession,
+    }).then((result) => {
+      for (const failure of result.killFailures) {
+        console.error(`[TerminalProjectView] Failed to kill project terminal ${failure.key}:`, failure.error)
+      }
+    })
+  }
+
+  $effect(() => {
+    if (previousTerminalTaskId !== null && previousTerminalTaskId !== terminalTaskId) {
+      cleanupTerminalTask(previousTerminalTaskId)
+    }
+
+    previousTerminalTaskId = terminalTaskId
+  })
+
+  onDestroy(() => {
+    if (previousTerminalTaskId !== null) {
+      cleanupTerminalTask(previousTerminalTaskId)
+      previousTerminalTaskId = null
+    }
+  })
 </script>
 
 <div class="flex flex-col h-full min-h-0 overflow-hidden">
