@@ -1,11 +1,18 @@
 import type { PluginActivationResult, PluginContext } from '@openforge/plugin-sdk'
 import TerminalTaskPane from './TerminalTaskPane.svelte'
+import TerminalProjectView from './TerminalProjectView.svelte'
 import { setPluginContext } from './pluginContext'
 
 export async function activate(context: PluginContext): Promise<PluginActivationResult> {
   setPluginContext(context)
   return {
     contributions: {
+      views: [
+        {
+          id: 'terminal',
+          component: TerminalProjectView,
+        },
+      ],
       taskPaneTabs: [
         {
           id: 'terminal',

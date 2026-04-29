@@ -6,6 +6,16 @@
   "description": "Embedded terminal with PTY management and agent panels",
   "permissions": ["pty:read", "pty:write", "terminal:manage"],
   "contributes": {
+    "views": [
+      {
+        "id": "terminal",
+        "title": "Terminal",
+        "icon": "terminal",
+        "showInRail": true,
+        "railOrder": 40,
+        "shortcut": "Cmd+J"
+      }
+    ],
     "taskPaneTabs": [
       {
         "id": "terminal",

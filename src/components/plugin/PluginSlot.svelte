@@ -15,10 +15,11 @@
     taskId?: string
     projectId?: string | null
     projectName?: string
+    projectPath?: string
     panelSide?: 'left' | 'right'
   }
 
-  let { slotType, slotId = '', taskId = '', projectId = null, projectName = '', panelSide }: Props = $props()
+  let { slotType, slotId = '', taskId = '', projectId = null, projectName = '', projectPath = '', panelSide }: Props = $props()
 
   let renderedComponents = $state(new Map<string, Component<Record<string, unknown>>>())
   let renderErrors = $state(new Map<string, string>())
@@ -142,7 +143,7 @@
             errorMessage={normalizeErrorMessage(error)}
           />
         {/snippet}
-        <Component {taskId} {projectId} {projectName} />
+        <Component {taskId} {projectId} {projectName} {projectPath} />
       </svelte:boundary>
     {:else}
       <div data-contribution-id={contrib.contributionId}></div>

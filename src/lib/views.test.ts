@@ -33,6 +33,7 @@ describe('views registry', () => {
     const viewContext = {
       projectId: 'proj-alpha',
       projectName: 'Project Alpha',
+      projectPath: '/workspace/project-alpha',
       onCloseSettings,
       onProjectDeleted,
     } satisfies ViewContext
@@ -168,6 +169,30 @@ describe('views registry', () => {
     expect(pluginViews['plugin:com.openforge.github-sync:pr_review']?.component).toBe(PluginSlot)
   })
 
+  it('resolves the terminal view through plugin entries', () => {
+    const pluginViews = getViews([
+      makeManifest({
+        id: 'com.openforge.terminal',
+        contributes: {
+          views: [
+            {
+              id: 'terminal',
+              title: 'Terminal',
+              icon: 'terminal',
+              shortcut: 'Cmd+J',
+              showInRail: true,
+              railOrder: 40,
+            },
+          ],
+        },
+      }),
+    ])
+
+    expect(pluginViews['plugin:com.openforge.terminal:terminal']).toBeDefined()
+    expect('terminal' in pluginViews).toBe(false)
+    expect(pluginViews['plugin:com.openforge.terminal:terminal']?.component).toBe(PluginSlot)
+  })
+
   it('passes plugin slot props for builtin fullpage views', () => {
     const pluginViews = getViews([
       makeManifest({
@@ -188,6 +213,7 @@ describe('views registry', () => {
     const props = pluginViews['plugin:com.openforge.file-viewer:files']?.getProps({
       projectId: 'proj-alpha',
       projectName: 'Project Alpha',
+      projectPath: '/workspace/project-alpha',
       onCloseSettings: vi.fn(),
       onProjectDeleted: vi.fn(),
     })
@@ -197,6 +223,7 @@ describe('views registry', () => {
       slotId: 'plugin:com.openforge.file-viewer:files',
       projectId: 'proj-alpha',
       projectName: 'Project Alpha',
+      projectPath: '/workspace/project-alpha',
     })
   })
 })
