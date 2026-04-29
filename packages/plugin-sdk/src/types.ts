@@ -91,6 +91,7 @@ export interface PluginContext {
 export interface PluginViewProps extends Record<string, unknown> {
   projectId?: string | null
   projectName?: string
+  projectPath?: string
 }
 
 export interface PluginTaskPaneProps extends Record<string, unknown> {

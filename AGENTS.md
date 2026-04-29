@@ -22,6 +22,12 @@ Never use `$effect` return-cleanup to release resources keyed by a prop value. S
 
 At the start of every task in this repository, load the Babysitter `call` skill and follow its instructions, including loading any skill it delegates to.
 
+For implementation tasks, loading the Babysitter skill is not enough. Before editing files, create and drive an actual Babysitter CLI run:
+- Run `babysitter run:create ... --harness pi` from the project root using an absolute `--entry` path.
+- Report the created run id before implementation work begins.
+- Continue with `babysitter run:iterate`, execute/post effects with `babysitter task:post`, and keep iterating until the run reaches a terminal state or requires explicit user input.
+- Do not bypass the Babysitter orchestration model with direct implementation. If `run:create` or iteration cannot proceed, stop and ask the user instead of continuing.
+
 Project profile: Open Forge is a Tauri v2 desktop command center for coordinating multiple projects and AI coding agents while keeping the user focused on one active thing at a time. Babysitter guidance should preserve that product goal: timely nudges for meaningful handoffs, blocked agents, review readiness, CI failures, and destructive decisions; otherwise stay quiet.
 
 Recommended local Babysitter usage:

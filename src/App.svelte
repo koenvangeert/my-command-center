@@ -104,6 +104,7 @@
       props: activeViewEntry.getProps({
         projectId: $activeProjectId,
         projectName: activeProject?.name ?? '',
+        projectPath: activeProject?.path ?? '',
         onCloseSettings: () => { router.navigate('board') },
         onProjectDeleted: loadProjects,
       }),
@@ -1162,6 +1163,10 @@
           <div class="flex items-center justify-between">
             <span class="text-sm text-base-content">Files</span>
             <kbd class="kbd kbd-sm">⌘O</kbd>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-base-content">Terminal</span>
+            <kbd class="kbd kbd-sm">⌘J</kbd>
           </div>
           <div class="flex items-center justify-between">
             <span class="text-sm text-base-content">Search tasks</span>

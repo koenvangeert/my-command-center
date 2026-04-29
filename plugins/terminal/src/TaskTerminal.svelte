@@ -136,7 +136,7 @@
   }
 </script>
 
-<div class="flex flex-col h-full">
+<div class="flex flex-col h-full w-full min-w-0 overflow-hidden">
   <div class="flex-1 overflow-hidden min-h-0 relative">
     <div class="shell-terminal-wrapper w-full h-full p-3 bg-base-100" bind:this={terminalEl}></div>
     {#if lifecycle.shellExited}

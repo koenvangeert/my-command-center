@@ -122,7 +122,7 @@
   })
 </script>
 
-<div class="flex flex-col h-full">
+<div class="flex flex-col h-full w-full min-w-0 overflow-hidden">
   <div class="flex items-center overflow-x-auto border-b border-base-300 bg-base-200 shrink-0">
     {#each tabs as tab (tab.index)}
       <div class="flex items-center whitespace-nowrap">
