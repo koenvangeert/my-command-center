@@ -14,14 +14,13 @@
   import { TERMINAL_PLUGIN_ID } from '../../lib/terminalPlugin'
   import type { PluginManifest } from '../../lib/plugin/types'
   import { useShortcutRegistry } from '../../lib/shortcuts.svelte'
-  import { focusTerminal, releaseAllForTask } from '../../lib/terminalPool'
+  import { releaseAllForTask } from '../../lib/terminalPool'
   import type { Action, BoardStatus, Task } from '../../lib/types'
   import AgentPanel from './AgentPanel.svelte'
   import TaskInfoPanel from './TaskInfoPanel.svelte'
   import ResizablePanel from '../shared/ui/ResizablePanel.svelte'
   import SelfReviewView from './SelfReviewView.svelte'
   import ActionDropdown from '../shared/ui/ActionDropdown.svelte'
-  import { getTerminalTaskPaneController } from './terminalTaskPaneController'
 
   interface Props {
     task: Task
@@ -117,27 +116,6 @@
         taskShortcuts.register('⌘3', () => {
           setActiveView(terminalTaskPaneTab.namespacedId)
         })
-        taskShortcuts.register('⌘t', () => {
-          const controller = getTerminalTaskPaneController(task.id)
-          if (activeView === terminalTaskPaneTab.namespacedId && controller) {
-            controller.addTab()
-            return
-          }
-          setActiveView(terminalTaskPaneTab.namespacedId)
-        })
-        taskShortcuts.register('⌘e', () => {
-          setActiveView(terminalTaskPaneTab.namespacedId)
-          const controller = getTerminalTaskPaneController(task.id)
-          if (controller) {
-            controller.focusActiveTab()
-          } else {
-            focusTerminal(`${task.id}-shell-0`)
-          }
-        })
-        taskShortcuts.register('⌘w', () => {
-          if (activeView !== terminalTaskPaneTab.namespacedId) return
-          void getTerminalTaskPaneController(task.id)?.closeActiveTab()
-        })
       }
     }
 
@@ -145,9 +123,6 @@
       taskShortcuts.unregister('⌘1')
       taskShortcuts.unregister('⌘2')
       taskShortcuts.unregister('⌘3')
-      taskShortcuts.unregister('⌘t')
-      taskShortcuts.unregister('⌘e')
-      taskShortcuts.unregister('⌘w')
     }
   })
 
@@ -195,17 +170,9 @@
   }
 
   function handleTaskDetailKeydown(e: KeyboardEvent) {
-    if (terminalTaskPaneTab !== null && activeView === terminalTaskPaneTab.namespacedId && e.metaKey && e.shiftKey && !e.ctrlKey && !e.altKey) {
-      const match = e.code.match(/^Digit([1-9])$/)
-      if (match) {
-        e.preventDefault()
-        getTerminalTaskPaneController(task.id)?.switchToTab(Number(match[1]) - 1)
-        return
-      }
-    }
-
     taskShortcuts.handleKeydown(e)
     if (e.defaultPrevented) {
+      e.stopPropagation()
       return
     }
 
@@ -215,16 +182,19 @@
 
     if (e.key === 'Escape' || e.key === 'q') {
       e.preventDefault()
+      e.stopPropagation()
       handleBack()
       return
     }
     if (e.key === 'h' && workspacePath !== null) {
       e.preventDefault()
+      e.stopPropagation()
       setActiveView('code')
       return
     }
     if (e.key === 'l' && workspacePath !== null) {
       e.preventDefault()
+      e.stopPropagation()
       setActiveView('review')
       return
     }
