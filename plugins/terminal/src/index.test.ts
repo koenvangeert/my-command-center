@@ -1,6 +1,11 @@
+import { existsSync, readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it, vi } from 'vitest'
 import { validatePluginManifest } from '@openforge/plugin-sdk'
 import manifest from '../manifest.json'
+
+const terminalSrcDir = dirname(fileURLToPath(import.meta.url))
 
 const { mockTerminalTaskPane, mockTerminalProjectView } = vi.hoisted(() => ({
   mockTerminalTaskPane: { name: 'TerminalTaskPaneComponent' },
@@ -16,6 +21,14 @@ vi.mock('./TerminalProjectView.svelte', () => ({
 }))
 
 describe('terminal plugin', () => {
+  it('does not retain stale host PluginContext state in the terminal plugin entry', () => {
+    const indexSource = readFileSync(join(terminalSrcDir, 'index.ts'), 'utf8')
+
+    expect(indexSource).not.toContain('./pluginContext')
+    expect(indexSource).not.toContain('setPluginContext')
+    expect(existsSync(join(terminalSrcDir, 'pluginContext.ts'))).toBe(false)
+  })
+
   it('has a valid manifest with a top-level terminal view', () => {
     const errors = validatePluginManifest(manifest)
     expect(errors).toEqual([])
