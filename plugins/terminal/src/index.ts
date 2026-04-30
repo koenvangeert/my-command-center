@@ -1,10 +1,8 @@
 import type { PluginActivationResult, PluginContext } from '@openforge/plugin-sdk'
 import TerminalTaskPane from './TerminalTaskPane.svelte'
 import TerminalProjectView from './TerminalProjectView.svelte'
-import { setPluginContext } from './pluginContext'
 
-export async function activate(context: PluginContext): Promise<PluginActivationResult> {
-  setPluginContext(context)
+export async function activate(_context: PluginContext): Promise<PluginActivationResult> {
   return {
     contributions: {
       views: [
