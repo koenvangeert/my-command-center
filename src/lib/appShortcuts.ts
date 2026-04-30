@@ -1,3 +1,5 @@
+import { APP_SHORTCUT_DEFINITIONS } from './appShortcutDefinitions'
+import type { AppShortcutAction } from './appShortcutDefinitions'
 import type { ShortcutRegistry } from './shortcuts.svelte'
 
 export interface AppShortcutHandlers {
@@ -16,71 +18,64 @@ export interface AppShortcutHandlers {
   cycleActiveProject(direction: 'previous' | 'next', options?: { boardOnly?: boolean }): void
 }
 
-export function registerAppShortcuts(shortcuts: ShortcutRegistry, handlers: AppShortcutHandlers): void {
-  shortcuts.register('?', () => {
-    handlers.showShortcuts()
-  })
-
-  shortcuts.register('⌘k', () => {
-    void handlers.openActionPalette()
-  })
-
-  shortcuts.register('⌘⇧p', () => {
-    handlers.toggleProjectSwitcher()
-  })
-
-  shortcuts.register('⌘b', () => {
-    handlers.toggleSidebar()
-  })
-
-  shortcuts.register('⌘n', () => {
-    handlers.openNewTaskDialog()
-  })
-
-  shortcuts.register('⌘[', () => { handlers.goBack() })
-  shortcuts.register('⌘arrowleft', () => { handlers.goBack() })
-  shortcuts.register('⌃[', () => { handlers.goBack() })
-  shortcuts.register('⌃arrowleft', () => { handlers.goBack() })
-
-  shortcuts.register('⌘d', () => {
-    handlers.toggleVoiceRecording()
-  })
-  shortcuts.register('⌃d', () => {
-    handlers.toggleVoiceRecording()
-  })
-
-  shortcuts.register('⌘⇧f', () => {
-    handlers.toggleCommandPalette()
-  })
-
-  const toggleFileQuickOpen = () => {
-    if (!handlers.canToggleFileQuickOpen()) return
-    handlers.toggleFileQuickOpen()
+function runAppShortcutAction(action: AppShortcutAction, handlers: AppShortcutHandlers): void {
+  switch (action) {
+    case 'showShortcuts':
+      handlers.showShortcuts()
+      break
+    case 'openActionPalette':
+      void handlers.openActionPalette()
+      break
+    case 'toggleProjectSwitcher':
+      handlers.toggleProjectSwitcher()
+      break
+    case 'toggleSidebar':
+      handlers.toggleSidebar()
+      break
+    case 'openNewTaskDialog':
+      handlers.openNewTaskDialog()
+      break
+    case 'goBack':
+      handlers.goBack()
+      break
+    case 'toggleVoiceRecording':
+      handlers.toggleVoiceRecording()
+      break
+    case 'toggleCommandPalette':
+      handlers.toggleCommandPalette()
+      break
+    case 'toggleFileQuickOpen':
+      if (handlers.canToggleFileQuickOpen()) {
+        handlers.toggleFileQuickOpen()
+      }
+      break
+    case 'resetToBoard':
+      handlers.resetToBoard()
+      break
+    case 'navigateToSettings':
+      handlers.navigateToSettings()
+      break
+    case 'cycleNextProjectOnBoard':
+      handlers.cycleActiveProject('next', { boardOnly: true })
+      break
+    case 'cyclePreviousProjectOnBoard':
+      handlers.cycleActiveProject('previous', { boardOnly: true })
+      break
+    case 'cyclePreviousProject':
+      handlers.cycleActiveProject('previous')
+      break
+    case 'cycleNextProject':
+      handlers.cycleActiveProject('next')
+      break
   }
-  shortcuts.register('⌘⇧o', toggleFileQuickOpen)
-  shortcuts.register('⌃⇧o', toggleFileQuickOpen)
+}
 
-  shortcuts.register('⌘h', () => {
-    handlers.resetToBoard()
-  })
-
-  shortcuts.register('⌘,', () => {
-    handlers.navigateToSettings()
-  })
-
-  shortcuts.register('⌃n', () => {
-    handlers.cycleActiveProject('next', { boardOnly: true })
-  })
-
-  shortcuts.register('⌃p', () => {
-    handlers.cycleActiveProject('previous', { boardOnly: true })
-  })
-
-  shortcuts.register('1', () => {
-    handlers.cycleActiveProject('previous')
-  })
-
-  shortcuts.register('2', () => {
-    handlers.cycleActiveProject('next')
-  })
+export function registerAppShortcuts(shortcuts: ShortcutRegistry, handlers: AppShortcutHandlers): void {
+  for (const definition of APP_SHORTCUT_DEFINITIONS) {
+    for (const registration of definition.registrations) {
+      shortcuts.register(registration.key, () => {
+        runAppShortcutAction(registration.action, handlers)
+      })
+    }
+  }
 }

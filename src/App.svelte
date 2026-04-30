@@ -42,6 +42,7 @@
   import { useShortcutRegistry } from './lib/shortcuts.svelte'
   import { ICON_RAIL_HIDDEN_VIEWS, getViews } from './lib/views'
   import { registerAppShortcuts } from './lib/appShortcuts'
+  import { getGlobalShortcutHelpEntries } from './lib/appShortcutDefinitions'
   import { registerAppTauriEventListeners } from './lib/appTauriEventListeners'
   import { loadAppStartupData } from './lib/appStartup'
   
@@ -64,6 +65,7 @@
   let actionPaletteActions = $state<Action[]>([])
   let router = useAppRouter()
   let registeredPluginShortcuts = new Set<string>()
+  const globalShortcutHelpEntries = getGlobalShortcutHelpEntries()
   let previousPluginProjectId = $state<string | null>(null)
   let appWindow: ReturnType<typeof getCurrentWindow> | null = null
 
@@ -762,46 +764,18 @@
       <div>
         <div class="font-mono text-xs text-secondary mb-3">// global</div>
         <div class="flex flex-col gap-2">
-          <div class="flex items-center justify-between">
-            <span class="text-sm text-base-content">Switch project</span>
-            <div class="flex gap-0.5"><kbd class="kbd kbd-sm">⌘</kbd><kbd class="kbd kbd-sm">⇧</kbd><kbd class="kbd kbd-sm">P</kbd></div>
-          </div>
-          <div class="flex items-center justify-between">
-            <span class="text-sm text-base-content">New task</span>
-            <kbd class="kbd kbd-sm">⌘N</kbd>
-          </div>
-          <div class="flex items-center justify-between">
-            <span class="text-sm text-base-content">Go back</span>
-            <kbd class="kbd kbd-sm">⌘[</kbd>
-          </div>
-          <div class="flex items-center justify-between">
-            <span class="text-sm text-base-content">Refresh GitHub</span>
-            <div class="flex gap-0.5"><kbd class="kbd kbd-sm">⌘</kbd><kbd class="kbd kbd-sm">⇧</kbd><kbd class="kbd kbd-sm">R</kbd></div>
-          </div>
-          <div class="flex items-center justify-between">
-            <span class="text-sm text-base-content">Voice input</span>
-            <kbd class="kbd kbd-sm">⌘D</kbd>
-          </div>
-          <div class="flex items-center justify-between">
-            <span class="text-sm text-base-content">Files</span>
-            <div class="flex gap-0.5"><kbd class="kbd kbd-sm">⌘</kbd><kbd class="kbd kbd-sm">⇧</kbd><kbd class="kbd kbd-sm">O</kbd></div>
-          </div>
-          <div class="flex items-center justify-between">
-            <span class="text-sm text-base-content">Terminal</span>
-            <kbd class="kbd kbd-sm">⌘J</kbd>
-          </div>
-          <div class="flex items-center justify-between">
-            <span class="text-sm text-base-content">Search tasks</span>
-            <div class="flex gap-0.5"><kbd class="kbd kbd-sm">⌘</kbd><kbd class="kbd kbd-sm">⇧</kbd><kbd class="kbd kbd-sm">F</kbd></div>
-          </div>
-          <div class="flex items-center justify-between">
-            <span class="text-sm text-base-content">Action palette</span>
-            <kbd class="kbd kbd-sm">⌘K</kbd>
-          </div>
-          <div class="flex items-center justify-between">
-            <span class="text-sm text-base-content">Show shortcuts</span>
-            <kbd class="kbd kbd-sm">?</kbd>
-          </div>
+          {#each globalShortcutHelpEntries as shortcut}
+            <div class="flex items-center justify-between">
+              <span class="text-sm text-base-content">{shortcut.label}</span>
+              <div class="flex gap-0.5">
+                {#each shortcut.keys as keySequence}
+                  {#each keySequence as key}
+                    <kbd class="kbd kbd-sm">{key}</kbd>
+                  {/each}
+                {/each}
+              </div>
+            </div>
+          {/each}
         </div>
       </div>
 
