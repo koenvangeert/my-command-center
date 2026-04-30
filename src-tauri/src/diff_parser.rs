@@ -79,7 +79,9 @@ pub fn parse_unified_diff(diff_output: &str, truncate: bool) -> Vec<TaskFileDiff
             } else if line.starts_with("rename to ") {
                 file.status = "renamed".to_string();
             } else if line.starts_with("Binary files") {
-                file.status = "binary".to_string();
+                if file.status == "modified" {
+                    file.status = "binary".to_string();
+                }
                 file.patch = None;
                 in_patch = false;
             } else if line.starts_with("@@") {
@@ -244,6 +246,36 @@ Binary files a/image.png and b/image.png differ
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].filename, "image.png");
         assert_eq!(result[0].status, "binary");
+        assert_eq!(result[0].patch, None);
+    }
+
+    #[test]
+    fn test_added_binary_file_preserves_added_status() {
+        let diff = r#"diff --git a/image.png b/image.png
+new file mode 100644
+index 0000000..abcdefg
+Binary files /dev/null and b/image.png differ
+"#;
+
+        let result = parse_unified_diff(diff, true);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].filename, "image.png");
+        assert_eq!(result[0].status, "added");
+        assert_eq!(result[0].patch, None);
+    }
+
+    #[test]
+    fn test_removed_binary_file_preserves_removed_status() {
+        let diff = r#"diff --git a/image.png b/image.png
+deleted file mode 100644
+index 1234567..0000000
+Binary files a/image.png and /dev/null differ
+"#;
+
+        let result = parse_unified_diff(diff, true);
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].filename, "image.png");
+        assert_eq!(result[0].status, "removed");
         assert_eq!(result[0].patch, None);
     }
 
