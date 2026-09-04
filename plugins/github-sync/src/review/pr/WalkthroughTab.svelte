@@ -52,6 +52,8 @@
     onAddReplyToReview?: (commentId: number, body: string) => void
     onRemovePendingReply?: (commentId: number) => void
     onAskAgentStep?: (stepId: string, body: string) => void
+    onEditThread?: (threadId: string, body: string) => void
+    onDeleteThread?: (threadId: string) => void
     onSubmitReview: (request: {
       repoOwner: string
       repoName: string
@@ -61,6 +63,8 @@
       comments: ReviewSubmissionComment[]
       commitId: string
     }) => Promise<void>
+    // Requests the walkthrough jump to the step with this id (set by the questions panel).
+    focusStepId?: string | null
   }
 
   let props: Props = $props()
@@ -108,6 +112,22 @@
         : activeStep?.summary ?? '',
   )
   let stale = $derived(isWalkthroughStale(lifecycle.walkthrough, props.pr))
+
+  // When the questions panel asks to jump to a step-anchored thread, select that
+  // step. Applied once per distinct requested id, so manual Prev/Next navigation
+  // is never yanked back; a remount (leaving and re-entering the tab) re-applies
+  // it because this guard resets with the component.
+  let lastFocusedStepId: string | null = null
+  $effect(() => {
+    const id = props.focusStepId
+    const steps = parsedSteps
+    if (!id || !steps || id === lastFocusedStepId) return
+    const conceptIndex = steps.findIndex(s => s.id === id)
+    if (conceptIndex === -1) return
+    lastFocusedStepId = id
+    // Step entries are [ticket, ...concepts, submit]; the ticket occupies index 0.
+    lifecycle.activeStepIndex = clampStepIndex(conceptIndex + 1, totalSteps)
+  })
 
   function toggleStepDetails(): void {
     stepDetailsExpanded = !stepDetailsExpanded
@@ -189,6 +209,8 @@
             onOpenUrl={props.onOpenUrl}
             onAskAgentStep={props.onAskAgentStep}
             onReplyToThread={props.onReplyToThread}
+            onEditThread={props.onEditThread}
+            onDeleteThread={props.onDeleteThread}
           />
         </div>
       </div>

@@ -1,5 +1,7 @@
 import { untrack } from 'svelte'
 import type { PrFileDiff, ReviewPullRequest } from '@openforge-app/plugin-sdk/domain'
+import { parseAndValidateWalkthroughSteps } from '../../../lib/walkthroughParse'
+import { buildWalkthroughStepList } from '../../../lib/walkthroughViewState'
 import type { GithubSyncPrReviewClient } from '../githubSyncClient'
 import type { Walkthroughs } from './useWalkthroughPolling.svelte'
 import { useWalkthroughTicketCoverage } from './useWalkthroughTicketCoverage.svelte'
@@ -89,6 +91,21 @@ export function createWalkthroughReview(
     get loadError() { return walkthroughs.status(getPr()).loadError },
     get activeStepIndex() { return activeStepIndex },
     set activeStepIndex(value: number) { activeStepIndex = value },
+    // Rail-matching labels for step-anchored questions ("Step 2 · <title>"). Numbers
+    // match the walkthrough rail exactly (ticket is step 1, so the first concept is
+    // step 2) by reusing the same entry list the rail builds. Consumed by the
+    // questions panel; missing ids fall back to a generic label there.
+    get stepLabelById() {
+      const wt = walkthroughs.status(getPr()).walkthrough
+      const labels = new Map<string, { number: number; title: string }>()
+      if (!wt || wt.status !== 'ready') return labels
+      const steps = parseAndValidateWalkthroughSteps(wt.steps_json, getFiles())
+      if (!steps) return labels
+      buildWalkthroughStepList(steps).forEach((entry, index) => {
+        if (entry.kind === 'concept') labels.set(entry.step.id, { number: index + 1, title: entry.step.title })
+      })
+      return labels
+    },
     ticketCoverage,
     loadCached, generate, stop, regenerate, setIssueKey,
   }
