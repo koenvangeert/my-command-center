@@ -5,11 +5,13 @@ import { createStoryEnvironment, type StoryEnvironmentAdapter } from './environm
 import StoryEnvironmentFrame from './StoryEnvironmentFrame.svelte'
 import { createStoryStorageAdapter } from './environment/storyStorageAdapter'
 import { createStoryThemeAdapter } from './environment/storyThemeAdapter'
+import { createStoryTerminalAdapter, type TerminalStoryDefinition } from './environment/storyTerminalAdapter'
 
 export interface StoryScenarioDefinition {
   now?: string | number
   desktop?: StoryDesktopDefinition
   plugin?: StoryPluginDefinition
+  terminal?: TerminalStoryDefinition
   adapters?: () => readonly StoryEnvironmentAdapter[]
   /** Exact diagnostic fragments expected from deliberately failed local responses. */
   expectedConsoleErrors?: readonly string[]
@@ -18,16 +20,17 @@ export interface StoryScenarioDefinition {
 function createScenario(id: string, definition: StoryScenarioDefinition, themeId: string) {
   const desktop = createStoryDesktopAdapter(definition.desktop)
   const plugin = createStoryPluginAdapter(definition.plugin)
+  const terminal = definition.terminal ? createStoryTerminalAdapter(definition.terminal) : undefined
   const environment = createStoryEnvironment({
     id,
     now: definition.now ?? '2026-01-02T09:30:00.000Z',
     adapters: [
       createStoryStorageAdapter(window.localStorage),
       createStoryStorageAdapter(window.sessionStorage),
-      desktop, createStoryThemeAdapter(themeId), plugin, ...(definition.adapters?.() ?? []),
+      desktop, createStoryThemeAdapter(themeId), plugin, ...(terminal ? [terminal] : []), ...(definition.adapters?.() ?? []),
     ],
   })
-  return { environment, desktop, plugin }
+  return { environment, desktop, plugin, terminal }
 }
 
 export type StoryScenario = ReturnType<typeof createScenario>

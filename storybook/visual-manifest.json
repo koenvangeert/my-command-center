@@ -54,5 +54,15 @@
   { "catalog": "components", "story": "components-plugin-sdk-navigation--default", "theme": "openforge-dark", "viewport": { "width": 640, "height": 400 }, "ready": "[data-testid=sdk-navigation]", "expectedErrors": [] },
   { "catalog": "components", "story": "components-plugin-sdk-navigation--selected", "theme": "openforge-light", "viewport": { "width": 640, "height": 400 }, "ready": "button[aria-current=page]", "expectedErrors": [] },
   { "catalog": "components", "story": "components-plugin-sdk-navigation--collapsed", "theme": "openforge-dark", "viewport": { "width": 640, "height": 400 }, "ready": "button[data-collapsed=true]", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-plugin-sdk-navigation--narrow-overflow", "theme": "openforge-light", "viewport": { "width": 360, "height": 450 }, "ready": "[data-testid=sdk-navigation]", "expectedErrors": [] }
+  { "catalog": "components", "story": "components-plugin-sdk-navigation--narrow-overflow", "theme": "openforge-light", "viewport": { "width": 360, "height": 450 }, "ready": "[data-testid=sdk-navigation]", "expectedErrors": [] },
+  { "catalog": "pages", "story": "pages-terminal--ready", "theme": "openforge-light", "viewport": { "width": 1280, "height": 800 }, "ready": "[data-terminal-ready=true]", "expectedErrors": [] },
+  { "catalog": "pages", "story": "pages-terminal--ready", "theme": "openforge-dark", "viewport": { "width": 1280, "height": 800 }, "ready": "[data-terminal-ready=true]", "expectedErrors": [] },
+  { "catalog": "pages", "story": "pages-terminal--runtime-unavailable", "theme": "openforge-light", "viewport": { "width": 1280, "height": 800 }, "ready": "text=Terminal runtime unavailable", "expectedErrors": [] },
+  { "catalog": "pages", "story": "pages-terminal-task-pane--ready", "theme": "openforge-dark", "viewport": { "width": 640, "height": 800 }, "ready": "[data-terminal-ready=true]", "expectedErrors": [] },
+  { "catalog": "pages", "story": "pages-terminal-task-pane--lookup-error", "theme": "openforge-light", "viewport": { "width": 640, "height": 800 }, "ready": "button:has-text(\"Retry workspace lookup\")", "expectedErrors": [] },
+  { "catalog": "pages", "story": "pages-terminal-task-pane--missing-workspace", "theme": "openforge-light", "viewport": { "width": 640, "height": 800 }, "ready": "text=Terminal workspace unavailable", "expectedErrors": [] },
+  { "catalog": "components", "story": "components-terminal-runtime--disconnected", "theme": "openforge-light", "viewport": { "width": 640, "height": 400 }, "ready": "[data-terminal-ready=true]", "expectedErrors": [] },
+  { "catalog": "components", "story": "components-terminal-runtime--empty", "theme": "openforge-dark", "viewport": { "width": 640, "height": 400 }, "ready": "[data-terminal-ready=true]", "expectedErrors": [] },
+  { "catalog": "components", "story": "components-terminal-tabs--overflow", "theme": "openforge-dark", "viewport": { "width": 640, "height": 400 }, "ready": "[data-terminal-ready=true]", "expectedErrors": [] },
+  { "catalog": "components", "story": "components-terminal-runtime--overflow", "theme": "openforge-light", "viewport": { "width": 640, "height": 400 }, "ready": "[data-terminal-ready=true]", "expectedErrors": [] }
 ]

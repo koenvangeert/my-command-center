@@ -8,6 +8,10 @@ const sdkNavigation = ['default', 'selected', 'collapsed', 'narrow-overflow', 'k
 /** @type {import('./coverage-types.ts').CoverageInventory} */
 const inventory = {
   pages: [
+    { source: 'plugins/terminal/src/TerminalProjectView.svelte', stories: ['pages-terminal--ready', 'pages-terminal--no-project', 'pages-terminal--no-path', 'pages-terminal--runtime-unavailable', 'pages-terminal--empty', 'pages-terminal--overflow', 'pages-terminal--shell-tabs-and-input'] },
+    { source: 'plugins/terminal/src/TerminalTaskPane.svelte', stories: ['pages-terminal-task-pane--ready', 'pages-terminal-task-pane--loading', 'pages-terminal-task-pane--missing-workspace', 'pages-terminal-task-pane--lookup-error', 'pages-terminal-task-pane--overflow'] },
+    { source: 'plugins/terminal/src/index.ts', contribution: 'com.openforge.terminal:views.register:terminal', stories: ['pages-terminal--ready'] },
+    { source: 'plugins/terminal/src/index.ts', contribution: 'com.openforge.terminal:taskPane.registerTab:terminal', stories: ['pages-terminal-task-pane--ready'] },
     {
       source: 'src/components/shell/ApplicationShell.svelte',
       stories: [
@@ -74,6 +78,13 @@ const inventory = {
     { source: 'packages/plugin-sdk/src/ui/Panel.svelte', stories: sdkPresentation },
     { source: 'packages/plugin-sdk/src/ui/FileTypeIcon.svelte', stories: sdkPresentation },
     { source: 'packages/plugin-sdk/src/ui/PluginSidebarLink.svelte', stories: sdkNavigation },
+    { source: 'packages/terminal-runtime/src/TaskTerminalSurface.svelte', stories: ['components-terminal-runtime--ready', 'components-terminal-runtime--inactive', 'components-terminal-runtime--empty', 'components-terminal-runtime--overflow', 'components-terminal-runtime--disconnected', 'components-terminal-runtime--stale-events', 'components-terminal-runtime--reset'] },
+    { source: 'packages/terminal-runtime/src/TerminalTabsSurface.svelte', stories: ['components-terminal-tabs-surface--ready', 'components-terminal-tabs-surface--shortcut-hints'] },
+    { source: 'packages/terminal-runtime/src/TerminalTabsShell.svelte', stories: ['components-terminal-tabs--ready', 'components-terminal-tabs--overflow'] },
+    { source: 'packages/terminal-runtime/src/TerminalTabsTaskTerminal.svelte', stories: ['components-terminal-tabs-surface--ready'] },
+    { source: 'packages/terminal-runtime/src/TerminalTaskPaneSurface.svelte', stories: ['components-terminal-task-pane-surface--ready', 'components-terminal-task-pane-surface--loading', 'components-terminal-task-pane-surface--missing-workspace'] },
+    { source: 'plugins/terminal/src/TerminalTabs.svelte', stories: ['components-terminal-tabs--ready', 'components-terminal-tabs--overflow'] },
+    { source: 'plugins/terminal/src/TaskTerminal.svelte', stories: ['components-terminal-tabs--ready'] },
   ],
   // Unadopted UI is reported by discovery, never parked here to silence coverage.
   exclusions: [],
