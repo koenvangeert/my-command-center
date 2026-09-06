@@ -80,7 +80,10 @@ class Host:
 
     def command(self, command):
         self.send(command)
-        return self.receive()
+        result = self.receive()
+        if command.startswith("REEXEC ") and "refused" in result:
+            self.barrier = False
+        return result
 
     def read(self, index):
         result = self.command(f"READ {index}")
@@ -363,6 +366,48 @@ class Continuity(unittest.TestCase):
 
 
 
+    def test_incompatible_target_is_refused_without_touching_live_descriptors(self):
+        target = self.root / "v2-incompatible"
+        subprocess.run(["/usr/bin/clang", "-std=c11", "-Wall", "-Wextra", "-Werror",
+                        "-O2", "-DVERSION=2", "-DSTATE_FORMAT=2",
+                        str(SOURCE / "host.c"), "-o", str(target)], check=True)
+        host = self.host
+        before = host.command("INFO")
+        result = host.command(f"REEXEC {target}")
+        self.assertIn("refused", result)
+        self.assertEqual(host.command("INFO"), before)
+        self.assertEqual(macos.descriptors(host.proc.pid), before["fds"])
+        host.write(1, "refused-still-live\n")
+        host.until(1, rb"AGENT_ECHO refused-still-live\r\n")
+        record("incompatibleRefusal", response=result, inventory=before)
+
+    def test_controlled_initialization_failure_reexecs_retained_image(self):
+        target = self.root / "v2-fail-init"
+        subprocess.run(["/usr/bin/clang", "-std=c11", "-Wall", "-Wextra", "-Werror",
+                        "-O2", "-DVERSION=2", "-DFAIL_INITIALIZATION",
+                        str(SOURCE / "host.c"), "-o", str(target)], check=True)
+        host = self.host
+        before = host.command("INFO")
+        identities = {pid: macos.identity(macos.process(pid))
+                      for pid in (host.proc.pid, self.agent, self.tool)}
+        self.assertEqual(host.command(f"REEXEC {target}"), {"prepared": True})
+        after = host.command("GO")
+        self.assertEqual(after["version"], 1, "controlled initialization failure did not recover v1")
+        self.assertEqual(macos.executable(host.proc.pid), str(self.root / "v1"))
+        self.assertEqual(after["recoveries"], 1)
+        expected = sorted(fd for fd in before["fds"] if fd != before["sentinel"])
+        self.assertEqual(macos.descriptors(host.proc.pid), expected)
+        for pid, identity in identities.items():
+            self.assertEqual(macos.identity(macos.process(pid)), identity)
+        for old, new in zip(before["children"][:2], after["children"][:2]):
+            for key in ("pid", "fd", "tty", "device", "cursor"):
+                self.assertEqual(old[key], new[key])
+        host.write(1, "fallback-once\n")
+        host.until(1, rb"AGENT_ECHO fallback-once\r\n")
+        self.assertEqual(host.output[1].count(b"AGENT_ECHO fallback-once\r\n"), 1)
+        self.assertEqual(host.replace()["version"], 2)
+        record("controlledRecovery", before=before, after=after, descriptors=expected)
+
     def test_repeated_replacement_and_failed_exec_keep_sessions_usable(self):
         host = self.host
         for version in (2, 1, 2):
@@ -370,7 +415,10 @@ class Continuity(unittest.TestCase):
             self.assertEqual(macos.executable(host.proc.pid), str(self.root / f"v{version}"))
             host.write(1, f"version-{version}\n")
             host.until(1, f"AGENT_ECHO version-{version}\\r\\n".encode())
-        host.command(f"REEXEC {self.root}/does-not-exist")
+        target = self.root / "vanishing-target"
+        os.link(self.root / "v1", target)
+        self.assertEqual(host.command(f"REEXEC {target}"), {"prepared": True})
+        target.unlink()  # Pass preflight, then force execl itself to return ENOENT.
         self.assertIn("execError", host.command("GO"))
         self.assertEqual(host.command("INFO")["version"], 2)
         host.write(1, "failed-exec-still-live\n")
@@ -394,7 +442,7 @@ if __name__ == "__main__":
             "python": platform.python_version(),
             "clang": subprocess.check_output(["/usr/bin/clang", "--version"], text=True).strip(),
             "sources": {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
-                        for p in SOURCE.iterdir() if p.suffix in (".c", ".py")},
+                        for p in SOURCE.iterdir() if p.suffix in (".c", ".h", ".py")},
             "negativeControl": NEGATIVE_CONTROL, "testsRun": program.result.testsRun,
             "passed": program.result.wasSuccessful(),
             "failures": [str(test) + "\n" + trace for test, trace in program.result.failures + program.result.errors],
