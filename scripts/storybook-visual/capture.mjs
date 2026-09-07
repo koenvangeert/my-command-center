@@ -1,6 +1,7 @@
 import { createServer } from 'node:http'
 import { readFile } from 'node:fs/promises'
 import { resolve, extname, sep } from 'node:path'
+import { freezeSvgMasks } from './svg-motion.mjs'
 
 export async function serve(root) {
   const base = resolve(root)
@@ -42,6 +43,7 @@ export async function capture(browser, url, entry, { mutate, timeout = 15000 } =
     }
     await page.addStyleTag({ content: '*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}' })
     if (mutate) await mutate(page)
+    await page.evaluate(freezeSvgMasks)
     const bytes = await page.screenshot({ animations: 'disabled', caret: 'hide', scale: 'css' })
     return { bytes, diagnostics: errors }
   } finally {

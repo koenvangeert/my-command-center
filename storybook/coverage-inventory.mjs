@@ -13,6 +13,10 @@ const inventory = {
     { source: 'plugins/terminal/src/index.ts', contribution: 'com.openforge.terminal:views.register:terminal', stories: ['pages-terminal--ready'] },
     { source: 'plugins/terminal/src/index.ts', contribution: 'com.openforge.terminal:taskPane.registerTab:terminal', stories: ['pages-terminal-task-pane--ready'] },
     {
+      source: 'packages/plugin-sdk/src/ui/PluginPageShell.svelte',
+      stories: ['pages-sdk-page-shell--populated', 'pages-sdk-page-shell--empty', 'pages-sdk-page-shell--loading', 'pages-sdk-page-shell--error', 'pages-sdk-page-shell--overflow', 'pages-sdk-page-shell--collapsed', 'pages-sdk-page-shell--retry-and-collapse', 'pages-sdk-page-shell--create-first-report'],
+    },
+    {
       source: 'src/components/shell/ApplicationShell.svelte',
       stories: [
         'application-shell--expanded',
@@ -104,7 +108,7 @@ const inventory = {
     { source: 'packages/plugin-sdk/src/ui/Badge.svelte', stories: sdkPresentation },
     { source: 'packages/plugin-sdk/src/ui/Panel.svelte', stories: sdkPresentation },
     { source: 'packages/plugin-sdk/src/ui/FileTypeIcon.svelte', stories: sdkPresentation },
-    { source: 'packages/plugin-sdk/src/ui/PluginSidebarLink.svelte', stories: sdkNavigation },
+    { source: 'packages/plugin-sdk/src/ui/PluginSidebarLink.svelte', stories: [...sdkNavigation, 'sdk-sidebar-link--default', 'sdk-sidebar-link--active', 'sdk-sidebar-link--collapsed', 'sdk-sidebar-link--keyboard'] },
     { source: 'packages/terminal-runtime/src/TaskTerminalSurface.svelte', stories: ['components-terminal-runtime--ready', 'components-terminal-runtime--inactive', 'components-terminal-runtime--empty', 'components-terminal-runtime--overflow', 'components-terminal-runtime--disconnected', 'components-terminal-runtime--stale-events', 'components-terminal-runtime--reset'] },
     { source: 'packages/terminal-runtime/src/TerminalTabsSurface.svelte', stories: ['components-terminal-tabs-surface--ready', 'components-terminal-tabs-surface--shortcut-hints'] },
     { source: 'packages/terminal-runtime/src/TerminalTabsShell.svelte', stories: ['components-terminal-tabs--ready', 'components-terminal-tabs--overflow'] },
@@ -112,6 +116,16 @@ const inventory = {
     { source: 'packages/terminal-runtime/src/TerminalTaskPaneSurface.svelte', stories: ['components-terminal-task-pane-surface--ready', 'components-terminal-task-pane-surface--loading', 'components-terminal-task-pane-surface--missing-workspace'] },
     { source: 'plugins/terminal/src/TerminalTabs.svelte', stories: ['components-terminal-tabs--ready', 'components-terminal-tabs--overflow'] },
     { source: 'plugins/terminal/src/TaskTerminal.svelte', stories: ['components-terminal-tabs--ready'] },
+    { source: 'packages/plugin-sdk/src/ui/Modal.svelte', stories: ['sdk-overlays--modal', 'sdk-overlays--locked-modal', 'sdk-overlays--edit-and-reopen'] },
+    { source: 'packages/plugin-sdk/src/ui/AnchoredMenu.svelte', stories: ['sdk-overlays--menu', 'sdk-overlays--empty-menu', 'sdk-overlays--menu-keyboard'] },
+    { source: 'packages/plugin-sdk/src/ui/Tooltip.svelte', stories: ['sdk-overlays--tooltip', 'sdk-overlays--tooltip-keyboard'] },
+    { source: 'packages/plugin-sdk/src/ui/Tabs.svelte', stories: ['sdk-tabs--horizontal', 'sdk-tabs--vertical', 'sdk-tabs--disabled', 'sdk-tabs--automatic-keyboard', 'sdk-tabs--manual-vertical'] },
+    { source: 'packages/plugin-sdk/src/ui/MarkdownContent.svelte', stories: ['sdk-markdown--rich-text', 'sdk-markdown--empty', 'sdk-markdown--long-code', 'sdk-markdown--diagram', 'sdk-markdown--links'] },
+    { source: 'packages/plugin-sdk/src/ui/ProjectFileTree.svelte', stories: ['sdk-file-workspace--populated', 'sdk-file-workspace--selected', 'sdk-file-workspace--empty', 'sdk-file-workspace--loading', 'sdk-file-workspace--error', 'sdk-file-workspace--overflow', 'sdk-file-workspace--retry', 'sdk-file-workspace--keyboard-and-resize'] },
+    { source: 'packages/plugin-sdk/src/ui/ResizablePanel.svelte', stories: ['sdk-file-workspace--populated', 'sdk-file-workspace--right-panel', 'sdk-file-workspace--keyboard-and-resize'] },
+    { source: 'packages/plugin-sdk/src/ui/PluginPageHeader.svelte', stories: ['sdk-view-states--content', 'sdk-view-states--overflow'] },
+    { source: 'packages/plugin-sdk/src/ui/PluginViewState.svelte', stories: ['sdk-view-states--content', 'sdk-view-states--empty', 'sdk-view-states--loading', 'sdk-view-states--error'] },
+    { source: 'packages/plugin-sdk/src/ui/CollapsibleSection.svelte', stories: ['sdk-view-states--content', 'sdk-view-states--collapsed', 'sdk-view-states--overflow'] },
   ],
   // Unadopted UI is reported by discovery, never parked here to silence coverage.
   exclusions: [],
