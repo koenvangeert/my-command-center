@@ -1,6 +1,6 @@
 # Review screenshot changes
 
-The smoke manifest selects the populated Focus Board page and the Plugin SDK primary Button. It does not enforce coverage of the remaining Storybook catalog.
+The manifest selects the foundation Focus Board and SDK Button, plus [host chrome and feedback baselines](storybook-host-chrome.md). It does not enforce coverage of the remaining Storybook catalog.
 
 ## Commands
 
@@ -37,9 +37,9 @@ Each entry declares `catalog`, stable Storybook `story` ID, `theme`, integer `vi
 
 Images are named `<catalog>/<story>--<theme>--<width>x<height>.png`. Renaming an identity makes the old PNG obsolete; removing a story from the built index fails with that story's identity. Missing images never become approvals during `check`. Unexpected files in the baseline directories fail both modes.
 
-Readiness must identify the intended final state, not just a generic root element or spinner. The selected smoke stories have no asynchronous play interactions. New interactive cases must choose a selector that proves their interaction has finished. Deliberately failed cases must list complete console/page-error messages in `expectedErrors`, including multiplicity. Missing expected messages fail too. No substring allowlist is used.
+Readiness must identify the intended final state, not just a generic root element or spinner. Interactive cases must choose a selector that proves their interaction has finished, such as the host context menu's visible menu. Deliberately failed cases must list complete console/page-error messages in `expectedErrors`, including multiplicity. Missing expected messages fail too. No substring allowlist is used.
 
-Comparison is exact by default. The Focus Board alone declares a measured rasterization allowance: at most 20 changed pixels, with no channel differing by more than one level. Repeated Linux Chromium captures varied 19 antialiased border pixels, even with GPU disabled. The manifest requires a reason and rejects broader allowances. Reports retain raw pixel counts and difference images, including accepted noise. The component has no allowance.
+Comparison is exact by default. The Focus Board and selected host-shell cases declare measured one-channel antialiasing allowances in the manifest. The manifest requires a reason and rejects allowances over 20 pixels or one channel level. Reports retain raw pixel counts and difference images, including accepted noise. All other cases use exact comparison.
 
 ## Canonical environment
 

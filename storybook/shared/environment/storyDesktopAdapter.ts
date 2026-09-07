@@ -24,6 +24,7 @@ export interface StoryDesktopAdapter extends StoryEnvironmentAdapter {
   readonly bridge: OpenForgeDesktopBridge
   readonly calls: StoryDesktopCall[]
   emit(eventName: string, payload: unknown): void
+  defer(command: string): void
   release(command: string): void
 }
 
@@ -77,6 +78,11 @@ export function createStoryDesktopAdapter(
   const listeners = new Map<string, Set<(payload: unknown) => void>>()
   let deferred = new Set(definition.deferred ?? [])
   const pending = new Map<string, Set<() => void>>()
+
+  function defer(command: string): void {
+    if (!installed || disposed) throw new Error('Story desktop adapter must be installed before deferring commands')
+    deferred.add(command)
+  }
 
   function release(command: string): void {
     deferred.delete(command)
@@ -214,7 +220,7 @@ export function createStoryDesktopAdapter(
     installed = false
   }
 
-  return Object.freeze({ bridge, calls, install, reset, emit, release, dispose })
+  return Object.freeze({ bridge, calls, install, reset, emit, defer, release, dispose })
 }
 
 function readFixture<T>(fixtures: Map<string, T>, key: string): T {

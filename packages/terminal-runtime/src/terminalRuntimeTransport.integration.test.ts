@@ -45,6 +45,7 @@ describe('terminal runtime transport seam', () => {
       ptyInstanceId: 7,
       snapshot: {
         data: Uint8Array.from(new TextEncoder().encode('snapshot first')),
+        continuationData: new Uint8Array(),
         ptyInstanceId: 7,
         watermark: 0,
       },

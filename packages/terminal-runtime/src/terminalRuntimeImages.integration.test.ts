@@ -102,7 +102,7 @@ describe('terminal runtime inline image lifecycle', () => {
 
     host.emit('openforge-app-events-reconnected', {})
 
-    await vi.waitFor(() => expect(terminalMocks.instances[0].write).toHaveBeenCalledTimes(3))
+    await vi.waitFor(() => expect(terminalMocks.instances[0].write).toHaveBeenCalledTimes(4))
     expect(terminalMocks.instances[0].write).toHaveBeenNthCalledWith(
       1,
       '',
@@ -114,7 +114,7 @@ describe('terminal runtime inline image lifecycle', () => {
       expect.any(Function),
     )
     expect(terminalMocks.instances[0].write).toHaveBeenNthCalledWith(
-      3,
+      4,
       Uint8Array.from(new TextEncoder().encode('ghostty snapshot')),
       expect.any(Function),
     )

@@ -39,6 +39,8 @@ impl PtyManager {
                             .encode(snapshot.portable_vt),
                         compatibility_data: base64::engine::general_purpose::STANDARD
                             .encode(snapshot.compatibility_replay),
+                        continuation_data: base64::engine::general_purpose::STANDARD
+                            .encode(snapshot.continuation),
                     })
                 }
                 Ok(Ok(_)) => None,

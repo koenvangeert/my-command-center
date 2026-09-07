@@ -42,6 +42,7 @@ describe('Terminal Session client contract', () => {
 
     expect(view.replaceSnapshot).toHaveBeenCalledWith({
       data: Uint8Array.from(new TextEncoder().encode('bootstrap')),
+      continuationData: new Uint8Array(),
       compatibilityData: undefined,
       ptyInstanceId: 1,
       sequence: 0,
@@ -54,6 +55,7 @@ describe('Terminal Session client contract', () => {
     host.emit('openforge-app-events-reconnected', { attempt: 1, reconnectedAt: 'now' })
     await vi.waitFor(() => expect(view.replaceSnapshot).toHaveBeenCalledWith({
       data: Uint8Array.from(new TextEncoder().encode('reconnected')),
+      continuationData: new Uint8Array(),
       compatibilityData: undefined,
       ptyInstanceId: 1,
       sequence: 0,

@@ -27,6 +27,7 @@
     "storybook:visual:update": "node scripts/storybook-visual/container.mjs update",
     "storybook:visual:test": "node scripts/storybook-visual/container.mjs test",
     "storybook:visual:unit": "vitest run scripts/storybook-visual",
+    "storybook:terminal:check": "node scripts/storybook-terminal-check.mjs",
     "website:dev": "pnpm --filter @openforge-app/website dev",
     "website:check": "pnpm --filter @openforge-app/website check",
     "website:build": "pnpm --filter @openforge-app/website build",

@@ -1,0 +1,2103 @@
+{
+  "platform": "darwin",
+  "architecture": "arm64",
+  "passed": true,
+  "scope": "Actual Ghostty actor and production xterm TerminalView recovery in JSDOM. No mounted desktop, images, IPC or live PTY replacement in this probe.",
+  "sources": {
+    "src-tauri/src/terminal_model.rs": "b06c4f715e38a7d3ec9a8c5936c073f071bca72770f38fbc2e856c613712cb68",
+    "src-tauri/src/terminal_model/session.rs": "485320762d608989efc1b79f2ab5e2f8cacd28c18fedb4e27502c7c9056816e6",
+    "src-tauri/src/terminal_model/worker_session.rs": "23a87a124808a0d6d1f703102b8f165b603baec154f1fbe59c266ccc289ae79e",
+    "src-tauri/src/terminal_model/event_state.rs": "7d9abafd5ddddde6d08308c6b3ea0ab14e4e12ca122c5ee514ac981396a6e223",
+    "packages/terminal-runtime/src/xtermTerminalView.ts": "080531bde1ba23cd8d067dc67034720d2a6f3bf9081c71bad04f2f6833f18faf",
+    "packages/terminal-runtime/src/terminalView.ts": "be1d55a1c12733077887328525edbcd25f32bedd63eb9614e68a0012bbdb5c8f",
+    "packages/terminal-runtime/src/xtermPresentation.ts": "f835eddac54f1f168bc6d78035cc6e7f14c0532c68ea0ec5dea874716512b448",
+    "pnpm-lock.yaml": "c519741f164e71ae9b3d070254f79abddc234903ec9f1b858270a99e1c5ad226",
+    "scripts/experiments/pty-reexec/authority/src/main.rs": "a178384e75dcc95a167afd4fe36d361df01fd02fdca00df5866ebbb3c7de67f9",
+    "scripts/experiments/pty-reexec/authority/Cargo.lock": "43407257a64c2e8680901ccfc7555cec0ff2f6a8d4cbfc9d1871744ac9f70810",
+    "scripts/experiments/pty-reexec/authority-proof.mjs": "3f99bf126ccfd47095394da3130b1b1e6fcfa12aeca14a20a0c23b203ee73086"
+  },
+  "rendererBundleHash": "6923174e820cfd7daac7d33126f58bd7c91cd6a8c7030c2630810c5c04ba8395",
+  "cases": [
+    {
+      "name": "partial-csi",
+      "codecMatches": true,
+      "checkpointBytes": 1231,
+      "watermark": 1,
+      "prefixBytes": 10,
+      "suffixBytes": 4,
+      "continuationBytes": 4,
+      "acceptedReplies": [],
+      "continuedReplies": [],
+      "rendererReplies": [],
+      "presentationMatches": true,
+      "expected": {
+        "geometry": {
+          "cols": 80,
+          "rows": 24
+        },
+        "activeBuffer": "normal",
+        "cursor": {
+          "x": 9,
+          "y": 0
+        },
+        "selectionText": "",
+        "lines": [
+          {
+            "row": 0,
+            "text": "BEFORERED",
+            "wrapped": false,
+            "cells": [
+              {
+                "column": 0,
+                "text": "B",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 1,
+                "text": "E",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 2,
+                "text": "F",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 3,
+                "text": "O",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 4,
+                "text": "R",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 5,
+                "text": "E",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 6,
+                "text": "R",
+                "width": 1,
+                "foreground": {
+                  "mode": 16777216,
+                  "value": 1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 7,
+                "text": "E",
+                "width": 1,
+                "foreground": {
+                  "mode": 16777216,
+                  "value": 1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 8,
+                "text": "D",
+                "width": 1,
+                "foreground": {
+                  "mode": 16777216,
+                  "value": 1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              }
+            ]
+          }
+        ]
+      },
+      "actual": {
+        "geometry": {
+          "cols": 80,
+          "rows": 24
+        },
+        "activeBuffer": "normal",
+        "cursor": {
+          "x": 9,
+          "y": 0
+        },
+        "selectionText": "",
+        "lines": [
+          {
+            "row": 0,
+            "text": "BEFORERED",
+            "wrapped": false,
+            "cells": [
+              {
+                "column": 0,
+                "text": "B",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 1,
+                "text": "E",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 2,
+                "text": "F",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 3,
+                "text": "O",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 4,
+                "text": "R",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 5,
+                "text": "E",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 6,
+                "text": "R",
+                "width": 1,
+                "foreground": {
+                  "mode": 16777216,
+                  "value": 1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 7,
+                "text": "E",
+                "width": 1,
+                "foreground": {
+                  "mode": 16777216,
+                  "value": 1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 8,
+                "text": "D",
+                "width": 1,
+                "foreground": {
+                  "mode": 16777216,
+                  "value": 1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              }
+            ]
+          }
+        ]
+      },
+      "mismatch": null
+    },
+    {
+      "name": "partial-utf8",
+      "codecMatches": true,
+      "checkpointBytes": 1229,
+      "watermark": 1,
+      "prefixBytes": 8,
+      "suffixBytes": 7,
+      "continuationBytes": 2,
+      "acceptedReplies": [],
+      "continuedReplies": [],
+      "rendererReplies": [],
+      "presentationMatches": true,
+      "expected": {
+        "geometry": {
+          "cols": 80,
+          "rows": 24
+        },
+        "activeBuffer": "normal",
+        "cursor": {
+          "x": 12,
+          "y": 0
+        },
+        "selectionText": "",
+        "lines": [
+          {
+            "row": 0,
+            "text": "BEFORE😀AFTER",
+            "wrapped": false,
+            "cells": [
+              {
+                "column": 0,
+                "text": "B",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 1,
+                "text": "E",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 2,
+                "text": "F",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 3,
+                "text": "O",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 4,
+                "text": "R",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 5,
+                "text": "E",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 6,
+                "text": "😀",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 7,
+                "text": "A",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 8,
+                "text": "F",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 9,
+                "text": "T",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 10,
+                "text": "E",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 11,
+                "text": "R",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              }
+            ]
+          }
+        ]
+      },
+      "actual": {
+        "geometry": {
+          "cols": 80,
+          "rows": 24
+        },
+        "activeBuffer": "normal",
+        "cursor": {
+          "x": 12,
+          "y": 0
+        },
+        "selectionText": "",
+        "lines": [
+          {
+            "row": 0,
+            "text": "BEFORE😀AFTER",
+            "wrapped": false,
+            "cells": [
+              {
+                "column": 0,
+                "text": "B",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 1,
+                "text": "E",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 2,
+                "text": "F",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 3,
+                "text": "O",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 4,
+                "text": "R",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 5,
+                "text": "E",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 6,
+                "text": "😀",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 7,
+                "text": "A",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 8,
+                "text": "F",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 9,
+                "text": "T",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 10,
+                "text": "E",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 11,
+                "text": "R",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              }
+            ]
+          }
+        ]
+      },
+      "mismatch": null
+    },
+    {
+      "name": "alternate-screen",
+      "codecMatches": true,
+      "checkpointBytes": 1447,
+      "watermark": 1,
+      "prefixBytes": 18,
+      "suffixBytes": 13,
+      "continuationBytes": 0,
+      "acceptedReplies": [],
+      "continuedReplies": [],
+      "rendererReplies": [],
+      "presentationMatches": true,
+      "expected": {
+        "geometry": {
+          "cols": 80,
+          "rows": 24
+        },
+        "activeBuffer": "normal",
+        "cursor": {
+          "x": 12,
+          "y": 0
+        },
+        "selectionText": "",
+        "lines": [
+          {
+            "row": 0,
+            "text": "PRIMARYAFTER",
+            "wrapped": false,
+            "cells": [
+              {
+                "column": 0,
+                "text": "P",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 1,
+                "text": "R",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 2,
+                "text": "I",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 3,
+                "text": "M",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 4,
+                "text": "A",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 5,
+                "text": "R",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 6,
+                "text": "Y",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 7,
+                "text": "A",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 8,
+                "text": "F",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 9,
+                "text": "T",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 10,
+                "text": "E",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 11,
+                "text": "R",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              }
+            ]
+          }
+        ]
+      },
+      "actual": {
+        "geometry": {
+          "cols": 80,
+          "rows": 24
+        },
+        "activeBuffer": "normal",
+        "cursor": {
+          "x": 12,
+          "y": 0
+        },
+        "selectionText": "",
+        "lines": [
+          {
+            "row": 0,
+            "text": "PRIMARYAFTER",
+            "wrapped": false,
+            "cells": [
+              {
+                "column": 0,
+                "text": "P",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 1,
+                "text": "R",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 2,
+                "text": "I",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 3,
+                "text": "M",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 4,
+                "text": "A",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 5,
+                "text": "R",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 6,
+                "text": "Y",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 7,
+                "text": "A",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 8,
+                "text": "F",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 9,
+                "text": "T",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 10,
+                "text": "E",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 11,
+                "text": "R",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              }
+            ]
+          }
+        ]
+      },
+      "mismatch": null
+    },
+    {
+      "name": "partial-query",
+      "codecMatches": true,
+      "checkpointBytes": 1229,
+      "watermark": 1,
+      "prefixBytes": 8,
+      "suffixBytes": 7,
+      "continuationBytes": 2,
+      "acceptedReplies": [],
+      "continuedReplies": [
+        [
+          27,
+          91,
+          49,
+          59,
+          55,
+          82
+        ]
+      ],
+      "rendererReplies": [],
+      "presentationMatches": true,
+      "expected": {
+        "geometry": {
+          "cols": 80,
+          "rows": 24
+        },
+        "activeBuffer": "normal",
+        "cursor": {
+          "x": 11,
+          "y": 0
+        },
+        "selectionText": "",
+        "lines": [
+          {
+            "row": 0,
+            "text": "BEFOREAFTER",
+            "wrapped": false,
+            "cells": [
+              {
+                "column": 0,
+                "text": "B",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 1,
+                "text": "E",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 2,
+                "text": "F",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 3,
+                "text": "O",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 4,
+                "text": "R",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 5,
+                "text": "E",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 6,
+                "text": "A",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 7,
+                "text": "F",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 8,
+                "text": "T",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 9,
+                "text": "E",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 10,
+                "text": "R",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              }
+            ]
+          }
+        ]
+      },
+      "actual": {
+        "geometry": {
+          "cols": 80,
+          "rows": 24
+        },
+        "activeBuffer": "normal",
+        "cursor": {
+          "x": 11,
+          "y": 0
+        },
+        "selectionText": "",
+        "lines": [
+          {
+            "row": 0,
+            "text": "BEFOREAFTER",
+            "wrapped": false,
+            "cells": [
+              {
+                "column": 0,
+                "text": "B",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 1,
+                "text": "E",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 2,
+                "text": "F",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 3,
+                "text": "O",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 4,
+                "text": "R",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 5,
+                "text": "E",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 6,
+                "text": "A",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 7,
+                "text": "F",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 8,
+                "text": "T",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 9,
+                "text": "E",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              },
+              {
+                "column": 10,
+                "text": "R",
+                "width": 1,
+                "foreground": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "background": {
+                  "mode": 0,
+                  "value": -1
+                },
+                "bold": false,
+                "italic": false,
+                "underline": false,
+                "dim": false,
+                "inverse": false,
+                "invisible": false,
+                "strikethrough": false,
+                "overline": false
+              }
+            ]
+          }
+        ]
+      },
+      "mismatch": null
+    }
+  ]
+}
