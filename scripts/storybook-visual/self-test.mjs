@@ -31,7 +31,10 @@ export async function selfTest({ browser, url, entries, output }) {
   function probe(name, mode = 'check') {
     const destination = join(output, 'self-test', name)
     const result = spawnSync(process.execPath, ['scripts/storybook-visual/run.mjs', mode], {
-      env: { ...process.env, VISUAL_OUTPUT: destination, VISUAL_BASELINES: probeBaselines }, encoding: 'utf8', timeout: 120000,
+      // Each probe captures the entire adopted catalog. The original two-case
+      // budget must grow with it while retaining a finite timeout.
+      env: { ...process.env, VISUAL_OUTPUT: destination, VISUAL_BASELINES: probeBaselines }, encoding: 'utf8',
+      timeout: Math.max(120000, 30000 + entries.length * 15000),
     })
     if (result.error) throw result.error
     return { ...result, destination }

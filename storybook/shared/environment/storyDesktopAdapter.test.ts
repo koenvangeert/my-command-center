@@ -11,6 +11,24 @@ afterEach(() => {
 })
 
 describe('StoryDesktopAdapter', () => {
+  it('defers an interaction after installation without blocking setup, and resets the deferral', async () => {
+    const adapter = createStoryDesktopAdapter()
+    adapters.push(adapter)
+    adapter.install()
+    await setConfig('theme', 'openforge-light')
+    adapter.defer('set_config')
+    let saved = false
+    const saving = setConfig('project_sidebar_order', '["P-2","P-1"]').then(() => { saved = true })
+    await Promise.resolve()
+    expect(saved).toBe(false)
+    adapter.release('set_config')
+    await saving
+    expect(saved).toBe(true)
+    adapter.reset()
+    await setConfig('project_sidebar_order', '["P-1","P-2"]')
+    await expect(getConfig('project_sidebar_order')).resolves.toBe('["P-1","P-2"]')
+  })
+
   it.each([null, undefined, 0])('rejects non-string configuration and file values: %s', async value => {
     const adapter = createStoryDesktopAdapter()
     adapters.push(adapter)
