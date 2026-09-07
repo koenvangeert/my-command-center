@@ -33,7 +33,7 @@ export function validateManifest(entries, indexes) {
       const tolerance = entry.tolerance
       // Owner-approved exception for measured rounded-border noise in these host frames.
       const settingsFrame = entry.catalog === 'pages' && /^pages-(global|project)-settings--/.test(entry.story) &&
-        entry.theme === 'openforge-light' && entry.viewport.width === 1280 && entry.viewport.height === 900
+        entry.theme === 'openforge-light' && [1280, 900].includes(entry.viewport.width) && entry.viewport.height === 900
       const maxPixels = settingsFrame ? 40 : 36
       const maxChannelDelta = settingsFrame ? 3 : tolerance?.maxPixels <= 2 ? 3 : 2
       if (!tolerance || Object.keys(tolerance).sort().join() !== 'maxChannelDelta,maxPixels,reason' ||

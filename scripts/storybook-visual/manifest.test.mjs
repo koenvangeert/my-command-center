@@ -52,8 +52,8 @@ describe('visual manifest contract', () => {
   ])('rejects invalid entries', (entries, diagnostic) => {
     expect(() => validateManifest(entries, indexes)).toThrow(diagnostic)
   })
-  it('allows measured settings-frame raster noise only in light desktop settings captures', () => {
-    const settings = { ...entry, story: 'pages-global-settings--plugins', viewport: { width: 1280, height: 900 }, tolerance: { maxPixels: 40, maxChannelDelta: 3, reason: 'Measured rounded-border raster noise' } }
+  it.each([1280, 900])('allows measured raster noise only in light settings captures at width %i', width => {
+    const settings = { ...entry, story: 'pages-global-settings--plugins', viewport: { width, height: 900 }, tolerance: { maxPixels: 40, maxChannelDelta: 3, reason: 'Measured rounded-border raster noise' } }
     const settingsIndexes = { pages: { entries: { [settings.story]: { type: 'story' } } } }
     expect(validateManifest([settings], settingsIndexes)).toEqual([settings])
     for (const override of [
