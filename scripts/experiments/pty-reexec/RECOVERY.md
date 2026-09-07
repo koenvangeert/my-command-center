@@ -1,8 +1,32 @@
-# Recovery proof stopped for owner review
+# Terminal recovery proof
 
 KVG-4715 extends the KVG-4714 experiment. The release gate is **incomplete**. No production extraction or renderer migration is authorized.
 
-## Blocking result
+## KVG-4760 owner-approved recovery contract
+
+The owner confirmed this focused production fix. Ghostty captures portable VT, bounded compatibility/image replay, explicit parser continuation and the output watermark in one actor command. Continuation comes from Ghostty's replay-safe continuation API, not from a guessed retained-output suffix. Unavailable continuation still defers the snapshot without disabling the authority.
+
+The xterm view drains earlier writes and resets its presentation and image addon. It replays compatibility data, sends byte CAN to cancel unfinished replay parser and UTF-8 input, repaints portable VT, and restores the explicit continuation last. Only then can the coordinator flush output newer than the snapshot watermark. A live snapshot missing continuation is refused; empty continuation explicitly means parser ground. Ghostty remains the only source of PTY protocol replies.
+
+The parent probe now bundles the actual production `createXtermTerminalView` and calls `replaceSnapshot` and `writeLive`. It uses JSDOM and public presentation captures, not a second implementation of recovery ordering. Its four fixtures use the view's default 80-by-24 geometry. The earlier red report used 20-by-4 xterm terminals and remains unchanged.
+
+Run the updated probe without overwriting the historical red evidence:
+
+```sh
+node scripts/experiments/pty-reexec/authority-proof.mjs \
+  scripts/experiments/pty-reexec/evidence/macos-arm64-continuation.json
+```
+
+All four arm64 cases pass through the production view: split CSI, split UTF-8, alternate-screen return, and split query. No renderer replies reach the input callback. The binary Ghostty checkpoint comparisons also pass. The probe does not mount the desktop, test pixels, test images, cross IPC, or replace a live terminal model process.
+
+`packages/terminal-runtime/src/xtermTerminalRecovery.integration.test.ts` separately exercises the real view and xterm image addon. It checks text, color, cursor, UTF-8, query suppression, image retention, alternate-screen return, and refusal without clearing when continuation is absent. Both desktop and Trusted Plugin adapter tests check continuation transport. The actor test checks continuation and ground state at distinct watermarks; existing overflow tests check deferred recovery.
+
+The arm64 PTY rerun is recorded in `evidence/macos-arm64-continuation-pty.json`. Nine live tests and seven teardown tests pass. These independent process and descriptor observations still use the isolated PTY experiment, not a production daemon.
+
+The parent gate is still incomplete. No macOS x64 execution is available. Supported-image coverage here is an inline-image fixture, not proof of arbitrary image-state retention beyond the compatibility budget. The broader stop-rule gaps listed below remain open.
+
+
+## Historical KVG-4715 blocking result
 
 Run from the repository root after `pnpm i`:
 
@@ -11,7 +35,7 @@ node scripts/experiments/pty-reexec/authority-proof.mjs \
   scripts/experiments/pty-reexec/evidence/macos-arm64-authority.json
 ```
 
-Expected current result: exit 1. This is a failed acceptance gate, not an expected-failure test that can turn the gate green.
+The stopped proof at commit `2a4876ca5b6b477f3791d914c21587f89679aa72` exited 1. This was a failed acceptance gate, not an expected-failure test that could turn the gate green. The following describes that historical run.
 
 The standalone Rust crate compiles OpenForge's actual `terminal_model.rs` and its worker modules unchanged. It uses the same pinned libghostty-vt revision as the Sidecar. The probe obtains real actor-captured compatibility replay, portable VT and watermark, then feeds real xterm with the current presentation recovery order: reset, compatibility replay, portable VT, later output. It does not use a screenshot or claim a raw suffix is a parser checkpoint. It does not invoke the desktop view or exercise images, mounts, IPC or actual reexec of a terminal model.
 
@@ -28,7 +52,7 @@ The failing streams are 14 or 15 bytes in total. They fit entirely within the 25
 
 [The arm64 report](evidence/macos-arm64-authority.json) records source hashes, actual/expected cells and assertions. The binary checkpoints are 1162 to 1320 bytes for these fixtures. This is not proof of a global state budget or image preservation.
 
-KVG-4760 records the production recovery issue separately. Owner review must decide the recovery contract before that fix or further feasibility implementation proceeds. Do not change renderers, bless suffix-only recovery, or move production ownership to make these checks pass. A factual design update is pending owner confirmation; the current design's stop rule remains in force.
+This stopped result led to KVG-4760 and the owner-approved contract above. It did not authorize renderer migration, suffix-only recovery or production daemon extraction.
 
 ## Live failure handling established on arm64
 

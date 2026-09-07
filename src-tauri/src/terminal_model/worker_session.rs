@@ -521,13 +521,15 @@ fn run_worker(
             TerminalModelCommand::Resize { cols, rows } => model.resize(cols, rows),
             TerminalModelCommand::PortableSnapshot(response) => {
                 let result = model
-                    .ensure_snapshot_continuation_available()
-                    .and_then(|()| model.format_portable_vt())
-                    .map(|portable_vt| PortableTerminalSnapshot {
-                        instance_id,
-                        watermark: output_sequence,
-                        portable_vt,
-                        compatibility_replay: compatibility_replay.snapshot(),
+                    .parser_continuation()
+                    .and_then(|continuation| {
+                        Ok(PortableTerminalSnapshot {
+                            instance_id,
+                            watermark: output_sequence,
+                            portable_vt: model.format_portable_vt()?,
+                            compatibility_replay: compatibility_replay.snapshot(),
+                            continuation,
+                        })
                     })
                     .map_err(model_error);
                 let _ = response.send(result);

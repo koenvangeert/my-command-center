@@ -30,6 +30,7 @@ interface TrustedPluginTerminalModelDisabledPayload {
 interface TrustedPluginTerminalSnapshot {
   data: string
   compatibilityData?: string
+  continuationData: string
   instanceId: number
   watermark: number
 }
@@ -185,6 +186,7 @@ export function createTrustedPluginTerminalTransport(
       snapshot: replay.snapshot
         ? {
             data: decodeBase64(replay.snapshot.data),
+            continuationData: decodeBase64(replay.snapshot.continuationData),
             ptyInstanceId: replay.snapshot.instanceId,
             watermark: replay.snapshot.watermark,
             compatibilityData: replay.snapshot.compatibilityData

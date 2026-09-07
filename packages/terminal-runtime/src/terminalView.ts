@@ -15,6 +15,8 @@ export interface TerminalViewLiveOutput {
 export interface TerminalViewSnapshot {
   data: TerminalViewData
   compatibilityData?: TerminalViewData
+  /** Authority-captured parser continuation, restored after the presentation. */
+  continuationData?: Uint8Array
   ptyInstanceId: number | null
   sequence: number
 }

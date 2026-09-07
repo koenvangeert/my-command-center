@@ -127,6 +127,7 @@ describe('terminal runtime visibility', () => {
       await vi.waitFor(() => expect(view.replaceSnapshot).toHaveBeenCalledTimes(2))
       expect(view.replaceSnapshot).toHaveBeenLastCalledWith({
         data: Uint8Array.from(new TextEncoder().encode('authoritative hidden burst')),
+        continuationData: new Uint8Array(),
         ptyInstanceId: 1,
         sequence: 0,
       })
@@ -175,6 +176,7 @@ describe('terminal runtime visibility', () => {
       await vi.waitFor(() => expect(view.replaceSnapshot).toHaveBeenCalledTimes(2))
       expect(view.replaceSnapshot).toHaveBeenLastCalledWith({
         data: Uint8Array.from(new TextEncoder().encode('remounted snapshot')),
+        continuationData: new Uint8Array(),
         compatibilityData: Uint8Array.from(new TextEncoder().encode(INLINE_IMAGE_COMPATIBILITY_REPLAY)),
         ptyInstanceId: 1,
         sequence: 0,
@@ -212,6 +214,7 @@ describe('terminal runtime visibility', () => {
       await vi.waitFor(() => expect(replaceSnapshot).toHaveBeenCalledTimes(2))
       expect(replaceSnapshot).toHaveBeenLastCalledWith({
         data: Uint8Array.from(new TextEncoder().encode('latest hidden output')),
+        continuationData: new Uint8Array(),
         ptyInstanceId: 1,
         sequence: 0,
       })

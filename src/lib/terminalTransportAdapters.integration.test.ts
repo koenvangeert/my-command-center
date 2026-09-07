@@ -17,7 +17,7 @@ interface AdapterReplay {
   buffer: string | null
   isLive: boolean
   instanceId: number | null
-  snapshot?: { instanceId: number; watermark: number; data: string; compatibilityData?: string }
+  snapshot?: { instanceId: number; watermark: number; data: string; compatibilityData?: string; continuationData: string }
 }
 
 interface AdapterHarness {
@@ -39,7 +39,7 @@ function createDesktopHarness(): AdapterHarness {
     buffer: null,
     isLive: true,
     instanceId: 7,
-    snapshot: { instanceId: 7, watermark: 0, data: btoa('desktop replay') },
+    snapshot: { instanceId: 7, watermark: 0, data: btoa('desktop replay'), continuationData: '' },
   }
   let failExitSubscription = false
   const port = {
@@ -79,6 +79,7 @@ function createDesktopHarness(): AdapterHarness {
           instanceId: ptyInstanceId,
           watermark,
           data: btoa(data),
+          continuationData: btoa('\x1b[31'),
           compatibilityData: compatibilityReplay ? btoa(compatibilityReplay) : undefined,
         },
       }
@@ -105,7 +106,7 @@ function createTrustedPluginHarness(): AdapterHarness {
     buffer: null,
     isLive: true,
     instanceId: 7,
-    snapshot: { instanceId: 7, watermark: 0, data: btoa('plugin replay') },
+    snapshot: { instanceId: 7, watermark: 0, data: btoa('plugin replay'), continuationData: '' },
   }
   let failExitSubscription = false
   const port = {
@@ -152,6 +153,7 @@ function createTrustedPluginHarness(): AdapterHarness {
           instanceId: ptyInstanceId,
           watermark,
           data: btoa(data),
+          continuationData: btoa('\x1b[31'),
           compatibilityData: compatibilityReplay ? btoa(compatibilityReplay) : undefined,
         },
       }
@@ -259,7 +261,7 @@ describe('desktop TerminalTransport async registration', () => {
       buffer: null,
       isLive: true,
       instanceId: 7,
-      snapshot: { instanceId: 7, watermark, data: btoa('snapshot') },
+      snapshot: { instanceId: 7, watermark, data: btoa('snapshot'), continuationData: '' },
     }))
     const transport = createDesktopTerminalTransport({
       listenEvent: (eventName, handler) => listenDesktopEvent(
@@ -352,6 +354,7 @@ describe.each([
     expect(view.replaceSnapshot).toHaveBeenCalledOnce()
     expect(view.replaceSnapshot).toHaveBeenCalledWith({
       data: Uint8Array.from(new TextEncoder().encode('ghostty snapshot')),
+      continuationData: Uint8Array.from(new TextEncoder().encode('\x1b[31')),
       compatibilityData: Uint8Array.from(new TextEncoder().encode(compatibilityReplay)),
       ptyInstanceId: 9,
       sequence: 0,
@@ -449,6 +452,7 @@ describe.each([
     await vi.waitFor(() => {
       expect(view.replaceSnapshot).toHaveBeenLastCalledWith({
         data: Uint8Array.from(new TextEncoder().encode('reconnected replay')),
+        continuationData: Uint8Array.from(new TextEncoder().encode('\x1b[31')),
         compatibilityData: undefined,
         ptyInstanceId: 7,
         sequence: 0,

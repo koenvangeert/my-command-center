@@ -676,6 +676,8 @@ export interface TerminalViewSnapshot {
   watermark: number
   data: string
   compatibilityData?: string
+  /** Base64-encoded authority parser continuation. Empty means parser ground. */
+  continuationData: string
 }
 
 export interface PtyBufferState {

@@ -27,7 +27,7 @@ describe('desktop Terminal Session restore', () => {
       buffer: null,
       isLive: true,
       instanceId: 43,
-      snapshot: { instanceId: 43, watermark: 0, data: btoa('restarted') },
+      snapshot: { instanceId: 43, watermark: 0, data: btoa('restarted'), continuationData: '' },
     })
 
     await restorePtyInstance('task-restarted', 42)

@@ -38,6 +38,7 @@ describe('terminal snapshot ordering', () => {
     expect(view.replaceSnapshot).toHaveBeenCalledOnce()
     expect(view.replaceSnapshot).toHaveBeenCalledWith({
       data: Uint8Array.from(new TextEncoder().encode('rendered by xterm')),
+      continuationData: new Uint8Array(),
       compatibilityData: Uint8Array.from(new TextEncoder().encode(compatibilityReplay)),
       ptyInstanceId: 61,
       sequence: 0,
@@ -131,6 +132,7 @@ describe('terminal snapshot ordering', () => {
     expect(host.getPtyBuffer).toHaveBeenCalledOnce()
     expect(view.replaceSnapshot).toHaveBeenLastCalledWith({
       data: Uint8Array.from(new TextEncoder().encode('recovered snapshot')),
+      continuationData: new Uint8Array(),
       ptyInstanceId: 1,
       sequence: 0,
     })

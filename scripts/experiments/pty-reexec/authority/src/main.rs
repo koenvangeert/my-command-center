@@ -21,7 +21,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ];
     let mut results = Vec::new();
     for (name, prefix, suffix) in cases {
-        let options = TerminalModelOptions::new(20, 4);
+        let options = TerminalModelOptions::new(80, 24);
         let mut original = GhosttyTerminalModel::new(options)?;
         original.feed(prefix)?;
         // The replacement checkpoint must drain accepted replies, not replay them.
@@ -41,7 +41,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let (actor, feeder) = TerminalModelSession::start_with_event_sink(
             name.to_string(),
             1,
-            TerminalModelOptions::new(20, 4),
+            TerminalModelOptions::new(80, 24),
             std::sync::Arc::new(|_| {}),
         )?;
         feeder.feed(prefix);
@@ -56,6 +56,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "continuedReplies": original_replies,
             "watermark": presentation.watermark,
             "compatibilityData": presentation.compatibility_replay,
+            "continuationData": presentation.continuation,
             "data": presentation.portable_vt,
         }));
     }
