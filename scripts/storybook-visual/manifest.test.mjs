@@ -1,9 +1,15 @@
+import { readFileSync } from 'node:fs'
 import { describe, it, expect } from 'vitest'
 import { validateManifest, validateBaselines, identity, captureAppearance } from './manifest.mjs'
 
 const entry = { catalog: 'pages', story: 'pages-focus-board--populated', theme: 'openforge-light', viewport: { width: 1280, height: 800 }, ready: '[aria-label="Task list"]', expectedErrors: [] }
 const indexes = { pages: { entries: { [entry.story]: { type: 'story' } } } }
 describe('visual manifest contract', () => {
+  it('keeps the checked-in capture matrix free of duplicate identities after merges', () => {
+    const entries = JSON.parse(readFileSync(new URL('../../storybook/visual-manifest.json', import.meta.url), 'utf8'))
+    const names = entries.map(identity)
+    expect(names.filter((name, index) => names.indexOf(name) !== index)).toEqual([])
+  })
   it('accepts the measured two-level Markdown allowance', () => {
     const measured = { ...entry, tolerance: { maxPixels: 10, maxChannelDelta: 2, reason: 'Measured Markdown code-block border variation' } }
     expect(validateManifest([measured], indexes)).toEqual([measured])

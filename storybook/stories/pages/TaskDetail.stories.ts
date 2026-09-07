@@ -26,7 +26,8 @@ function scenario(kind: TaskDetailScenario): Story {
         expect(terminalDiagnostics.observe(task.id).view.authorityReadPending).toBe(false)
         await terminalDiagnostics.drainPresentation(task.id)
         const text = terminalDiagnostics.capturePresentation(task.id).lines.map(line => line.text).join('\n')
-        expect(text).toContain('OpenForge agent')
+        // The overflow transcript scrolls its heading out of the visible rows.
+        expect(text).toContain(kind === 'terminal' ? 'PASS integration case 45' : 'OpenForge agent')
       }, { timeout: 15000 })
       await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
       context.canvasElement.setAttribute('data-task-terminal-ready', 'true')

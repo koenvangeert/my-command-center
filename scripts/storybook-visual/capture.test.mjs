@@ -1,3 +1,4 @@
+import { PNG } from 'pngjs'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { chromium } from 'playwright'
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
@@ -23,9 +24,8 @@ async function withCatalog(script, run) {
   }
 }
 
-const entry = { catalog: 'pages', story: 'test', theme: 'openforge-light', viewport: { width: 400, height: 200 }, ready: '#ready' }
-
 describe('capture readiness', () => {
+  const entry = { catalog: 'pages', story: 'test', theme: 'openforge-light', viewport: { width: 400, height: 200 }, ready: '#ready' }
   it('waits for play completion even when the ready selector matches before editing begins', async () => {
     await withCatalog(`
       window.__STORYBOOK_PREVIEW__ = { currentRender: { phase: 'playing' } };
@@ -52,14 +52,21 @@ const entry = {
   viewport: { width: 480, height: 240 }, ready: '#ready', expectedErrors: [],
 }
 
+function pngFrame(text) {
+  const image = new PNG({ width: 64, height: 1 })
+  image.data.fill(255)
+  Buffer.from(text).copy(image.data)
+  return PNG.sync.write(image)
+}
+
 function browserFixture(frames) {
   const page = {
     setDefaultTimeout: vi.fn(), on: vi.fn(),
     clock: { setFixedTime: vi.fn(), pauseAt: vi.fn(), runFor: vi.fn() },
     goto: vi.fn(), waitForFunction: vi.fn(),
-    locator: () => ({ first: () => ({ waitFor: vi.fn() }) }),
+    locator: () => ({ count: async () => 0, first: () => ({ waitFor: vi.fn() }) }),
     evaluate: vi.fn(), addStyleTag: vi.fn(), waitForTimeout: vi.fn(),
-    screenshot: vi.fn(async () => Buffer.from(frames.length > 1 ? frames.shift() : frames[0])),
+    screenshot: vi.fn(async () => pngFrame(frames.length > 1 ? frames.shift() : frames[0])),
   }
   const context = { route: vi.fn(), newPage: async () => page, close: vi.fn() }
   return { browser: { newContext: async () => context }, page, context }
@@ -84,10 +91,10 @@ describe('visual capture boundary', () => {
         if (pendingPaint === 0) painted = 'unfocused cursor'
       }
     })
-    page.screenshot.mockImplementation(async () => Buffer.from(painted))
+    page.screenshot.mockImplementation(async () => pngFrame(painted))
     try {
       const result = await capture(browser, 'http://localhost:6006', entry)
-      expect(result.bytes.toString()).toBe('unfocused cursor')
+      expect(result.bytes.equals(pngFrame('unfocused cursor'))).toBe(true)
     } finally {
       vi.unstubAllGlobals()
     }
@@ -96,7 +103,7 @@ describe('visual capture boundary', () => {
   it('waits for consecutive identical painted frames instead of returning the first canvas image', async () => {
     const { browser, page, context } = browserFixture(['empty canvas', 'terminal replay', 'terminal replay'])
     const result = await capture(browser, 'http://localhost:6006', entry)
-    expect(result.bytes.toString()).toBe('terminal replay')
+    expect(result.bytes.equals(pngFrame('terminal replay'))).toBe(true)
     expect(page.screenshot).toHaveBeenCalledTimes(3)
     expect(page.clock.pauseAt).toHaveBeenCalledWith(new Date('2026-01-02T09:30:00.000Z'))
     expect(page.clock.runFor).toHaveBeenCalledTimes(3)
@@ -106,8 +113,8 @@ describe('visual capture boundary', () => {
   it('rejects unsettled output and still releases the browser context', async () => {
     const { browser, page, context } = browserFixture(['unused'])
     let frame = 0
-    page.screenshot.mockImplementation(async () => Buffer.from(String(frame++)))
-    await expect(capture(browser, 'http://localhost:6006', entry, { timeout: 10 })).rejects.toThrow('visual state did not settle')
+    page.screenshot.mockImplementation(async () => pngFrame(String(frame++)))
+    await expect(capture(browser, 'http://localhost:6006', entry, { timeout: 10 })).rejects.toThrow('Screenshot did not settle')
     expect(context.close).toHaveBeenCalledOnce()
   })
 

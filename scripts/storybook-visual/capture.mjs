@@ -33,12 +33,14 @@ async function settledScreenshot(page, timeout) {
   let previous, timedOut
   try {
     while (performance.now() < deadline) {
-      if (previous) {
-        // Cross a paint boundary so duplicate reads of one frame cannot count as stability.
-        const paint = await page.waitForFunction(() => new Promise(resolve => {
-          requestAnimationFrame(() => requestAnimationFrame(() => resolve(true)))
-        }), null, { timeout: remaining() })
-        await paint.dispose()
+      // Blur before advancing two paint frames; reject deferred refocus.
+      await page.evaluate(() => {
+        for (const input of document.querySelectorAll('.xterm-helper-textarea')) input.blur()
+      })
+      await page.clock.runFor(32)
+      if (await page.evaluate(() => document.activeElement?.matches('.xterm-helper-textarea') ?? false)) {
+        previous = undefined
+        continue
       }
       const bytes = await page.screenshot({ animations: 'disabled', caret: 'hide', scale: 'css', timeout: remaining() })
       const frame = PNG.sync.read(bytes)
@@ -103,6 +105,8 @@ export async function capture(browser, url, entry, { prepare, mutate, timeout = 
         throw new Error('story interaction failed')
       }
       await page.locator(entry.ready).first().waitFor({ state: 'visible' })
+      // Native buffering must settle while its runtime timers remain live.
+      await freezeNativeMedia(page, timeout)
       // With fixed wall time this pauses immediately, without fast-forwarding.
       // Keep timers live through play, then preserve transient results during capture.
       await page.clock.pauseAt(new Date('2026-01-02T09:30:00.000Z'))
@@ -112,8 +116,11 @@ export async function capture(browser, url, entry, { prepare, mutate, timeout = 
       const evidence = await collectReadinessEvidence(page)
       throw new Error(`missing readiness for ${entry.story}: ${entry.ready}\n${errors.join('\n')}\n${error.message}\nReadiness evidence: ${JSON.stringify(evidence)}`)
     }
-    await page.addStyleTag({ content: '*,*::before,*::after{animation:none!important;transition:none!important;will-change:auto!important;caret-color:transparent!important}' })
-    if (mutate) await mutate(page)
+    await page.addStyleTag({ content: `${freezeMotionCss}\n*,*::before,*::after{will-change:auto!important}` })
+    if (mutate) {
+      await mutate(page)
+      await freezeNativeMedia(page, timeout)
+    }
     await page.evaluate(() => {
       // CSS animation controls do not stop SMIL, including SVGs embedded in masks.
       for (const svg of document.querySelectorAll('svg')) {
@@ -122,29 +129,8 @@ export async function capture(browser, url, entry, { prepare, mutate, timeout = 
       }
     })
     await page.evaluate(freezeSvgMasks, 'middle')
-    // Canvas writes (notably terminal replay) finish after DOM readiness. Require
-    // consecutive identical frames rather than approving an arbitrary timed snapshot.
-    const deadline = Date.now() + timeout
-    let previous
-    while (Date.now() < deadline) {
-      // Deferred terminal setup can focus again after initial readiness. Reapply
-      // blur while settling; canvas carets are outside CSS animation controls.
-      await page.evaluate(() => {
-        for (const input of document.querySelectorAll('.xterm-helper-textarea')) input.blur()
-      })
-      // Blur schedules a canvas repaint. Flush it before inspecting pixels, not
-      // at the start of the next iteration where two stale frames can match.
-      await page.clock.runFor(32)
-      if (await page.evaluate(() => document.activeElement?.matches('.xterm-helper-textarea') ?? false)) {
-        previous = undefined
-        continue
-      }
-      const bytes = await page.screenshot({ animations: 'disabled', caret: 'hide', scale: 'css' })
-      if (previous?.equals(bytes)) return { bytes, diagnostics: errors }
-      previous = bytes
-      await page.waitForTimeout(100)
-    }
-    throw new Error(`visual state did not settle for ${entry.story}`)
+    const bytes = await settledScreenshot(page, timeout)
+    return { bytes, diagnostics: errors }
   } finally {
     await context.close()
   }

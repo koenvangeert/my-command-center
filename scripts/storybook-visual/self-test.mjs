@@ -4,7 +4,7 @@ import { readFile, writeFile, cp, unlink, mkdir, rm } from 'node:fs/promises'
 import { spawnSync } from 'node:child_process'
 import { PNG } from 'pngjs'
 import { capture } from './capture.mjs'
-import { verifyDiagnostics } from './comparison.mjs'
+import { compare, verifyDiagnostics } from './comparison.mjs'
 import { identity } from './manifest.mjs'
 import { checkTerminalReadiness, checkTaskCursorStability } from './terminal-readiness.mjs'
 import { verifyRepeatedCapture } from './repetition.mjs'
@@ -12,10 +12,15 @@ import { verifyRepeatedCapture } from './repetition.mjs'
 export async function selfTest({ browser, url, entries, output }) {
   for (const entry of entries) {
     const first = await capture(browser, url, entry)
-    const second = await capture(browser, url, entry)
+    // Rounded, clipped overlays exposed Chromium's partial-raster corner drift.
+    const rasterProbe = ['sdk-overlays--modal', 'pages-task-detail--backlog', 'pages-task-detail--narrow'].includes(entry.story)
+    const captures = rasterProbe ? 8 : 2
     verifyDiagnostics(first.diagnostics, entry.expectedErrors)
-    verifyDiagnostics(second.diagnostics, entry.expectedErrors)
-    await verifyRepeatedCapture(entry, first.bytes, second.bytes, output)
+    for (let attempt = 1; attempt < captures; attempt++) {
+      const next = await capture(browser, url, entry)
+      verifyDiagnostics(next.diagnostics, entry.expectedErrors)
+      await verifyRepeatedCapture(rasterProbe ? { ...entry, tolerance: undefined } : entry, first.bytes, next.bytes, output)
+    }
   }
   await checkTerminalReadiness({ browser, url, entries, output })
   await checkTaskCursorStability({ browser, url, entries, output })
