@@ -13,6 +13,7 @@ describe('local Terminal story transport', () => {
     expect(onModelOutput).not.toHaveBeenCalled()
     const replay = await transport.readReplay('T-42-shell-0')
     expect(replay.snapshot?.watermark).toBe(1)
+    expect(replay.snapshot?.continuationData).toEqual(new Uint8Array())
     expect(new TextDecoder().decode(replay.snapshot?.data)).toContain('while inactive')
     await subscription.setModelOutputEnabled(true)
     transport.emit('T-42-shell-0', 'while active')
