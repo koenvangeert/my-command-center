@@ -61,3 +61,95 @@ test('preserves unexpected diagnostics while freezing native controls', async ()
   expect(result.diagnostics).toEqual(['native capture diagnostic probe'])
   expect(browser.contexts()).toHaveLength(0)
 })
+
+test('returns settled pixels rather than a transient first paint', async () => {
+  const entry = { catalog: 'pages', story: 'media--failed', ready: 'text=Unavailable', theme: 'openforge-light', viewport: { width: 480, height: 320 } }
+  const result = await capture(browser, server.url, entry, {
+    mutate: async page => {
+      const screenshot = page.screenshot.bind(page)
+      const transient = PNG.sync.read(await screenshot())
+      transient.data.set([255, 0, 255, 255], 0)
+      let first = true
+      // Inject one compositor glitch at the external browser API boundary.
+      page.screenshot = options => {
+        if (!first) return screenshot(options)
+        first = false
+        return Promise.resolve(PNG.sync.write(transient))
+      }
+    },
+  })
+  expect([...PNG.sync.read(result.bytes).data.subarray(0, 4)]).toEqual([255, 255, 255, 255])
+  expect(result.diagnostics).toEqual([])
+  expect(browser.contexts()).toHaveLength(0)
+})
+
+test('samples distinct browser paints rather than duplicate reads of one frame', async () => {
+  const entry = { catalog: 'pages', story: 'media--failed', ready: 'text=Unavailable', theme: 'openforge-light', viewport: { width: 480, height: 320 } }
+  const result = await capture(browser, server.url, entry, {
+    mutate: async page => {
+      const original = await page.screenshot()
+      const transient = PNG.sync.read(original)
+      transient.data.set([255, 0, 255, 255], 0)
+      const cached = PNG.sync.write(transient)
+      let first = true
+      page.screenshot = async () => {
+        if (first) {
+          first = false
+          await page.evaluate(() => {
+            requestAnimationFrame(() => requestAnimationFrame(() => { window.paintReady = true }))
+          })
+        }
+        return await page.evaluate(() => window.paintReady === true) ? original : cached
+      }
+    },
+  })
+  expect([...PNG.sync.read(result.bytes).data.subarray(0, 4)]).toEqual([255, 255, 255, 255])
+})
+
+test('accepts identical pixels even when their PNG encoding changes', async () => {
+  const entry = { catalog: 'pages', story: 'media--failed', ready: 'text=Unavailable', theme: 'openforge-light', viewport: { width: 480, height: 320 } }
+  const result = await capture(browser, server.url, entry, {
+    mutate: async page => {
+      const original = await page.screenshot()
+      const reencoded = PNG.sync.write(PNG.sync.read(original), { deflateLevel: 0 })
+      expect(original.equals(reencoded)).toBe(false)
+      let alternate = false
+      page.screenshot = async () => { alternate = !alternate; return alternate ? original : reencoded }
+    },
+  })
+  expect([...PNG.sync.read(result.bytes).data.subarray(0, 4)]).toEqual([255, 255, 255, 255])
+  expect(browser.contexts()).toHaveLength(0)
+})
+
+test('rejects continuously changing pixels and releases the browser context', async () => {
+  const entry = { catalog: 'pages', story: 'media--failed', ready: 'text=Unavailable', theme: 'openforge-light', viewport: { width: 480, height: 320 } }
+  await expect(capture(browser, server.url, entry, {
+    timeout: 3000,
+    mutate: async page => {
+      const original = await page.screenshot()
+      const changed = PNG.sync.read(original)
+      changed.data.set([255, 0, 255, 255], 0)
+      const transient = PNG.sync.write(changed)
+      let alternate = false
+      page.screenshot = async () => { alternate = !alternate; return alternate ? original : transient }
+    },
+  })).rejects.toThrow('Screenshot did not settle within 3000ms')
+  expect(browser.contexts()).toHaveLength(0)
+}, 15_000)
+
+test('waits for native buffering controls to finish after a decode error', async () => {
+  const entry = { catalog: 'pages', story: 'media--failed', ready: 'text=Unavailable', theme: 'openforge-light', viewport: { width: 480, height: 320 } }
+  const result = await capture(browser, server.url, entry, {
+    mutate: async page => {
+      const session = await page.context().newCDPSession(page)
+      const screenshot = page.screenshot.bind(page)
+      page.screenshot = async options => {
+        const { nodes } = await session.send('Accessibility.getFullAXTree')
+        expect(nodes.some(node => !node.ignored && node.role?.value === 'group' && node.name?.value === 'buffering')).toBe(false)
+        return screenshot(options)
+      }
+    },
+  })
+  expect(result.diagnostics).toEqual([])
+  expect(browser.contexts()).toHaveLength(0)
+})

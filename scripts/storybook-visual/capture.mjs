@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises'
 import { resolve, extname, sep } from 'node:path'
 import { freezeSvgMasks } from './svg-motion.mjs'
 import { captureAppearance } from './manifest.mjs'
+import { PNG } from 'pngjs'
 import { freezeMotionCss, freezeNativeMedia } from './native-media.mjs'
 
 export async function serve(root) {
@@ -22,6 +23,33 @@ export async function serve(root) {
   })
   await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve) })
   return { url: `http://127.0.0.1:${server.address().port}`, close: () => new Promise(resolve => server.close(resolve)) }
+}
+
+// Readiness and disabled animations can still precede Chromium's final raster paint.
+// Compare decoded pixels, not PNG encoding, and never consult the baseline to settle.
+async function settledScreenshot(page, timeout) {
+  const deadline = performance.now() + timeout
+  const remaining = () => Math.max(1, Math.ceil(deadline - performance.now()))
+  let previous, timedOut
+  try {
+    while (performance.now() < deadline) {
+      if (previous) {
+        // Cross a paint boundary so duplicate reads of one frame cannot count as stability.
+        const paint = await page.waitForFunction(() => new Promise(resolve => {
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve(true)))
+        }), null, { timeout: remaining() })
+        await paint.dispose()
+      }
+      const bytes = await page.screenshot({ animations: 'disabled', caret: 'hide', scale: 'css', timeout: remaining() })
+      const frame = PNG.sync.read(bytes)
+      if (previous && frame.width === previous.width && frame.height === previous.height && frame.data.equals(previous.data)) return bytes
+      previous = frame
+    }
+  } catch (error) {
+    if (error?.name !== 'TimeoutError') throw error
+    timedOut = error
+  }
+  throw new Error(`Screenshot did not settle within ${timeout}ms`, { cause: timedOut })
 }
 
 export async function capture(browser, url, entry, { mutate, timeout = 30000 } = {}) {
@@ -50,7 +78,7 @@ export async function capture(browser, url, entry, { mutate, timeout = 30000 } =
     if (mutate) await mutate(page)
     await page.evaluate(freezeSvgMasks)
     await freezeNativeMedia(page, timeout)
-    const bytes = await page.screenshot({ animations: 'disabled', caret: 'hide', scale: 'css' })
+    const bytes = await settledScreenshot(page, timeout)
     return { bytes, diagnostics: errors }
   } finally {
     await context.close()

@@ -30,9 +30,8 @@ export async function freezeNativeMedia(page, timeout) {
     if (!roots.length) throw new Error('Chromium did not expose native video controls for capture')
     for (const shadow of roots.filter(root => root.topLevel)) {
       await callInShadow(session, shadow.nodeId, `function(timeout) {
-        // A decoded frame can precede the native buffering panel's minimum animation cycle.
-        // Let that panel actually finish before freezing it; errors retain their native error UI.
-        if (this.host.error) return;
+        // Both decoded frames and decode errors can precede the native buffering cycle's end.
+        // Let the panel finish before freezing, rather than preserving a transient loading ring.
         const panel = this.querySelector('[pseudo="-internal-media-controls-loading-panel"]');
         if (!panel || getComputedStyle(panel).display === 'none') return;
         return new Promise((resolve, reject) => {
