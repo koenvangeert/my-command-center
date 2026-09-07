@@ -4,7 +4,7 @@
   "python": "3.9.6",
   "clang": "Apple clang version 21.0.0 (clang-2100.1.1.101)\nTarget: arm64-apple-darwin25.6.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin",
   "sources": {
-    "run.py": "dba4fe81d5cb11d5d70630e8eaa40501ec8dc9c0e856857c4ae7077689241db2",
+    "run.py": "b513ecde348a850b19c33b2f8ced526e3b3c56e3665e2425960ca89c02f914cd",
     "macos.py": "3bd50d1c08e473c2356a3f21b35bdc01e9e2246ffcbd8a1f094c84bc0b0c845c",
     "test_cleanup.py": "1ca4f5762f7b34306013dd8a5fcf6fb951ee31b91a018175a270cf5ce8f470ff",
     "preflight.h": "8b5390f65c4ae917f35235142abbd042a06f72f1d1f3d0b14cad2995d0f3ab50",
@@ -15,20 +15,22 @@
   },
   "negativeControl": false,
   "testsRun": 10,
-  "passed": true,
-  "failures": [],
+  "passed": false,
+  "failures": [
+    "test_shell_state_echo_resize_and_running_tool_survive (__main__.Continuity)\nTraceback (most recent call last):\n  File \"/Users/koen/.openforge/worktrees/openforge/KVG-4715/scripts/experiments/pty-reexec/run.py\", line 268, in test_shell_state_echo_resize_and_running_tool_survive\n    self.assertIn(b\"ping-after-reexec\", output.splitlines(), \"terminal line discipline echo missing\")\nAssertionError: b'ping-after-reexec' not found in [b'TOOL 91786 37', b'TOOL 91786 38', b'TOOL 91786 39', b'TOOL 91786 40', b'TOOL 91786 41', b'TOOL 91786 42', b'TOOL 91786 43', b'TOOL 91786 44', b'TOOL 91786 45', b'TOOL 91786 46', b'TOOL 91786 47', b'TOOL 91786 48', b'TOOL 91786 49', b'TOOL 91786 50', b'TOOL 91786 51', b'TOOL 91786 52', b'TOOL 91786 53', b'TOOL 91786 54', b'TOOL 91786 55', b'TOOL 91786 56', b'TOOL 91786 57', b'TOOL 91786 58', b'TOOL 91786 59', b'TOOL 91786 60', b'TOOL 91786 61', b'TOOL 91786 62', b'TOOL 91786 63', b'TOOL 91786 64', b'TOOL 91786 65', b'TOOL 91786 66', b'TOOL 91786 67', b'TOOL 91786 68', b'TOOL 91786 69', b'TOOL 91786 70', b'TOOL 91786 71', b'TOOL 91786 72', b'TOOL 91786 73', b'TOOL 91786 74', b'TOOL 91786 75', b'TOOL 91786 76', b'TOOL 91786 77', b'TOOL 91786 78', b'TOOL 91786 79', b'TOOL 91786 80', b'TOOL 91786 81', b'TOOL 91786 82', b'TOOL 91786 83', b'TOOL 91786 84', b'TOOL 91786 85', b'TOOL 91786 86', b'TOOL 91786 87', b'TOOL 91786 88', b'TOOL 91786 89', b'TOOL 91786 90', b'TOOL 91786 91', b'TOOL 91786 92', b'TOOL 91786 93', b'TOOL 91786 94', b'TOOL 91786 95', b'TOOL 91786 96', b'TOOL 91786 97', b'TOOL 91786 98', b'TOOL 91786 99', b'TOOL 91786 100', b'TOOL 91786 101', b'TOOL 91786 102', b'TOOL 91786 103', b'TOOL 91786 104', b'', b'AGENT_ECHO ping-after-reexec', b'TOOL 91786 105', b'TOOL 91786 106'] : terminal line discipline echo missing\n"
+  ],
   "events": [
     {
       "event": "test",
       "name": "__main__.Continuity.test_controlled_initialization_failure_reexecs_retained_image",
-      "runtimeRoot": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-91MmwH/openforge-pty-reexec-mtw_k7bx",
+      "runtimeRoot": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-R1ZkZ1/openforge-pty-reexec-cm8hmjv0",
       "mode": "0o700"
     },
     {
       "event": "initial",
       "inventory": {
         "version": 1,
-        "host": 5668,
+        "host": 89961,
         "recoveries": 0,
         "fds": [
           0,
@@ -43,7 +45,7 @@
         "sentinel": 4,
         "children": [
           {
-            "pid": 5715,
+            "pid": 90026,
             "fd": 5,
             "tty": "/dev/ttys019",
             "device": 251658259,
@@ -52,7 +54,7 @@
             "status": 0
           },
           {
-            "pid": 5716,
+            "pid": 90027,
             "fd": 6,
             "tty": "/dev/ttys021",
             "device": 251658261,
@@ -89,46 +91,46 @@
           }
         ]
       },
-      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-91MmwH/openforge-pty-reexec-mtw_k7bx/v1",
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-R1ZkZ1/openforge-pty-reexec-cm8hmjv0/v1",
       "processes": [
         {
-          "pid": 5668,
-          "ppid": 5614,
+          "pid": 89961,
+          "ppid": 89903,
           "uid": 501,
-          "pgid": 5668,
+          "pgid": 89961,
           "status": 2,
-          "sec": 1788769168,
-          "usec": 824043,
+          "sec": 1788768507,
+          "usec": 640935,
           "tdev": 4294967295
         },
         {
-          "pid": 5715,
-          "ppid": 5668,
+          "pid": 90026,
+          "ppid": 89961,
           "uid": 501,
-          "pgid": 5715,
+          "pgid": 90026,
           "status": 2,
-          "sec": 1788769171,
-          "usec": 101572,
+          "sec": 1788768510,
+          "usec": 894666,
           "tdev": 268435475
         },
         {
-          "pid": 5716,
-          "ppid": 5668,
+          "pid": 90027,
+          "ppid": 89961,
           "uid": 501,
-          "pgid": 5716,
+          "pgid": 90027,
           "status": 2,
-          "sec": 1788769171,
-          "usec": 102706,
+          "sec": 1788768510,
+          "usec": 897785,
           "tdev": 268435477
         },
         {
-          "pid": 5724,
-          "ppid": 5716,
+          "pid": 90034,
+          "ppid": 90027,
           "uid": 501,
-          "pgid": 5716,
+          "pgid": 90027,
           "status": 2,
-          "sec": 1788769171,
-          "usec": 539563,
+          "sec": 1788768511,
+          "usec": 205674,
           "tdev": 268435477
         }
       ]
@@ -137,7 +139,7 @@
       "event": "replacement",
       "inventory": {
         "version": 2,
-        "host": 5668,
+        "host": 89961,
         "recoveries": 1,
         "fds": [
           0,
@@ -151,7 +153,7 @@
         "sentinel": 4,
         "children": [
           {
-            "pid": 5715,
+            "pid": 90026,
             "fd": 5,
             "tty": "/dev/ttys019",
             "device": 251658259,
@@ -160,11 +162,11 @@
             "status": 0
           },
           {
-            "pid": 5716,
+            "pid": 90027,
             "fd": 6,
             "tty": "/dev/ttys021",
             "device": 251658261,
-            "cursor": 925,
+            "cursor": 1184,
             "reaped": 0,
             "status": 0
           },
@@ -197,14 +199,14 @@
           }
         ]
       },
-      "roundTripMs": 691.6396250000005,
-      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-91MmwH/openforge-pty-reexec-mtw_k7bx/v2"
+      "roundTripMs": 657.2512910000006,
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-R1ZkZ1/openforge-pty-reexec-cm8hmjv0/v2"
     },
     {
       "event": "controlledRecovery",
       "before": {
         "version": 1,
-        "host": 5668,
+        "host": 89961,
         "recoveries": 0,
         "fds": [
           0,
@@ -219,7 +221,7 @@
         "sentinel": 4,
         "children": [
           {
-            "pid": 5715,
+            "pid": 90026,
             "fd": 5,
             "tty": "/dev/ttys019",
             "device": 251658259,
@@ -228,11 +230,11 @@
             "status": 0
           },
           {
-            "pid": 5716,
+            "pid": 90027,
             "fd": 6,
             "tty": "/dev/ttys021",
             "device": 251658261,
-            "cursor": 78,
+            "cursor": 98,
             "reaped": 0,
             "status": 0
           },
@@ -267,7 +269,7 @@
       },
       "after": {
         "version": 1,
-        "host": 5668,
+        "host": 89961,
         "recoveries": 1,
         "fds": [
           0,
@@ -281,7 +283,7 @@
         "sentinel": 4,
         "children": [
           {
-            "pid": 5715,
+            "pid": 90026,
             "fd": 5,
             "tty": "/dev/ttys019",
             "device": 251658259,
@@ -290,11 +292,11 @@
             "status": 0
           },
           {
-            "pid": 5716,
+            "pid": 90027,
             "fd": 6,
             "tty": "/dev/ttys021",
             "device": 251658261,
-            "cursor": 78,
+            "cursor": 98,
             "reaped": 0,
             "status": 0
           },
@@ -340,43 +342,43 @@
       "event": "cleanup",
       "owned": [
         {
-          "pid": 5668,
-          "ppid": 5614,
+          "pid": 89961,
+          "ppid": 89903,
           "uid": 501,
-          "pgid": 5668,
+          "pgid": 89961,
           "status": 2,
-          "sec": 1788769168,
-          "usec": 824043,
+          "sec": 1788768507,
+          "usec": 640935,
           "tdev": 4294967295
         },
         {
-          "pid": 5715,
-          "ppid": 5668,
+          "pid": 90026,
+          "ppid": 89961,
           "uid": 501,
-          "pgid": 5715,
+          "pgid": 90026,
           "status": 2,
-          "sec": 1788769171,
-          "usec": 101572,
+          "sec": 1788768510,
+          "usec": 894666,
           "tdev": 268435475
         },
         {
-          "pid": 5716,
-          "ppid": 5668,
+          "pid": 90027,
+          "ppid": 89961,
           "uid": 501,
-          "pgid": 5716,
+          "pgid": 90027,
           "status": 2,
-          "sec": 1788769171,
-          "usec": 102706,
+          "sec": 1788768510,
+          "usec": 897785,
           "tdev": 268435477
         },
         {
-          "pid": 5724,
-          "ppid": 5716,
+          "pid": 90034,
+          "ppid": 90027,
           "uid": 501,
-          "pgid": 5716,
+          "pgid": 90027,
           "status": 2,
-          "sec": 1788769171,
-          "usec": 539563,
+          "sec": 1788768511,
+          "usec": 205674,
           "tdev": 268435477
         }
       ],
@@ -387,14 +389,14 @@
     {
       "event": "test",
       "name": "__main__.Continuity.test_descriptor_allowlist_and_no_child_leaks",
-      "runtimeRoot": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-91MmwH/openforge-pty-reexec-pxxyl01x",
+      "runtimeRoot": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-R1ZkZ1/openforge-pty-reexec-dt1y8c_2",
       "mode": "0o700"
     },
     {
       "event": "initial",
       "inventory": {
         "version": 1,
-        "host": 5830,
+        "host": 90169,
         "recoveries": 0,
         "fds": [
           0,
@@ -409,7 +411,7 @@
         "sentinel": 4,
         "children": [
           {
-            "pid": 5835,
+            "pid": 90184,
             "fd": 5,
             "tty": "/dev/ttys019",
             "device": 251658259,
@@ -418,7 +420,7 @@
             "status": 0
           },
           {
-            "pid": 5836,
+            "pid": 90185,
             "fd": 6,
             "tty": "/dev/ttys021",
             "device": 251658261,
@@ -455,46 +457,46 @@
           }
         ]
       },
-      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-91MmwH/openforge-pty-reexec-pxxyl01x/v1",
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-R1ZkZ1/openforge-pty-reexec-dt1y8c_2/v1",
       "processes": [
         {
-          "pid": 5830,
-          "ppid": 5614,
+          "pid": 90169,
+          "ppid": 89903,
           "uid": 501,
-          "pgid": 5830,
+          "pgid": 90169,
           "status": 2,
-          "sec": 1788769176,
-          "usec": 165939,
+          "sec": 1788768516,
+          "usec": 506962,
           "tdev": 4294967295
         },
         {
-          "pid": 5835,
-          "ppid": 5830,
+          "pid": 90184,
+          "ppid": 90169,
           "uid": 501,
-          "pgid": 5835,
+          "pgid": 90184,
           "status": 2,
-          "sec": 1788769176,
-          "usec": 450038,
+          "sec": 1788768517,
+          "usec": 36128,
           "tdev": 268435475
         },
         {
-          "pid": 5836,
-          "ppid": 5830,
+          "pid": 90185,
+          "ppid": 90169,
           "uid": 501,
-          "pgid": 5836,
+          "pgid": 90185,
           "status": 2,
-          "sec": 1788769176,
-          "usec": 452235,
+          "sec": 1788768517,
+          "usec": 37684,
           "tdev": 268435477
         },
         {
-          "pid": 5846,
-          "ppid": 5836,
+          "pid": 90211,
+          "ppid": 90185,
           "uid": 501,
-          "pgid": 5836,
+          "pgid": 90185,
           "status": 2,
-          "sec": 1788769176,
-          "usec": 833369,
+          "sec": 1788768518,
+          "usec": 102806,
           "tdev": 268435477
         }
       ]
@@ -503,7 +505,7 @@
       "event": "replacement",
       "inventory": {
         "version": 2,
-        "host": 5830,
+        "host": 90169,
         "recoveries": 0,
         "fds": [
           0,
@@ -517,7 +519,7 @@
         "sentinel": 4,
         "children": [
           {
-            "pid": 5835,
+            "pid": 90184,
             "fd": 5,
             "tty": "/dev/ttys019",
             "device": 251658259,
@@ -526,11 +528,11 @@
             "status": 0
           },
           {
-            "pid": 5836,
+            "pid": 90185,
             "fd": 6,
             "tty": "/dev/ttys021",
             "device": 251658261,
-            "cursor": 104,
+            "cursor": 112,
             "reaped": 0,
             "status": 0
           },
@@ -563,8 +565,8 @@
           }
         ]
       },
-      "roundTripMs": 580.4855410000016,
-      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-91MmwH/openforge-pty-reexec-pxxyl01x/v2"
+      "roundTripMs": 731.6785840000009,
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-R1ZkZ1/openforge-pty-reexec-dt1y8c_2/v2"
     },
     {
       "event": "descriptorAudit",
@@ -606,63 +608,63 @@
       "event": "cleanup",
       "owned": [
         {
-          "pid": 5830,
-          "ppid": 5614,
+          "pid": 90169,
+          "ppid": 89903,
           "uid": 501,
-          "pgid": 5830,
+          "pgid": 90169,
           "status": 2,
-          "sec": 1788769176,
-          "usec": 165939,
+          "sec": 1788768516,
+          "usec": 506962,
           "tdev": 4294967295
         },
         {
-          "pid": 5835,
-          "ppid": 5830,
+          "pid": 90184,
+          "ppid": 90169,
           "uid": 501,
-          "pgid": 5835,
+          "pgid": 90184,
           "status": 2,
-          "sec": 1788769176,
-          "usec": 450038,
+          "sec": 1788768517,
+          "usec": 36128,
           "tdev": 268435475
         },
         {
-          "pid": 5836,
-          "ppid": 5830,
+          "pid": 90185,
+          "ppid": 90169,
           "uid": 501,
-          "pgid": 5836,
+          "pgid": 90185,
           "status": 2,
-          "sec": 1788769176,
-          "usec": 452235,
+          "sec": 1788768517,
+          "usec": 37684,
           "tdev": 268435477
         },
         {
-          "pid": 5846,
-          "ppid": 5836,
+          "pid": 90211,
+          "ppid": 90185,
           "uid": 501,
-          "pgid": 5836,
+          "pgid": 90185,
           "status": 2,
-          "sec": 1788769176,
-          "usec": 833369,
+          "sec": 1788768518,
+          "usec": 102806,
           "tdev": 268435477
         },
         {
-          "pid": 5868,
-          "ppid": 5835,
+          "pid": 90239,
+          "ppid": 90184,
           "uid": 501,
-          "pgid": 5868,
+          "pgid": 90239,
           "status": 2,
-          "sec": 1788769177,
-          "usec": 723459,
+          "sec": 1788768519,
+          "usec": 149800,
           "tdev": 268435475
         },
         {
-          "pid": 5880,
-          "ppid": 5830,
+          "pid": 90246,
+          "ppid": 90169,
           "uid": 501,
-          "pgid": 5880,
+          "pgid": 90246,
           "status": 2,
-          "sec": 1788769177,
-          "usec": 889799,
+          "sec": 1788768519,
+          "usec": 340241,
           "tdev": 268435499
         }
       ],
@@ -673,14 +675,14 @@
     {
       "event": "test",
       "name": "__main__.Continuity.test_exit_status_before_during_after_and_group_termination",
-      "runtimeRoot": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-91MmwH/openforge-pty-reexec-nojsprz0",
+      "runtimeRoot": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-R1ZkZ1/openforge-pty-reexec-k2jkl318",
       "mode": "0o700"
     },
     {
       "event": "initial",
       "inventory": {
         "version": 1,
-        "host": 5946,
+        "host": 90336,
         "recoveries": 0,
         "fds": [
           0,
@@ -695,7 +697,7 @@
         "sentinel": 4,
         "children": [
           {
-            "pid": 5972,
+            "pid": 90352,
             "fd": 5,
             "tty": "/dev/ttys019",
             "device": 251658259,
@@ -704,7 +706,7 @@
             "status": 0
           },
           {
-            "pid": 5973,
+            "pid": 90353,
             "fd": 6,
             "tty": "/dev/ttys021",
             "device": 251658261,
@@ -741,46 +743,46 @@
           }
         ]
       },
-      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-91MmwH/openforge-pty-reexec-nojsprz0/v1",
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-R1ZkZ1/openforge-pty-reexec-k2jkl318/v1",
       "processes": [
         {
-          "pid": 5946,
-          "ppid": 5614,
+          "pid": 90336,
+          "ppid": 89903,
           "uid": 501,
-          "pgid": 5946,
+          "pgid": 90336,
           "status": 2,
-          "sec": 1788769180,
-          "usec": 274249,
+          "sec": 1788768522,
+          "usec": 421922,
           "tdev": 4294967295
         },
         {
-          "pid": 5972,
-          "ppid": 5946,
+          "pid": 90352,
+          "ppid": 90336,
           "uid": 501,
-          "pgid": 5972,
+          "pgid": 90352,
           "status": 2,
-          "sec": 1788769181,
-          "usec": 683569,
+          "sec": 1788768522,
+          "usec": 956235,
           "tdev": 268435475
         },
         {
-          "pid": 5973,
-          "ppid": 5946,
+          "pid": 90353,
+          "ppid": 90336,
           "uid": 501,
-          "pgid": 5973,
+          "pgid": 90353,
           "status": 2,
-          "sec": 1788769181,
-          "usec": 685528,
+          "sec": 1788768522,
+          "usec": 958460,
           "tdev": 268435477
         },
         {
-          "pid": 6044,
-          "ppid": 5973,
+          "pid": 90364,
+          "ppid": 90353,
           "uid": 501,
-          "pgid": 5973,
+          "pgid": 90353,
           "status": 2,
-          "sec": 1788769184,
-          "usec": 190930,
+          "sec": 1788768523,
+          "usec": 572753,
           "tdev": 268435477
         }
       ]
@@ -789,7 +791,7 @@
       "event": "reaped",
       "slot": 2,
       "child": {
-        "pid": 6048,
+        "pid": 90375,
         "fd": 7,
         "tty": "/dev/ttys043",
         "device": 251658283,
@@ -800,14 +802,14 @@
     },
     {
       "event": "quiescedExit",
-      "pid": 6054,
+      "pid": 90383,
       "state": "Z"
     },
     {
       "event": "reaped",
       "slot": 3,
       "child": {
-        "pid": 6054,
+        "pid": 90383,
         "fd": 8,
         "tty": "/dev/ttys044",
         "device": 251658284,
@@ -820,7 +822,7 @@
       "event": "reaped",
       "slot": 4,
       "child": {
-        "pid": 6059,
+        "pid": 90390,
         "fd": 9,
         "tty": "/dev/ttys045",
         "device": 251658285,
@@ -833,11 +835,11 @@
       "event": "reaped",
       "slot": 1,
       "child": {
-        "pid": 5973,
+        "pid": 90353,
         "fd": 6,
         "tty": "/dev/ttys021",
         "device": 251658261,
-        "cursor": 1131,
+        "cursor": 1138,
         "reaped": 1,
         "status": 36608
       }
@@ -846,7 +848,7 @@
       "event": "reaped",
       "slot": 0,
       "child": {
-        "pid": 5972,
+        "pid": 90352,
         "fd": 5,
         "tty": "/dev/ttys019",
         "device": 251658259,
@@ -859,73 +861,73 @@
       "event": "cleanup",
       "owned": [
         {
-          "pid": 5946,
-          "ppid": 5614,
+          "pid": 90336,
+          "ppid": 89903,
           "uid": 501,
-          "pgid": 5946,
+          "pgid": 90336,
           "status": 2,
-          "sec": 1788769180,
-          "usec": 274249,
+          "sec": 1788768522,
+          "usec": 421922,
           "tdev": 4294967295
         },
         {
-          "pid": 5972,
-          "ppid": 5946,
+          "pid": 90352,
+          "ppid": 90336,
           "uid": 501,
-          "pgid": 5972,
+          "pgid": 90352,
           "status": 2,
-          "sec": 1788769181,
-          "usec": 683569,
+          "sec": 1788768522,
+          "usec": 956235,
           "tdev": 268435475
         },
         {
-          "pid": 5973,
-          "ppid": 5946,
+          "pid": 90353,
+          "ppid": 90336,
           "uid": 501,
-          "pgid": 5973,
+          "pgid": 90353,
           "status": 2,
-          "sec": 1788769181,
-          "usec": 685528,
+          "sec": 1788768522,
+          "usec": 958460,
           "tdev": 268435477
         },
         {
-          "pid": 6044,
-          "ppid": 5973,
+          "pid": 90364,
+          "ppid": 90353,
           "uid": 501,
-          "pgid": 5973,
+          "pgid": 90353,
           "status": 2,
-          "sec": 1788769184,
-          "usec": 190930,
+          "sec": 1788768523,
+          "usec": 572753,
           "tdev": 268435477
         },
         {
-          "pid": 6048,
-          "ppid": 5946,
+          "pid": 90375,
+          "ppid": 90336,
           "uid": 501,
-          "pgid": 6048,
+          "pgid": 90375,
           "status": 2,
-          "sec": 1788769184,
-          "usec": 347224,
+          "sec": 1788768523,
+          "usec": 729291,
           "tdev": 268435499
         },
         {
-          "pid": 6054,
-          "ppid": 5946,
+          "pid": 90383,
+          "ppid": 90336,
           "uid": 501,
-          "pgid": 6054,
+          "pgid": 90383,
           "status": 2,
-          "sec": 1788769184,
-          "usec": 528388,
+          "sec": 1788768523,
+          "usec": 912483,
           "tdev": 268435500
         },
         {
-          "pid": 6059,
-          "ppid": 5946,
+          "pid": 90390,
+          "ppid": 90336,
           "uid": 501,
-          "pgid": 6059,
+          "pgid": 90390,
           "status": 2,
-          "sec": 1788769184,
-          "usec": 692112,
+          "sec": 1788768524,
+          "usec": 196008,
           "tdev": 268435501
         }
       ],
@@ -936,14 +938,14 @@
     {
       "event": "test",
       "name": "__main__.Continuity.test_incompatible_target_is_refused_without_touching_live_descriptors",
-      "runtimeRoot": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-91MmwH/openforge-pty-reexec-l12e53wm",
+      "runtimeRoot": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-R1ZkZ1/openforge-pty-reexec-dv4htz_v",
       "mode": "0o700"
     },
     {
       "event": "initial",
       "inventory": {
         "version": 1,
-        "host": 6220,
+        "host": 90554,
         "recoveries": 0,
         "fds": [
           0,
@@ -958,7 +960,7 @@
         "sentinel": 4,
         "children": [
           {
-            "pid": 6232,
+            "pid": 90608,
             "fd": 5,
             "tty": "/dev/ttys019",
             "device": 251658259,
@@ -967,7 +969,7 @@
             "status": 0
           },
           {
-            "pid": 6234,
+            "pid": 90609,
             "fd": 6,
             "tty": "/dev/ttys021",
             "device": 251658261,
@@ -1004,46 +1006,46 @@
           }
         ]
       },
-      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-91MmwH/openforge-pty-reexec-l12e53wm/v1",
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-R1ZkZ1/openforge-pty-reexec-dv4htz_v/v1",
       "processes": [
         {
-          "pid": 6220,
-          "ppid": 5614,
+          "pid": 90554,
+          "ppid": 89903,
           "uid": 501,
-          "pgid": 6220,
+          "pgid": 90554,
           "status": 2,
-          "sec": 1788769189,
-          "usec": 995465,
+          "sec": 1788768529,
+          "usec": 830137,
           "tdev": 4294967295
         },
         {
-          "pid": 6232,
-          "ppid": 6220,
+          "pid": 90608,
+          "ppid": 90554,
           "uid": 501,
-          "pgid": 6232,
+          "pgid": 90608,
           "status": 2,
-          "sec": 1788769190,
-          "usec": 730230,
+          "sec": 1788768532,
+          "usec": 398621,
           "tdev": 268435475
         },
         {
-          "pid": 6234,
-          "ppid": 6220,
+          "pid": 90609,
+          "ppid": 90554,
           "uid": 501,
-          "pgid": 6234,
+          "pgid": 90609,
           "status": 2,
-          "sec": 1788769190,
-          "usec": 731885,
+          "sec": 1788768532,
+          "usec": 400816,
           "tdev": 268435477
         },
         {
-          "pid": 6286,
-          "ppid": 6234,
+          "pid": 90628,
+          "ppid": 90609,
           "uid": 501,
-          "pgid": 6234,
+          "pgid": 90609,
           "status": 2,
-          "sec": 1788769192,
-          "usec": 495483,
+          "sec": 1788768533,
+          "usec": 19239,
           "tdev": 268435477
         }
       ]
@@ -1055,7 +1057,7 @@
       },
       "inventory": {
         "version": 1,
-        "host": 6220,
+        "host": 90554,
         "recoveries": 0,
         "fds": [
           0,
@@ -1070,7 +1072,7 @@
         "sentinel": 4,
         "children": [
           {
-            "pid": 6232,
+            "pid": 90608,
             "fd": 5,
             "tty": "/dev/ttys019",
             "device": 251658259,
@@ -1079,11 +1081,11 @@
             "status": 0
           },
           {
-            "pid": 6234,
+            "pid": 90609,
             "fd": 6,
             "tty": "/dev/ttys021",
             "device": 251658261,
-            "cursor": 104,
+            "cursor": 98,
             "reaped": 0,
             "status": 0
           },
@@ -1121,43 +1123,43 @@
       "event": "cleanup",
       "owned": [
         {
-          "pid": 6220,
-          "ppid": 5614,
+          "pid": 90554,
+          "ppid": 89903,
           "uid": 501,
-          "pgid": 6220,
+          "pgid": 90554,
           "status": 2,
-          "sec": 1788769189,
-          "usec": 995465,
+          "sec": 1788768529,
+          "usec": 830137,
           "tdev": 4294967295
         },
         {
-          "pid": 6232,
-          "ppid": 6220,
+          "pid": 90608,
+          "ppid": 90554,
           "uid": 501,
-          "pgid": 6232,
+          "pgid": 90608,
           "status": 2,
-          "sec": 1788769190,
-          "usec": 730230,
+          "sec": 1788768532,
+          "usec": 398621,
           "tdev": 268435475
         },
         {
-          "pid": 6234,
-          "ppid": 6220,
+          "pid": 90609,
+          "ppid": 90554,
           "uid": 501,
-          "pgid": 6234,
+          "pgid": 90609,
           "status": 2,
-          "sec": 1788769190,
-          "usec": 731885,
+          "sec": 1788768532,
+          "usec": 400816,
           "tdev": 268435477
         },
         {
-          "pid": 6286,
-          "ppid": 6234,
+          "pid": 90628,
+          "ppid": 90609,
           "uid": 501,
-          "pgid": 6234,
+          "pgid": 90609,
           "status": 2,
-          "sec": 1788769192,
-          "usec": 495483,
+          "sec": 1788768533,
+          "usec": 19239,
           "tdev": 268435477
         }
       ],
@@ -1168,14 +1170,14 @@
     {
       "event": "test",
       "name": "__main__.Continuity.test_invalid_targets_are_refused_and_sessions_remain_usable",
-      "runtimeRoot": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-91MmwH/openforge-pty-reexec-6czmykve",
+      "runtimeRoot": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-R1ZkZ1/openforge-pty-reexec-qv2pwqil",
       "mode": "0o700"
     },
     {
       "event": "initial",
       "inventory": {
         "version": 1,
-        "host": 6413,
+        "host": 90765,
         "recoveries": 0,
         "fds": [
           0,
@@ -1190,7 +1192,7 @@
         "sentinel": 4,
         "children": [
           {
-            "pid": 6420,
+            "pid": 90773,
             "fd": 5,
             "tty": "/dev/ttys019",
             "device": 251658259,
@@ -1199,7 +1201,7 @@
             "status": 0
           },
           {
-            "pid": 6421,
+            "pid": 90774,
             "fd": 6,
             "tty": "/dev/ttys021",
             "device": 251658261,
@@ -1236,46 +1238,46 @@
           }
         ]
       },
-      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-91MmwH/openforge-pty-reexec-6czmykve/v1",
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-R1ZkZ1/openforge-pty-reexec-qv2pwqil/v1",
       "processes": [
         {
-          "pid": 6413,
-          "ppid": 5614,
+          "pid": 90765,
+          "ppid": 89903,
           "uid": 501,
-          "pgid": 6413,
+          "pgid": 90765,
           "status": 2,
-          "sec": 1788769197,
-          "usec": 174413,
+          "sec": 1788768538,
+          "usec": 855583,
           "tdev": 4294967295
         },
         {
-          "pid": 6420,
-          "ppid": 6413,
+          "pid": 90773,
+          "ppid": 90765,
           "uid": 501,
-          "pgid": 6420,
+          "pgid": 90773,
           "status": 2,
-          "sec": 1788769197,
-          "usec": 663148,
+          "sec": 1788768539,
+          "usec": 164760,
           "tdev": 268435475
         },
         {
-          "pid": 6421,
-          "ppid": 6413,
+          "pid": 90774,
+          "ppid": 90765,
           "uid": 501,
-          "pgid": 6421,
+          "pgid": 90774,
           "status": 2,
-          "sec": 1788769197,
-          "usec": 665783,
+          "sec": 1788768539,
+          "usec": 166464,
           "tdev": 268435477
         },
         {
-          "pid": 6503,
-          "ppid": 6421,
+          "pid": 90799,
+          "ppid": 90774,
           "uid": 501,
-          "pgid": 6421,
+          "pgid": 90774,
           "status": 2,
-          "sec": 1788769200,
-          "usec": 967155,
+          "sec": 1788768539,
+          "usec": 894954,
           "tdev": 268435477
         }
       ]
@@ -1286,10 +1288,10 @@
       "response": {
         "refused": "target checkpoint contract or executable"
       },
-      "seconds": 0.1298020830000013,
+      "seconds": 0.1948233330000022,
       "inventory": {
         "version": 1,
-        "host": 6413,
+        "host": 90765,
         "recoveries": 0,
         "fds": [
           0,
@@ -1304,7 +1306,7 @@
         "sentinel": 4,
         "children": [
           {
-            "pid": 6420,
+            "pid": 90773,
             "fd": 5,
             "tty": "/dev/ttys019",
             "device": 251658259,
@@ -1313,11 +1315,11 @@
             "status": 0
           },
           {
-            "pid": 6421,
+            "pid": 90774,
             "fd": 6,
             "tty": "/dev/ttys021",
             "device": 251658261,
-            "cursor": 117,
+            "cursor": 168,
             "reaped": 0,
             "status": 0
           },
@@ -1357,10 +1359,10 @@
       "response": {
         "refused": "target checkpoint contract or executable"
       },
-      "seconds": 0.1293287499999991,
+      "seconds": 0.3405962500000044,
       "inventory": {
         "version": 1,
-        "host": 6413,
+        "host": 90765,
         "recoveries": 0,
         "fds": [
           0,
@@ -1375,7 +1377,7 @@
         "sentinel": 4,
         "children": [
           {
-            "pid": 6420,
+            "pid": 90773,
             "fd": 5,
             "tty": "/dev/ttys019",
             "device": 251658259,
@@ -1384,11 +1386,11 @@
             "status": 0
           },
           {
-            "pid": 6421,
+            "pid": 90774,
             "fd": 6,
             "tty": "/dev/ttys021",
             "device": 251658261,
-            "cursor": 553,
+            "cursor": 785,
             "reaped": 0,
             "status": 0
           },
@@ -1428,10 +1430,10 @@
       "response": {
         "refused": "target checkpoint contract or executable"
       },
-      "seconds": 0.11978820799999568,
+      "seconds": 0.16062504099999586,
       "inventory": {
         "version": 1,
-        "host": 6413,
+        "host": 90765,
         "recoveries": 0,
         "fds": [
           0,
@@ -1446,7 +1448,7 @@
         "sentinel": 4,
         "children": [
           {
-            "pid": 6420,
+            "pid": 90773,
             "fd": 5,
             "tty": "/dev/ttys019",
             "device": 251658259,
@@ -1455,11 +1457,11 @@
             "status": 0
           },
           {
-            "pid": 6421,
+            "pid": 90774,
             "fd": 6,
             "tty": "/dev/ttys021",
             "device": 251658261,
-            "cursor": 894,
+            "cursor": 1537,
             "reaped": 0,
             "status": 0
           },
@@ -1499,10 +1501,10 @@
       "response": {
         "refused": "target checkpoint contract or executable"
       },
-      "seconds": 0.12506216700000294,
+      "seconds": 0.2398440839999978,
       "inventory": {
         "version": 1,
-        "host": 6413,
+        "host": 90765,
         "recoveries": 0,
         "fds": [
           0,
@@ -1517,7 +1519,7 @@
         "sentinel": 4,
         "children": [
           {
-            "pid": 6420,
+            "pid": 90773,
             "fd": 5,
             "tty": "/dev/ttys019",
             "device": 251658259,
@@ -1526,11 +1528,11 @@
             "status": 0
           },
           {
-            "pid": 6421,
+            "pid": 90774,
             "fd": 6,
             "tty": "/dev/ttys021",
             "device": 251658261,
-            "cursor": 1263,
+            "cursor": 2123,
             "reaped": 0,
             "status": 0
           },
@@ -1566,14 +1568,14 @@
     },
     {
       "event": "invalidTargetRefusal",
-      "target": "openforge-pty-reexec-6czmykve",
+      "target": "openforge-pty-reexec-qv2pwqil",
       "response": {
         "refused": "target checkpoint contract or executable"
       },
-      "seconds": 0.12384687500000524,
+      "seconds": 0.34374645799999826,
       "inventory": {
         "version": 1,
-        "host": 6413,
+        "host": 90765,
         "recoveries": 0,
         "fds": [
           0,
@@ -1588,7 +1590,7 @@
         "sentinel": 4,
         "children": [
           {
-            "pid": 6420,
+            "pid": 90773,
             "fd": 5,
             "tty": "/dev/ttys019",
             "device": 251658259,
@@ -1597,11 +1599,11 @@
             "status": 0
           },
           {
-            "pid": 6421,
+            "pid": 90774,
             "fd": 6,
             "tty": "/dev/ttys021",
             "device": 251658261,
-            "cursor": 1590,
+            "cursor": 2842,
             "reaped": 0,
             "status": 0
           },
@@ -1641,10 +1643,10 @@
       "response": {
         "refused": "target checkpoint contract or executable"
       },
-      "seconds": 2.6057442079999973,
+      "seconds": 2.805676417000001,
       "inventory": {
         "version": 1,
-        "host": 6413,
+        "host": 90765,
         "recoveries": 0,
         "fds": [
           0,
@@ -1659,7 +1661,7 @@
         "sentinel": 4,
         "children": [
           {
-            "pid": 6420,
+            "pid": 90773,
             "fd": 5,
             "tty": "/dev/ttys019",
             "device": 251658259,
@@ -1668,11 +1670,11 @@
             "status": 0
           },
           {
-            "pid": 6421,
+            "pid": 90774,
             "fd": 6,
             "tty": "/dev/ttys021",
             "device": 251658261,
-            "cursor": 1966,
+            "cursor": 3849,
             "reaped": 0,
             "status": 0
           },
@@ -1710,7 +1712,7 @@
       "event": "replacement",
       "inventory": {
         "version": 2,
-        "host": 6413,
+        "host": 90765,
         "recoveries": 0,
         "fds": [
           0,
@@ -1724,7 +1726,7 @@
         "sentinel": 4,
         "children": [
           {
-            "pid": 6420,
+            "pid": 90773,
             "fd": 5,
             "tty": "/dev/ttys019",
             "device": 251658259,
@@ -1733,11 +1735,11 @@
             "status": 0
           },
           {
-            "pid": 6421,
+            "pid": 90774,
             "fd": 6,
             "tty": "/dev/ttys021",
             "device": 251658261,
-            "cursor": 3045,
+            "cursor": 5014,
             "reaped": 0,
             "status": 0
           },
@@ -1770,50 +1772,50 @@
           }
         ]
       },
-      "roundTripMs": 2739.4011250000003,
-      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-91MmwH/openforge-pty-reexec-6czmykve/v2"
+      "roundTripMs": 1497.2724590000012,
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-R1ZkZ1/openforge-pty-reexec-qv2pwqil/v2"
     },
     {
       "event": "cleanup",
       "owned": [
         {
-          "pid": 6413,
-          "ppid": 5614,
+          "pid": 90765,
+          "ppid": 89903,
           "uid": 501,
-          "pgid": 6413,
+          "pgid": 90765,
           "status": 2,
-          "sec": 1788769197,
-          "usec": 174413,
+          "sec": 1788768538,
+          "usec": 855583,
           "tdev": 4294967295
         },
         {
-          "pid": 6420,
-          "ppid": 6413,
+          "pid": 90773,
+          "ppid": 90765,
           "uid": 501,
-          "pgid": 6420,
+          "pgid": 90773,
           "status": 2,
-          "sec": 1788769197,
-          "usec": 663148,
+          "sec": 1788768539,
+          "usec": 164760,
           "tdev": 268435475
         },
         {
-          "pid": 6421,
-          "ppid": 6413,
+          "pid": 90774,
+          "ppid": 90765,
           "uid": 501,
-          "pgid": 6421,
+          "pgid": 90774,
           "status": 2,
-          "sec": 1788769197,
-          "usec": 665783,
+          "sec": 1788768539,
+          "usec": 166464,
           "tdev": 268435477
         },
         {
-          "pid": 6503,
-          "ppid": 6421,
+          "pid": 90799,
+          "ppid": 90774,
           "uid": 501,
-          "pgid": 6421,
+          "pgid": 90774,
           "status": 2,
-          "sec": 1788769200,
-          "usec": 967155,
+          "sec": 1788768539,
+          "usec": 894954,
           "tdev": 268435477
         }
       ],
@@ -1824,14 +1826,14 @@
     {
       "event": "test",
       "name": "__main__.Continuity.test_live_host_runs_new_executable_without_restarting_children",
-      "runtimeRoot": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-91MmwH/openforge-pty-reexec-l4cc1jbk",
+      "runtimeRoot": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-R1ZkZ1/openforge-pty-reexec-yv375d8i",
       "mode": "0o700"
     },
     {
       "event": "initial",
       "inventory": {
         "version": 1,
-        "host": 6773,
+        "host": 91172,
         "recoveries": 0,
         "fds": [
           0,
@@ -1846,7 +1848,7 @@
         "sentinel": 4,
         "children": [
           {
-            "pid": 6838,
+            "pid": 91219,
             "fd": 5,
             "tty": "/dev/ttys019",
             "device": 251658259,
@@ -1855,7 +1857,7 @@
             "status": 0
           },
           {
-            "pid": 6839,
+            "pid": 91221,
             "fd": 6,
             "tty": "/dev/ttys021",
             "device": 251658261,
@@ -1892,46 +1894,46 @@
           }
         ]
       },
-      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-91MmwH/openforge-pty-reexec-l4cc1jbk/v1",
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-R1ZkZ1/openforge-pty-reexec-yv375d8i/v1",
       "processes": [
         {
-          "pid": 6773,
-          "ppid": 5614,
+          "pid": 91172,
+          "ppid": 89903,
           "uid": 501,
-          "pgid": 6773,
+          "pgid": 91172,
           "status": 2,
-          "sec": 1788769212,
-          "usec": 30826,
+          "sec": 1788768555,
+          "usec": 871401,
           "tdev": 4294967295
         },
         {
-          "pid": 6838,
-          "ppid": 6773,
+          "pid": 91219,
+          "ppid": 91172,
           "uid": 501,
-          "pgid": 6838,
+          "pgid": 91219,
           "status": 2,
-          "sec": 1788769215,
-          "usec": 293959,
+          "sec": 1788768558,
+          "usec": 661648,
           "tdev": 268435475
         },
         {
-          "pid": 6839,
-          "ppid": 6773,
+          "pid": 91221,
+          "ppid": 91172,
           "uid": 501,
-          "pgid": 6839,
+          "pgid": 91221,
           "status": 2,
-          "sec": 1788769215,
-          "usec": 295806,
+          "sec": 1788768558,
+          "usec": 674025,
           "tdev": 268435477
         },
         {
-          "pid": 6845,
-          "ppid": 6839,
+          "pid": 91231,
+          "ppid": 91221,
           "uid": 501,
-          "pgid": 6839,
+          "pgid": 91221,
           "status": 2,
-          "sec": 1788769215,
-          "usec": 605881,
+          "sec": 1788768559,
+          "usec": 33700,
           "tdev": 268435477
         }
       ]
@@ -1940,7 +1942,7 @@
       "event": "replacement",
       "inventory": {
         "version": 2,
-        "host": 6773,
+        "host": 91172,
         "recoveries": 0,
         "fds": [
           0,
@@ -1954,7 +1956,7 @@
         "sentinel": 4,
         "children": [
           {
-            "pid": 6838,
+            "pid": 91219,
             "fd": 5,
             "tty": "/dev/ttys019",
             "device": 251658259,
@@ -1963,11 +1965,11 @@
             "status": 0
           },
           {
-            "pid": 6839,
+            "pid": 91221,
             "fd": 6,
             "tty": "/dev/ttys021",
             "device": 251658261,
-            "cursor": 91,
+            "cursor": 126,
             "reaped": 0,
             "status": 0
           },
@@ -2000,92 +2002,92 @@
           }
         ]
       },
-      "roundTripMs": 783.2602499999979,
-      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-91MmwH/openforge-pty-reexec-l4cc1jbk/v2"
+      "roundTripMs": 911.0507090000012,
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-R1ZkZ1/openforge-pty-reexec-yv375d8i/v2"
     },
     {
       "event": "continuity",
       "before": [
         {
-          "pid": 6773,
-          "ppid": 5614,
+          "pid": 91172,
+          "ppid": 89903,
           "uid": 501,
-          "pgid": 6773,
+          "pgid": 91172,
           "status": 2,
-          "sec": 1788769212,
-          "usec": 30826,
+          "sec": 1788768555,
+          "usec": 871401,
           "tdev": 4294967295
         },
         {
-          "pid": 6838,
-          "ppid": 6773,
+          "pid": 91219,
+          "ppid": 91172,
           "uid": 501,
-          "pgid": 6838,
+          "pgid": 91219,
           "status": 2,
-          "sec": 1788769215,
-          "usec": 293959,
+          "sec": 1788768558,
+          "usec": 661648,
           "tdev": 268435475
         },
         {
-          "pid": 6839,
-          "ppid": 6773,
+          "pid": 91221,
+          "ppid": 91172,
           "uid": 501,
-          "pgid": 6839,
+          "pgid": 91221,
           "status": 2,
-          "sec": 1788769215,
-          "usec": 295806,
+          "sec": 1788768558,
+          "usec": 674025,
           "tdev": 268435477
         },
         {
-          "pid": 6845,
-          "ppid": 6839,
+          "pid": 91231,
+          "ppid": 91221,
           "uid": 501,
-          "pgid": 6839,
+          "pgid": 91221,
           "status": 2,
-          "sec": 1788769215,
-          "usec": 605881,
+          "sec": 1788768559,
+          "usec": 33700,
           "tdev": 268435477
         }
       ],
       "after": [
         {
-          "pid": 6773,
-          "ppid": 5614,
+          "pid": 91172,
+          "ppid": 89903,
           "uid": 501,
-          "pgid": 6773,
+          "pgid": 91172,
           "status": 2,
-          "sec": 1788769212,
-          "usec": 30826,
+          "sec": 1788768555,
+          "usec": 871401,
           "tdev": 4294967295
         },
         {
-          "pid": 6838,
-          "ppid": 6773,
+          "pid": 91219,
+          "ppid": 91172,
           "uid": 501,
-          "pgid": 6838,
+          "pgid": 91219,
           "status": 2,
-          "sec": 1788769215,
-          "usec": 293959,
+          "sec": 1788768558,
+          "usec": 661648,
           "tdev": 268435475
         },
         {
-          "pid": 6839,
-          "ppid": 6773,
+          "pid": 91221,
+          "ppid": 91172,
           "uid": 501,
-          "pgid": 6839,
+          "pgid": 91221,
           "status": 2,
-          "sec": 1788769215,
-          "usec": 295806,
+          "sec": 1788768558,
+          "usec": 674025,
           "tdev": 268435477
         },
         {
-          "pid": 6845,
-          "ppid": 6839,
+          "pid": 91231,
+          "ppid": 91221,
           "uid": 501,
-          "pgid": 6839,
+          "pgid": 91221,
           "status": 2,
-          "sec": 1788769215,
-          "usec": 605881,
+          "sec": 1788768559,
+          "usec": 33700,
           "tdev": 268435477
         }
       ]
@@ -2094,43 +2096,43 @@
       "event": "cleanup",
       "owned": [
         {
-          "pid": 6773,
-          "ppid": 5614,
+          "pid": 91172,
+          "ppid": 89903,
           "uid": 501,
-          "pgid": 6773,
+          "pgid": 91172,
           "status": 2,
-          "sec": 1788769212,
-          "usec": 30826,
+          "sec": 1788768555,
+          "usec": 871401,
           "tdev": 4294967295
         },
         {
-          "pid": 6838,
-          "ppid": 6773,
+          "pid": 91219,
+          "ppid": 91172,
           "uid": 501,
-          "pgid": 6838,
+          "pgid": 91219,
           "status": 2,
-          "sec": 1788769215,
-          "usec": 293959,
+          "sec": 1788768558,
+          "usec": 661648,
           "tdev": 268435475
         },
         {
-          "pid": 6839,
-          "ppid": 6773,
+          "pid": 91221,
+          "ppid": 91172,
           "uid": 501,
-          "pgid": 6839,
+          "pgid": 91221,
           "status": 2,
-          "sec": 1788769215,
-          "usec": 295806,
+          "sec": 1788768558,
+          "usec": 674025,
           "tdev": 268435477
         },
         {
-          "pid": 6845,
-          "ppid": 6839,
+          "pid": 91231,
+          "ppid": 91221,
           "uid": 501,
-          "pgid": 6839,
+          "pgid": 91221,
           "status": 2,
-          "sec": 1788769215,
-          "usec": 605881,
+          "sec": 1788768559,
+          "usec": 33700,
           "tdev": 268435477
         }
       ],
@@ -2141,14 +2143,14 @@
     {
       "event": "test",
       "name": "__main__.Continuity.test_repeated_replacement_and_failed_exec_keep_sessions_usable",
-      "runtimeRoot": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-91MmwH/openforge-pty-reexec-ka876ffp",
+      "runtimeRoot": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-R1ZkZ1/openforge-pty-reexec-7xt3uqx0",
       "mode": "0o700"
     },
     {
       "event": "initial",
       "inventory": {
         "version": 1,
-        "host": 6922,
+        "host": 91440,
         "recoveries": 0,
         "fds": [
           0,
@@ -2163,7 +2165,7 @@
         "sentinel": 4,
         "children": [
           {
-            "pid": 6934,
+            "pid": 91464,
             "fd": 5,
             "tty": "/dev/ttys019",
             "device": 251658259,
@@ -2172,7 +2174,7 @@
             "status": 0
           },
           {
-            "pid": 6935,
+            "pid": 91465,
             "fd": 6,
             "tty": "/dev/ttys021",
             "device": 251658261,
@@ -2209,46 +2211,46 @@
           }
         ]
       },
-      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-91MmwH/openforge-pty-reexec-ka876ffp/v1",
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-R1ZkZ1/openforge-pty-reexec-7xt3uqx0/v1",
       "processes": [
         {
-          "pid": 6922,
-          "ppid": 5614,
+          "pid": 91440,
+          "ppid": 89903,
           "uid": 501,
-          "pgid": 6922,
+          "pgid": 91440,
           "status": 2,
-          "sec": 1788769218,
-          "usec": 958979,
+          "sec": 1788768564,
+          "usec": 937860,
           "tdev": 4294967295
         },
         {
-          "pid": 6934,
-          "ppid": 6922,
+          "pid": 91464,
+          "ppid": 91440,
           "uid": 501,
-          "pgid": 6934,
+          "pgid": 91464,
           "status": 2,
-          "sec": 1788769219,
-          "usec": 540611,
+          "sec": 1788768566,
+          "usec": 67604,
           "tdev": 268435475
         },
         {
-          "pid": 6935,
-          "ppid": 6922,
+          "pid": 91465,
+          "ppid": 91440,
           "uid": 501,
-          "pgid": 6935,
+          "pgid": 91465,
           "status": 2,
-          "sec": 1788769219,
-          "usec": 542528,
+          "sec": 1788768566,
+          "usec": 69688,
           "tdev": 268435477
         },
         {
-          "pid": 6965,
-          "ppid": 6935,
+          "pid": 91485,
+          "ppid": 91465,
           "uid": 501,
-          "pgid": 6935,
+          "pgid": 91465,
           "status": 2,
-          "sec": 1788769220,
-          "usec": 865130,
+          "sec": 1788768566,
+          "usec": 900253,
           "tdev": 268435477
         }
       ]
@@ -2257,7 +2259,7 @@
       "event": "replacement",
       "inventory": {
         "version": 2,
-        "host": 6922,
+        "host": 91440,
         "recoveries": 0,
         "fds": [
           0,
@@ -2271,7 +2273,7 @@
         "sentinel": 4,
         "children": [
           {
-            "pid": 6934,
+            "pid": 91464,
             "fd": 5,
             "tty": "/dev/ttys019",
             "device": 251658259,
@@ -2280,11 +2282,11 @@
             "status": 0
           },
           {
-            "pid": 6935,
+            "pid": 91465,
             "fd": 6,
             "tty": "/dev/ttys021",
             "device": 251658261,
-            "cursor": 104,
+            "cursor": 228,
             "reaped": 0,
             "status": 0
           },
@@ -2317,14 +2319,14 @@
           }
         ]
       },
-      "roundTripMs": 650.5806249999964,
-      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-91MmwH/openforge-pty-reexec-ka876ffp/v2"
+      "roundTripMs": 2534.9665830000063,
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-R1ZkZ1/openforge-pty-reexec-7xt3uqx0/v2"
     },
     {
       "event": "replacement",
       "inventory": {
         "version": 1,
-        "host": 6922,
+        "host": 91440,
         "recoveries": 0,
         "fds": [
           0,
@@ -2338,7 +2340,7 @@
         "sentinel": 4,
         "children": [
           {
-            "pid": 6934,
+            "pid": 91464,
             "fd": 5,
             "tty": "/dev/ttys019",
             "device": 251658259,
@@ -2347,11 +2349,11 @@
             "status": 0
           },
           {
-            "pid": 6935,
+            "pid": 91465,
             "fd": 6,
             "tty": "/dev/ttys021",
             "device": 251658261,
-            "cursor": 567,
+            "cursor": 1330,
             "reaped": 0,
             "status": 0
           },
@@ -2384,14 +2386,14 @@
           }
         ]
       },
-      "roundTripMs": 346.47404100000045,
-      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-91MmwH/openforge-pty-reexec-ka876ffp/v1"
+      "roundTripMs": 1293.9467919999997,
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-R1ZkZ1/openforge-pty-reexec-7xt3uqx0/v1"
     },
     {
       "event": "replacement",
       "inventory": {
         "version": 2,
-        "host": 6922,
+        "host": 91440,
         "recoveries": 0,
         "fds": [
           0,
@@ -2405,7 +2407,7 @@
         "sentinel": 4,
         "children": [
           {
-            "pid": 6934,
+            "pid": 91464,
             "fd": 5,
             "tty": "/dev/ttys019",
             "device": 251658259,
@@ -2414,11 +2416,11 @@
             "status": 0
           },
           {
-            "pid": 6935,
+            "pid": 91465,
             "fd": 6,
             "tty": "/dev/ttys021",
             "device": 251658261,
-            "cursor": 852,
+            "cursor": 2309,
             "reaped": 0,
             "status": 0
           },
@@ -2451,50 +2453,50 @@
           }
         ]
       },
-      "roundTripMs": 319.2579999999978,
-      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-91MmwH/openforge-pty-reexec-ka876ffp/v2"
+      "roundTripMs": 1166.2658330000113,
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-R1ZkZ1/openforge-pty-reexec-7xt3uqx0/v2"
     },
     {
       "event": "cleanup",
       "owned": [
         {
-          "pid": 6922,
-          "ppid": 5614,
+          "pid": 91440,
+          "ppid": 89903,
           "uid": 501,
-          "pgid": 6922,
+          "pgid": 91440,
           "status": 2,
-          "sec": 1788769218,
-          "usec": 958979,
+          "sec": 1788768564,
+          "usec": 937860,
           "tdev": 4294967295
         },
         {
-          "pid": 6934,
-          "ppid": 6922,
+          "pid": 91464,
+          "ppid": 91440,
           "uid": 501,
-          "pgid": 6934,
+          "pgid": 91464,
           "status": 2,
-          "sec": 1788769219,
-          "usec": 540611,
+          "sec": 1788768566,
+          "usec": 67604,
           "tdev": 268435475
         },
         {
-          "pid": 6935,
-          "ppid": 6922,
+          "pid": 91465,
+          "ppid": 91440,
           "uid": 501,
-          "pgid": 6935,
+          "pgid": 91465,
           "status": 2,
-          "sec": 1788769219,
-          "usec": 542528,
+          "sec": 1788768566,
+          "usec": 69688,
           "tdev": 268435477
         },
         {
-          "pid": 6965,
-          "ppid": 6935,
+          "pid": 91485,
+          "ppid": 91465,
           "uid": 501,
-          "pgid": 6935,
+          "pgid": 91465,
           "status": 2,
-          "sec": 1788769220,
-          "usec": 865130,
+          "sec": 1788768566,
+          "usec": 900253,
           "tdev": 268435477
         }
       ],
@@ -2505,14 +2507,14 @@
     {
       "event": "test",
       "name": "__main__.Continuity.test_shell_state_echo_resize_and_running_tool_survive",
-      "runtimeRoot": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-91MmwH/openforge-pty-reexec-67zwhha7",
+      "runtimeRoot": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-R1ZkZ1/openforge-pty-reexec-p21jgzyx",
       "mode": "0o700"
     },
     {
       "event": "initial",
       "inventory": {
         "version": 1,
-        "host": 7091,
+        "host": 91766,
         "recoveries": 0,
         "fds": [
           0,
@@ -2527,7 +2529,7 @@
         "sentinel": 4,
         "children": [
           {
-            "pid": 7098,
+            "pid": 91775,
             "fd": 5,
             "tty": "/dev/ttys019",
             "device": 251658259,
@@ -2536,7 +2538,7 @@
             "status": 0
           },
           {
-            "pid": 7099,
+            "pid": 91777,
             "fd": 6,
             "tty": "/dev/ttys021",
             "device": 251658261,
@@ -2573,46 +2575,46 @@
           }
         ]
       },
-      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-91MmwH/openforge-pty-reexec-67zwhha7/v1",
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-R1ZkZ1/openforge-pty-reexec-p21jgzyx/v1",
       "processes": [
         {
-          "pid": 7091,
-          "ppid": 5614,
+          "pid": 91766,
+          "ppid": 89903,
           "uid": 501,
-          "pgid": 7091,
+          "pgid": 91766,
           "status": 2,
-          "sec": 1788769225,
-          "usec": 347217,
+          "sec": 1788768580,
+          "usec": 591150,
           "tdev": 4294967295
         },
         {
-          "pid": 7098,
-          "ppid": 7091,
+          "pid": 91775,
+          "ppid": 91766,
           "uid": 501,
-          "pgid": 7098,
+          "pgid": 91775,
           "status": 2,
-          "sec": 1788769225,
-          "usec": 692983,
+          "sec": 1788768580,
+          "usec": 915078,
           "tdev": 268435475
         },
         {
-          "pid": 7099,
-          "ppid": 7091,
+          "pid": 91777,
+          "ppid": 91766,
           "uid": 501,
-          "pgid": 7099,
+          "pgid": 91777,
           "status": 2,
-          "sec": 1788769225,
-          "usec": 695334,
+          "sec": 1788768580,
+          "usec": 924390,
           "tdev": 268435477
         },
         {
-          "pid": 7112,
-          "ppid": 7099,
+          "pid": 91786,
+          "ppid": 91777,
           "uid": 501,
-          "pgid": 7099,
+          "pgid": 91777,
           "status": 2,
-          "sec": 1788769226,
-          "usec": 102468,
+          "sec": 1788768581,
+          "usec": 458312,
           "tdev": 268435477
         }
       ]
@@ -2621,7 +2623,7 @@
       "event": "replacement",
       "inventory": {
         "version": 2,
-        "host": 7091,
+        "host": 91766,
         "recoveries": 0,
         "fds": [
           0,
@@ -2635,7 +2637,7 @@
         "sentinel": 4,
         "children": [
           {
-            "pid": 7098,
+            "pid": 91775,
             "fd": 5,
             "tty": "/dev/ttys019",
             "device": 251658259,
@@ -2644,11 +2646,11 @@
             "status": 0
           },
           {
-            "pid": 7099,
+            "pid": 91777,
             "fd": 6,
             "tty": "/dev/ttys021",
             "device": 251658261,
-            "cursor": 198,
+            "cursor": 573,
             "reaped": 0,
             "status": 0
           },
@@ -2681,50 +2683,50 @@
           }
         ]
       },
-      "roundTripMs": 685.630500000002,
-      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-91MmwH/openforge-pty-reexec-67zwhha7/v2"
+      "roundTripMs": 1458.1649579999976,
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-R1ZkZ1/openforge-pty-reexec-p21jgzyx/v2"
     },
     {
       "event": "cleanup",
       "owned": [
         {
-          "pid": 7091,
-          "ppid": 5614,
+          "pid": 91766,
+          "ppid": 89903,
           "uid": 501,
-          "pgid": 7091,
+          "pgid": 91766,
           "status": 2,
-          "sec": 1788769225,
-          "usec": 347217,
+          "sec": 1788768580,
+          "usec": 591150,
           "tdev": 4294967295
         },
         {
-          "pid": 7098,
-          "ppid": 7091,
+          "pid": 91775,
+          "ppid": 91766,
           "uid": 501,
-          "pgid": 7098,
+          "pgid": 91775,
           "status": 2,
-          "sec": 1788769225,
-          "usec": 692983,
+          "sec": 1788768580,
+          "usec": 915078,
           "tdev": 268435475
         },
         {
-          "pid": 7099,
-          "ppid": 7091,
+          "pid": 91777,
+          "ppid": 91766,
           "uid": 501,
-          "pgid": 7099,
+          "pgid": 91777,
           "status": 2,
-          "sec": 1788769225,
-          "usec": 695334,
+          "sec": 1788768580,
+          "usec": 924390,
           "tdev": 268435477
         },
         {
-          "pid": 7112,
-          "ppid": 7099,
+          "pid": 91786,
+          "ppid": 91777,
           "uid": 501,
-          "pgid": 7099,
+          "pgid": 91777,
           "status": 2,
-          "sec": 1788769226,
-          "usec": 102468,
+          "sec": 1788768581,
+          "usec": 458312,
           "tdev": 268435477
         }
       ],
@@ -2735,14 +2737,14 @@
     {
       "event": "test",
       "name": "__main__.Continuity.test_teardown_at_checkpoint_does_not_activate_target",
-      "runtimeRoot": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-91MmwH/openforge-pty-reexec-gs8mxick",
+      "runtimeRoot": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-R1ZkZ1/openforge-pty-reexec-y0ltepl5",
       "mode": "0o700"
     },
     {
       "event": "initial",
       "inventory": {
         "version": 1,
-        "host": 7221,
+        "host": 91994,
         "recoveries": 0,
         "fds": [
           0,
@@ -2757,7 +2759,7 @@
         "sentinel": 4,
         "children": [
           {
-            "pid": 7237,
+            "pid": 92002,
             "fd": 5,
             "tty": "/dev/ttys019",
             "device": 251658259,
@@ -2766,7 +2768,7 @@
             "status": 0
           },
           {
-            "pid": 7238,
+            "pid": 92003,
             "fd": 6,
             "tty": "/dev/ttys021",
             "device": 251658261,
@@ -2803,46 +2805,46 @@
           }
         ]
       },
-      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-91MmwH/openforge-pty-reexec-gs8mxick/v1",
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-R1ZkZ1/openforge-pty-reexec-y0ltepl5/v1",
       "processes": [
         {
-          "pid": 7221,
-          "ppid": 5614,
+          "pid": 91994,
+          "ppid": 89903,
           "uid": 501,
-          "pgid": 7221,
+          "pgid": 91994,
           "status": 2,
-          "sec": 1788769229,
-          "usec": 829438,
+          "sec": 1788768589,
+          "usec": 2698,
           "tdev": 4294967295
         },
         {
-          "pid": 7237,
-          "ppid": 7221,
+          "pid": 92002,
+          "ppid": 91994,
           "uid": 501,
-          "pgid": 7237,
+          "pgid": 92002,
           "status": 2,
-          "sec": 1788769230,
-          "usec": 284680,
+          "sec": 1788768589,
+          "usec": 290586,
           "tdev": 268435475
         },
         {
-          "pid": 7238,
-          "ppid": 7221,
+          "pid": 92003,
+          "ppid": 91994,
           "uid": 501,
-          "pgid": 7238,
+          "pgid": 92003,
           "status": 2,
-          "sec": 1788769230,
-          "usec": 285986,
+          "sec": 1788768589,
+          "usec": 292680,
           "tdev": 268435477
         },
         {
-          "pid": 7253,
-          "ppid": 7238,
+          "pid": 92014,
+          "ppid": 92003,
           "uid": 501,
-          "pgid": 7238,
+          "pgid": 92003,
           "status": 2,
-          "sec": 1788769230,
-          "usec": 742716,
+          "sec": 1788768589,
+          "usec": 754795,
           "tdev": 268435477
         }
       ]
@@ -2851,43 +2853,43 @@
       "event": "cleanup",
       "owned": [
         {
-          "pid": 7221,
-          "ppid": 5614,
+          "pid": 91994,
+          "ppid": 89903,
           "uid": 501,
-          "pgid": 7221,
+          "pgid": 91994,
           "status": 2,
-          "sec": 1788769229,
-          "usec": 829438,
+          "sec": 1788768589,
+          "usec": 2698,
           "tdev": 4294967295
         },
         {
-          "pid": 7237,
-          "ppid": 7221,
+          "pid": 92002,
+          "ppid": 91994,
           "uid": 501,
-          "pgid": 7237,
+          "pgid": 92002,
           "status": 2,
-          "sec": 1788769230,
-          "usec": 284680,
+          "sec": 1788768589,
+          "usec": 290586,
           "tdev": 268435475
         },
         {
-          "pid": 7238,
-          "ppid": 7221,
+          "pid": 92003,
+          "ppid": 91994,
           "uid": 501,
-          "pgid": 7238,
+          "pgid": 92003,
           "status": 2,
-          "sec": 1788769230,
-          "usec": 285986,
+          "sec": 1788768589,
+          "usec": 292680,
           "tdev": 268435477
         },
         {
-          "pid": 7253,
-          "ppid": 7238,
+          "pid": 92014,
+          "ppid": 92003,
           "uid": 501,
-          "pgid": 7238,
+          "pgid": 92003,
           "status": 2,
-          "sec": 1788769230,
-          "usec": 742716,
+          "sec": 1788768589,
+          "usec": 754795,
           "tdev": 268435477
         }
       ],
@@ -2898,14 +2900,14 @@
     {
       "event": "test",
       "name": "__main__.Continuity.test_unresponsive_checkpoint_host_is_cleaned_without_protocol",
-      "runtimeRoot": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-91MmwH/openforge-pty-reexec-qxn47euq",
+      "runtimeRoot": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-R1ZkZ1/openforge-pty-reexec-tj08b6cl",
       "mode": "0o700"
     },
     {
       "event": "initial",
       "inventory": {
         "version": 1,
-        "host": 7321,
+        "host": 92159,
         "recoveries": 0,
         "fds": [
           0,
@@ -2920,7 +2922,7 @@
         "sentinel": 4,
         "children": [
           {
-            "pid": 7331,
+            "pid": 92169,
             "fd": 5,
             "tty": "/dev/ttys019",
             "device": 251658259,
@@ -2929,7 +2931,7 @@
             "status": 0
           },
           {
-            "pid": 7332,
+            "pid": 92170,
             "fd": 6,
             "tty": "/dev/ttys021",
             "device": 251658261,
@@ -2966,46 +2968,46 @@
           }
         ]
       },
-      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-91MmwH/openforge-pty-reexec-qxn47euq/v1",
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-R1ZkZ1/openforge-pty-reexec-tj08b6cl/v1",
       "processes": [
         {
-          "pid": 7321,
-          "ppid": 5614,
+          "pid": 92159,
+          "ppid": 89903,
           "uid": 501,
-          "pgid": 7321,
+          "pgid": 92159,
           "status": 2,
-          "sec": 1788769233,
-          "usec": 521940,
+          "sec": 1788768595,
+          "usec": 802152,
           "tdev": 4294967295
         },
         {
-          "pid": 7331,
-          "ppid": 7321,
+          "pid": 92169,
+          "ppid": 92159,
           "uid": 501,
-          "pgid": 7331,
+          "pgid": 92169,
           "status": 2,
-          "sec": 1788769233,
-          "usec": 935897,
+          "sec": 1788768596,
+          "usec": 383553,
           "tdev": 268435475
         },
         {
-          "pid": 7332,
-          "ppid": 7321,
+          "pid": 92170,
+          "ppid": 92159,
           "uid": 501,
-          "pgid": 7332,
+          "pgid": 92170,
           "status": 2,
-          "sec": 1788769233,
-          "usec": 937071,
+          "sec": 1788768596,
+          "usec": 385733,
           "tdev": 268435477
         },
         {
-          "pid": 7343,
-          "ppid": 7332,
+          "pid": 92252,
+          "ppid": 92170,
           "uid": 501,
-          "pgid": 7332,
+          "pgid": 92170,
           "status": 2,
-          "sec": 1788769234,
-          "usec": 287056,
+          "sec": 1788768599,
+          "usec": 845857,
           "tdev": 268435477
         }
       ]
@@ -3018,43 +3020,43 @@
       "event": "cleanup",
       "owned": [
         {
-          "pid": 7321,
-          "ppid": 5614,
+          "pid": 92159,
+          "ppid": 89903,
           "uid": 501,
-          "pgid": 7321,
+          "pgid": 92159,
           "status": 4,
-          "sec": 1788769233,
-          "usec": 521940,
+          "sec": 1788768595,
+          "usec": 802152,
           "tdev": 4294967295
         },
         {
-          "pid": 7331,
-          "ppid": 7321,
+          "pid": 92169,
+          "ppid": 92159,
           "uid": 501,
-          "pgid": 7331,
+          "pgid": 92169,
           "status": 2,
-          "sec": 1788769233,
-          "usec": 935897,
+          "sec": 1788768596,
+          "usec": 383553,
           "tdev": 268435475
         },
         {
-          "pid": 7332,
-          "ppid": 7321,
+          "pid": 92170,
+          "ppid": 92159,
           "uid": 501,
-          "pgid": 7332,
+          "pgid": 92170,
           "status": 2,
-          "sec": 1788769233,
-          "usec": 937071,
+          "sec": 1788768596,
+          "usec": 385733,
           "tdev": 268435477
         },
         {
-          "pid": 7343,
-          "ppid": 7332,
+          "pid": 92252,
+          "ppid": 92170,
           "uid": 501,
-          "pgid": 7332,
+          "pgid": 92170,
           "status": 2,
-          "sec": 1788769234,
-          "usec": 287056,
+          "sec": 1788768599,
+          "usec": 845857,
           "tdev": 268435477
         }
       ],

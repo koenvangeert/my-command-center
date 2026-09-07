@@ -3,6 +3,7 @@ name = "pty-reexec-authority-proof"
 version = "0.1.0"
 edition = "2021"
 publish = false
+default-run = "pty-reexec-authority-proof"
 
 [workspace]
 
@@ -11,3 +12,13 @@ libghostty-vt = { git = "https://github.com/Uzaaft/libghostty-rs.git", rev = "de
 log = "0.4"
 thiserror = "2"
 serde_json = "1"
+serde = { version = "1", features = ["derive"] }
+libc = "0.2"
+
+[[bin]]
+name = "live-authority-a"
+path = "src/live_a.rs"
+
+[[bin]]
+name = "live-authority-b"
+path = "src/live_b.rs"

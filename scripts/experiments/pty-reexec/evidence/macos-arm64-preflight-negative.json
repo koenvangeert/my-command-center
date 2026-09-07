@@ -1,0 +1,265 @@
+{
+  "platform": "macOS-26.6.2-arm64-arm-64bit",
+  "architecture": "arm64",
+  "python": "3.9.6",
+  "clang": "Apple clang version 21.0.0 (clang-2100.1.1.101)\nTarget: arm64-apple-darwin25.6.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin",
+  "sources": {
+    "run.py": "b513ecde348a850b19c33b2f8ced526e3b3c56e3665e2425960ca89c02f914cd",
+    "macos.py": "3bd50d1c08e473c2356a3f21b35bdc01e9e2246ffcbd8a1f094c84bc0b0c845c",
+    "test_cleanup.py": "1ca4f5762f7b34306013dd8a5fcf6fb951ee31b91a018175a270cf5ce8f470ff",
+    "preflight.h": "8b5390f65c4ae917f35235142abbd042a06f72f1d1f3d0b14cad2995d0f3ab50",
+    "host.c": "859c88e843f68a242a5903ef00e352a8a2a3518c6b696c406de2a9367f08f319",
+    "fixture.c": "26f7f5fd0f871e625013c0a95af69c4fdeaa5ed7c5d463a5fab90183892ba6c1",
+    "live_authority.py": "7d20ed9e765f44394754e39d3134bf5c26c4a16512ae6843314dfee36547ce83",
+    "model_fixture.c": "5edaad4b47461f229e282281576e59b8c0c1857ae691c207baffa4d1a80d9a60"
+  },
+  "negativeControl": false,
+  "testsRun": 1,
+  "passed": false,
+  "failures": [
+    "test_invalid_targets_are_refused_and_sessions_remain_usable (__main__.Continuity) (target='malformed')\nTraceback (most recent call last):\n  File \"/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/openforge-preflight-negative-i20ll26u/run.py\", line 395, in test_invalid_targets_are_refused_and_sessions_remain_usable\n    self.assertIn(\"refused\", result)\nAssertionError: 'refused' not found in {'prepared': True}\n",
+    "test_invalid_targets_are_refused_and_sessions_remain_usable (__main__.Continuity) (target='truncated')\nTraceback (most recent call last):\n  File \"/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/openforge-preflight-negative-i20ll26u/run.py\", line 395, in test_invalid_targets_are_refused_and_sessions_remain_usable\n    self.assertIn(\"refused\", result)\nAssertionError: 'refused' not found in {'prepared': True}\n",
+    "test_invalid_targets_are_refused_and_sessions_remain_usable (__main__.Continuity) (target='non-executable')\nTraceback (most recent call last):\n  File \"/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/openforge-preflight-negative-i20ll26u/run.py\", line 395, in test_invalid_targets_are_refused_and_sessions_remain_usable\n    self.assertIn(\"refused\", result)\nAssertionError: 'refused' not found in {'prepared': True}\n",
+    "test_invalid_targets_are_refused_and_sessions_remain_usable (__main__.Continuity) (target='missing')\nTraceback (most recent call last):\n  File \"/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/openforge-preflight-negative-i20ll26u/run.py\", line 395, in test_invalid_targets_are_refused_and_sessions_remain_usable\n    self.assertIn(\"refused\", result)\nAssertionError: 'refused' not found in {'prepared': True}\n",
+    "test_invalid_targets_are_refused_and_sessions_remain_usable (__main__.Continuity) (target='openforge-pty-reexec-seqd577d')\nTraceback (most recent call last):\n  File \"/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/openforge-preflight-negative-i20ll26u/run.py\", line 395, in test_invalid_targets_are_refused_and_sessions_remain_usable\n    self.assertIn(\"refused\", result)\nAssertionError: 'refused' not found in {'prepared': True}\n",
+    "test_invalid_targets_are_refused_and_sessions_remain_usable (__main__.Continuity) (target='stuck-probe')\nTraceback (most recent call last):\n  File \"/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/openforge-preflight-negative-i20ll26u/run.py\", line 395, in test_invalid_targets_are_refused_and_sessions_remain_usable\n    self.assertIn(\"refused\", result)\nAssertionError: 'refused' not found in {'prepared': True}\n"
+  ],
+  "events": [
+    {
+      "event": "test",
+      "name": "__main__.Continuity.test_invalid_targets_are_refused_and_sessions_remain_usable",
+      "runtimeRoot": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/openforge-pty-reexec-seqd577d",
+      "mode": "0o700"
+    },
+    {
+      "event": "initial",
+      "inventory": {
+        "version": 1,
+        "host": 85189,
+        "recoveries": 0,
+        "fds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "stateFd": 3,
+        "sentinel": 4,
+        "children": [
+          {
+            "pid": 85247,
+            "fd": 5,
+            "tty": "/dev/ttys019",
+            "device": 251658259,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 85248,
+            "fd": 6,
+            "tty": "/dev/ttys021",
+            "device": 251658261,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          }
+        ]
+      },
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/openforge-pty-reexec-seqd577d/v1",
+      "processes": [
+        {
+          "pid": 85189,
+          "ppid": 85083,
+          "uid": 501,
+          "pgid": 85189,
+          "status": 2,
+          "sec": 1788768350,
+          "usec": 760977,
+          "tdev": 4294967295
+        },
+        {
+          "pid": 85247,
+          "ppid": 85189,
+          "uid": 501,
+          "pgid": 85247,
+          "status": 2,
+          "sec": 1788768351,
+          "usec": 362259,
+          "tdev": 268435475
+        },
+        {
+          "pid": 85248,
+          "ppid": 85189,
+          "uid": 501,
+          "pgid": 85248,
+          "status": 2,
+          "sec": 1788768351,
+          "usec": 365728,
+          "tdev": 268435477
+        },
+        {
+          "pid": 85313,
+          "ppid": 85248,
+          "uid": 501,
+          "pgid": 85248,
+          "status": 2,
+          "sec": 1788768352,
+          "usec": 293910,
+          "tdev": 268435477
+        }
+      ]
+    },
+    {
+      "event": "replacement",
+      "inventory": {
+        "version": 2,
+        "host": 85189,
+        "recoveries": 0,
+        "fds": [
+          0,
+          1,
+          2,
+          3,
+          5,
+          6
+        ],
+        "stateFd": 3,
+        "sentinel": 4,
+        "children": [
+          {
+            "pid": 85247,
+            "fd": 5,
+            "tty": "/dev/ttys019",
+            "device": 251658259,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 85248,
+            "fd": 6,
+            "tty": "/dev/ttys021",
+            "device": 251658261,
+            "cursor": 126,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          }
+        ]
+      },
+      "roundTripMs": 2741.727417,
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/openforge-pty-reexec-seqd577d/v2"
+    },
+    {
+      "event": "cleanup",
+      "owned": [
+        {
+          "pid": 85189,
+          "ppid": 85083,
+          "uid": 501,
+          "pgid": 85189,
+          "status": 2,
+          "sec": 1788768350,
+          "usec": 760977,
+          "tdev": 4294967295
+        },
+        {
+          "pid": 85247,
+          "ppid": 85189,
+          "uid": 501,
+          "pgid": 85247,
+          "status": 2,
+          "sec": 1788768351,
+          "usec": 362259,
+          "tdev": 268435475
+        },
+        {
+          "pid": 85248,
+          "ppid": 85189,
+          "uid": 501,
+          "pgid": 85248,
+          "status": 2,
+          "sec": 1788768351,
+          "usec": 365728,
+          "tdev": 268435477
+        },
+        {
+          "pid": 85313,
+          "ppid": 85248,
+          "uid": 501,
+          "pgid": 85248,
+          "status": 2,
+          "sec": 1788768352,
+          "usec": 293910,
+          "tdev": 268435477
+        }
+      ],
+      "survivors": [],
+      "forced": false,
+      "errors": []
+    }
+  ],
+  "sourceMutation": {
+    "file": "host.c",
+    "from": "if (!accepts_checkpoint(target, STATE_FORMAT, sizeof(state)))",
+    "to": "if (0 && !accepts_checkpoint(target, STATE_FORMAT, sizeof(state)))",
+    "scope": "temporary source copy only; production experiment source unchanged"
+  }
+}

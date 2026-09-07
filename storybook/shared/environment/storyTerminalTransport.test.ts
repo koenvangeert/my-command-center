@@ -4,6 +4,23 @@ import { createTerminalRuntime, createTerminalSessionService } from '@openforge-
 import { createFakeTerminalView } from '@openforge-app/terminal-runtime/testUtils'
 
 describe('local Terminal story transport', () => {
+  it.each(['ready', 'empty', 'overflow', 'disconnected'] as const)(
+    'provides explicit parser-ground continuation for %s replay and respawn', async (state) => {
+      const transport = createStoryTerminalTransport(state)
+      try {
+        const replay = await transport.readReplay('T-42-shell-0')
+        expect(replay.snapshot?.continuationData).toEqual(new Uint8Array())
+        const instance = transport.spawn('T-42-shell-0')
+        const respawned = await transport.readReplay('T-42-shell-0')
+        expect(respawned.snapshot).toMatchObject({
+          continuationData: new Uint8Array(), ptyInstanceId: instance, watermark: 0,
+        })
+      } finally {
+        transport.dispose()
+      }
+    },
+  )
+
   it('buffers output for inactive subscriptions and replays it when requested', async () => {
     const transport = createStoryTerminalTransport()
     const onModelOutput = vi.fn()

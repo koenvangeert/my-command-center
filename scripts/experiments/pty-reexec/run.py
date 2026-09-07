@@ -28,7 +28,7 @@ def record(event, **details):
     EVIDENCE.append({"event": event, **details})
 
 class Host:
-    def __init__(self, root):
+    def __init__(self, root, command=None):
         self.root = root
         self.owned = {}
         self.cursors = [0] * 5
@@ -40,7 +40,7 @@ class Host:
                "PS1": "", "PS2": "", "HISTFILE": "/dev/null", "TERM": "xterm-256color",
                "OPENFORGE_APP_DATA_DIR": str(root / "app-data")}
         self.stderr = open(root / "host.stderr", "wb")
-        self.proc = subprocess.Popen([str(root / "v1"), "start", str(root / "fixture")],
+        self.proc = subprocess.Popen(command or [str(root / "v1"), "start", str(root / "fixture")],
                                      cwd=root, env=env, stdin=subprocess.PIPE,
                                      stdout=subprocess.PIPE, stderr=self.stderr, bufsize=0,
                                      start_new_session=True)
@@ -263,6 +263,10 @@ class Continuity(unittest.TestCase):
         output = host.until(0, rb"\r\nAFTER:.*work:still-here\r\n")
         self.assertIn(b"\r\n37 101\r\n", output)
         self.assertIn(f"AFTER:{self.root}/work:still-here\r\n".encode(), output)
+        # Shell checks leave this separate PTY unread. Service its output before
+        # checking kernel echo, which macOS can discard when its output queue is full.
+        # Numbered-output continuity below still checks every byte-producing tick.
+        host.read(1)
         host.write(1, "ping-after-reexec\n")
         output = host.until(1, rb"AGENT_ECHO ping-after-reexec\r\n")
         self.assertIn(b"ping-after-reexec", output.splitlines(), "terminal line discipline echo missing")
@@ -365,6 +369,55 @@ class Continuity(unittest.TestCase):
         self.assertTrue(host.closed, "fault cleanup did not complete its survivor audit")
 
 
+
+    def test_invalid_targets_are_refused_and_sessions_remain_usable(self):
+        malformed = self.root / "malformed"
+        malformed.write_bytes(b"not an executable\n")
+        malformed.chmod(0o700)
+        truncated = self.root / "truncated"
+        truncated.write_bytes((self.root / "v2").read_bytes()[:32])
+        truncated.chmod(0o700)
+        denied = self.root / "non-executable"
+        denied.write_bytes((self.root / "v2").read_bytes())
+        denied.chmod(0o600)
+        stuck = self.root / "stuck-probe"
+        subprocess.run(["/usr/bin/clang", "-std=c11", "-Wall", "-Wextra", "-Werror",
+                        "-x", "c", "-", "-o", str(stuck)],
+                       input="#include <unistd.h>\nint main(void) { for (;;) pause(); }\n",
+                       text=True, check=True)
+        host = self.host
+        identities = {pid: macos.identity(macos.process(pid))
+                      for pid in (host.proc.pid, self.initial["children"][0]["pid"], self.agent, self.tool)}
+        targets = [malformed, truncated, denied, self.root / "missing", self.root, stuck]
+        for index, target in enumerate(targets):
+            with self.subTest(target=target.name):
+                before = host.command("INFO")
+                started = time.monotonic()
+                result = host.command(f"REEXEC {target}")
+                elapsed = time.monotonic() - started
+                try:
+                    self.assertIn("refused", result)
+                    self.assertLess(elapsed, 4, "preflight exceeded its bounded response window")
+                    self.assertEqual(host.command("INFO"), before)
+                    self.assertEqual(macos.descriptors(host.proc.pid), before["fds"])
+                    for pid, identity in identities.items():
+                        self.assertEqual(macos.identity(macos.process(pid)), identity)
+                    self.assertEqual({p["pid"] for p in macos.descendants(host.proc.pid)},
+                                     set(identities), "preflight left a child behind")
+                    token = f"invalid-target-{index}"
+                    host.write(1, token + "\n")
+                    echo = f"AGENT_ECHO {token}\r\n".encode()
+                    host.until(1, re.escape(echo))
+                    self.assertEqual(host.output[1].count(echo), 1)
+                    record("invalidTargetRefusal", target=target.name, response=result,
+                           seconds=elapsed, inventory=before)
+                finally:
+                    # A failing assertion must not leave a negative-control host at its barrier.
+                    if host.barrier:
+                        host.command("ABORT")
+        self.assertEqual(host.replace()["version"], 2)
+        host.write(1, "valid-after-refusals\n")
+        host.until(1, rb"AGENT_ECHO valid-after-refusals\r\n")
 
     def test_incompatible_target_is_refused_without_touching_live_descriptors(self):
         target = self.root / "v2-incompatible"

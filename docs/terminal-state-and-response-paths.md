@@ -47,8 +47,9 @@ Ghostty's `on_pty_write` replies go directly through the Shell Session Key and P
 - the Ghostty actor's output watermark
 - base64-encoded VT restoration bytes formatted by `libghostty-vt`
 - base64-encoded compatibility replay, capped at 256 KiB of the newest model-accepted bytes and captured by the same actor command and watermark
+- base64-encoded parser continuation, captured with the same watermark; empty continuation means parser ground
 
-Terminal Runtime registers transport listeners before requesting restoration. It applies the bounded compatibility replay first so xterm can reconstruct renderer-owned state such as inline images, then applies portable VT as the canonical parsed state. Both payloads are actor-captured for one PTY instance and watermark. Terminal Runtime discards frames at or below that watermark and applies contiguous later frames. A sequence gap requests a fresh Ghostty snapshot rather than using OpenForge's raw PTY replay buffer as canonical state.
+Terminal Runtime registers transport listeners before requesting restoration. It applies bounded compatibility replay so xterm can reconstruct renderer-owned state such as inline images. A byte-oriented CAN then cancels unfinished replay parser/UTF-8 input before portable VT restores canonical presentation. The captured parser continuation is applied last, so subsequent live bytes can complete split escape sequences or UTF-8 characters. All three payloads belong to one actor-captured PTY instance and watermark. Terminal Runtime discards frames at or below that watermark and applies contiguous later frames. A sequence gap requests a fresh Ghostty snapshot rather than using OpenForge's raw PTY replay buffer as canonical state.
 
 Completed Agent Sessions may still display persisted raw replay after their live Terminal Session has ended. That replay is historical presentation data and cannot generate a reply accepted by a PTY.
 

@@ -1,0 +1,255 @@
+{
+  "platform": "macOS-26.6.2-arm64-arm-64bit",
+  "architecture": "arm64",
+  "python": "3.9.6",
+  "clang": "Apple clang version 21.0.0 (clang-2100.1.1.101)\nTarget: arm64-apple-darwin25.6.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin",
+  "sources": {
+    "run.py": "b82c9255469f2d0bd2025b13afd2eba7877377e6435a8aa0fe98a85557ae3c17",
+    "macos.py": "3bd50d1c08e473c2356a3f21b35bdc01e9e2246ffcbd8a1f094c84bc0b0c845c",
+    "test_cleanup.py": "1ca4f5762f7b34306013dd8a5fcf6fb951ee31b91a018175a270cf5ce8f470ff",
+    "preflight.h": "8b5390f65c4ae917f35235142abbd042a06f72f1d1f3d0b14cad2995d0f3ab50",
+    "host.c": "5017cfc59bfe1efe2e0f74b0aeca7b212e9215dc6cfa80c3f114fd461f22cb13",
+    "fixture.c": "26f7f5fd0f871e625013c0a95af69c4fdeaa5ed7c5d463a5fab90183892ba6c1",
+    "live_authority.py": "7d20ed9e765f44394754e39d3134bf5c26c4a16512ae6843314dfee36547ce83",
+    "model_fixture.c": "5edaad4b47461f229e282281576e59b8c0c1857ae691c207baffa4d1a80d9a60"
+  },
+  "negativeControl": true,
+  "testsRun": 1,
+  "passed": false,
+  "failures": [
+    "test_shell_state_echo_resize_and_running_tool_survive (__main__.Continuity)\nTraceback (most recent call last):\n  File \"/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/openforge-echo-control-8jftxzpx/run.py\", line 269, in test_shell_state_echo_resize_and_running_tool_survive\n    self.assertIn(b\"ping-after-reexec\", output.splitlines(), \"terminal line discipline echo missing\")\nAssertionError: b'ping-after-reexec' not found in [b'TOOL 3486 14', b'TOOL 3486 15', b'TOOL 3486 16', b'TOOL 3486 17', b'TOOL 3486 18', b'TOOL 3486 19', b'TOOL 3486 20', b'TOOL 3486 21', b'TOOL 3486 22', b'TOOL 3486 23', b'TOOL 3486 24', b'TOOL 3486 25', b'TOOL 3486 26', b'TOOL 3486 27', b'TOOL 3486 28', b'TOOL 3486 29', b'TOOL 3486 30', b'TOOL 3486 31', b'TOOL 3486 32', b'TOOL 3486 33', b'TOOL 3486 34', b'TOOL 3486 35', b'TOOL 3486 36', b'TOOL 3486 37', b'TOOL 3486 38', b'TOOL 3486 39', b'TOOL 3486 40', b'TOOL 3486 41', b'TOOL 3486 42', b'TOOL 3486 43', b'TOOL 3486 44', b'TOOL 3486 45', b'TOOL 3486 46', b'TOOL 3486 47', b'TOOL 3486 48', b'TOOL 3486 49', b'TOOL 3486 50', b'TOOL 3486 51', b'TOOL 3486 52', b'TOOL 3486 53', b'TOOL 3486 54', b'TOOL 3486 55', b'TOOL 3486 56', b'TOOL 3486 57', b'TOOL 3486 58', b'TOOL 3486 59', b'TOOL 3486 60', b'TOOL 3486 61', b'TOOL 3486 62', b'TOOL 3486 63', b'TOOL 3486 64', b'TOOL 3486 65', b'TOOL 3486 66', b'TOOL 3486 67', b'TOOL 3486 68', b'TOOL 3486 69', b'TOOL 3486 70', b'TOOL 3486 71', b'TOOL 3486 72', b'TOOL 3486 73', b'TOOL 3486 74', b'TOOL 3486 75', b'TOOL 3486 76', b'TOOL 3486 77', b'TOOL 3486 78', b'TOOL 3486 79', b'TOOL 3486 80', b'TOOL 3486 81', b'TOOL 3486 82', b'TOOL 3486 83', b'TOOL 3486 84', b'TOOL 3486 85', b'TOOL 3486 86', b'TOOL 3486 87', b'AGENT_ECHO ping-after-reexec', b'TOOL 3486 88', b'TOOL 3486 89'] : terminal line discipline echo missing\n"
+  ],
+  "events": [
+    {
+      "event": "test",
+      "name": "__main__.Continuity.test_shell_state_echo_resize_and_running_tool_survive",
+      "runtimeRoot": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/openforge-pty-reexec-6l9plpqd",
+      "mode": "0o700"
+    },
+    {
+      "event": "initial",
+      "inventory": {
+        "version": 1,
+        "host": 3454,
+        "recoveries": 0,
+        "fds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "stateFd": 3,
+        "sentinel": 4,
+        "children": [
+          {
+            "pid": 3467,
+            "fd": 5,
+            "tty": "/dev/ttys019",
+            "device": 251658259,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 3468,
+            "fd": 6,
+            "tty": "/dev/ttys021",
+            "device": 251658261,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          }
+        ]
+      },
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/openforge-pty-reexec-6l9plpqd/v1",
+      "processes": [
+        {
+          "pid": 3454,
+          "ppid": 3397,
+          "uid": 501,
+          "pgid": 3454,
+          "status": 2,
+          "sec": 1788769062,
+          "usec": 572245,
+          "tdev": 4294967295
+        },
+        {
+          "pid": 3467,
+          "ppid": 3454,
+          "uid": 501,
+          "pgid": 3467,
+          "status": 2,
+          "sec": 1788769063,
+          "usec": 27390,
+          "tdev": 268435475
+        },
+        {
+          "pid": 3468,
+          "ppid": 3454,
+          "uid": 501,
+          "pgid": 3468,
+          "status": 2,
+          "sec": 1788769063,
+          "usec": 29324,
+          "tdev": 268435477
+        },
+        {
+          "pid": 3486,
+          "ppid": 3468,
+          "uid": 501,
+          "pgid": 3468,
+          "status": 2,
+          "sec": 1788769063,
+          "usec": 713409,
+          "tdev": 268435477
+        }
+      ]
+    },
+    {
+      "event": "replacement",
+      "inventory": {
+        "version": 1,
+        "host": 3454,
+        "recoveries": 0,
+        "fds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "stateFd": 3,
+        "sentinel": 4,
+        "children": [
+          {
+            "pid": 3467,
+            "fd": 5,
+            "tty": "/dev/ttys019",
+            "device": 251658259,
+            "cursor": 391,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 3468,
+            "fd": 6,
+            "tty": "/dev/ttys021",
+            "device": 251658261,
+            "cursor": 212,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          }
+        ]
+      },
+      "roundTripMs": 1745.7203340000005,
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/openforge-pty-reexec-6l9plpqd/v1"
+    },
+    {
+      "event": "cleanup",
+      "owned": [
+        {
+          "pid": 3454,
+          "ppid": 3397,
+          "uid": 501,
+          "pgid": 3454,
+          "status": 2,
+          "sec": 1788769062,
+          "usec": 572245,
+          "tdev": 4294967295
+        },
+        {
+          "pid": 3467,
+          "ppid": 3454,
+          "uid": 501,
+          "pgid": 3467,
+          "status": 2,
+          "sec": 1788769063,
+          "usec": 27390,
+          "tdev": 268435475
+        },
+        {
+          "pid": 3468,
+          "ppid": 3454,
+          "uid": 501,
+          "pgid": 3468,
+          "status": 2,
+          "sec": 1788769063,
+          "usec": 29324,
+          "tdev": 268435477
+        },
+        {
+          "pid": 3486,
+          "ppid": 3468,
+          "uid": 501,
+          "pgid": 3468,
+          "status": 2,
+          "sec": 1788769063,
+          "usec": 713409,
+          "tdev": 268435477
+        }
+      ],
+      "survivors": [],
+      "forced": false,
+      "errors": []
+    }
+  ]
+}
