@@ -24,6 +24,8 @@ beforeAll(async () => {
     video.addEventListener('error', () => document.querySelector('[role=status]').textContent = 'Unavailable');
     video.addEventListener('loadeddata', () => document.querySelector('[role=status]').textContent = 'Loaded');
     video.src = 'data:video/webm;base64,' + (failed ? 'AA==' : ${JSON.stringify(clip.content)});
+    // This static host has no play function; advertise Storybook's completed render phase.
+    window.__STORYBOOK_PREVIEW__ = { currentRender: { phase: 'finished' } };
   </script></body></html>`)
   server = await serve(root)
   browser = await chromium.launch({ headless: true })
