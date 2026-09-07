@@ -359,6 +359,10 @@ From a Svelte view:
 <button onclick={() => api.system.openUrl('https://example.com/help')}>Open help</button>
 ```
 
+## Selectable application theme
+
+The [selected-theme example](../../src/lib/plugin/fixtures/selected-theme/README.md) is ready to install and includes a complete standalone palette and separately loaded theme stylesheets. The [theme authoring guide](./theming.md) explains its registration, a token-only variant, app-level capability metadata, packaging, restart restoration, reload, disable fallback, and broken-theme recovery. Use [public UI components](./sdk-reference.md#ui-component-exports) in a plugin view without registering a theme when only that view needs custom presentation.
+
 ## Testing recipe links
 
 Do not duplicate the full testing guide in plugin docs. Start with [Testing OpenForge plugins](./testing.md) (`docs/plugins/testing.md`), then use the helper that matches the behavior under test:

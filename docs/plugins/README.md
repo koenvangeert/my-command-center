@@ -45,6 +45,8 @@ Plugins can configure project start-prompt contributions for plugin-owned workfl
 
 - [Plugin authoring guide](../plugin-authoring.md): package metadata, SDK import surface, frontend and backend entry points, capabilities, storage/configuration, task APIs, unavailable APIs, testing, and the authoring checklist.
 - [Plugin capabilities reference](./capabilities.md): available/unavailable capability names, `requires` metadata behavior, frontend/backend capability split, and capability error messages.
+- [Application themes](./theming.md): complete tokens, app-level registration, selected CSS, ownership, fallback, recovery, and testing.
+- [SDK UI reference](./sdk-reference.md#ui-component-exports): public imports, component props, accessibility, and theme-responsive controls.
 - [Plugin SDK file content migration](../plugin-sdk-file-api-migration.md): how to handle `FileSystemAPI.readFile()` returning typed `FileContent` values for text, images, documents, binary files, and large-file placeholders.
 
 A useful first pass for a new plugin is: declare metadata, choose frontend/backend entry points, list the required host capabilities, add focused tests with `@openforge-app/plugin-sdk/testing`, verify licensing/package boundaries, and confirm the built package includes its `dist/` artifacts.

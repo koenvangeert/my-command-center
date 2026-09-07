@@ -33,6 +33,8 @@ Validation that exists today:
   - `requires[index]`: `Unknown OpenForge capability "..."` when a string is not in the supported capability list.
   - `themes` requires a frontend entry, `enablement: "app"`, and the separate `appEnablement` capability.
 
+For `themes`, use SDK 0.3.0 or newer on a compatible host. Registration is frontend-only; it is not a theme-selection API. The [theme guide](./theming.md) covers complete tokens, selected CSS, owner cleanup, persisted fallback, and recovery outside an obscured settings screen.
+
 Do not depend on `requires` to enforce security boundaries. OpenForge plugins are Trusted Plugins; install and enable only code you trust.
 
 ## Available capabilities

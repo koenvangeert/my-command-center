@@ -270,6 +270,8 @@ Value binding, linked helper/error text, and `onValueChange` work with either la
 
 - [Plugin authoring guide](https://github.com/koenvg/openforge/blob/main/docs/plugin-authoring.md)
 - [SDK reference](https://github.com/koenvg/openforge/blob/main/docs/plugins/sdk-reference.md)
+- [Application themes and recovery](https://github.com/koenvg/openforge/blob/main/docs/plugins/theming.md)
+- [Theme testing](https://github.com/koenvg/openforge/blob/main/docs/plugins/testing.md#testing-application-themes)
 
 The authoring guide documents package metadata, capabilities, frontend and backend runtime boundaries, storage, task APIs, browser surfaces, and CSS loading. The SDK reference lists the public types and shared UI components.
 
