@@ -379,7 +379,8 @@
     {"tag":"Select","context":"class=\"max-w-xs\"","tokens":["max-w-xs"],"count":1,"reason":"Whisper model selector occupies a bounded settings column; control height and corners remain theme-owned."}
   ],
   "src/components/settings/SettingsCategoryNav.svelte": [
-    {"tag":"nav","context":"class=\"w-full shrink-0 border-b border-[var(--of-border)] bg-[var(--of-surface)] p-4 lg:w-64 lg:border-b-0 lg:border-r\"","tokens":["lg:w-64"],"count":1,"reason":"Feature pane, header, divider or content viewport geometry; not shared control sizing."}
+    {"tag":"nav","context":"class=\"w-full shrink-0 border-b border-[var(--of-border)] bg-[var(--of-surface)] p-4 lg:w-64 lg:border-b-0 lg:border-r\"","tokens":["lg:w-64"],"count":1,"reason":"Feature pane, header, divider or content viewport geometry; not shared control sizing."},
+    {"tag":"style","context":"nav :global(button.settings-category-button)","tokens":["min-width: 0"],"count":1,"reason":"Allow settings navigation grid items to shrink so long labels truncate within their column."}
   ],
   "src/components/settings/SettingsCredentialsCard.svelte": [
     {"tag":"div","context":"class=\"settings-layout flex min-h-14 items-center gap-3 px-4 py-3\"","tokens":["min-h-14"],"count":1,"reason":"Feature pane, header, divider or content viewport geometry; not shared control sizing."}
@@ -445,7 +446,7 @@
   "src/components/shell/AppSidebar.svelte": [
     {"tag":"aside","context":"class=\"of-app-sidebar {collapsed ? 'w-16' : 'w-[17rem]'} shrink-0 h-full flex flex-col\"","tokens":["w-16","w-[17rem]"],"count":1,"reason":"Feature pane, header, divider or content viewport geometry; not shared control sizing."},
     {"tag":"div","context":"class=\"w-full dev-badge-gradient flex flex-col items-center justify-center {branchName && !collapsed ? 'py-1.5' : 'h-12'}\"","tokens":["h-12"],"count":1,"reason":"Feature pane, header, divider or content viewport geometry; not shared control sizing."},
-    {"tag":"div","context":"class=\"of-sidebar-header h-12 px-2 flex items-center justify-end\"","tokens":["h-12"],"count":1,"reason":"Feature pane, header, divider or content viewport geometry; not shared control sizing."}
+    {"tag":"div","context":"class=\"of-sidebar-header h-12 px-2 flex items-center {collapsed ? 'justify-center' : 'justify-end'}\"","tokens":["h-12"],"count":1,"reason":"Feature pane, header, divider or content viewport geometry; not shared control sizing."}
   ],
   "src/components/shell/CommandPalette.svelte": [
     {"tag":"PaletteListbox","context":"listClass=\"max-h-[400px] overflow-y-auto\" optionClass={(_item, _index, highlighted) => `flex items-center gap-3 w-full px-4 py-2.5 text-left text-sm text-base-content transition-colors ${highlighted ? 'bg-base-300' : 'hover:bg-base-300/60'}`}","tokens":["max-h-[400px]"],"count":1,"reason":"Feature-owned overlay/list viewport bounds; the SDK owns control and overlay corners."},
@@ -465,9 +466,9 @@
     {"tag":"style","context":".project-copy","tokens":["min-width: 0"],"count":1,"reason":"Let this flex/grid child shrink and scroll rather than overflow its feature pane."},
     {"tag":"div","context":"class=\"project-sidebar-list flex min-h-0 flex-1 flex-col\"","tokens":["min-h-0"],"count":1,"reason":"Let this flex/grid child shrink and scroll rather than overflow its feature pane."},
     {"tag":"div","context":"class=\"project-list-header h-12 px-4 flex items-center {collapsed ? 'justify-center' : 'justify-between'}\"","tokens":["h-12"],"count":1,"reason":"Feature pane, header, divider or content viewport geometry; not shared control sizing."},
-    {"tag":"style","context":":global(.expanded-project-button),\n  :global(.hidden-project-button)","tokens":["width: 100%"],"count":1,"reason":"Project navigation rows span the sidebar width; height and corners remain theme-owned."},
+    {"tag":"style","context":".project-sidebar-list :global(button.expanded-project-button),\n  .project-sidebar-list :global(button.hidden-project-button)","tokens":["width: 100%"],"count":1,"reason":"Project navigation rows span the sidebar width; height and corners remain theme-owned."},
     {"tag":"style","context":".project-name","tokens":["max-width: 100%"],"count":1,"reason":"Project names cannot overflow their navigation row."},
-    {"tag":"style","context":":global(.hidden-projects-toggle)","tokens":["width: 100%"],"count":1,"reason":"Hidden-project navigation toggle spans the sidebar row."}
+    {"tag":"style","context":".project-sidebar-list :global(button.hidden-projects-toggle)","tokens":["width: 100%"],"count":1,"reason":"Hidden-project navigation toggle spans the sidebar row."}
   ],
   "src/components/task-detail/AgentTerminalShell.svelte": [
     {"tag":"span","context":"class=\"flex items-center justify-center w-5 h-5 rounded-[var(--of-radius-round)] bg-warning/20 text-warning text-xs font-bold shrink-0 mt-0.5\"","tokens":["w-5","h-5"],"count":1,"reason":"Domain status dot or author-avatar dimensions; roundness follows the theme token."},

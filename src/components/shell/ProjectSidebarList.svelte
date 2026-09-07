@@ -284,14 +284,15 @@
     text-transform: uppercase;
   }
 
-  :global(.collapsed-project-button) {
+  .project-sidebar-list :global(button.collapsed-project-button) {
     position: relative;
     display: grid;
     margin-inline: auto;
+    padding: 0;
     color: var(--of-text-secondary);
   }
 
-  :global(.collapsed-project-button[aria-current='true']) {
+  .project-sidebar-list :global(button.collapsed-project-button[aria-current='true']) {
     border-color: var(--of-border-interactive);
     background: var(--of-accent-subtle);
     color: var(--of-on-accent-subtle);
@@ -345,8 +346,8 @@
     background: var(--of-accent-subtle);
   }
 
-  :global(.expanded-project-button),
-  :global(.hidden-project-button) {
+  .project-sidebar-list :global(button.expanded-project-button),
+  .project-sidebar-list :global(button.hidden-project-button) {
     width: 100%;
     justify-content: flex-start;
     overflow: hidden;
@@ -354,21 +355,21 @@
     text-align: left;
   }
 
-  :global(.expanded-project-button) {
+  .project-sidebar-list :global(button.expanded-project-button) {
     min-height: var(--of-control-height-touch);
     padding-right: calc(var(--of-space9) * 2);
   }
 
-  :global(.expanded-project-button[aria-current='true']),
-  :global(.hidden-project-button[aria-current='true']) {
+  .project-sidebar-list :global(button.expanded-project-button[aria-current='true']),
+  .project-sidebar-list :global(button.hidden-project-button[aria-current='true']) {
     color: var(--of-on-accent-subtle);
   }
 
   .project-copy {
     display: flex;
     min-width: 0;
-    flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
+    gap: var(--of-space2);
   }
 
   .project-name {
@@ -385,7 +386,8 @@
     display: flex;
     align-items: center;
     gap: var(--of-space2);
-    margin-top: var(--of-space1);
+    flex-shrink: 0;
+    white-space: nowrap;
   }
 
   .project-status {
@@ -428,7 +430,7 @@
     border-top: var(--of-border-width) solid var(--of-border);
   }
 
-  :global(.hidden-projects-toggle) {
+  .project-sidebar-list :global(button.hidden-projects-toggle) {
     width: 100%;
     justify-content: flex-start;
     gap: var(--of-space1);
@@ -437,7 +439,7 @@
     text-transform: uppercase;
   }
 
-  :global(.hidden-project-button) {
+  .project-sidebar-list :global(button.hidden-project-button) {
     padding-right: var(--of-space8);
     color: var(--of-text-muted);
   }
