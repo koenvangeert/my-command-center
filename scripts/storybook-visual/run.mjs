@@ -39,7 +39,8 @@ try {
   const obsolete = validateBaselines(entries, await baselineFiles(), mode === 'test' ? 'check' : mode)
   console.log(`Obsolete baselines: ${obsolete.join(', ') || 'none'}`)
   server = await serve('storybook-static')
-  browser = await chromium.launch({ headless: true, args: ['--disable-gpu', '--force-color-profile=srgb'] })
+  // Partial tile repainting can vary rounded-border pixels across identical contexts.
+  browser = await chromium.launch({ headless: true, args: ['--disable-gpu', '--disable-partial-raster', '--force-color-profile=srgb'] })
   await save(join(output, 'environment.json'), JSON.stringify({ image: process.env.VISUAL_IMAGE, chromium: browser.version(), scale: 1, locale: 'en-US', timezone: 'UTC', time: '2026-01-02T09:30:00.000Z' }, null, 2))
   const pending = []
   for (const entry of entries) {

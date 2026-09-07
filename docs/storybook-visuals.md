@@ -61,6 +61,8 @@ Captures use a 30-second default operation/navigation deadline. Failure probes c
 
 Capture fixes Chromium, device scale 1, en-US locale, UTC timezone, application time at `2026-01-02T09:30:00.000Z`, theme/color scheme, reduced motion, disabled CSS animations/transitions, hidden caret, and loaded fonts. Animated SVG masks are derived from the production SVG at their terminal values because CSS reduced motion does not stop embedded SMIL. External browser requests are blocked. Each case gets a fresh browser context. Comparison includes antialiasing pixels with zero threshold.
 
+Chromium partial raster is disabled. Reusing partially repainted tiles can produce different rounded-border pixels across otherwise identical contexts, even after each capture has settled. Full raster preserves the UI; resulting raster differences require baseline review, not broader comparison tolerances.
+
 After readiness and motion suppression, capture requires two consecutive screenshots with identical decoded pixels, separated by a browser paint boundary. This avoids transient raster paints and duplicate reads of the same frame even when the DOM is ready. Capture fails if pixels do not settle within the capture timeout. This check does not consult the baseline or apply a tolerance; persistent visual changes still fail baseline comparison.
 
 For native video controls, capture waits for a decoded frame or a real media error and requires the story to leave playback paused. In both cases, the native buffering panel must finish before capture freezes animations in Chromium's nested control shadow roots through CDP. It does not replace players, remove controls, synthesize errors, or broaden pixel tolerances. Those changes live only in the disposable capture context.
