@@ -956,7 +956,12 @@
     },
     "ready": ".markdown-body h1",
     "expectedErrors": [],
-    "theme": "openforge-dark"
+    "theme": "openforge-dark",
+    "tolerance": {
+      "maxPixels": 4,
+      "maxChannelDelta": 1,
+      "reason": "Pinned Linux CI differs from the approved dark Markdown baseline at four antialiased pixels by one channel level. Larger or stronger changes remain failures."
+    }
   },
   {
     "catalog": "pages",
