@@ -66,6 +66,33 @@ function browserFixture(frames) {
 }
 
 describe('visual capture boundary', () => {
+  it('flushes a deferred blur repaint before comparing canvas frames', async () => {
+    const { browser, page } = browserFixture(['unused'])
+    let blurred = false
+    let pendingPaint = 0
+    let painted = 'focused cursor'
+    const input = { blur() { if (!blurred) { blurred = true; pendingPaint = 32 } } }
+    vi.stubGlobal('window', { __STORYBOOK_PREVIEW__: { currentRender: { phase: 'finished' } } })
+    vi.stubGlobal('document', {
+      fonts: { ready: Promise.resolve() },
+      querySelectorAll: selector => selector === '.xterm-helper-textarea' ? [input] : [],
+    })
+    page.evaluate.mockImplementation((fn, arg) => fn(arg))
+    page.clock.runFor.mockImplementation(async ms => {
+      if (pendingPaint > 0) {
+        pendingPaint = Math.max(0, pendingPaint - ms)
+        if (pendingPaint === 0) painted = 'unfocused cursor'
+      }
+    })
+    page.screenshot.mockImplementation(async () => Buffer.from(painted))
+    try {
+      const result = await capture(browser, 'http://localhost:6006', entry)
+      expect(result.bytes.toString()).toBe('unfocused cursor')
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   it('waits for consecutive identical painted frames instead of returning the first canvas image', async () => {
     const { browser, page, context } = browserFixture(['empty canvas', 'terminal replay', 'terminal replay'])
     const result = await capture(browser, 'http://localhost:6006', entry)

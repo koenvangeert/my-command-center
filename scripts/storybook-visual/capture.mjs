@@ -127,12 +127,18 @@ export async function capture(browser, url, entry, { prepare, mutate, timeout = 
     const deadline = Date.now() + timeout
     let previous
     while (Date.now() < deadline) {
-      await page.clock.runFor(16)
       // Deferred terminal setup can focus again after initial readiness. Reapply
       // blur while settling; canvas carets are outside CSS animation controls.
       await page.evaluate(() => {
         for (const input of document.querySelectorAll('.xterm-helper-textarea')) input.blur()
       })
+      // Blur schedules a canvas repaint. Flush it before inspecting pixels, not
+      // at the start of the next iteration where two stale frames can match.
+      await page.clock.runFor(32)
+      if (await page.evaluate(() => document.activeElement?.matches('.xterm-helper-textarea') ?? false)) {
+        previous = undefined
+        continue
+      }
       const bytes = await page.screenshot({ animations: 'disabled', caret: 'hide', scale: 'css' })
       if (previous?.equals(bytes)) return { bytes, diagnostics: errors }
       previous = bytes

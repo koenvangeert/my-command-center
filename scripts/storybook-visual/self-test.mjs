@@ -69,13 +69,23 @@ export async function selfTest({ browser, url, entries, output }) {
   assert.deepEqual(pixel(10, 60), [255, 255, 255], 'the mask must not settle at its empty end frame')
   for (const result of motionCaptures) verifyDiagnostics(result.diagnostics, entry.expectedErrors)
 
-  const terminal = entries.find(item => item.story === 'pages-task-detail--terminal' && item.theme === 'openforge-light')
-  if (terminal) {
+  const terminals = entries.filter(item => item.theme === 'openforge-light' && [
+    'pages-task-detail--terminal', 'components-task-workspace-agent-panel--waiting',
+  ].includes(item.story))
+  for (const terminal of terminals) {
     const first = await capture(browser, url, terminal, { mutate: page => page.waitForTimeout(50) })
-    const second = await capture(browser, url, terminal, { mutate: page => page.waitForTimeout(700) })
+    const second = await capture(browser, url, terminal, { mutate: async page => {
+      await page.waitForTimeout(700)
+      await page.evaluate(() => {
+        const input = document.querySelector('.xterm-helper-textarea')
+        input.focus()
+        requestAnimationFrame(() => input.focus())
+      })
+      await page.clock.runFor(32)
+    } })
     verifyDiagnostics(first.diagnostics, terminal.expectedErrors)
     verifyDiagnostics(second.diagnostics, terminal.expectedErrors)
-    assert.equal(compare(first.bytes, second.bytes).matches, true, 'terminal canvas caret must not depend on blink timing')
+    assert.equal(compare(first.bytes, second.bytes).matches, true, `${terminal.story}: caret must settle after delayed focus and blink timing`)
   }
 
   for (const feedback of entries.filter(item => item.story === 'pages-self-review--send-feedback')) {
