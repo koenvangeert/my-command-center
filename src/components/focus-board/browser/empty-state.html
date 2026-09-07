@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Focus Board empty-state motion check</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module">
+      import { mount } from 'svelte'
+      import FocusEmptyState from '../FocusEmptyState.svelte'
+
+      mount(FocusEmptyState, { target: document.getElementById('app'), props: { filter: 'focus' } })
+    </script>
+  </body>
+</html>

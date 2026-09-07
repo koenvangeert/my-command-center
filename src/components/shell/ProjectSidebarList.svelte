@@ -187,7 +187,7 @@
             >
               <EyeOff size={14} />
             </IconButton>
-            <div class="flex flex-col gap-1">
+            <div class="flex items-center gap-1">
               {#if index > 0}
                 <IconButton
                   type="button"
@@ -357,7 +357,7 @@
 
   .project-sidebar-list :global(button.expanded-project-button) {
     min-height: var(--of-control-height-touch);
-    padding-right: calc(var(--of-space9) * 2);
+    padding-right: calc(var(--of-control-height-compact) * 3 + var(--of-space1) * 2 + var(--of-space2) * 2);
   }
 
   .project-sidebar-list :global(button.expanded-project-button[aria-current='true']),

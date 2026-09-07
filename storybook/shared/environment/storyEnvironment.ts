@@ -1,4 +1,6 @@
 export interface StoryEnvironmentAdapter {
+  /** Finish outgoing work while every adapter is still installed. Runs before reset/dispose. */
+  settle?(): void | Promise<void>
   install(): void | Promise<void>
   reset(): void | Promise<void>
   dispose(): void | Promise<void>
@@ -43,6 +45,9 @@ export function createStoryEnvironment(definition: StoryEnvironmentDefinition): 
 
   async function release(items: readonly StoryEnvironmentAdapter[]): Promise<void> {
     const errors: unknown[] = []
+    for (const adapter of items) {
+      try { await adapter.settle?.() } catch (error) { errors.push(error) }
+    }
     for (const adapter of [...items].reverse()) {
       try { await adapter.dispose() } catch (error) { errors.push(error) }
     }
@@ -79,6 +84,7 @@ export function createStoryEnvironment(definition: StoryEnvironmentDefinition): 
 
   async function reset(): Promise<void> {
     if (!installed || disposed) throw new Error('Story environment must be installed before reset')
+    for (const adapter of adapters) await adapter.settle?.()
     installClock()
     for (const adapter of adapters) await adapter.reset()
   }

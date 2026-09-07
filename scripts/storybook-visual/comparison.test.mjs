@@ -40,6 +40,19 @@ describe('visual comparisons', () => {
     after.data[8] = 255; after.data[0] = 251
     expect(compare(baseline, PNG.sync.write(after), tolerance).matches).toBe(false)
   })
+  it('rejects changes beyond either approved settings raster limit', () => {
+    const before = new PNG({ width: 10, height: 10 }); before.data.fill(255)
+    const after = new PNG({ width: 10, height: 10 }); after.data.fill(255)
+    for (let i = 0; i < 40; i++) after.data[i * 4] = 252
+    const tolerance = { maxPixels: 40, maxChannelDelta: 3 }
+    const baseline = PNG.sync.write(before)
+    expect(compare(baseline, PNG.sync.write(after), tolerance).matches).toBe(true)
+    expect(compare(baseline, PNG.sync.write(after)).matches).toBe(false)
+    after.data[40 * 4] = 254
+    expect(compare(baseline, PNG.sync.write(after), tolerance).matches).toBe(false)
+    after.data[40 * 4] = 255; after.data[0] = 251
+    expect(compare(baseline, PNG.sync.write(after), tolerance).matches).toBe(false)
+  })
   it('requires exact diagnostic multiplicities', () => {
     expect(() => verifyDiagnostics(['expected'], ['expected'])).not.toThrow()
     expect(() => verifyDiagnostics(['expected extra'], ['expected'])).toThrow(/unexpected/)
