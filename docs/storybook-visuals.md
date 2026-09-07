@@ -49,6 +49,8 @@ Readiness must identify the intended final state, not just a generic root elemen
 
 Comparison is exact by default. Per-entry rasterization allowances require measured evidence and a reason, ordinarily capped at 36 changed pixels and two channel levels. Selected board, shell, review, and component cases declare measured antialiasing allowances in the manifest. Reports retain raw counts and difference images, including accepted noise. Loading remains exact: animation is frozen, never masked by a tolerance. Main's separate navigation allowance permits up to three channel levels only when at most two pixels change, for the measured dark File quick-open / Unavailable input-corner noise (KVG-4816). Larger pixel counts cannot use three levels. Navigation palette controls and Project switching / Empty remain exact; SVG motion is frozen rather than tolerated. All cases without an explicit allowance use exact comparison.
 
+See the [KVG-4816 focused-input investigation](storybook-focused-input-investigation.md) for capture experiments, verification results, and the limits of the existing two-pixel allowance.
+
 Captures use a 30-second default operation/navigation deadline. Failure probes can still request shorter deadlines. Full-manifest child probes have at least two minutes and scale by 30 seconds per selected case, so adopting more stories does not exhaust the original two-case timeout.
 
 ## Canonical environment
