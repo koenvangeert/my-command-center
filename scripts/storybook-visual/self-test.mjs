@@ -5,6 +5,7 @@ import { spawnSync } from 'node:child_process'
 import { capture } from './capture.mjs'
 import { compare, verifyDiagnostics } from './comparison.mjs'
 import { identity } from './manifest.mjs'
+import { checkTerminalReadiness } from './terminal-readiness.mjs'
 
 export async function selfTest({ browser, url, entries, output }) {
   for (const entry of entries) {
@@ -22,6 +23,7 @@ export async function selfTest({ browser, url, entries, output }) {
     }
     assert.equal(comparison.matches, true, `${entry.story}: repeated capture must pass; see self-test/repeat/${identity(entry)}`)
   }
+  await checkTerminalReadiness({ browser, url, entries, output })
   const entry = entries.find(entry => entry.catalog === 'components')
   assert.ok(entry, 'self-test requires a component smoke case')
   await assert.rejects(capture(browser, url, { ...entry, ready: '#missing-readiness' }, { timeout: 3000 }), /missing readiness/)
