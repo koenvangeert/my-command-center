@@ -52,6 +52,20 @@ describe('visual manifest contract', () => {
   ])('rejects invalid entries', (entries, diagnostic) => {
     expect(() => validateManifest(entries, indexes)).toThrow(diagnostic)
   })
+  it.each([1280, 900])('allows measured raster noise only in light settings captures at width %i', width => {
+    const settings = { ...entry, story: 'pages-global-settings--plugins', viewport: { width, height: 900 }, tolerance: { maxPixels: 40, maxChannelDelta: 3, reason: 'Measured rounded-border raster noise' } }
+    const settingsIndexes = { pages: { entries: { [settings.story]: { type: 'story' } } } }
+    expect(validateManifest([settings], settingsIndexes)).toEqual([settings])
+    for (const override of [
+      { theme: 'openforge-dark' },
+      { viewport: { width: 480, height: 900 } },
+      { catalog: 'components' },
+      { story: entry.story },
+      { tolerance: { ...settings.tolerance, maxPixels: 41 } },
+      { tolerance: { ...settings.tolerance, maxChannelDelta: 4 } },
+      { tolerance: { ...settings.tolerance, maxChannelDelta: 1.5 } },
+    ]) expect(() => validateManifest([{ ...settings, ...override }], settingsIndexes)).toThrow(/tolerance/)
+  })
   it('rejects missing, obsolete, and unexpected files without deleting them', () => {
     const name = identity(entry) + '.png'
     expect(() => validateBaselines([entry], [], 'check')).toThrow(/missing baseline/)

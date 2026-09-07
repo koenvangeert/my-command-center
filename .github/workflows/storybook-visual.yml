@@ -46,6 +46,8 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Install Chromium for visual unit tests
+        run: pnpm exec playwright install --with-deps chromium
       - run: pnpm storybook:visual:unit
       - name: Canonical Linux capture and regression probes
         run: pnpm storybook:visual:test

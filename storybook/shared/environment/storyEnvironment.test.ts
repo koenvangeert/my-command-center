@@ -8,6 +8,25 @@ afterEach(async () => {
 })
 
 describe('StoryEnvironment', () => {
+  it.each(['reset', 'dispose'] as const)('settles outgoing work before any adapter %s', async operation => {
+    let finish!: () => void
+    const pending = new Promise<void>(resolve => { finish = resolve })
+    const events: string[] = []
+    const environment = createStoryEnvironment({
+      id: 'settlement-order', now: 42000,
+      adapters: [
+        { install() {}, settle() { events.push('release'); finish() }, reset() { events.push('reset desktop') }, dispose() { events.push('dispose desktop') } },
+        { install() {}, async settle() { await pending; events.push('save complete') }, reset() { events.push('reset stores') }, dispose() { events.push('dispose stores') } },
+      ],
+    })
+    environments.push(environment)
+    await environment.install()
+    await environment[operation]()
+    expect(events).toEqual(operation === 'reset'
+      ? ['release', 'save complete', 'reset desktop', 'reset stores']
+      : ['release', 'save complete', 'dispose stores', 'dispose desktop'])
+  })
+
   it('does not dispose adapters twice when pending installation fails during disposal', async () => {
     const HostDate = Date
     let finish!: () => void
