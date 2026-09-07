@@ -3,7 +3,10 @@
     "catalog": "pages",
     "story": "pages-focus-board--populated",
     "theme": "openforge-light",
-    "viewport": { "width": 1280, "height": 800 },
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
     "ready": "[aria-label=\"Task list\"]",
     "expectedErrors": [],
     "tolerance": {
@@ -12,91 +15,1474 @@
       "reason": "Pinned Linux Chromium varies 19 antialiased border pixels by one channel level across identical captures, including with GPU disabled. Larger or more widespread changes must fail."
     }
   },
-  { "catalog": "components", "story": "components-button--primary", "theme": "openforge-light", "viewport": { "width": 480, "height": 240 }, "ready": "button:has-text(\"Create task\")", "expectedErrors": [] },
-  { "catalog": "pages", "story": "application-shell--expanded", "theme": "openforge-light", "viewport": { "width": 1280, "height": 800 }, "ready": "[aria-label=\"Task list\"]", "expectedErrors": [], "tolerance": { "maxPixels": 15, "maxChannelDelta": 1, "reason": "Repeated pinned Linux captures of the merged board layout differ at 15 antialiased Task badge and card-border pixels by one channel level. Larger changes remain failures." } },
-  { "catalog": "pages", "story": "application-shell--expanded", "theme": "openforge-dark", "viewport": { "width": 1280, "height": 800 }, "ready": "[aria-label=\"Task list\"]", "expectedErrors": [], "tolerance": { "maxPixels": 16, "maxChannelDelta": 1, "reason": "CI and local pinned Linux captures of the same merged board layout differ at 16 antialiased Task state badge pixels by one channel level. Larger changes remain failures." } },
-  { "catalog": "pages", "story": "application-shell--collapsed", "theme": "openforge-light", "viewport": { "width": 1280, "height": 800 }, "ready": "[aria-label=\"Task list\"]", "expectedErrors": [], "tolerance": { "maxPixels": 15, "maxChannelDelta": 1, "reason": "Identical pinned Linux captures differed at 15 antialiased Task state badge pixels by one channel level. Larger changes remain failures." } },
-  { "catalog": "pages", "story": "application-shell--zen", "theme": "openforge-dark", "viewport": { "width": 1280, "height": 800 }, "ready": "[aria-label=\"Task list\"]", "expectedErrors": [], "tolerance": { "maxPixels": 16, "maxChannelDelta": 1, "reason": "Identical pinned Linux captures differed at 16 antialiased Task state badge pixels by one channel level. Larger changes remain failures." } },
-  { "catalog": "pages", "story": "application-shell--global-view", "theme": "openforge-light", "viewport": { "width": 1280, "height": 800 }, "ready": "h1:has-text(\"Global Settings\")", "expectedErrors": [] },
-  { "catalog": "pages", "story": "application-shell--narrow", "theme": "openforge-light", "viewport": { "width": 900, "height": 900 }, "ready": "[aria-label=\"Task list\"]", "expectedErrors": [] },
-  { "catalog": "pages", "story": "application-shell--narrow", "theme": "openforge-dark", "viewport": { "width": 900, "height": 900 }, "ready": "[aria-label=\"Task list\"]", "expectedErrors": [] },
-  { "catalog": "pages", "story": "application-shell--shortcuts", "theme": "openforge-light", "viewport": { "width": 960, "height": 800 }, "ready": "[role=\"dialog\"][aria-label=\"Keyboard Shortcuts\"]", "expectedErrors": [] },
-  { "catalog": "pages", "story": "application-shell--shortcuts", "theme": "openforge-dark", "viewport": { "width": 960, "height": 800 }, "ready": "[role=\"dialog\"][aria-label=\"Keyboard Shortcuts\"]", "expectedErrors": [] },
-  { "catalog": "pages", "story": "application-shell--quit-confirmation", "theme": "openforge-light", "viewport": { "width": 1280, "height": 800 }, "ready": "[role=\"dialog\"][aria-label=\"Agents still running\"]", "expectedErrors": [], "tolerance": { "maxPixels": 9, "maxChannelDelta": 1, "reason": "Identical pinned Linux captures differed at nine antialiased Task state badge pixels behind the modal backdrop by one channel level. Larger changes remain failures." } },
-  { "catalog": "pages", "story": "application-shell--dialog-with-feedback", "theme": "openforge-dark", "viewport": { "width": 1280, "height": 800 }, "ready": "body:has([role=\"dialog\"]) [role=\"alert\"]", "expectedErrors": [], "tolerance": { "maxPixels": 10, "maxChannelDelta": 1, "reason": "CI and repeated local pinned Linux captures of the merged board layout differ at ten antialiased Task state badge pixels beneath the modal backdrop by one channel level. Larger changes remain failures." } },
-  { "catalog": "pages", "story": "application-shell--error-feedback", "theme": "openforge-light", "viewport": { "width": 1280, "height": 800 }, "ready": "[role=\"alert\"]", "expectedErrors": [], "tolerance": { "maxPixels": 15, "maxChannelDelta": 1, "reason": "Identical pinned Linux captures differed at 15 antialiased Task state badge pixels by one channel level. Larger changes remain failures." } },
-  { "catalog": "pages", "story": "application-shell--checkpoint", "theme": "openforge-dark", "viewport": { "width": 1280, "height": 800 }, "ready": "button:has-text(\"Agent needs input on OF-42\")", "expectedErrors": [], "tolerance": { "maxPixels": 16, "maxChannelDelta": 1, "reason": "Identical pinned Linux captures differed at 16 antialiased Task state badge pixels by one channel level. Larger changes remain failures." } },
-  { "catalog": "pages", "story": "application-shell--task-created", "theme": "openforge-light", "viewport": { "width": 1280, "height": 800 }, "ready": "[role=\"status\"]:has-text(\"New task created\")", "expectedErrors": [], "tolerance": { "maxPixels": 15, "maxChannelDelta": 1, "reason": "This notification uses the same light-shell Task badge and card as Expanded, where repeated pinned Linux captures vary at 15 antialiased pixels by one channel level. Larger changes remain failures." } },
-  { "catalog": "pages", "story": "application-shell--rate-limited", "theme": "openforge-dark", "viewport": { "width": 1280, "height": 800 }, "ready": "[role=\"status\"]:has-text(\"Resets in 2 min\")", "expectedErrors": [], "tolerance": { "maxPixels": 16, "maxChannelDelta": 1, "reason": "Identical pinned Linux captures differed at 16 antialiased Task state badge pixels by one channel level. Larger changes remain failures." } },
-  { "catalog": "components", "story": "components-host-controls-context-menu--open", "theme": "openforge-light", "viewport": { "width": 480, "height": 320 }, "ready": "[role=\"menu\"]", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-host-controls-context-menu--open", "theme": "openforge-dark", "viewport": { "width": 480, "height": 320 }, "ready": "[role=\"menu\"]", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-feedback-toast--long-content", "theme": "openforge-light", "viewport": { "width": 480, "height": 320 }, "ready": "[role=\"alert\"]", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-feedback-toast--long-content", "theme": "openforge-dark", "viewport": { "width": 480, "height": 320 }, "ready": "[role=\"alert\"]", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-host-chrome-sidebar--development", "theme": "openforge-dark", "viewport": { "width": 320, "height": 800 }, "ready": "[title=\"feature/shared-host-chrome-with-a-long-branch-name\"]", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-host-controls-bottom-panel--default", "theme": "openforge-dark", "viewport": { "width": 640, "height": 600 }, "ready": "[data-testid=\"resizable-bottom-panel\"]", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-plugin-sdk-actions--default", "theme": "openforge-light", "viewport": { "width": 800, "height": 500 }, "ready": "[data-testid=sdk-actions]", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-plugin-sdk-actions--default", "theme": "openforge-dark", "viewport": { "width": 800, "height": 500 }, "ready": "[data-testid=sdk-actions]", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-plugin-sdk-actions--disabled", "theme": "openforge-light", "viewport": { "width": 800, "height": 500 }, "ready": "button:disabled:has-text('Create task')", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-plugin-sdk-actions--loading", "theme": "openforge-dark", "viewport": { "width": 800, "height": 500 }, "ready": "button[aria-busy=true]", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-plugin-sdk-actions--narrow-overflow", "theme": "openforge-light", "viewport": { "width": 360, "height": 800 }, "ready": "button:has-text('Create a follow-up')", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-plugin-sdk-actions--narrow-overflow", "theme": "openforge-dark", "viewport": { "width": 360, "height": 800 }, "ready": "button:has-text('Create a follow-up')", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-plugin-sdk-actions--keyboard", "theme": "openforge-light", "viewport": { "width": 800, "height": 500 }, "ready": "button[aria-label=Refresh]:focus", "expectedErrors": [], "tolerance": { "maxPixels": 8, "maxChannelDelta": 1, "reason": "Consecutive pinned Linux captures differ at eight antialiased button-border pixels by one channel level. Preserve keyboard focus coverage while rejecting larger or more widespread changes." } },
-  { "catalog": "components", "story": "components-plugin-sdk-fields--default", "theme": "openforge-light", "viewport": { "width": 800, "height": 700 }, "ready": "[data-testid=sdk-fields]", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-plugin-sdk-fields--default", "theme": "openforge-dark", "viewport": { "width": 800, "height": 700 }, "ready": "[data-testid=sdk-fields]", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-plugin-sdk-fields--selected", "theme": "openforge-dark", "viewport": { "width": 800, "height": 700 }, "ready": "input:checked", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-plugin-sdk-fields--disabled", "theme": "openforge-light", "viewport": { "width": 800, "height": 700 }, "ready": "textarea:disabled", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-plugin-sdk-fields--validation", "theme": "openforge-light", "viewport": { "width": 800, "height": 750 }, "ready": "text=Instructions are required.", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-plugin-sdk-fields--validation", "theme": "openforge-dark", "viewport": { "width": 800, "height": 750 }, "ready": "text=Instructions are required.", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-plugin-sdk-fields--narrow-overflow", "theme": "openforge-light", "viewport": { "width": 360, "height": 900 }, "ready": "[data-testid=sdk-fields]", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-plugin-sdk-fields--narrow-overflow", "theme": "openforge-dark", "viewport": { "width": 360, "height": 900 }, "ready": "[data-testid=sdk-fields]", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-plugin-sdk-selectors--default", "theme": "openforge-light", "viewport": { "width": 800, "height": 600 }, "ready": "[data-testid=sdk-selectors]", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-plugin-sdk-selectors--default", "theme": "openforge-dark", "viewport": { "width": 800, "height": 600 }, "ready": "[data-testid=sdk-selectors]", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-plugin-sdk-selectors--selected", "theme": "openforge-dark", "viewport": { "width": 800, "height": 600 }, "ready": "button:has-text('Pi')", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-plugin-sdk-selectors--disabled", "theme": "openforge-light", "viewport": { "width": 800, "height": 600 }, "ready": "button:disabled", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-plugin-sdk-selectors--validation", "theme": "openforge-dark", "viewport": { "width": 800, "height": 600 }, "ready": "text=Choose an available provider.", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-plugin-sdk-selectors--open", "theme": "openforge-light", "viewport": { "width": 800, "height": 600 }, "ready": "[role=option][aria-disabled=true]", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-plugin-sdk-selectors--open", "theme": "openforge-dark", "viewport": { "width": 800, "height": 600 }, "ready": "[role=option][aria-disabled=true]", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-plugin-sdk-selectors--narrow-overflow", "theme": "openforge-light", "viewport": { "width": 360, "height": 900 }, "ready": "[role=listbox]", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-plugin-sdk-selectors--narrow-overflow", "theme": "openforge-dark", "viewport": { "width": 360, "height": 900 }, "ready": "[role=listbox]", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-plugin-sdk-selectors--empty", "theme": "openforge-light", "viewport": { "width": 800, "height": 600 }, "ready": "text=No matches", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-plugin-sdk-selectors--no-matches", "theme": "openforge-dark", "viewport": { "width": 800, "height": 600 }, "ready": "[data-sdk-ready=no-matches]", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-plugin-sdk-presentation--default", "theme": "openforge-light", "viewport": { "width": 800, "height": 900 }, "ready": "[aria-label='File type examples']", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-plugin-sdk-presentation--default", "theme": "openforge-dark", "viewport": { "width": 800, "height": 900 }, "ready": "[aria-label='File type examples']", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-plugin-sdk-presentation--narrow-overflow", "theme": "openforge-light", "viewport": { "width": 360, "height": 1700 }, "ready": "[aria-label='File type examples']", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-plugin-sdk-presentation--narrow-overflow", "theme": "openforge-dark", "viewport": { "width": 360, "height": 1700 }, "ready": "[aria-label='File type examples']", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-plugin-sdk-navigation--default", "theme": "openforge-light", "viewport": { "width": 640, "height": 400 }, "ready": "[data-testid=sdk-navigation]", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-plugin-sdk-navigation--default", "theme": "openforge-dark", "viewport": { "width": 640, "height": 400 }, "ready": "[data-testid=sdk-navigation]", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-plugin-sdk-navigation--selected", "theme": "openforge-light", "viewport": { "width": 640, "height": 400 }, "ready": "button[aria-current=page]", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-plugin-sdk-navigation--collapsed", "theme": "openforge-dark", "viewport": { "width": 640, "height": 400 }, "ready": "button[data-collapsed=true]", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-plugin-sdk-navigation--narrow-overflow", "theme": "openforge-light", "viewport": { "width": 360, "height": 450 }, "ready": "[data-testid=sdk-navigation]", "expectedErrors": [] },
-  { "catalog": "pages", "story": "pages-terminal--ready", "theme": "openforge-light", "viewport": { "width": 1280, "height": 800 }, "ready": "[data-terminal-ready=true]", "expectedErrors": [] },
-  { "catalog": "pages", "story": "pages-terminal--ready", "theme": "openforge-dark", "viewport": { "width": 1280, "height": 800 }, "ready": "[data-terminal-ready=true]", "expectedErrors": [] },
-  { "catalog": "pages", "story": "pages-terminal--runtime-unavailable", "theme": "openforge-light", "viewport": { "width": 1280, "height": 800 }, "ready": "text=Terminal runtime unavailable", "expectedErrors": [] },
-  { "catalog": "pages", "story": "pages-terminal-task-pane--ready", "theme": "openforge-dark", "viewport": { "width": 640, "height": 800 }, "ready": "[data-terminal-ready=true]", "expectedErrors": [] },
-  { "catalog": "pages", "story": "pages-terminal-task-pane--lookup-error", "theme": "openforge-light", "viewport": { "width": 640, "height": 800 }, "ready": "button:has-text(\"Retry workspace lookup\")", "expectedErrors": [] },
-  { "catalog": "pages", "story": "pages-terminal-task-pane--missing-workspace", "theme": "openforge-light", "viewport": { "width": 640, "height": 800 }, "ready": "text=Terminal workspace unavailable", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-terminal-runtime--disconnected", "theme": "openforge-light", "viewport": { "width": 640, "height": 400 }, "ready": "[data-terminal-ready=true]", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-terminal-runtime--empty", "theme": "openforge-dark", "viewport": { "width": 640, "height": 400 }, "ready": "[data-terminal-ready=true]", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-terminal-tabs--overflow", "theme": "openforge-dark", "viewport": { "width": 640, "height": 400 }, "ready": "[data-terminal-ready=true]", "expectedErrors": [] },
-  { "catalog": "components", "story": "components-terminal-runtime--overflow", "theme": "openforge-light", "viewport": { "width": 640, "height": 400 }, "ready": "[data-terminal-ready=true]", "expectedErrors": [] },
-  { "catalog": "pages", "story": "pages-sdk-page-shell--populated", "theme": "openforge-light", "viewport": { "width": 1280, "height": 800 }, "ready": "h2:has-text('Changes ready for review')", "expectedErrors": [] },
-  { "catalog": "pages", "story": "pages-sdk-page-shell--overflow", "theme": "openforge-dark", "viewport": { "width": 640, "height": 600 }, "ready": "h2:has-text('Changes ready for review')", "expectedErrors": [] },
-  { "catalog": "components", "story": "sdk-overlays--modal", "theme": "openforge-light", "viewport": { "width": 800, "height": 600 }, "ready": "[role='dialog'] input", "expectedErrors": [], "tolerance": { "maxPixels": 5, "maxChannelDelta": 1, "reason": "Six identical pinned Linux Chromium captures differed at most at five antialiased Save-button corner pixels, by one channel level. All 15 pairwise comparisons stayed within this bound." } },
-  { "catalog": "components", "story": "sdk-overlays--locked-modal", "theme": "openforge-dark", "viewport": { "width": 360, "height": 500 }, "ready": "[role='dialog'] input", "expectedErrors": [], "tolerance": { "maxPixels": 5, "maxChannelDelta": 1, "reason": "Six identical pinned Linux Chromium captures differed at most at five antialiased Save-button corner pixels, by one channel level. All 15 pairwise comparisons stayed within this bound." } },
-  { "catalog": "components", "story": "sdk-overlays--menu", "theme": "openforge-light", "viewport": { "width": 480, "height": 320 }, "ready": "[role='menu']", "expectedErrors": [] },
-  { "catalog": "components", "story": "sdk-overlays--menu", "theme": "openforge-dark", "viewport": { "width": 360, "height": 320 }, "ready": "[role='menu']", "expectedErrors": [] },
-  { "catalog": "components", "story": "sdk-overlays--tooltip", "theme": "openforge-dark", "viewport": { "width": 360, "height": 240 }, "ready": "[role='tooltip']", "expectedErrors": [] },
-  { "catalog": "components", "story": "sdk-tabs--horizontal", "theme": "openforge-light", "viewport": { "width": 480, "height": 240 }, "ready": "[role='tabpanel']", "expectedErrors": [], "tolerance": { "maxPixels": 4, "maxChannelDelta": 2, "reason": "Six identical pinned Linux Chromium captures differed only at four antialiased tab-border pixels, at most two channel levels. All 15 pairwise comparisons stayed within this bound." } },
-  { "catalog": "components", "story": "sdk-tabs--vertical", "theme": "openforge-dark", "viewport": { "width": 360, "height": 300 }, "ready": "[role='tabpanel']", "expectedErrors": [], "tolerance": { "maxPixels": 4, "maxChannelDelta": 2, "reason": "Six identical pinned Linux Chromium captures produced two rasterizations differing only at four bottom-right antialiased border pixels, at most two channel levels. All 15 pairwise comparisons stayed within this bound." } },
-  { "catalog": "components", "story": "sdk-markdown--rich-text", "theme": "openforge-light", "viewport": { "width": 640, "height": 600 }, "ready": "#storybook-root h1", "expectedErrors": [], "tolerance": { "maxPixels": 14, "maxChannelDelta": 2, "reason": "Six identical pinned Linux Chromium captures produced two rasterizations differing only at fourteen antialiased code-block corner pixels, at most two channel levels. All 15 pairwise comparisons stayed within this bound." } },
-  { "catalog": "components", "story": "sdk-markdown--long-code", "theme": "openforge-dark", "viewport": { "width": 360, "height": 240 }, "ready": "#storybook-root pre", "expectedErrors": [] },
-  { "catalog": "components", "story": "sdk-file-workspace--selected", "theme": "openforge-light", "viewport": { "width": 900, "height": 600 }, "ready": "h1:has-text('Repository guide')", "expectedErrors": [] },
-  { "catalog": "components", "story": "sdk-file-workspace--right-panel", "theme": "openforge-dark", "viewport": { "width": 640, "height": 480 }, "ready": "[role='tree']", "expectedErrors": [] },
-  { "catalog": "components", "story": "sdk-file-workspace--overflow", "theme": "openforge-light", "viewport": { "width": 480, "height": 400 }, "ready": "[role='tree']", "expectedErrors": [] },
-  { "catalog": "components", "story": "sdk-view-states--empty", "theme": "openforge-light", "viewport": { "width": 480, "height": 400 }, "ready": "[role='status']", "expectedErrors": [] },
-  { "catalog": "components", "story": "sdk-view-states--loading", "theme": "openforge-dark", "viewport": { "width": 480, "height": 400 }, "ready": "[role='status']", "expectedErrors": [] },
-  { "catalog": "components", "story": "sdk-view-states--error", "theme": "openforge-dark", "viewport": { "width": 360, "height": 480 }, "ready": "[role='alert']", "expectedErrors": [] },
-  { "catalog": "components", "story": "sdk-view-states--collapsed", "theme": "openforge-light", "viewport": { "width": 480, "height": 320 }, "ready": "button[aria-expanded='false']", "expectedErrors": [] },
-  { "catalog": "components", "story": "sdk-sidebar-link--active", "theme": "openforge-light", "viewport": { "width": 240, "height": 120 }, "ready": "button[aria-current='page']", "expectedErrors": [] },
-  { "catalog": "components", "story": "sdk-sidebar-link--collapsed", "theme": "openforge-dark", "viewport": { "width": 160, "height": 120 }, "ready": "button[aria-current='page']", "expectedErrors": [] }
+  {
+    "catalog": "components",
+    "story": "components-button--primary",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 480,
+      "height": 240
+    },
+    "ready": "button:has-text(\"Create task\")",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "application-shell--expanded",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "[aria-label=\"Task list\"]",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 15,
+      "maxChannelDelta": 1,
+      "reason": "Repeated pinned Linux captures of the merged board layout differ at 15 antialiased Task badge and card-border pixels by one channel level. Larger changes remain failures."
+    }
+  },
+  {
+    "catalog": "pages",
+    "story": "application-shell--expanded",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "[aria-label=\"Task list\"]",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 16,
+      "maxChannelDelta": 1,
+      "reason": "CI and local pinned Linux captures of the same merged board layout differ at 16 antialiased Task state badge pixels by one channel level. Larger changes remain failures."
+    }
+  },
+  {
+    "catalog": "pages",
+    "story": "application-shell--collapsed",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "[aria-label=\"Task list\"]",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 15,
+      "maxChannelDelta": 1,
+      "reason": "Identical pinned Linux captures differed at 15 antialiased Task state badge pixels by one channel level. Larger changes remain failures."
+    }
+  },
+  {
+    "catalog": "pages",
+    "story": "application-shell--zen",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "[aria-label=\"Task list\"]",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 16,
+      "maxChannelDelta": 1,
+      "reason": "Identical pinned Linux captures differed at 16 antialiased Task state badge pixels by one channel level. Larger changes remain failures."
+    }
+  },
+  {
+    "catalog": "pages",
+    "story": "application-shell--global-view",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "h1:has-text(\"Global Settings\")",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "application-shell--narrow",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 900,
+      "height": 900
+    },
+    "ready": "[aria-label=\"Task list\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "application-shell--narrow",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 900,
+      "height": 900
+    },
+    "ready": "[aria-label=\"Task list\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "application-shell--shortcuts",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 960,
+      "height": 800
+    },
+    "ready": "[role=\"dialog\"][aria-label=\"Keyboard Shortcuts\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "application-shell--shortcuts",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 960,
+      "height": 800
+    },
+    "ready": "[role=\"dialog\"][aria-label=\"Keyboard Shortcuts\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "application-shell--quit-confirmation",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "[role=\"dialog\"][aria-label=\"Agents still running\"]",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 9,
+      "maxChannelDelta": 1,
+      "reason": "Identical pinned Linux captures differed at nine antialiased Task state badge pixels behind the modal backdrop by one channel level. Larger changes remain failures."
+    }
+  },
+  {
+    "catalog": "pages",
+    "story": "application-shell--dialog-with-feedback",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "body:has([role=\"dialog\"]) [role=\"alert\"]",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 10,
+      "maxChannelDelta": 1,
+      "reason": "CI and repeated local pinned Linux captures of the merged board layout differ at ten antialiased Task state badge pixels beneath the modal backdrop by one channel level. Larger changes remain failures."
+    }
+  },
+  {
+    "catalog": "pages",
+    "story": "application-shell--error-feedback",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "[role=\"alert\"]",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 15,
+      "maxChannelDelta": 1,
+      "reason": "Identical pinned Linux captures differed at 15 antialiased Task state badge pixels by one channel level. Larger changes remain failures."
+    }
+  },
+  {
+    "catalog": "pages",
+    "story": "application-shell--checkpoint",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "button:has-text(\"Agent needs input on OF-42\")",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 16,
+      "maxChannelDelta": 1,
+      "reason": "Identical pinned Linux captures differed at 16 antialiased Task state badge pixels by one channel level. Larger changes remain failures."
+    }
+  },
+  {
+    "catalog": "pages",
+    "story": "application-shell--task-created",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "[role=\"status\"]:has-text(\"New task created\")",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 15,
+      "maxChannelDelta": 1,
+      "reason": "This notification uses the same light-shell Task badge and card as Expanded, where repeated pinned Linux captures vary at 15 antialiased pixels by one channel level. Larger changes remain failures."
+    }
+  },
+  {
+    "catalog": "pages",
+    "story": "application-shell--rate-limited",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "[role=\"status\"]:has-text(\"Resets in 2 min\")",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 16,
+      "maxChannelDelta": 1,
+      "reason": "Identical pinned Linux captures differed at 16 antialiased Task state badge pixels by one channel level. Larger changes remain failures."
+    }
+  },
+  {
+    "catalog": "components",
+    "story": "components-host-controls-context-menu--open",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 480,
+      "height": 320
+    },
+    "ready": "[role=\"menu\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-host-controls-context-menu--open",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 480,
+      "height": 320
+    },
+    "ready": "[role=\"menu\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-feedback-toast--long-content",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 480,
+      "height": 320
+    },
+    "ready": "[role=\"alert\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-feedback-toast--long-content",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 480,
+      "height": 320
+    },
+    "ready": "[role=\"alert\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-host-chrome-sidebar--development",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 320,
+      "height": 800
+    },
+    "ready": "[title=\"feature/shared-host-chrome-with-a-long-branch-name\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-host-controls-bottom-panel--default",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 640,
+      "height": 600
+    },
+    "ready": "[data-testid=\"resizable-bottom-panel\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-actions--default",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 800,
+      "height": 500
+    },
+    "ready": "[data-testid=sdk-actions]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-actions--default",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 800,
+      "height": 500
+    },
+    "ready": "[data-testid=sdk-actions]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-actions--disabled",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 800,
+      "height": 500
+    },
+    "ready": "button:disabled:has-text('Create task')",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-actions--loading",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 800,
+      "height": 500
+    },
+    "ready": "button[aria-busy=true]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-actions--narrow-overflow",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 360,
+      "height": 800
+    },
+    "ready": "button:has-text('Create a follow-up')",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-actions--narrow-overflow",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 360,
+      "height": 800
+    },
+    "ready": "button:has-text('Create a follow-up')",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-actions--keyboard",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 800,
+      "height": 500
+    },
+    "ready": "button[aria-label=Refresh]:focus",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 8,
+      "maxChannelDelta": 1,
+      "reason": "Consecutive pinned Linux captures differ at eight antialiased button-border pixels by one channel level. Preserve keyboard focus coverage while rejecting larger or more widespread changes."
+    }
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-fields--default",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 800,
+      "height": 700
+    },
+    "ready": "[data-testid=sdk-fields]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-fields--default",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 800,
+      "height": 700
+    },
+    "ready": "[data-testid=sdk-fields]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-fields--selected",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 800,
+      "height": 700
+    },
+    "ready": "input:checked",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-fields--disabled",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 800,
+      "height": 700
+    },
+    "ready": "textarea:disabled",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-fields--validation",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 800,
+      "height": 750
+    },
+    "ready": "text=Instructions are required.",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-fields--validation",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 800,
+      "height": 750
+    },
+    "ready": "text=Instructions are required.",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-fields--narrow-overflow",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 360,
+      "height": 900
+    },
+    "ready": "[data-testid=sdk-fields]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-fields--narrow-overflow",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 360,
+      "height": 900
+    },
+    "ready": "[data-testid=sdk-fields]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-selectors--default",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 800,
+      "height": 600
+    },
+    "ready": "[data-testid=sdk-selectors]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-selectors--default",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 800,
+      "height": 600
+    },
+    "ready": "[data-testid=sdk-selectors]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-selectors--selected",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 800,
+      "height": 600
+    },
+    "ready": "button:has-text('Pi')",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-selectors--disabled",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 800,
+      "height": 600
+    },
+    "ready": "button:disabled",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-selectors--validation",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 800,
+      "height": 600
+    },
+    "ready": "text=Choose an available provider.",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-selectors--open",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 800,
+      "height": 600
+    },
+    "ready": "[role=option][aria-disabled=true]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-selectors--open",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 800,
+      "height": 600
+    },
+    "ready": "[role=option][aria-disabled=true]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-selectors--narrow-overflow",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 360,
+      "height": 900
+    },
+    "ready": "[role=listbox]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-selectors--narrow-overflow",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 360,
+      "height": 900
+    },
+    "ready": "[role=listbox]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-selectors--empty",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 800,
+      "height": 600
+    },
+    "ready": "text=No matches",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-selectors--no-matches",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 800,
+      "height": 600
+    },
+    "ready": "[data-sdk-ready=no-matches]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-presentation--default",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 800,
+      "height": 900
+    },
+    "ready": "[aria-label='File type examples']",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-presentation--default",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 800,
+      "height": 900
+    },
+    "ready": "[aria-label='File type examples']",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-presentation--narrow-overflow",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 360,
+      "height": 1700
+    },
+    "ready": "[aria-label='File type examples']",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-presentation--narrow-overflow",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 360,
+      "height": 1700
+    },
+    "ready": "[aria-label='File type examples']",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-navigation--default",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 640,
+      "height": 400
+    },
+    "ready": "[data-testid=sdk-navigation]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-navigation--default",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 640,
+      "height": 400
+    },
+    "ready": "[data-testid=sdk-navigation]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-navigation--selected",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 640,
+      "height": 400
+    },
+    "ready": "button[aria-current=page]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-navigation--collapsed",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 640,
+      "height": 400
+    },
+    "ready": "button[data-collapsed=true]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-navigation--narrow-overflow",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 360,
+      "height": 450
+    },
+    "ready": "[data-testid=sdk-navigation]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-terminal--ready",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "[data-terminal-ready=true]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-terminal--ready",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "[data-terminal-ready=true]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-terminal--runtime-unavailable",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "text=Terminal runtime unavailable",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-terminal-task-pane--ready",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 640,
+      "height": 800
+    },
+    "ready": "[data-terminal-ready=true]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-terminal-task-pane--lookup-error",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 640,
+      "height": 800
+    },
+    "ready": "button:has-text(\"Retry workspace lookup\")",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-terminal-task-pane--missing-workspace",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 640,
+      "height": 800
+    },
+    "ready": "text=Terminal workspace unavailable",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-terminal-runtime--disconnected",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 640,
+      "height": 400
+    },
+    "ready": "[data-terminal-ready=true]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-terminal-runtime--empty",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 640,
+      "height": 400
+    },
+    "ready": "[data-terminal-ready=true]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-terminal-tabs--overflow",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 640,
+      "height": 400
+    },
+    "ready": "[data-terminal-ready=true]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-terminal-runtime--overflow",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 640,
+      "height": 400
+    },
+    "ready": "[data-terminal-ready=true]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-sdk-page-shell--populated",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "h2:has-text('Changes ready for review')",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-sdk-page-shell--overflow",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 640,
+      "height": 600
+    },
+    "ready": "h2:has-text('Changes ready for review')",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "sdk-overlays--modal",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 800,
+      "height": 600
+    },
+    "ready": "[role='dialog'] input",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 5,
+      "maxChannelDelta": 1,
+      "reason": "Six identical pinned Linux Chromium captures differed at most at five antialiased Save-button corner pixels, by one channel level. All 15 pairwise comparisons stayed within this bound."
+    }
+  },
+  {
+    "catalog": "components",
+    "story": "sdk-overlays--locked-modal",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 360,
+      "height": 500
+    },
+    "ready": "[role='dialog'] input",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 5,
+      "maxChannelDelta": 1,
+      "reason": "Six identical pinned Linux Chromium captures differed at most at five antialiased Save-button corner pixels, by one channel level. All 15 pairwise comparisons stayed within this bound."
+    }
+  },
+  {
+    "catalog": "components",
+    "story": "sdk-overlays--menu",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 480,
+      "height": 320
+    },
+    "ready": "[role='menu']",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "sdk-overlays--menu",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 360,
+      "height": 320
+    },
+    "ready": "[role='menu']",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "sdk-overlays--tooltip",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 360,
+      "height": 240
+    },
+    "ready": "[role='tooltip']",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "sdk-tabs--horizontal",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 480,
+      "height": 240
+    },
+    "ready": "[role='tabpanel']",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 4,
+      "maxChannelDelta": 2,
+      "reason": "Six identical pinned Linux Chromium captures differed only at four antialiased tab-border pixels, at most two channel levels. All 15 pairwise comparisons stayed within this bound."
+    }
+  },
+  {
+    "catalog": "components",
+    "story": "sdk-tabs--vertical",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 360,
+      "height": 300
+    },
+    "ready": "[role='tabpanel']",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 4,
+      "maxChannelDelta": 2,
+      "reason": "Six identical pinned Linux Chromium captures produced two rasterizations differing only at four bottom-right antialiased border pixels, at most two channel levels. All 15 pairwise comparisons stayed within this bound."
+    }
+  },
+  {
+    "catalog": "components",
+    "story": "sdk-markdown--rich-text",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 640,
+      "height": 600
+    },
+    "ready": "#storybook-root h1",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 14,
+      "maxChannelDelta": 2,
+      "reason": "Six identical pinned Linux Chromium captures produced two rasterizations differing only at fourteen antialiased code-block corner pixels, at most two channel levels. All 15 pairwise comparisons stayed within this bound."
+    }
+  },
+  {
+    "catalog": "components",
+    "story": "sdk-markdown--long-code",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 360,
+      "height": 240
+    },
+    "ready": "#storybook-root pre",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "sdk-file-workspace--selected",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 900,
+      "height": 600
+    },
+    "ready": "h1:has-text('Repository guide')",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "sdk-file-workspace--right-panel",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 640,
+      "height": 480
+    },
+    "ready": "[role='tree']",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "sdk-file-workspace--overflow",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 480,
+      "height": 400
+    },
+    "ready": "[role='tree']",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "sdk-view-states--empty",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 480,
+      "height": 400
+    },
+    "ready": "[role='status']",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "sdk-view-states--loading",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 480,
+      "height": 400
+    },
+    "ready": "[role='status']",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "sdk-view-states--error",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 360,
+      "height": 480
+    },
+    "ready": "[role='alert']",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "sdk-view-states--collapsed",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 480,
+      "height": 320
+    },
+    "ready": "button[aria-expanded='false']",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "sdk-sidebar-link--active",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 240,
+      "height": 120
+    },
+    "ready": "button[aria-current='page']",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "sdk-sidebar-link--collapsed",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 160,
+      "height": 120
+    },
+    "ready": "button[aria-current='page']",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-project-switching--populated",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "body[data-navigation-ready=\"pages-project-switching--populated\"] [role=\"dialog\"]",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 20,
+      "maxChannelDelta": 1,
+      "reason": "Repeated pinned Linux captures varied 14 existing Focus Board idle-badge border pixels by one channel level behind the modal. Larger or more widespread changes must fail."
+    }
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-project-switching--attention",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "body[data-navigation-ready=\"pages-project-switching--attention\"] [role=\"dialog\"]",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 20,
+      "maxChannelDelta": 1,
+      "reason": "Repeated pinned Linux captures varied 13 existing Focus Board border pixels by one channel level behind the modal. Larger or more widespread changes must fail."
+    }
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-project-switching--empty",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "body[data-navigation-ready=\"pages-project-switching--empty\"] [role=\"dialog\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-project-switching--overflow",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 900,
+      "height": 700
+    },
+    "ready": "body[data-navigation-ready=\"pages-project-switching--overflow\"] [role=\"dialog\"]",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 20,
+      "maxChannelDelta": 1,
+      "reason": "This page uses the same populated Focus Board host whose border rasterization varied 3\u201315 pixels behind navigation modals and 19 on the board alone in repeated pinned Linux captures, all by one channel level. Reuse the host allowance; larger or more widespread changes must fail."
+    }
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-command-palette--populated",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "body[data-navigation-ready=\"pages-command-palette--populated\"] [role=\"dialog\"]",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 20,
+      "maxChannelDelta": 1,
+      "reason": "This page uses the same populated Focus Board host whose border rasterization varied 3\u201315 pixels behind navigation modals and 19 on the board alone in repeated pinned Linux captures, all by one channel level. Reuse the host allowance; larger or more widespread changes must fail."
+    }
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-command-palette--populated",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "body[data-navigation-ready=\"pages-command-palette--populated\"] [role=\"dialog\"]",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 20,
+      "maxChannelDelta": 1,
+      "reason": "This page uses the same populated Focus Board host whose border rasterization varied 3\u201315 pixels behind navigation modals and 19 on the board alone in repeated pinned Linux captures, all by one channel level. Reuse the host allowance; larger or more widespread changes must fail."
+    }
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-command-palette--loading",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "body[data-navigation-ready=\"pages-command-palette--loading\"] [role=\"dialog\"]",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 20,
+      "maxChannelDelta": 1,
+      "reason": "This page uses the same populated Focus Board host whose border rasterization varied 3\u201315 pixels behind navigation modals and 19 on the board alone in repeated pinned Linux captures, all by one channel level. Reuse the host allowance; larger or more widespread changes must fail."
+    }
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-command-palette--failure",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "body[data-navigation-ready=\"pages-command-palette--failure\"] [role=\"dialog\"]",
+    "expectedErrors": [
+      "Failed to load active tasks: Error: Catalog task search unavailable"
+    ],
+    "tolerance": {
+      "maxPixels": 20,
+      "maxChannelDelta": 1,
+      "reason": "This page uses the same populated Focus Board host whose border rasterization varied 3\u201315 pixels behind navigation modals and 19 on the board alone in repeated pinned Linux captures, all by one channel level. Reuse the host allowance; larger or more widespread changes must fail."
+    }
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-command-palette--overflow",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 900,
+      "height": 700
+    },
+    "ready": "body[data-navigation-ready=\"pages-command-palette--overflow\"] [role=\"dialog\"]",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 20,
+      "maxChannelDelta": 1,
+      "reason": "This page uses the same populated Focus Board host whose border rasterization varied 3\u201315 pixels behind navigation modals and 19 on the board alone in repeated pinned Linux captures, all by one channel level. Reuse the host allowance; larger or more widespread changes must fail."
+    }
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-action-palette--populated",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "body[data-navigation-ready=\"pages-action-palette--populated\"] [role=\"dialog\"]",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 20,
+      "maxChannelDelta": 1,
+      "reason": "This page uses the same populated Focus Board host whose border rasterization varied 3\u201315 pixels behind navigation modals and 19 on the board alone in repeated pinned Linux captures, all by one channel level. Reuse the host allowance; larger or more widespread changes must fail."
+    }
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-action-palette--populated",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "body[data-navigation-ready=\"pages-action-palette--populated\"] [role=\"dialog\"]",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 20,
+      "maxChannelDelta": 1,
+      "reason": "This page uses the same populated Focus Board host whose border rasterization varied 3\u201315 pixels behind navigation modals and 19 on the board alone in repeated pinned Linux captures, all by one channel level. Reuse the host allowance; larger or more widespread changes must fail."
+    }
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-action-palette--backlog",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "body[data-navigation-ready=\"pages-action-palette--backlog\"] [role=\"dialog\"]",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 20,
+      "maxChannelDelta": 1,
+      "reason": "Repeated pinned Linux captures varied 14 existing Focus Board border pixels by one channel level behind the modal. Larger or more widespread changes must fail."
+    }
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-action-palette--unavailable",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "body[data-navigation-ready=\"pages-action-palette--unavailable\"] [role=\"dialog\"]",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 20,
+      "maxChannelDelta": 1,
+      "reason": "This page uses the same populated Focus Board host whose border rasterization varied 3\u201315 pixels behind navigation modals and 19 on the board alone in repeated pinned Linux captures, all by one channel level. Reuse the host allowance; larger or more widespread changes must fail."
+    }
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-action-palette--empty-results",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "body[data-navigation-ready=\"pages-action-palette--empty-results\"] [role=\"dialog\"]",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 20,
+      "maxChannelDelta": 1,
+      "reason": "Repeated pinned Linux captures varied 10 existing Focus Board border pixels by one channel level behind the modal. Larger or more widespread changes must fail."
+    }
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-action-palette--confirmation",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 900,
+      "height": 700
+    },
+    "ready": "body[data-navigation-ready=\"pages-action-palette--confirmation\"] [role=\"dialog\"]",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 20,
+      "maxChannelDelta": 1,
+      "reason": "This page uses the same populated Focus Board host whose border rasterization varied 3\u201315 pixels behind navigation modals and 19 on the board alone in repeated pinned Linux captures, all by one channel level. Reuse the host allowance; larger or more widespread changes must fail."
+    }
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-file-quick-open--initial",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "body[data-navigation-ready=\"pages-file-quick-open--initial\"] [role=\"dialog\"]",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 20,
+      "maxChannelDelta": 1,
+      "reason": "Repeated pinned Linux captures varied 10 existing Focus Board border pixels by one channel level behind the modal. Larger or more widespread changes must fail."
+    }
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-file-quick-open--populated",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "body[data-navigation-ready=\"pages-file-quick-open--populated\"] [role=\"dialog\"]",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 20,
+      "maxChannelDelta": 1,
+      "reason": "Repeated pinned Linux captures varied 15 existing Focus Board border pixels by one channel level behind the modal. Larger or more widespread changes must fail."
+    }
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-file-quick-open--populated",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "body[data-navigation-ready=\"pages-file-quick-open--populated\"] [role=\"dialog\"]",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 20,
+      "maxChannelDelta": 1,
+      "reason": "This page uses the same populated Focus Board host whose border rasterization varied 3\u201315 pixels behind navigation modals and 19 on the board alone in repeated pinned Linux captures, all by one channel level. Reuse the host allowance; larger or more widespread changes must fail."
+    }
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-file-quick-open--empty",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "body[data-navigation-ready=\"pages-file-quick-open--empty\"] [role=\"dialog\"]",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 20,
+      "maxChannelDelta": 1,
+      "reason": "Repeated pinned Linux captures varied 3 existing Focus Board border pixels by one channel level behind the modal. Larger or more widespread changes must fail."
+    }
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-file-quick-open--loading",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "body[data-navigation-ready=\"pages-file-quick-open--loading\"] [role=\"dialog\"]",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 20,
+      "maxChannelDelta": 1,
+      "reason": "Repeated pinned Linux captures varied 10 existing Focus Board border pixels by one channel level behind the modal. Larger or more widespread changes must fail."
+    }
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-file-quick-open--failure",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "body[data-navigation-ready=\"pages-file-quick-open--failure\"] [role=\"dialog\"]",
+    "expectedErrors": [
+      "[FileQuickOpen] search failed: Error: Catalog file search unavailable"
+    ],
+    "tolerance": {
+      "maxPixels": 20,
+      "maxChannelDelta": 1,
+      "reason": "This page uses the same populated Focus Board host whose border rasterization varied 3\u201315 pixels behind navigation modals and 19 on the board alone in repeated pinned Linux captures, all by one channel level. Reuse the host allowance; larger or more widespread changes must fail."
+    }
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-file-quick-open--unavailable",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "body[data-navigation-ready=\"pages-file-quick-open--unavailable\"] [role=\"dialog\"]",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 2,
+      "maxChannelDelta": 3,
+      "reason": "Repeated pinned Linux captures alternate at focused-input corner pixels (389,339) and (391,339), by three and one channel levels. KVG-4816: allow only these measured count/delta bounds; SVG timelines remain frozen."
+    }
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-file-quick-open--overflow",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 900,
+      "height": 700
+    },
+    "ready": "body[data-navigation-ready=\"pages-file-quick-open--overflow\"] [role=\"dialog\"]",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 20,
+      "maxChannelDelta": 1,
+      "reason": "This page uses the same populated Focus Board host whose border rasterization varied 3\u201315 pixels behind navigation modals and 19 on the board alone in repeated pinned Linux captures, all by one channel level. Reuse the host allowance; larger or more widespread changes must fail."
+    }
+  },
+  {
+    "catalog": "components",
+    "story": "components-palette-controls--populated",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 640,
+      "height": 480
+    },
+    "ready": "body[data-navigation-ready=\"components-palette-controls--populated\"] [role=\"dialog\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-palette-controls--populated",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 640,
+      "height": 480
+    },
+    "ready": "body[data-navigation-ready=\"components-palette-controls--populated\"] [role=\"dialog\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-palette-controls--empty",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 480,
+      "height": 480
+    },
+    "ready": "body[data-navigation-ready=\"components-palette-controls--empty\"] [role=\"dialog\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-palette-controls--loading",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 480,
+      "height": 480
+    },
+    "ready": "body[data-navigation-ready=\"components-palette-controls--loading\"] [role=\"dialog\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-palette-controls--overflow",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 640,
+      "height": 640
+    },
+    "ready": "body[data-navigation-ready=\"components-palette-controls--overflow\"] [role=\"dialog\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-palette-controls--narrow",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 360,
+      "height": 480
+    },
+    "ready": "body[data-navigation-ready=\"components-palette-controls--narrow\"] [role=\"dialog\"]",
+    "expectedErrors": []
+  }
 ]

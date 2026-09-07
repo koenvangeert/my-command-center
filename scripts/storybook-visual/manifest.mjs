@@ -22,7 +22,9 @@ export function validateManifest(entries, indexes) {
       const tolerance = entry.tolerance
       if (!tolerance || Object.keys(tolerance).sort().join() !== 'maxChannelDelta,maxPixels,reason' ||
         !Number.isInteger(tolerance.maxPixels) || tolerance.maxPixels < 1 || tolerance.maxPixels > 20 ||
-        ![1, 2].includes(tolerance.maxChannelDelta) || typeof tolerance.reason !== 'string' || !tolerance.reason.trim()) fail('invalid tolerance: require reason, maxPixels 1..20 and maxChannelDelta 1..2')
+        !Number.isInteger(tolerance.maxChannelDelta) || tolerance.maxChannelDelta < 1 ||
+        tolerance.maxChannelDelta > (tolerance.maxPixels <= 2 ? 3 : 2) ||
+        typeof tolerance.reason !== 'string' || !tolerance.reason.trim()) fail('invalid tolerance: require reason; allow 1..20 pixels at delta 1..2, or 1..2 pixels at delta 1..3')
     }
     if (indexes[entry.catalog]?.entries?.[entry.story]?.type !== 'story') fail(`missing story ${entry.catalog}/${entry.story}; rebuild catalogs or correct manifest`)
     const key = identity(entry)

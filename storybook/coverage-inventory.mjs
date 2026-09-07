@@ -17,6 +17,45 @@ const inventory = {
       stories: ['pages-sdk-page-shell--populated', 'pages-sdk-page-shell--empty', 'pages-sdk-page-shell--loading', 'pages-sdk-page-shell--error', 'pages-sdk-page-shell--overflow', 'pages-sdk-page-shell--collapsed', 'pages-sdk-page-shell--retry-and-collapse', 'pages-sdk-page-shell--create-first-report'],
     },
     {
+      source: 'src/components/project/ProjectSwitcherModal.svelte',
+      stories: [
+        'pages-project-switching--populated', 'pages-project-switching--empty',
+        'pages-project-switching--attention', 'pages-project-switching--narrow',
+        'pages-project-switching--overflow', 'pages-project-switching--filtered',
+        'pages-project-switching--switch-and-reopen',
+      ],
+    },
+    {
+      source: 'src/components/shell/CommandPalette.svelte',
+      stories: [
+        'pages-command-palette--populated', 'pages-command-palette--empty',
+        'pages-command-palette--loading', 'pages-command-palette--failure',
+        'pages-command-palette--narrow', 'pages-command-palette--overflow',
+        'pages-command-palette--search-and-navigate', 'pages-command-palette--run-command',
+        'pages-command-palette--finish-loading',
+      ],
+    },
+    {
+      source: 'src/components/shell/ActionPalette.svelte',
+      stories: [
+        'pages-action-palette--populated', 'pages-action-palette--backlog',
+        'pages-action-palette--unavailable', 'pages-action-palette--empty-results',
+        'pages-action-palette--narrow', 'pages-action-palette--merge-methods',
+        'pages-action-palette--confirmation', 'pages-action-palette--execute-and-reopen',
+        'pages-action-palette--confirm-and-reopen',
+      ],
+    },
+    {
+      source: 'src/components/shell/FileQuickOpen.svelte',
+      stories: [
+        'pages-file-quick-open--initial', 'pages-file-quick-open--populated',
+        'pages-file-quick-open--empty', 'pages-file-quick-open--loading',
+        'pages-file-quick-open--failure', 'pages-file-quick-open--unavailable',
+        'pages-file-quick-open--narrow', 'pages-file-quick-open--overflow',
+        'pages-file-quick-open--open-and-reopen', 'pages-file-quick-open--finish-loading',
+      ],
+    },
+    {
       source: 'src/components/shell/ApplicationShell.svelte',
       stories: [
         'application-shell--expanded',
@@ -126,6 +165,26 @@ const inventory = {
     { source: 'packages/plugin-sdk/src/ui/PluginPageHeader.svelte', stories: ['sdk-view-states--content', 'sdk-view-states--overflow'] },
     { source: 'packages/plugin-sdk/src/ui/PluginViewState.svelte', stories: ['sdk-view-states--content', 'sdk-view-states--empty', 'sdk-view-states--loading', 'sdk-view-states--error'] },
     { source: 'packages/plugin-sdk/src/ui/CollapsibleSection.svelte', stories: ['sdk-view-states--content', 'sdk-view-states--collapsed', 'sdk-view-states--overflow'] },
+    {
+      source: 'src/components/shell/PaletteModal.svelte',
+      stories: ['components-palette-controls--populated', 'components-palette-controls--narrow', 'components-palette-controls--keyboard-selection'],
+    },
+    {
+      source: 'src/components/shared/ui/PaletteInput.svelte',
+      stories: ['components-palette-controls--populated', 'components-palette-controls--keyboard-selection'],
+    },
+    {
+      source: 'src/components/shared/ui/PaletteListbox.svelte',
+      stories: [
+        'components-palette-controls--populated', 'components-palette-controls--empty',
+        'components-palette-controls--loading', 'components-palette-controls--overflow',
+        'components-palette-controls--keyboard-selection',
+      ],
+    },
+    {
+      source: 'src/components/shared/ui/PaletteFooter.svelte',
+      stories: ['components-palette-controls--populated', 'components-palette-controls--narrow'],
+    },
   ],
   // Unadopted UI is reported by discovery, never parked here to silence coverage.
   exclusions: [],

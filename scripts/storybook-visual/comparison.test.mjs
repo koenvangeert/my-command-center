@@ -27,6 +27,19 @@ describe('visual comparisons', () => {
     after.data[4] = 255; after.data[0] = 253
     expect(compare(a, PNG.sync.write(after), tolerance).matches).toBe(false)
   })
+  it('keeps the two-pixel corner allowance bounded and exact comparisons unchanged', () => {
+    const before = new PNG({ width: 4, height: 4 }); before.data.fill(255)
+    const after = new PNG({ width: 4, height: 4 }); after.data.fill(255)
+    after.data[0] = 252; after.data[4] = 254
+    const baseline = PNG.sync.write(before)
+    const tolerance = { maxPixels: 2, maxChannelDelta: 3 }
+    expect(compare(baseline, PNG.sync.write(after)).matches).toBe(false)
+    expect(compare(baseline, PNG.sync.write(after), tolerance)).toMatchObject({ matches: true, pixels: 2 })
+    after.data[8] = 254
+    expect(compare(baseline, PNG.sync.write(after), tolerance).matches).toBe(false)
+    after.data[8] = 255; after.data[0] = 251
+    expect(compare(baseline, PNG.sync.write(after), tolerance).matches).toBe(false)
+  })
   it('requires exact diagnostic multiplicities', () => {
     expect(() => verifyDiagnostics(['expected'], ['expected'])).not.toThrow()
     expect(() => verifyDiagnostics(['expected extra'], ['expected'])).toThrow(/unexpected/)

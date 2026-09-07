@@ -31,10 +31,9 @@ export async function selfTest({ browser, url, entries, output }) {
   function probe(name, mode = 'check') {
     const destination = join(output, 'self-test', name)
     const result = spawnSync(process.execPath, ['scripts/storybook-visual/run.mjs', mode], {
-      // Each probe captures the entire adopted catalog. The original two-case
-      // budget must grow with it while retaining a finite timeout.
-      env: { ...process.env, VISUAL_OUTPUT: destination, VISUAL_BASELINES: probeBaselines }, encoding: 'utf8',
-      timeout: Math.max(120000, 30000 + entries.length * 15000),
+      // Each probe runs the full manifest; the original two-case deadline must
+      // grow with catalog adoption without weakening any comparison assertions.
+      env: { ...process.env, VISUAL_OUTPUT: destination, VISUAL_BASELINES: probeBaselines }, encoding: 'utf8', timeout: Math.max(120000, entries.length * 30000),
     })
     if (result.error) throw result.error
     return { ...result, destination }
@@ -92,5 +91,5 @@ export async function selfTest({ browser, url, entries, output }) {
   }
   const restored = probe('restored')
   assert.equal(restored.status, 0, restored.stdout + restored.stderr)
-  console.log('Self-test passed: both cases repeat, disposable pixel failure, update evidence, diagnostic artifacts, readiness, exact diagnostics, and restoration')
+  console.log('Self-test passed: all cases repeat, disposable pixel failure, update evidence, diagnostic artifacts, readiness, exact diagnostics, and restoration')
 }

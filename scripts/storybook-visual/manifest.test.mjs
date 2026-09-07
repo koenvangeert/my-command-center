@@ -12,6 +12,13 @@ describe('visual manifest contract', () => {
     const bounded = { ...entry, tolerance: { maxPixels: 14, maxChannelDelta: 2, reason: 'Six pinned-container captures differ only at antialiased code-block corners.' } }
     expect(validateManifest([bounded], indexes)).toEqual([bounded])
   })
+  it.each([1, 2, 3])('accepts measured two-pixel noise at channel delta %i', (maxChannelDelta) => {
+    const measured = { ...entry, tolerance: { maxPixels: 2, maxChannelDelta, reason: 'Measured focused-input corner rasterization' } }
+    expect(validateManifest([measured], indexes)).toEqual([measured])
+  })
+  it.each([[3, 3], [2, 4], [2, 1.5], [2, 0], [0, 3]])('rejects a broader or invalid noise budget %i/%i', (maxPixels, maxChannelDelta) => {
+    expect(() => validateManifest([{ ...entry, tolerance: { maxPixels, maxChannelDelta, reason: 'Invalid budget' } }], indexes)).toThrow(/tolerance/)
+  })
   it.each([
     [[{ ...entry, catalog: '../escape' }], /catalog/],
     [[{ ...entry, theme: 'unknown' }], /theme/],

@@ -1,6 +1,6 @@
 # Review screenshot changes
 
-The manifest selects the foundation Focus Board and SDK Button, [host chrome and feedback baselines](storybook-host-chrome.md), and [SDK composite layouts](storybook-sdk-composites.md). It does not enforce coverage of the remaining Storybook catalog.
+The manifest includes foundation, host chrome, Plugin SDK, terminal, and navigation/search cases. See [host chrome and feedback](storybook-host-chrome.md), [SDK composite layouts](storybook-sdk-composites.md), and [navigation workflows](storybook-navigation.md) for their adopted states and interaction checks. It does not enforce coverage of the remaining Storybook catalog.
 
 ## Commands
 
@@ -39,7 +39,9 @@ Images are named `<catalog>/<story>--<theme>--<width>x<height>.png`. Renaming an
 
 Readiness must identify the intended final state, not just a generic root element or spinner. Interactive cases must choose a selector that proves their interaction has finished, such as the host context menu's visible menu. Deliberately failed cases must list complete console/page-error messages in `expectedErrors`, including multiplicity. Missing expected messages fail too. No substring allowlist is used.
 
-Comparison is exact by default. Per-entry rasterization allowances require measured evidence and a reason, with hard caps of 20 changed pixels and two channel levels. Focus Board and selected host-shell cases retain their measured one-channel allowances. Six repeated Linux captures establish the SDK tabs' bound of four pixels at two levels, the rich-markdown bound of 14 pixels at two levels, and the modals' bound of five one-level button-corner pixels. Reports retain raw counts and difference images, including accepted noise. Loading remains exact: animation is frozen, never masked by a tolerance. All cases without an explicit allowance use exact comparison.
+Comparison is exact by default. Per-entry rasterization allowances require measured evidence and a reason, ordinarily capped at 20 changed pixels and two channel levels. Focus Board and selected host-shell cases retain their measured one-channel allowances. Six repeated Linux captures establish the SDK tabs' bound of four pixels at two levels, the rich-markdown bound of 14 pixels at two levels, and the modals' bound of five one-level button-corner pixels. Reports retain raw counts and difference images, including accepted noise. Loading remains exact: animation is frozen, never masked by a tolerance. A separate navigation allowance permits up to three channel levels only when at most two pixels change, for the measured dark File quick-open / Unavailable input-corner noise (KVG-4816). Larger pixel counts cannot use three levels. Navigation palette controls and Project switching / Empty remain exact; SVG motion is frozen rather than tolerated. All cases without an explicit allowance use exact comparison.
+
+Captures use a 30-second default operation/navigation deadline. Failure probes can still request shorter deadlines. Full-manifest child probes have at least two minutes and scale by 30 seconds per selected case, so adopting more stories does not exhaust the original two-case timeout.
 
 ## Canonical environment
 
