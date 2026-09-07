@@ -14,8 +14,12 @@
   import type { ResolvedMarkdownMedia } from '@openforge-app/plugin-sdk/markdown'
   import { timeAgoFromSeconds } from '../../lib/timeAgo'
   import WalkthroughTab from './WalkthroughTab.svelte'
+  import QuestionsPanel from './QuestionsPanel.svelte'
+  import { buildQuestionsIndex, type QuestionItem } from '../../lib/questionsIndex'
   import type { FileContents } from '@openforge-app/pr-review-ui/diffAdapter'
   import { countNonApplicationFiles, filterApplicationFiles } from '@openforge-app/pr-review-ui/applicationFiles'
+  import { tick } from 'svelte'
+  import { ListChecks } from '@lucide/svelte'
 
   type PrDetailTab = 'overview' | 'files' | 'walkthrough'
 
@@ -66,7 +70,13 @@
     onAddReplyToReview?: (commentId: number, body: string) => void
     onRemovePendingReply?: (commentId: number) => void
     onAskAgentStep?: (stepId: string, body: string) => void
+    onEditThread?: (threadId: string, body: string) => void
+    onDeleteThread?: (threadId: string) => void
     onSendQuestionsToAgent?: () => void
+    // Marks an answered thread as read (owned by PrReviewView, persists seen_at).
+    onMarkThreadSeen?: (threadId: string) => void
+    // Rail-matching labels for step-anchored questions ("Step 2 · <title>").
+    stepLabelById?: Map<string, { number: number; title: string }>
     onSubmitReview: (request: {
       repoOwner: string
       repoName: string
@@ -122,10 +132,41 @@
     onAddReplyToReview,
     onRemovePendingReply,
     onAskAgentStep,
+    onEditThread,
+    onDeleteThread,
     onSendQuestionsToAgent,
+    onMarkThreadSeen,
+    stepLabelById,
     onSubmitReview,
     onOpenUrl,
   }: Props = $props()
+
+  // The questions panel: one collected view of every place still wanting the
+  // reviewer's attention (their questions + undecided AI suggestions), each row
+  // deep-linking to its anchor. Data comes straight from the props already here.
+  let questionsPanelOpen = $state(false)
+  let focusStepId = $state<string | null>(null)
+  let questionsIndex = $derived(buildQuestionsIndex(aiThreads, agentReviewComments))
+
+  async function handleSelectQuestion(item: QuestionItem) {
+    questionsPanelOpen = false
+    // Auto-mark-on-open: jumping to an answer counts as reading it.
+    if (item.source.kind === 'thread' && item.group === 'answers_to_read') {
+      onMarkThreadSeen?.(item.source.thread.id)
+    }
+    if (item.target.kind === 'step') {
+      onActiveTabChange('walkthrough')
+      focusStepId = item.target.stepId
+      return
+    }
+    const { filename, line } = item.target
+    onActiveTabChange('files')
+    // Wait for the tab switch so the DiffViewer instance is bound; scrollToComment
+    // then polls for the row itself, so a still-mounting diff resolves on its own.
+    await tick()
+    if (line != null) void diffViewer?.scrollToComment(filename, line)
+    else diffViewer?.scrollToFile(filename)
+  }
 
   // Approved AI review comments are submitted with the review directly (approving
   // no longer copies them into the manual pending list), so map them to
@@ -183,7 +224,7 @@
   }
 </script>
 
-<div class="flex h-full min-h-0 flex-col overflow-hidden">
+<div class="relative flex h-full min-h-0 flex-col overflow-hidden">
   {#if replyPostingError || isPostingReplies}
     <div class="flex items-center gap-3 border-b border-base-300 px-4 py-2 text-sm text-error" role="alert">
       <span>{isPostingReplies ? 'Posting queued replies…' : replyPostingError}</span>
@@ -197,6 +238,21 @@
       <Button variant="ghost" size="xs" class="shrink-0 text-base-content/50" onclick={onBackToList}>← Back</Button>
       <Badge variant="info" class="shrink-0">{pr.repo_owner}/{pr.repo_name}</Badge>
       <h2 class="text-sm font-semibold text-base-content m-0 truncate flex-1">{pr.title}</h2>
+      {#if questionsIndex.totalCount > 0}
+        <Button
+          variant="ghost"
+          size="xs"
+          class="shrink-0 gap-1"
+          onclick={() => { questionsPanelOpen = true }}
+          title="Find all your questions and undecided AI suggestions in one place"
+        >
+          <ListChecks size={14} aria-hidden="true" />
+          Questions
+          {#if questionsIndex.actionableCount > 0}
+            <Badge variant="info" class="ml-1">{questionsIndex.actionableCount}</Badge>
+          {/if}
+        </Button>
+      {/if}
       {#if aiThreadsPendingCount > 0}
         <Button
           size="xs"
@@ -266,7 +322,10 @@
           onAddReplyToReview={onAddReplyToReview}
           onRemovePendingReply={onRemovePendingReply}
           onAskAgentStep={onAskAgentStep}
+          onEditThread={onEditThread}
+          onDeleteThread={onDeleteThread}
           onSubmitReview={onSubmitReview}
+          {focusStepId}
         />
       {:else}
         <div class="flex h-full min-h-0 overflow-hidden">
@@ -349,4 +408,13 @@
       {/if}
     {/snippet}
   </Tabs>
+
+  {#if questionsPanelOpen}
+    <QuestionsPanel
+      index={questionsIndex}
+      {stepLabelById}
+      onSelect={handleSelectQuestion}
+      onClose={() => { questionsPanelOpen = false }}
+    />
+  {/if}
 </div>

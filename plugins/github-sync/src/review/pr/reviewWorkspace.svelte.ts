@@ -146,7 +146,11 @@ export function createReviewWorkspace(api: FrontendOpenForgeAPI, getContext: () 
     onAddReplyToReview: selection.addReplyToReview,
     onRemovePendingReply: selection.removePendingReply,
     onAskAgentStep: ai.askAgentStep,
+    onEditThread: ai.editThread,
+    onDeleteThread: ai.deleteThread,
     onSendQuestionsToAgent: ai.sendQuestionsToAgent,
+    onMarkThreadSeen: ai.markThreadSeen,
+    stepLabelById: walkthrough.stepLabelById,
     onSubmitReview: selection.submitReview,
     onOpenUrl: openUrl,
   } : null)
