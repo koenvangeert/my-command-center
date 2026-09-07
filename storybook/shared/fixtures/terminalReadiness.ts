@@ -1,4 +1,4 @@
-import { expect, waitFor } from 'storybook/test'
+import { expect, userEvent, waitFor } from 'storybook/test'
 import { getStoryScenario } from '../storyEnvironmentPreview'
 
 type TerminalStoryContext = { loaded: Record<string, unknown>; canvasElement: HTMLElement }
@@ -23,6 +23,10 @@ export async function terminalReady(context: TerminalStoryContext, expectedText 
   const input = [...context.canvasElement.querySelectorAll<HTMLTextAreaElement>('.xterm-helper-textarea')]
     .find(element => element.checkVisibility())
   input?.focus()
+  // xterm auto-hides its scrollbars with a timer, not a CSS animation. Hover
+  // through the public interaction boundary so overflow stays visibly scrollable.
+  const scrollable = input?.closest('.xterm')?.querySelector<HTMLElement>('.xterm-scrollable-element')
+  if (scrollable) await userEvent.hover(scrollable)
   await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
   context.canvasElement.setAttribute('data-terminal-ready', 'true')
 }

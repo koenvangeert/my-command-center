@@ -71,7 +71,24 @@ try {
     for (let pass = 0; pass < 2; pass++) {
       for (const id of stories) {
         if (id === blank) continue
+        if (id === 'components-terminal-runtime--overflow') await page.mouse.move(0, 0)
         await select(id)
+        if (['components-terminal-runtime--empty', 'components-terminal-tabs--overflow'].includes(id)) {
+          const screen = page.locator('.xterm-screen:visible').first()
+          const first = await screen.screenshot()
+          // Observe multiple phases of the default 600ms cursor blink cycle.
+          for (let sample = 0; sample < 4; sample++) {
+            await page.waitForTimeout(350)
+            assert.equal(Buffer.compare(await screen.screenshot(), first), 0, `${id}: ready cursor must stay painted`)
+          }
+        }
+        if (id === 'components-terminal-runtime--overflow') {
+          const scrollbar = page.locator('.xterm-scrollable-element > .scrollbar.vertical')
+          assert.equal(await scrollbar.evaluate(element => getComputedStyle(element).opacity), '1', 'Overflow readiness must include the visible scrollbar')
+          // Sample beyond xterm's auto-hide delay to catch timing-dependent captures.
+          await page.waitForTimeout(1200)
+          assert.equal(await scrollbar.evaluate(element => getComputedStyle(element).opacity), '1', 'Ready overflow scrollbar must not fade before capture')
+        }
         if (id === 'components-terminal-runtime--ready') {
           const screen = page.locator('.xterm-screen')
           await screen.waitFor()

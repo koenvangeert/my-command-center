@@ -4,6 +4,10 @@ import type {
 
 export type TerminalStoryState = 'ready' | 'empty' | 'overflow' | 'disconnected'
 
+// DECSCUSR selects a steady block; DECRST 12 also notifies xterm's active
+// renderer to stop an already-created blink timer.
+const STEADY_CURSOR = '\u001b[2 q\u001b[?12l'
+
 /** In-memory ANSI replay and echo only. No desktop bridge, process, or shell evaluation. */
 export function createStoryTerminalTransport(state: TerminalStoryState = 'ready') {
   const sessions = new Map<string, { instance: number; sequence: number; text: string; live: boolean }>()
@@ -23,7 +27,7 @@ export function createStoryTerminalTransport(state: TerminalStoryState = 'ready'
         ? Array.from({ length: 80 }, (_, i) => `build ${i + 1}: passed ${'module/'.repeat(20)}\r\n`).join('')
         : 'workspace /projects/openforge\r\n') + '$ '
       // A steady ANSI cursor keeps replay snapshots deterministic without changing xterm styling.
-      value = { instance: nextInstance++, sequence: 0, text: '\u001b[2 q' + content, live: state !== 'disconnected' }
+      value = { instance: nextInstance++, sequence: 0, text: STEADY_CURSOR + content, live: state !== 'disconnected' }
       sessions.set(key, value)
     }
     return value
@@ -93,7 +97,7 @@ export function createStoryTerminalTransport(state: TerminalStoryState = 'ready'
       const value = session(key)
       value.instance = nextInstance++
       value.sequence = 0
-      value.text = '\u001b[2 q'
+      value.text = STEADY_CURSOR
       value.live = true
       return value.instance
     },
