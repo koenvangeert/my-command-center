@@ -67,7 +67,7 @@
      </div>
   {/if}
 
-  <div class="of-sidebar-header h-12 px-2 flex items-center justify-end">
+  <div class="of-sidebar-header h-12 px-2 flex items-center {collapsed ? 'justify-center' : 'justify-end'}">
     <IconButton
       type="button"
       size="sm"

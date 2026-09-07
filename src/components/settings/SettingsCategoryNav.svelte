@@ -48,7 +48,7 @@
         type="button"
         data-settings-category
         variant={activeId === category.id ? 'secondary' : category.danger ? 'danger' : 'ghost'}
-        class="w-full justify-start text-left"
+        class="settings-category-button w-full text-left"
         size="sm"
         aria-current={activeId === category.id ? 'page' : undefined}
         aria-label={category.description ? `${category.label}: ${category.description}` : category.label}
@@ -63,3 +63,11 @@
     {/each}
   </div>
 </nav>
+
+<style>
+  nav :global(button.settings-category-button) {
+    justify-content: flex-start;
+    gap: var(--of-space2);
+    min-width: 0;
+  }
+</style>

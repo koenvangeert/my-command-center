@@ -68,7 +68,12 @@ export function createStoryTerminalTransport(state: TerminalStoryState = 'ready'
       const value = session(key)
       return {
         historicalData: null, isLive: value.live, ptyInstanceId: value.instance,
-        snapshot: { data: new TextEncoder().encode(value.text), ptyInstanceId: value.instance, watermark: value.sequence },
+        snapshot: {
+          data: new TextEncoder().encode(value.text),
+          // The story replays its complete ANSI stream, so no separate parser continuation is needed.
+          continuationData: new Uint8Array(),
+          ptyInstanceId: value.instance, watermark: value.sequence,
+        },
       }
     },
     async writeUserInput(shellSessionKey, data) {
