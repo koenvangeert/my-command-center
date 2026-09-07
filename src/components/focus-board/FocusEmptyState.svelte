@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { MediaQuery } from 'svelte/reactivity'
   import type { BoardFilter } from '../../lib/boardFilters'
 
   interface Props {
@@ -6,6 +7,13 @@
   }
 
   let { filter }: Props = $props()
+  const reducedMotion = new MediaQuery('(prefers-reduced-motion: reduce)')
+
+  function syncIllustrationMotion(svg: SVGSVGElement) {
+    // CSS animation rules do not control SMIL. The attachment tracks live preference changes.
+    if (reducedMotion.current) svg.pauseAnimations()
+    else svg.unpauseAnimations()
+  }
 
   const messages: Record<BoardFilter, { title: string; subtitle: string }> = {
     'focus': { title: 'All clear', subtitle: 'Nothing needs your attention right now' },
@@ -19,6 +27,7 @@
 
 <div class="flex flex-col items-center justify-center flex-1 gap-5 focus-empty-enter select-none">
   <svg
+    {@attach syncIllustrationMotion}
     viewBox="0 0 200 200"
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
