@@ -158,12 +158,21 @@ export function createXtermTerminalView(options: XtermTerminalViewOptions): Term
   }
 
   async function replaceSnapshot(snapshot: TerminalViewSnapshot): Promise<void> {
+    if (snapshot.ptyInstanceId !== null && snapshot.continuationData === undefined) {
+      throw new Error('Live terminal recovery requires explicit parser continuation')
+    }
     await new Promise<void>(resolve => terminal.write('', resolve))
     if (disposed) return
     imageSupport.reset()
     terminal.reset()
-    if (hasData(snapshot.compatibilityData)) await writeAndWait(snapshot.compatibilityData)
+    if (hasData(snapshot.compatibilityData)) {
+      await writeAndWait(snapshot.compatibilityData)
+      // Cancel the replay's unfinished parser/UTF-8 input before portable VT.
+      // Use bytes so xterm's byte decoder also leaves any partial code point.
+      await writeAndWait(new Uint8Array([0x18]))
+    }
     if (hasData(snapshot.data)) await writeAndWait(snapshot.data)
+    if (hasData(snapshot.continuationData)) await writeAndWait(snapshot.continuationData)
   }
   return {
     get geometry() {

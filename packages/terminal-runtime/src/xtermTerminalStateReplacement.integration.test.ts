@@ -18,6 +18,7 @@ describe('xterm terminal state replacement', () => {
 
       await view.replaceSnapshot({
         data: 'authoritative output',
+        continuationData: new Uint8Array(),
         ptyInstanceId: 7,
         sequence: 2,
       })

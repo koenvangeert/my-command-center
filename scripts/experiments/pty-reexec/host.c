@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <libproc.h>
+#include <limits.h>
 #include <poll.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -20,6 +21,10 @@
 #endif
 #define COUNT 5
 #define MAGIC 0x50545931
+#ifndef STATE_FORMAT
+#define STATE_FORMAT 1
+#endif
+#include "preflight.h"
 
 struct child {
     pid_t pid;
@@ -29,8 +34,11 @@ struct child {
 };
 struct checkpoint {
     unsigned magic;
+    unsigned format;
     pid_t host;
     int state_fd, sentinel;
+    unsigned recoveries;
+    char recovery_image[PATH_MAX];
     struct child children[COUNT];
 };
 static struct checkpoint state;
@@ -115,7 +123,7 @@ static void spawn(int index, int code) {
 
 static void inventory(void) {
     reap();
-    printf("{\"version\":%d,\"host\":%d,\"fds\":[", VERSION, getpid());
+    printf("{\"version\":%d,\"host\":%d,\"recoveries\":%u,\"fds\":[", VERSION, getpid(), state.recoveries);
     bool first = true;
     for (int fd = 0; fd < getdtablesize(); fd++) {
         if (fcntl(fd, F_GETFD) < 0) continue;
@@ -164,8 +172,13 @@ static void write_pty(int index, const char *hex) {
 }
 
 static void replace_image(const char *target) {
+    if (!accepts_checkpoint(target, STATE_FORMAT, sizeof(state))) {
+        puts("{\"refused\":\"target checkpoint contract or executable\"}");
+        return;
+    }
     /* No threads or userspace PTY buffers: command completion is quiescence. */
     reap();
+    if (proc_pidpath(getpid(), state.recovery_image, sizeof(state.recovery_image)) <= 0) fail("recovery image");
     if (pwrite(state.state_fd, &state, sizeof(state), 0) != sizeof(state)) fail("checkpoint write");
     for (int fd = 3; fd < getdtablesize(); fd++) {
         int flags = fcntl(fd, F_GETFD);
@@ -196,9 +209,17 @@ int main(int argc, char **argv) {
     setbuf(stdout, NULL);
     for (int i = 0; i < COUNT; i++) state.children[i].master = -1;
     if (argc != 3) return 64;
+    if (!strcmp(argv[1], "--check-state")) {
+        unsigned format;
+        size_t bytes;
+        char extra;
+        return sscanf(argv[2], "%u:%zu%c", &format, &bytes, &extra) == 2
+            && format == STATE_FORMAT && bytes == sizeof(state) ? 0 : 65;
+    }
     fixture = argv[2];
     if (!strcmp(argv[1], "start")) {
         state.magic = MAGIC;
+        state.format = STATE_FORMAT;
         state.host = getpid();
         state.state_fd = open("checkpoint", O_RDWR | O_CREAT | O_EXCL, 0600);
         if (state.state_fd < 0 || unlink("checkpoint")) fail("checkpoint");
@@ -213,8 +234,20 @@ int main(int argc, char **argv) {
         if (*end || fd < 3 || fd >= getdtablesize()) return 65;
         struct checkpoint restored;
         if (pread((int)fd, &restored, sizeof(restored), 0) != sizeof(restored)
-            || restored.magic != MAGIC || restored.host != getpid() || restored.state_fd != fd) return 65;
+            || restored.magic != MAGIC || restored.format != STATE_FORMAT
+            || restored.host != getpid() || restored.state_fd != fd) return 65;
         state = restored;
+#ifdef FAIL_INITIALIZATION
+        /* Fault before readiness: do not acquire/drop wrappers or consume I/O.
+           The compatible image receives the unchanged descriptor inventory. */
+        state.recoveries++;
+        if (pwrite(state.state_fd, &state, sizeof(state), 0) != sizeof(state)) return 74;
+        execl(state.recovery_image, state.recovery_image, argv[1], fixture, NULL);
+        /* Recovery code cannot rescue fatal loader/process loss or a missing
+           retained image. This fixture reports failure; metadata is not a PTY. */
+        perror("recovery exec");
+        return 74;
+#endif
         /* Rebuild low-level wrappers around the inherited descriptors, not PTYs. */
         for (int i = 0; i < COUNT; i++) {
             struct child *child = &state.children[i];

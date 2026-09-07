@@ -1,0 +1,184 @@
+{
+  "platform": "macOS-26.6.2-arm64-arm-64bit",
+  "architecture": "arm64",
+  "python": "3.9.6",
+  "clang": "Apple clang version 21.0.0 (clang-2100.1.1.101)\nTarget: arm64-apple-darwin25.6.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin",
+  "sources": {
+    "run.py": "10aadda1675082a2933fad81f1107ef849f3d1f9db72a9a37ab3be9ab46c4011",
+    "macos.py": "3bd50d1c08e473c2356a3f21b35bdc01e9e2246ffcbd8a1f094c84bc0b0c845c",
+    "test_cleanup.py": "1ca4f5762f7b34306013dd8a5fcf6fb951ee31b91a018175a270cf5ce8f470ff",
+    "host.c": "aecbde37ca3c359772344e4f24879810a2ea99b69a8fc056e51044f3625e6388",
+    "fixture.c": "26f7f5fd0f871e625013c0a95af69c4fdeaa5ed7c5d463a5fab90183892ba6c1"
+  },
+  "negativeControl": false,
+  "testsRun": 1,
+  "passed": false,
+  "failures": [
+    "test_incompatible_target_is_refused_without_touching_live_descriptors (__main__.Continuity)\nTraceback (most recent call last):\n  File \"/Users/koen/.openforge/worktrees/openforge/KVG-4715/scripts/experiments/pty-reexec/run.py\", line 374, in test_incompatible_target_is_refused_without_touching_live_descriptors\n    self.assertIn(\"refused\", result)\nAssertionError: 'refused' not found in {'prepared': True}\n"
+  ],
+  "events": [
+    {
+      "event": "test",
+      "name": "__main__.Continuity.test_incompatible_target_is_refused_without_touching_live_descriptors",
+      "runtimeRoot": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-64UevN/openforge-pty-reexec-rqdsys13",
+      "mode": "0o700"
+    },
+    {
+      "event": "initial",
+      "inventory": {
+        "version": 1,
+        "host": 86182,
+        "recoveries": 0,
+        "fds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "stateFd": 3,
+        "sentinel": 4,
+        "children": [
+          {
+            "pid": 86187,
+            "fd": 5,
+            "tty": "/dev/ttys011",
+            "device": 251658251,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 86188,
+            "fd": 6,
+            "tty": "/dev/ttys013",
+            "device": 251658253,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          }
+        ]
+      },
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-64UevN/openforge-pty-reexec-rqdsys13/v1",
+      "processes": [
+        {
+          "pid": 86182,
+          "ppid": 86160,
+          "uid": 501,
+          "pgid": 86182,
+          "status": 2,
+          "sec": 1788707624,
+          "usec": 855430,
+          "tdev": 4294967295
+        },
+        {
+          "pid": 86187,
+          "ppid": 86182,
+          "uid": 501,
+          "pgid": 86187,
+          "status": 2,
+          "sec": 1788707625,
+          "usec": 271273,
+          "tdev": 268435467
+        },
+        {
+          "pid": 86188,
+          "ppid": 86182,
+          "uid": 501,
+          "pgid": 86188,
+          "status": 2,
+          "sec": 1788707625,
+          "usec": 272019,
+          "tdev": 268435469
+        },
+        {
+          "pid": 86200,
+          "ppid": 86188,
+          "uid": 501,
+          "pgid": 86188,
+          "status": 2,
+          "sec": 1788707625,
+          "usec": 549798,
+          "tdev": 268435469
+        }
+      ]
+    },
+    {
+      "event": "cleanup",
+      "owned": [
+        {
+          "pid": 86182,
+          "ppid": 86160,
+          "uid": 501,
+          "pgid": 86182,
+          "status": 2,
+          "sec": 1788707624,
+          "usec": 855430,
+          "tdev": 4294967295
+        },
+        {
+          "pid": 86187,
+          "ppid": 86182,
+          "uid": 501,
+          "pgid": 86187,
+          "status": 2,
+          "sec": 1788707625,
+          "usec": 271273,
+          "tdev": 268435467
+        },
+        {
+          "pid": 86188,
+          "ppid": 86182,
+          "uid": 501,
+          "pgid": 86188,
+          "status": 2,
+          "sec": 1788707625,
+          "usec": 272019,
+          "tdev": 268435469
+        },
+        {
+          "pid": 86200,
+          "ppid": 86188,
+          "uid": 501,
+          "pgid": 86188,
+          "status": 2,
+          "sec": 1788707625,
+          "usec": 549798,
+          "tdev": 268435469
+        }
+      ],
+      "survivors": [],
+      "forced": false,
+      "errors": []
+    }
+  ]
+}

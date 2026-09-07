@@ -1,9 +1,26 @@
-import { fireEvent, render, screen, within } from '@testing-library/svelte'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/svelte'
 import { tick } from 'svelte'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import AnchoredMenuTestWrapper from './AnchoredMenuTestWrapper.svelte'
 
 describe('plugin-sdk AnchoredMenu', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+  })
+
+  afterEach(async () => {
+    try {
+      cleanup()
+      await tick()
+      // Bits UI releases the body scroll lock on a delayed callback after unmount.
+      // Run it while this test's document still exists, before JSDOM teardown.
+      await vi.runAllTimersAsync()
+      expect(vi.getTimerCount()).toBe(0)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('exposes a named trigger and controlled open state', async () => {
     const onOpenChange = vi.fn()
     render(AnchoredMenuTestWrapper, { props: { onOpenChange } })

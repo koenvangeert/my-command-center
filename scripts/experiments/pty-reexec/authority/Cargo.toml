@@ -1,0 +1,13 @@
+[package]
+name = "pty-reexec-authority-proof"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[dependencies]
+libghostty-vt = { git = "https://github.com/Uzaaft/libghostty-rs.git", rev = "de9fd9b0fa4ab53faebd3d489f4c74fe0ec832ec", version = "=0.2.1" }
+log = "0.4"
+thiserror = "2"
+serde_json = "1"

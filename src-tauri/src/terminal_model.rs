@@ -160,6 +160,25 @@ impl GhosttyTerminalModel {
         }
     }
 
+    fn parser_continuation(&self) -> Result<Vec<u8>, TerminalModelError> {
+        let size = match self.terminal.continuation_buf(&mut []) {
+            Err(libghostty_vt::Error::OutOfSpace { required }) => required,
+            Err(libghostty_vt::Error::InvalidValue) | Ok(None) => {
+                return Err(TerminalModelError::ContinuationUnavailable);
+            }
+            Err(error) => return Err(error.into()),
+            Ok(Some(size)) => size,
+        };
+        if size == 0 {
+            return Ok(Vec::new());
+        }
+        let mut continuation = vec![0; size];
+        match self.terminal.continuation_buf(&mut continuation)? {
+            Some(written) if written == size => Ok(continuation),
+            _ => Err(TerminalModelError::ContinuationUnavailable),
+        }
+    }
+
     fn from_terminal(mut terminal: Terminal<'static, 'static>) -> Result<Self, TerminalModelError> {
         let protocol_replies = Rc::new(RefCell::new(VecDeque::new()));
         let callback_replies = Rc::clone(&protocol_replies);

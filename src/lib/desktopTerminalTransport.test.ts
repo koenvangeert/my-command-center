@@ -10,6 +10,7 @@ function createPort(): DesktopTerminalTransportPort {
       instanceId: 7,
       snapshot: {
         data: btoa('captured authority'),
+        continuationData: btoa('\x1b[31'),
         instanceId: 7,
         watermark: 12,
       },
@@ -43,7 +44,10 @@ describe('desktop terminal authority read seam', () => {
     await expect(read).resolves.toMatchObject({
       isLive: true,
       ptyInstanceId: 7,
-      snapshot: { ptyInstanceId: 7, watermark: 12 },
+      snapshot: {
+        ptyInstanceId: 7, watermark: 12,
+        continuationData: Uint8Array.from(new TextEncoder().encode('\x1b[31')),
+      },
     })
   })
 

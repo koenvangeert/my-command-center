@@ -144,6 +144,9 @@ export function createTerminalAuthorityCoordinator({
     if (!snapshot || snapshot.ptyInstanceId !== replay.ptyInstanceId) {
       throw new Error('Ghostty-authoritative terminal state requires a current snapshot')
     }
+    if (snapshot.continuationData === undefined) {
+      throw new Error('Ghostty-authoritative terminal state requires explicit parser continuation')
+    }
 
     if (pty.getCurrentInstance() !== replay.ptyInstanceId) {
       resetForPtyInstance(replay.ptyInstanceId)
@@ -168,6 +171,7 @@ export function createTerminalAuthorityCoordinator({
     await view.replaceSnapshot({
       data: snapshot.data,
       compatibilityData: snapshot.compatibilityData,
+      continuationData: snapshot.continuationData,
       ptyInstanceId: replay.ptyInstanceId,
       sequence: outputSequence,
     })

@@ -384,6 +384,28 @@ mod tests {
     }
 
     #[test]
+    fn portable_snapshot_captures_parser_continuation_at_its_watermark() {
+        let (session, feeder) = TerminalModelSession::start(
+            "continuation-shell".to_string(),
+            78,
+            TerminalModelOptions::new(20, 4),
+        )
+        .expect("terminal model worker should start");
+        feeder.feed(b"BEFORE\x1b[31");
+        let snapshot = session
+            .portable_snapshot()
+            .expect("snapshot should capture");
+        feeder.feed(b"mRED");
+        let later = session
+            .portable_snapshot()
+            .expect("later snapshot should capture");
+        assert_eq!(snapshot.watermark, 1);
+        assert_eq!(snapshot.continuation, b"\x1b[31");
+        assert_eq!(later.watermark, 2);
+        assert!(later.continuation.is_empty());
+    }
+
+    #[test]
     fn portable_snapshot_watermark_separates_bootstrap_from_later_frames() {
         let captured = Arc::new(Mutex::new(Vec::new()));
         let captured_events = Arc::clone(&captured);

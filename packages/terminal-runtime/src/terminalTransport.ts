@@ -10,6 +10,7 @@ export interface TerminalSnapshot {
   ptyInstanceId: number
   watermark: number
   compatibilityData?: Uint8Array
+  continuationData: Uint8Array
 }
 
 export interface TerminalReplay {

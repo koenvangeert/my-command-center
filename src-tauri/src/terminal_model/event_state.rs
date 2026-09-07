@@ -37,6 +37,7 @@ pub(crate) struct PortableTerminalSnapshot {
     pub(crate) watermark: u64,
     pub(crate) portable_vt: Vec<u8>,
     pub(crate) compatibility_replay: Vec<u8>,
+    pub(crate) continuation: Vec<u8>,
 }
 
 pub(super) struct TerminalModelState {

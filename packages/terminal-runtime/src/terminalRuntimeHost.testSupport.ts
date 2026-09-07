@@ -15,6 +15,7 @@ interface TestReplaySnapshot {
   watermark: number
   data: string
   compatibilityData?: string
+  continuationData?: string
 }
 
 interface TestReplayState {
@@ -202,6 +203,7 @@ export function createHost({ listenerRegistrationFailures }: CreateHostOptions =
         snapshot: replay.snapshot
           ? {
               data: decodeBase64(replay.snapshot.data),
+              continuationData: decodeBase64(replay.snapshot.continuationData ?? ''),
               ptyInstanceId: replay.snapshot.instanceId,
               watermark: replay.snapshot.watermark,
               compatibilityData: replay.snapshot.compatibilityData

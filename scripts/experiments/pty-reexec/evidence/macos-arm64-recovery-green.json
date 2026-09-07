@@ -1,0 +1,2410 @@
+{
+  "platform": "macOS-26.6.2-arm64-arm-64bit",
+  "architecture": "arm64",
+  "python": "3.9.6",
+  "clang": "Apple clang version 21.0.0 (clang-2100.1.1.101)\nTarget: arm64-apple-darwin25.6.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin",
+  "sources": {
+    "run.py": "8373b355fa4d255037896a5c2ab41437b9a15439be61275e3260ff2f0c00e3ba",
+    "macos.py": "3bd50d1c08e473c2356a3f21b35bdc01e9e2246ffcbd8a1f094c84bc0b0c845c",
+    "test_cleanup.py": "1ca4f5762f7b34306013dd8a5fcf6fb951ee31b91a018175a270cf5ce8f470ff",
+    "preflight.h": "8b5390f65c4ae917f35235142abbd042a06f72f1d1f3d0b14cad2995d0f3ab50",
+    "host.c": "5017cfc59bfe1efe2e0f74b0aeca7b212e9215dc6cfa80c3f114fd461f22cb13",
+    "fixture.c": "26f7f5fd0f871e625013c0a95af69c4fdeaa5ed7c5d463a5fab90183892ba6c1"
+  },
+  "negativeControl": false,
+  "testsRun": 9,
+  "passed": true,
+  "failures": [],
+  "events": [
+    {
+      "event": "test",
+      "name": "__main__.Continuity.test_controlled_initialization_failure_reexecs_retained_image",
+      "runtimeRoot": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-WqSb3K/openforge-pty-reexec-ibvujwe2",
+      "mode": "0o700"
+    },
+    {
+      "event": "initial",
+      "inventory": {
+        "version": 1,
+        "host": 93579,
+        "recoveries": 0,
+        "fds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "stateFd": 3,
+        "sentinel": 4,
+        "children": [
+          {
+            "pid": 93585,
+            "fd": 5,
+            "tty": "/dev/ttys011",
+            "device": 251658251,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 93586,
+            "fd": 6,
+            "tty": "/dev/ttys013",
+            "device": 251658253,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          }
+        ]
+      },
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-WqSb3K/openforge-pty-reexec-ibvujwe2/v1",
+      "processes": [
+        {
+          "pid": 93579,
+          "ppid": 93564,
+          "uid": 501,
+          "pgid": 93579,
+          "status": 2,
+          "sec": 1788708178,
+          "usec": 105908,
+          "tdev": 4294967295
+        },
+        {
+          "pid": 93585,
+          "ppid": 93579,
+          "uid": 501,
+          "pgid": 93585,
+          "status": 2,
+          "sec": 1788708178,
+          "usec": 478565,
+          "tdev": 268435467
+        },
+        {
+          "pid": 93586,
+          "ppid": 93579,
+          "uid": 501,
+          "pgid": 93586,
+          "status": 2,
+          "sec": 1788708178,
+          "usec": 479009,
+          "tdev": 268435469
+        },
+        {
+          "pid": 93591,
+          "ppid": 93586,
+          "uid": 501,
+          "pgid": 93586,
+          "status": 2,
+          "sec": 1788708178,
+          "usec": 752476,
+          "tdev": 268435469
+        }
+      ]
+    },
+    {
+      "event": "replacement",
+      "inventory": {
+        "version": 2,
+        "host": 93579,
+        "recoveries": 1,
+        "fds": [
+          0,
+          1,
+          2,
+          3,
+          5,
+          6
+        ],
+        "stateFd": 3,
+        "sentinel": 4,
+        "children": [
+          {
+            "pid": 93585,
+            "fd": 5,
+            "tty": "/dev/ttys011",
+            "device": 251658251,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 93586,
+            "fd": 6,
+            "tty": "/dev/ttys013",
+            "device": 251658253,
+            "cursor": 419,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          }
+        ]
+      },
+      "roundTripMs": 406.4422080000001,
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-WqSb3K/openforge-pty-reexec-ibvujwe2/v2"
+    },
+    {
+      "event": "controlledRecovery",
+      "before": {
+        "version": 1,
+        "host": 93579,
+        "recoveries": 0,
+        "fds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "stateFd": 3,
+        "sentinel": 4,
+        "children": [
+          {
+            "pid": 93585,
+            "fd": 5,
+            "tty": "/dev/ttys011",
+            "device": 251658251,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 93586,
+            "fd": 6,
+            "tty": "/dev/ttys013",
+            "device": 251658253,
+            "cursor": 56,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          }
+        ]
+      },
+      "after": {
+        "version": 1,
+        "host": 93579,
+        "recoveries": 1,
+        "fds": [
+          0,
+          1,
+          2,
+          3,
+          5,
+          6
+        ],
+        "stateFd": 3,
+        "sentinel": 4,
+        "children": [
+          {
+            "pid": 93585,
+            "fd": 5,
+            "tty": "/dev/ttys011",
+            "device": 251658251,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 93586,
+            "fd": 6,
+            "tty": "/dev/ttys013",
+            "device": 251658253,
+            "cursor": 56,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          }
+        ]
+      },
+      "descriptors": [
+        0,
+        1,
+        2,
+        3,
+        5,
+        6
+      ]
+    },
+    {
+      "event": "cleanup",
+      "owned": [
+        {
+          "pid": 93579,
+          "ppid": 93564,
+          "uid": 501,
+          "pgid": 93579,
+          "status": 2,
+          "sec": 1788708178,
+          "usec": 105908,
+          "tdev": 4294967295
+        },
+        {
+          "pid": 93585,
+          "ppid": 93579,
+          "uid": 501,
+          "pgid": 93585,
+          "status": 2,
+          "sec": 1788708178,
+          "usec": 478565,
+          "tdev": 268435467
+        },
+        {
+          "pid": 93586,
+          "ppid": 93579,
+          "uid": 501,
+          "pgid": 93586,
+          "status": 2,
+          "sec": 1788708178,
+          "usec": 479009,
+          "tdev": 268435469
+        },
+        {
+          "pid": 93591,
+          "ppid": 93586,
+          "uid": 501,
+          "pgid": 93586,
+          "status": 2,
+          "sec": 1788708178,
+          "usec": 752476,
+          "tdev": 268435469
+        }
+      ],
+      "survivors": [],
+      "forced": false,
+      "errors": []
+    },
+    {
+      "event": "test",
+      "name": "__main__.Continuity.test_descriptor_allowlist_and_no_child_leaks",
+      "runtimeRoot": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-WqSb3K/openforge-pty-reexec-ukicoezx",
+      "mode": "0o700"
+    },
+    {
+      "event": "initial",
+      "inventory": {
+        "version": 1,
+        "host": 93645,
+        "recoveries": 0,
+        "fds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "stateFd": 3,
+        "sentinel": 4,
+        "children": [
+          {
+            "pid": 93648,
+            "fd": 5,
+            "tty": "/dev/ttys011",
+            "device": 251658251,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 93649,
+            "fd": 6,
+            "tty": "/dev/ttys013",
+            "device": 251658253,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          }
+        ]
+      },
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-WqSb3K/openforge-pty-reexec-ukicoezx/v1",
+      "processes": [
+        {
+          "pid": 93645,
+          "ppid": 93564,
+          "uid": 501,
+          "pgid": 93645,
+          "status": 2,
+          "sec": 1788708181,
+          "usec": 376992,
+          "tdev": 4294967295
+        },
+        {
+          "pid": 93648,
+          "ppid": 93645,
+          "uid": 501,
+          "pgid": 93648,
+          "status": 2,
+          "sec": 1788708181,
+          "usec": 532353,
+          "tdev": 268435467
+        },
+        {
+          "pid": 93649,
+          "ppid": 93645,
+          "uid": 501,
+          "pgid": 93649,
+          "status": 2,
+          "sec": 1788708181,
+          "usec": 533028,
+          "tdev": 268435469
+        },
+        {
+          "pid": 93653,
+          "ppid": 93649,
+          "uid": 501,
+          "pgid": 93649,
+          "status": 2,
+          "sec": 1788708181,
+          "usec": 684525,
+          "tdev": 268435469
+        }
+      ]
+    },
+    {
+      "event": "replacement",
+      "inventory": {
+        "version": 2,
+        "host": 93645,
+        "recoveries": 0,
+        "fds": [
+          0,
+          1,
+          2,
+          3,
+          5,
+          6
+        ],
+        "stateFd": 3,
+        "sentinel": 4,
+        "children": [
+          {
+            "pid": 93648,
+            "fd": 5,
+            "tty": "/dev/ttys011",
+            "device": 251658251,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 93649,
+            "fd": 6,
+            "tty": "/dev/ttys013",
+            "device": 251658253,
+            "cursor": 56,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          }
+        ]
+      },
+      "roundTripMs": 255.19979199999997,
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-WqSb3K/openforge-pty-reexec-ukicoezx/v2"
+    },
+    {
+      "event": "descriptorAudit",
+      "before": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "after": [
+        0,
+        1,
+        2,
+        3,
+        5,
+        6
+      ],
+      "shell": [
+        0,
+        1,
+        2,
+        255
+      ],
+      "agent": [
+        0,
+        1,
+        2
+      ],
+      "tool": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "event": "cleanup",
+      "owned": [
+        {
+          "pid": 93645,
+          "ppid": 93564,
+          "uid": 501,
+          "pgid": 93645,
+          "status": 2,
+          "sec": 1788708181,
+          "usec": 376992,
+          "tdev": 4294967295
+        },
+        {
+          "pid": 93648,
+          "ppid": 93645,
+          "uid": 501,
+          "pgid": 93648,
+          "status": 2,
+          "sec": 1788708181,
+          "usec": 532353,
+          "tdev": 268435467
+        },
+        {
+          "pid": 93649,
+          "ppid": 93645,
+          "uid": 501,
+          "pgid": 93649,
+          "status": 2,
+          "sec": 1788708181,
+          "usec": 533028,
+          "tdev": 268435469
+        },
+        {
+          "pid": 93653,
+          "ppid": 93649,
+          "uid": 501,
+          "pgid": 93649,
+          "status": 2,
+          "sec": 1788708181,
+          "usec": 684525,
+          "tdev": 268435469
+        },
+        {
+          "pid": 93664,
+          "ppid": 93648,
+          "uid": 501,
+          "pgid": 93664,
+          "status": 2,
+          "sec": 1788708182,
+          "usec": 32495,
+          "tdev": 268435467
+        },
+        {
+          "pid": 93668,
+          "ppid": 93645,
+          "uid": 501,
+          "pgid": 93668,
+          "status": 2,
+          "sec": 1788708182,
+          "usec": 75911,
+          "tdev": 268435470
+        }
+      ],
+      "survivors": [],
+      "forced": false,
+      "errors": []
+    },
+    {
+      "event": "test",
+      "name": "__main__.Continuity.test_exit_status_before_during_after_and_group_termination",
+      "runtimeRoot": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-WqSb3K/openforge-pty-reexec-bm4w1tn8",
+      "mode": "0o700"
+    },
+    {
+      "event": "initial",
+      "inventory": {
+        "version": 1,
+        "host": 93703,
+        "recoveries": 0,
+        "fds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "stateFd": 3,
+        "sentinel": 4,
+        "children": [
+          {
+            "pid": 93706,
+            "fd": 5,
+            "tty": "/dev/ttys011",
+            "device": 251658251,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 93707,
+            "fd": 6,
+            "tty": "/dev/ttys013",
+            "device": 251658253,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          }
+        ]
+      },
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-WqSb3K/openforge-pty-reexec-bm4w1tn8/v1",
+      "processes": [
+        {
+          "pid": 93703,
+          "ppid": 93564,
+          "uid": 501,
+          "pgid": 93703,
+          "status": 2,
+          "sec": 1788708183,
+          "usec": 823409,
+          "tdev": 4294967295
+        },
+        {
+          "pid": 93706,
+          "ppid": 93703,
+          "uid": 501,
+          "pgid": 93706,
+          "status": 2,
+          "sec": 1788708183,
+          "usec": 989185,
+          "tdev": 268435467
+        },
+        {
+          "pid": 93707,
+          "ppid": 93703,
+          "uid": 501,
+          "pgid": 93707,
+          "status": 2,
+          "sec": 1788708183,
+          "usec": 989812,
+          "tdev": 268435469
+        },
+        {
+          "pid": 93711,
+          "ppid": 93707,
+          "uid": 501,
+          "pgid": 93707,
+          "status": 2,
+          "sec": 1788708184,
+          "usec": 138572,
+          "tdev": 268435469
+        }
+      ]
+    },
+    {
+      "event": "reaped",
+      "slot": 2,
+      "child": {
+        "pid": 93716,
+        "fd": 7,
+        "tty": "/dev/ttys014",
+        "device": 251658254,
+        "cursor": 12,
+        "reaped": 1,
+        "status": 5376
+      }
+    },
+    {
+      "event": "quiescedExit",
+      "pid": 93719,
+      "state": "Z"
+    },
+    {
+      "event": "reaped",
+      "slot": 3,
+      "child": {
+        "pid": 93719,
+        "fd": 8,
+        "tty": "/dev/ttys015",
+        "device": 251658255,
+        "cursor": 12,
+        "reaped": 1,
+        "status": 5632
+      }
+    },
+    {
+      "event": "reaped",
+      "slot": 4,
+      "child": {
+        "pid": 93724,
+        "fd": 9,
+        "tty": "/dev/ttys016",
+        "device": 251658256,
+        "cursor": 12,
+        "reaped": 1,
+        "status": 5888
+      }
+    },
+    {
+      "event": "reaped",
+      "slot": 1,
+      "child": {
+        "pid": 93707,
+        "fd": 6,
+        "tty": "/dev/ttys013",
+        "device": 251658253,
+        "cursor": 499,
+        "reaped": 1,
+        "status": 36608
+      }
+    },
+    {
+      "event": "reaped",
+      "slot": 0,
+      "child": {
+        "pid": 93706,
+        "fd": 5,
+        "tty": "/dev/ttys011",
+        "device": 251658251,
+        "cursor": 191,
+        "reaped": 1,
+        "status": 9
+      }
+    },
+    {
+      "event": "cleanup",
+      "owned": [
+        {
+          "pid": 93703,
+          "ppid": 93564,
+          "uid": 501,
+          "pgid": 93703,
+          "status": 2,
+          "sec": 1788708183,
+          "usec": 823409,
+          "tdev": 4294967295
+        },
+        {
+          "pid": 93706,
+          "ppid": 93703,
+          "uid": 501,
+          "pgid": 93706,
+          "status": 2,
+          "sec": 1788708183,
+          "usec": 989185,
+          "tdev": 268435467
+        },
+        {
+          "pid": 93707,
+          "ppid": 93703,
+          "uid": 501,
+          "pgid": 93707,
+          "status": 2,
+          "sec": 1788708183,
+          "usec": 989812,
+          "tdev": 268435469
+        },
+        {
+          "pid": 93711,
+          "ppid": 93707,
+          "uid": 501,
+          "pgid": 93707,
+          "status": 2,
+          "sec": 1788708184,
+          "usec": 138572,
+          "tdev": 268435469
+        },
+        {
+          "pid": 93716,
+          "ppid": 93703,
+          "uid": 501,
+          "pgid": 93716,
+          "status": 2,
+          "sec": 1788708184,
+          "usec": 193858,
+          "tdev": 268435470
+        },
+        {
+          "pid": 93719,
+          "ppid": 93703,
+          "uid": 501,
+          "pgid": 93719,
+          "status": 2,
+          "sec": 1788708184,
+          "usec": 246964,
+          "tdev": 268435471
+        },
+        {
+          "pid": 93724,
+          "ppid": 93703,
+          "uid": 501,
+          "pgid": 93724,
+          "status": 2,
+          "sec": 1788708184,
+          "usec": 298933,
+          "tdev": 268435472
+        }
+      ],
+      "survivors": [],
+      "forced": false,
+      "errors": []
+    },
+    {
+      "event": "test",
+      "name": "__main__.Continuity.test_incompatible_target_is_refused_without_touching_live_descriptors",
+      "runtimeRoot": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-WqSb3K/openforge-pty-reexec-emhr31yg",
+      "mode": "0o700"
+    },
+    {
+      "event": "initial",
+      "inventory": {
+        "version": 1,
+        "host": 93793,
+        "recoveries": 0,
+        "fds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "stateFd": 3,
+        "sentinel": 4,
+        "children": [
+          {
+            "pid": 93795,
+            "fd": 5,
+            "tty": "/dev/ttys011",
+            "device": 251658251,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 93796,
+            "fd": 6,
+            "tty": "/dev/ttys013",
+            "device": 251658253,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          }
+        ]
+      },
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-WqSb3K/openforge-pty-reexec-emhr31yg/v1",
+      "processes": [
+        {
+          "pid": 93793,
+          "ppid": 93564,
+          "uid": 501,
+          "pgid": 93793,
+          "status": 2,
+          "sec": 1788708186,
+          "usec": 696405,
+          "tdev": 4294967295
+        },
+        {
+          "pid": 93795,
+          "ppid": 93793,
+          "uid": 501,
+          "pgid": 93795,
+          "status": 2,
+          "sec": 1788708186,
+          "usec": 857694,
+          "tdev": 268435467
+        },
+        {
+          "pid": 93796,
+          "ppid": 93793,
+          "uid": 501,
+          "pgid": 93796,
+          "status": 2,
+          "sec": 1788708186,
+          "usec": 858498,
+          "tdev": 268435469
+        },
+        {
+          "pid": 93799,
+          "ppid": 93796,
+          "uid": 501,
+          "pgid": 93796,
+          "status": 2,
+          "sec": 1788708187,
+          "usec": 8750,
+          "tdev": 268435469
+        }
+      ]
+    },
+    {
+      "event": "incompatibleRefusal",
+      "response": {
+        "refused": "target checkpoint contract or executable"
+      },
+      "inventory": {
+        "version": 1,
+        "host": 93793,
+        "recoveries": 0,
+        "fds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "stateFd": 3,
+        "sentinel": 4,
+        "children": [
+          {
+            "pid": 93795,
+            "fd": 5,
+            "tty": "/dev/ttys011",
+            "device": 251658251,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 93796,
+            "fd": 6,
+            "tty": "/dev/ttys013",
+            "device": 251658253,
+            "cursor": 56,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          }
+        ]
+      }
+    },
+    {
+      "event": "cleanup",
+      "owned": [
+        {
+          "pid": 93793,
+          "ppid": 93564,
+          "uid": 501,
+          "pgid": 93793,
+          "status": 2,
+          "sec": 1788708186,
+          "usec": 696405,
+          "tdev": 4294967295
+        },
+        {
+          "pid": 93795,
+          "ppid": 93793,
+          "uid": 501,
+          "pgid": 93795,
+          "status": 2,
+          "sec": 1788708186,
+          "usec": 857694,
+          "tdev": 268435467
+        },
+        {
+          "pid": 93796,
+          "ppid": 93793,
+          "uid": 501,
+          "pgid": 93796,
+          "status": 2,
+          "sec": 1788708186,
+          "usec": 858498,
+          "tdev": 268435469
+        },
+        {
+          "pid": 93799,
+          "ppid": 93796,
+          "uid": 501,
+          "pgid": 93796,
+          "status": 2,
+          "sec": 1788708187,
+          "usec": 8750,
+          "tdev": 268435469
+        }
+      ],
+      "survivors": [],
+      "forced": false,
+      "errors": []
+    },
+    {
+      "event": "test",
+      "name": "__main__.Continuity.test_live_host_runs_new_executable_without_restarting_children",
+      "runtimeRoot": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-WqSb3K/openforge-pty-reexec-a8_o3b6n",
+      "mode": "0o700"
+    },
+    {
+      "event": "initial",
+      "inventory": {
+        "version": 1,
+        "host": 93847,
+        "recoveries": 0,
+        "fds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "stateFd": 3,
+        "sentinel": 4,
+        "children": [
+          {
+            "pid": 93851,
+            "fd": 5,
+            "tty": "/dev/ttys011",
+            "device": 251658251,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 93852,
+            "fd": 6,
+            "tty": "/dev/ttys013",
+            "device": 251658253,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          }
+        ]
+      },
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-WqSb3K/openforge-pty-reexec-a8_o3b6n/v1",
+      "processes": [
+        {
+          "pid": 93847,
+          "ppid": 93564,
+          "uid": 501,
+          "pgid": 93847,
+          "status": 2,
+          "sec": 1788708189,
+          "usec": 206581,
+          "tdev": 4294967295
+        },
+        {
+          "pid": 93851,
+          "ppid": 93847,
+          "uid": 501,
+          "pgid": 93851,
+          "status": 2,
+          "sec": 1788708189,
+          "usec": 345342,
+          "tdev": 268435467
+        },
+        {
+          "pid": 93852,
+          "ppid": 93847,
+          "uid": 501,
+          "pgid": 93852,
+          "status": 2,
+          "sec": 1788708189,
+          "usec": 345691,
+          "tdev": 268435469
+        },
+        {
+          "pid": 93855,
+          "ppid": 93852,
+          "uid": 501,
+          "pgid": 93852,
+          "status": 2,
+          "sec": 1788708189,
+          "usec": 482872,
+          "tdev": 268435469
+        }
+      ]
+    },
+    {
+      "event": "replacement",
+      "inventory": {
+        "version": 2,
+        "host": 93847,
+        "recoveries": 0,
+        "fds": [
+          0,
+          1,
+          2,
+          3,
+          5,
+          6
+        ],
+        "stateFd": 3,
+        "sentinel": 4,
+        "children": [
+          {
+            "pid": 93851,
+            "fd": 5,
+            "tty": "/dev/ttys011",
+            "device": 251658251,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 93852,
+            "fd": 6,
+            "tty": "/dev/ttys013",
+            "device": 251658253,
+            "cursor": 56,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          }
+        ]
+      },
+      "roundTripMs": 241.49637500000054,
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-WqSb3K/openforge-pty-reexec-a8_o3b6n/v2"
+    },
+    {
+      "event": "continuity",
+      "before": [
+        {
+          "pid": 93847,
+          "ppid": 93564,
+          "uid": 501,
+          "pgid": 93847,
+          "status": 2,
+          "sec": 1788708189,
+          "usec": 206581,
+          "tdev": 4294967295
+        },
+        {
+          "pid": 93851,
+          "ppid": 93847,
+          "uid": 501,
+          "pgid": 93851,
+          "status": 2,
+          "sec": 1788708189,
+          "usec": 345342,
+          "tdev": 268435467
+        },
+        {
+          "pid": 93852,
+          "ppid": 93847,
+          "uid": 501,
+          "pgid": 93852,
+          "status": 2,
+          "sec": 1788708189,
+          "usec": 345691,
+          "tdev": 268435469
+        },
+        {
+          "pid": 93855,
+          "ppid": 93852,
+          "uid": 501,
+          "pgid": 93852,
+          "status": 2,
+          "sec": 1788708189,
+          "usec": 482872,
+          "tdev": 268435469
+        }
+      ],
+      "after": [
+        {
+          "pid": 93847,
+          "ppid": 93564,
+          "uid": 501,
+          "pgid": 93847,
+          "status": 2,
+          "sec": 1788708189,
+          "usec": 206581,
+          "tdev": 4294967295
+        },
+        {
+          "pid": 93851,
+          "ppid": 93847,
+          "uid": 501,
+          "pgid": 93851,
+          "status": 2,
+          "sec": 1788708189,
+          "usec": 345342,
+          "tdev": 268435467
+        },
+        {
+          "pid": 93852,
+          "ppid": 93847,
+          "uid": 501,
+          "pgid": 93852,
+          "status": 2,
+          "sec": 1788708189,
+          "usec": 345691,
+          "tdev": 268435469
+        },
+        {
+          "pid": 93855,
+          "ppid": 93852,
+          "uid": 501,
+          "pgid": 93852,
+          "status": 2,
+          "sec": 1788708189,
+          "usec": 482872,
+          "tdev": 268435469
+        }
+      ]
+    },
+    {
+      "event": "cleanup",
+      "owned": [
+        {
+          "pid": 93847,
+          "ppid": 93564,
+          "uid": 501,
+          "pgid": 93847,
+          "status": 2,
+          "sec": 1788708189,
+          "usec": 206581,
+          "tdev": 4294967295
+        },
+        {
+          "pid": 93851,
+          "ppid": 93847,
+          "uid": 501,
+          "pgid": 93851,
+          "status": 2,
+          "sec": 1788708189,
+          "usec": 345342,
+          "tdev": 268435467
+        },
+        {
+          "pid": 93852,
+          "ppid": 93847,
+          "uid": 501,
+          "pgid": 93852,
+          "status": 2,
+          "sec": 1788708189,
+          "usec": 345691,
+          "tdev": 268435469
+        },
+        {
+          "pid": 93855,
+          "ppid": 93852,
+          "uid": 501,
+          "pgid": 93852,
+          "status": 2,
+          "sec": 1788708189,
+          "usec": 482872,
+          "tdev": 268435469
+        }
+      ],
+      "survivors": [],
+      "forced": false,
+      "errors": []
+    },
+    {
+      "event": "test",
+      "name": "__main__.Continuity.test_repeated_replacement_and_failed_exec_keep_sessions_usable",
+      "runtimeRoot": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-WqSb3K/openforge-pty-reexec-b9zaov9h",
+      "mode": "0o700"
+    },
+    {
+      "event": "initial",
+      "inventory": {
+        "version": 1,
+        "host": 93892,
+        "recoveries": 0,
+        "fds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "stateFd": 3,
+        "sentinel": 4,
+        "children": [
+          {
+            "pid": 93895,
+            "fd": 5,
+            "tty": "/dev/ttys011",
+            "device": 251658251,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 93896,
+            "fd": 6,
+            "tty": "/dev/ttys013",
+            "device": 251658253,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          }
+        ]
+      },
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-WqSb3K/openforge-pty-reexec-b9zaov9h/v1",
+      "processes": [
+        {
+          "pid": 93892,
+          "ppid": 93564,
+          "uid": 501,
+          "pgid": 93892,
+          "status": 2,
+          "sec": 1788708191,
+          "usec": 391871,
+          "tdev": 4294967295
+        },
+        {
+          "pid": 93895,
+          "ppid": 93892,
+          "uid": 501,
+          "pgid": 93895,
+          "status": 2,
+          "sec": 1788708191,
+          "usec": 548039,
+          "tdev": 268435467
+        },
+        {
+          "pid": 93896,
+          "ppid": 93892,
+          "uid": 501,
+          "pgid": 93896,
+          "status": 2,
+          "sec": 1788708191,
+          "usec": 548520,
+          "tdev": 268435469
+        },
+        {
+          "pid": 93900,
+          "ppid": 93896,
+          "uid": 501,
+          "pgid": 93896,
+          "status": 2,
+          "sec": 1788708191,
+          "usec": 698130,
+          "tdev": 268435469
+        }
+      ]
+    },
+    {
+      "event": "replacement",
+      "inventory": {
+        "version": 2,
+        "host": 93892,
+        "recoveries": 0,
+        "fds": [
+          0,
+          1,
+          2,
+          3,
+          5,
+          6
+        ],
+        "stateFd": 3,
+        "sentinel": 4,
+        "children": [
+          {
+            "pid": 93895,
+            "fd": 5,
+            "tty": "/dev/ttys011",
+            "device": 251658251,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 93896,
+            "fd": 6,
+            "tty": "/dev/ttys013",
+            "device": 251658253,
+            "cursor": 56,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          }
+        ]
+      },
+      "roundTripMs": 248.51187500000015,
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-WqSb3K/openforge-pty-reexec-b9zaov9h/v2"
+    },
+    {
+      "event": "replacement",
+      "inventory": {
+        "version": 1,
+        "host": 93892,
+        "recoveries": 0,
+        "fds": [
+          0,
+          1,
+          2,
+          3,
+          5,
+          6
+        ],
+        "stateFd": 3,
+        "sentinel": 4,
+        "children": [
+          {
+            "pid": 93895,
+            "fd": 5,
+            "tty": "/dev/ttys011",
+            "device": 251658251,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 93896,
+            "fd": 6,
+            "tty": "/dev/ttys013",
+            "device": 251658253,
+            "cursor": 246,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          }
+        ]
+      },
+      "roundTripMs": 105.54833299999977,
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-WqSb3K/openforge-pty-reexec-b9zaov9h/v1"
+    },
+    {
+      "event": "replacement",
+      "inventory": {
+        "version": 2,
+        "host": 93892,
+        "recoveries": 0,
+        "fds": [
+          0,
+          1,
+          2,
+          3,
+          5,
+          6
+        ],
+        "stateFd": 3,
+        "sentinel": 4,
+        "children": [
+          {
+            "pid": 93895,
+            "fd": 5,
+            "tty": "/dev/ttys011",
+            "device": 251658251,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 93896,
+            "fd": 6,
+            "tty": "/dev/ttys013",
+            "device": 251658253,
+            "cursor": 354,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          }
+        ]
+      },
+      "roundTripMs": 101.04495799999924,
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-WqSb3K/openforge-pty-reexec-b9zaov9h/v2"
+    },
+    {
+      "event": "cleanup",
+      "owned": [
+        {
+          "pid": 93892,
+          "ppid": 93564,
+          "uid": 501,
+          "pgid": 93892,
+          "status": 2,
+          "sec": 1788708191,
+          "usec": 391871,
+          "tdev": 4294967295
+        },
+        {
+          "pid": 93895,
+          "ppid": 93892,
+          "uid": 501,
+          "pgid": 93895,
+          "status": 2,
+          "sec": 1788708191,
+          "usec": 548039,
+          "tdev": 268435467
+        },
+        {
+          "pid": 93896,
+          "ppid": 93892,
+          "uid": 501,
+          "pgid": 93896,
+          "status": 2,
+          "sec": 1788708191,
+          "usec": 548520,
+          "tdev": 268435469
+        },
+        {
+          "pid": 93900,
+          "ppid": 93896,
+          "uid": 501,
+          "pgid": 93896,
+          "status": 2,
+          "sec": 1788708191,
+          "usec": 698130,
+          "tdev": 268435469
+        }
+      ],
+      "survivors": [],
+      "forced": false,
+      "errors": []
+    },
+    {
+      "event": "test",
+      "name": "__main__.Continuity.test_shell_state_echo_resize_and_running_tool_survive",
+      "runtimeRoot": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-WqSb3K/openforge-pty-reexec-x9kmdu_b",
+      "mode": "0o700"
+    },
+    {
+      "event": "initial",
+      "inventory": {
+        "version": 1,
+        "host": 93961,
+        "recoveries": 0,
+        "fds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "stateFd": 3,
+        "sentinel": 4,
+        "children": [
+          {
+            "pid": 93964,
+            "fd": 5,
+            "tty": "/dev/ttys011",
+            "device": 251658251,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 93965,
+            "fd": 6,
+            "tty": "/dev/ttys013",
+            "device": 251658253,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          }
+        ]
+      },
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-WqSb3K/openforge-pty-reexec-x9kmdu_b/v1",
+      "processes": [
+        {
+          "pid": 93961,
+          "ppid": 93564,
+          "uid": 501,
+          "pgid": 93961,
+          "status": 2,
+          "sec": 1788708194,
+          "usec": 112477,
+          "tdev": 4294967295
+        },
+        {
+          "pid": 93964,
+          "ppid": 93961,
+          "uid": 501,
+          "pgid": 93964,
+          "status": 2,
+          "sec": 1788708194,
+          "usec": 270701,
+          "tdev": 268435467
+        },
+        {
+          "pid": 93965,
+          "ppid": 93961,
+          "uid": 501,
+          "pgid": 93965,
+          "status": 2,
+          "sec": 1788708194,
+          "usec": 271420,
+          "tdev": 268435469
+        },
+        {
+          "pid": 93969,
+          "ppid": 93965,
+          "uid": 501,
+          "pgid": 93965,
+          "status": 2,
+          "sec": 1788708194,
+          "usec": 426851,
+          "tdev": 268435469
+        }
+      ]
+    },
+    {
+      "event": "replacement",
+      "inventory": {
+        "version": 2,
+        "host": 93961,
+        "recoveries": 0,
+        "fds": [
+          0,
+          1,
+          2,
+          3,
+          5,
+          6
+        ],
+        "stateFd": 3,
+        "sentinel": 4,
+        "children": [
+          {
+            "pid": 93964,
+            "fd": 5,
+            "tty": "/dev/ttys011",
+            "device": 251658251,
+            "cursor": 408,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 93965,
+            "fd": 6,
+            "tty": "/dev/ttys013",
+            "device": 251658253,
+            "cursor": 98,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          }
+        ]
+      },
+      "roundTripMs": 278.87087499999905,
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-WqSb3K/openforge-pty-reexec-x9kmdu_b/v2"
+    },
+    {
+      "event": "cleanup",
+      "owned": [
+        {
+          "pid": 93961,
+          "ppid": 93564,
+          "uid": 501,
+          "pgid": 93961,
+          "status": 2,
+          "sec": 1788708194,
+          "usec": 112477,
+          "tdev": 4294967295
+        },
+        {
+          "pid": 93964,
+          "ppid": 93961,
+          "uid": 501,
+          "pgid": 93964,
+          "status": 2,
+          "sec": 1788708194,
+          "usec": 270701,
+          "tdev": 268435467
+        },
+        {
+          "pid": 93965,
+          "ppid": 93961,
+          "uid": 501,
+          "pgid": 93965,
+          "status": 2,
+          "sec": 1788708194,
+          "usec": 271420,
+          "tdev": 268435469
+        },
+        {
+          "pid": 93969,
+          "ppid": 93965,
+          "uid": 501,
+          "pgid": 93965,
+          "status": 2,
+          "sec": 1788708194,
+          "usec": 426851,
+          "tdev": 268435469
+        }
+      ],
+      "survivors": [],
+      "forced": false,
+      "errors": []
+    },
+    {
+      "event": "test",
+      "name": "__main__.Continuity.test_teardown_at_checkpoint_does_not_activate_target",
+      "runtimeRoot": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-WqSb3K/openforge-pty-reexec-rvdlqty5",
+      "mode": "0o700"
+    },
+    {
+      "event": "initial",
+      "inventory": {
+        "version": 1,
+        "host": 94027,
+        "recoveries": 0,
+        "fds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "stateFd": 3,
+        "sentinel": 4,
+        "children": [
+          {
+            "pid": 94029,
+            "fd": 5,
+            "tty": "/dev/ttys011",
+            "device": 251658251,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 94030,
+            "fd": 6,
+            "tty": "/dev/ttys013",
+            "device": 251658253,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          }
+        ]
+      },
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-WqSb3K/openforge-pty-reexec-rvdlqty5/v1",
+      "processes": [
+        {
+          "pid": 94027,
+          "ppid": 93564,
+          "uid": 501,
+          "pgid": 94027,
+          "status": 2,
+          "sec": 1788708196,
+          "usec": 600722,
+          "tdev": 4294967295
+        },
+        {
+          "pid": 94029,
+          "ppid": 94027,
+          "uid": 501,
+          "pgid": 94029,
+          "status": 2,
+          "sec": 1788708196,
+          "usec": 756300,
+          "tdev": 268435467
+        },
+        {
+          "pid": 94030,
+          "ppid": 94027,
+          "uid": 501,
+          "pgid": 94030,
+          "status": 2,
+          "sec": 1788708196,
+          "usec": 756935,
+          "tdev": 268435469
+        },
+        {
+          "pid": 94033,
+          "ppid": 94030,
+          "uid": 501,
+          "pgid": 94030,
+          "status": 2,
+          "sec": 1788708196,
+          "usec": 908496,
+          "tdev": 268435469
+        }
+      ]
+    },
+    {
+      "event": "cleanup",
+      "owned": [
+        {
+          "pid": 94027,
+          "ppid": 93564,
+          "uid": 501,
+          "pgid": 94027,
+          "status": 2,
+          "sec": 1788708196,
+          "usec": 600722,
+          "tdev": 4294967295
+        },
+        {
+          "pid": 94029,
+          "ppid": 94027,
+          "uid": 501,
+          "pgid": 94029,
+          "status": 2,
+          "sec": 1788708196,
+          "usec": 756300,
+          "tdev": 268435467
+        },
+        {
+          "pid": 94030,
+          "ppid": 94027,
+          "uid": 501,
+          "pgid": 94030,
+          "status": 2,
+          "sec": 1788708196,
+          "usec": 756935,
+          "tdev": 268435469
+        },
+        {
+          "pid": 94033,
+          "ppid": 94030,
+          "uid": 501,
+          "pgid": 94030,
+          "status": 2,
+          "sec": 1788708196,
+          "usec": 908496,
+          "tdev": 268435469
+        }
+      ],
+      "survivors": [],
+      "forced": false,
+      "errors": []
+    },
+    {
+      "event": "test",
+      "name": "__main__.Continuity.test_unresponsive_checkpoint_host_is_cleaned_without_protocol",
+      "runtimeRoot": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-WqSb3K/openforge-pty-reexec-0g1su706",
+      "mode": "0o700"
+    },
+    {
+      "event": "initial",
+      "inventory": {
+        "version": 1,
+        "host": 94071,
+        "recoveries": 0,
+        "fds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "stateFd": 3,
+        "sentinel": 4,
+        "children": [
+          {
+            "pid": 94074,
+            "fd": 5,
+            "tty": "/dev/ttys011",
+            "device": 251658251,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 94075,
+            "fd": 6,
+            "tty": "/dev/ttys013",
+            "device": 251658253,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          }
+        ]
+      },
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-WqSb3K/openforge-pty-reexec-0g1su706/v1",
+      "processes": [
+        {
+          "pid": 94071,
+          "ppid": 93564,
+          "uid": 501,
+          "pgid": 94071,
+          "status": 2,
+          "sec": 1788708198,
+          "usec": 806956,
+          "tdev": 4294967295
+        },
+        {
+          "pid": 94074,
+          "ppid": 94071,
+          "uid": 501,
+          "pgid": 94074,
+          "status": 2,
+          "sec": 1788708198,
+          "usec": 959923,
+          "tdev": 268435467
+        },
+        {
+          "pid": 94075,
+          "ppid": 94071,
+          "uid": 501,
+          "pgid": 94075,
+          "status": 2,
+          "sec": 1788708198,
+          "usec": 960656,
+          "tdev": 268435469
+        },
+        {
+          "pid": 94079,
+          "ppid": 94075,
+          "uid": 501,
+          "pgid": 94075,
+          "status": 2,
+          "sec": 1788708199,
+          "usec": 105208,
+          "tdev": 268435469
+        }
+      ]
+    },
+    {
+      "event": "faultInjection",
+      "fault": "SIGSTOP host at checkpoint; ABORT must time out"
+    },
+    {
+      "event": "cleanup",
+      "owned": [
+        {
+          "pid": 94071,
+          "ppid": 93564,
+          "uid": 501,
+          "pgid": 94071,
+          "status": 4,
+          "sec": 1788708198,
+          "usec": 806956,
+          "tdev": 4294967295
+        },
+        {
+          "pid": 94074,
+          "ppid": 94071,
+          "uid": 501,
+          "pgid": 94074,
+          "status": 2,
+          "sec": 1788708198,
+          "usec": 959923,
+          "tdev": 268435467
+        },
+        {
+          "pid": 94075,
+          "ppid": 94071,
+          "uid": 501,
+          "pgid": 94075,
+          "status": 2,
+          "sec": 1788708198,
+          "usec": 960656,
+          "tdev": 268435469
+        },
+        {
+          "pid": 94079,
+          "ppid": 94075,
+          "uid": 501,
+          "pgid": 94075,
+          "status": 2,
+          "sec": 1788708199,
+          "usec": 105208,
+          "tdev": 268435469
+        }
+      ],
+      "survivors": [],
+      "forced": true,
+      "errors": [
+        "host response timed out"
+      ]
+    }
+  ]
+}
