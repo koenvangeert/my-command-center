@@ -38,6 +38,29 @@ describe('StoryDesktopAdapter', () => {
       adapter.reset()
     }
   })
+
+  it('can reproduce sidecar string failures without runtime-specific stack traces', async () => {
+    const adapter = createStoryDesktopAdapter({ failureMode: 'message', failures: { set_config: 'Settings are read-only' } })
+    adapters.push(adapter)
+    adapter.install()
+    await expect(setConfig('task_id_prefix', 'TEAM')).rejects.toBe('Settings are read-only')
+  })
+
+  it('fails a selected setting write without blocking unrelated theme persistence', async () => {
+    const adapter = createStoryDesktopAdapter({
+      config: { task_id_prefix: 'OF' },
+      failures: { set_config: (payload: unknown) => (payload as { key: string }).key === 'task_id_prefix' ? 'Read-only setting' : undefined },
+    })
+    adapters.push(adapter)
+    adapter.install()
+    await expect(setConfig('theme', 'openforge-dark')).resolves.toBeUndefined()
+    await expect(setConfig('task_id_prefix', 'EDITED')).rejects.toThrow('Read-only setting')
+    expect(await getConfig('task_id_prefix')).toBe('OF')
+    adapter.reset()
+    expect(await getConfig('theme')).toBeNull()
+    await expect(setConfig('task_id_prefix', 'RETRY')).rejects.toThrow('Read-only setting')
+  })
+
   it.each([null, undefined, 0])('rejects non-string configuration and file values: %s', async value => {
     const adapter = createStoryDesktopAdapter()
     adapters.push(adapter)
