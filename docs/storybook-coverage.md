@@ -75,4 +75,8 @@ The initial inventory adopts Application Shell, Focus Board, Task Detail, Self R
 
 Catalog-ready fixtures, story-environment fixtures, and placeholder host-frame examples are infrastructure, not proof of production plugin coverage. The real Focus Board host-frame story is included in its page assignment. Subsystem catalog tickets own the remaining production stories; KVG-4704 completes inventory adoption and enforcement.
 
+`infrastructure-host-frames--plugin-page` is the foundation exception: it mounts File Viewer's exported `FilesViewComponent` in `PageFrame` with the plugin API and context, reads a local directory fixture, and opens a file into its preview. Its play check verifies both the visible contents and the filesystem API requests. The scenario resets the plugin's file-selection stores between renders. Task pane, settings, row-action, and status examples remain explicitly named layout placeholders and have no production contribution assignments.
+
+KVG-4697 still owns the full File Viewer catalog and its inventory entries. Reuse or supersede this one-file smoke when adding those stories rather than duplicating the state matrix here. KVG-4698 owns Terminal, and KVG-4702 owns Task Browser and demo plugins. This smoke does not complete any of those subsystem catalogs.
+
 See [the visual review guide](storybook-visuals.md) for screenshot checks and baseline review. Coverage validation does not approve or update screenshots.
