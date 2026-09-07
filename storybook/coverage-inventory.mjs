@@ -4,6 +4,22 @@ const sdkFields = ['default', 'selected', 'disabled', 'validation', 'narrow-over
 const sdkSelectors = ['default', 'selected', 'disabled', 'validation', 'open', 'narrow-overflow', 'empty', 'no-matches', 'keyboard'].map(state => `components-plugin-sdk-selectors--${state}`)
 const sdkPresentation = ['default', 'narrow-overflow'].map(state => `components-plugin-sdk-presentation--${state}`)
 const sdkNavigation = ['default', 'selected', 'collapsed', 'narrow-overflow', 'keyboard'].map(state => `components-plugin-sdk-navigation--${state}`)
+const fileViewerPages = [
+  'pages-file-viewer--populated', 'pages-file-viewer--empty', 'pages-file-viewer--loading',
+  'pages-file-viewer--failure', 'pages-file-viewer--no-project', 'pages-file-viewer--markdown',
+  'pages-file-viewer--source', 'pages-file-viewer--image', 'pages-file-viewer--video',
+  'pages-file-viewer--video-unavailable', 'pages-file-viewer--binary', 'pages-file-viewer--document',
+  'pages-file-viewer--large-file', 'pages-file-viewer--empty-file', 'pages-file-viewer--file-loading',
+  'pages-file-viewer--file-failure', 'pages-file-viewer--narrow', 'pages-file-viewer--overflow',
+  'pages-file-viewer--navigate', 'pages-file-viewer--retry-root', 'pages-file-viewer--finish-loading',
+  'pages-file-viewer--search', 'pages-file-viewer--search-loading', 'pages-file-viewer--search-failure',
+  'pages-file-viewer--directory-failure',
+]
+const fileViewerTaskPane = [
+  'pages-file-viewer--task-pane', 'pages-file-viewer--task-markdown', 'pages-file-viewer--task-empty',
+  'pages-file-viewer--task-loading', 'pages-file-viewer--task-unavailable',
+  'pages-file-viewer--task-narrow', 'pages-file-viewer--task-navigate',
+]
 
 /** @type {import('./coverage-types.ts').CoverageInventory} */
 const inventory = {
@@ -12,6 +28,10 @@ const inventory = {
     { source: 'plugins/terminal/src/TerminalTaskPane.svelte', stories: ['pages-terminal-task-pane--ready', 'pages-terminal-task-pane--loading', 'pages-terminal-task-pane--missing-workspace', 'pages-terminal-task-pane--lookup-error', 'pages-terminal-task-pane--overflow'] },
     { source: 'plugins/terminal/src/index.ts', contribution: 'com.openforge.terminal:views.register:terminal', stories: ['pages-terminal--ready'] },
     { source: 'plugins/terminal/src/index.ts', contribution: 'com.openforge.terminal:taskPane.registerTab:terminal', stories: ['pages-terminal-task-pane--ready'] },
+    { source: 'plugins/file-viewer/src/FilesView.svelte', stories: fileViewerPages },
+    { source: 'plugins/file-viewer/src/TaskFilesView.svelte', stories: fileViewerTaskPane },
+    { source: 'plugins/file-viewer/src/index.ts', contribution: 'com.openforge.file-viewer:views.register:files', stories: fileViewerPages },
+    { source: 'plugins/file-viewer/src/index.ts', contribution: 'com.openforge.file-viewer:taskPane.registerTab:files', stories: fileViewerTaskPane },
     {
       source: 'packages/plugin-sdk/src/ui/PluginPageShell.svelte',
       stories: ['pages-sdk-page-shell--populated', 'pages-sdk-page-shell--empty', 'pages-sdk-page-shell--loading', 'pages-sdk-page-shell--error', 'pages-sdk-page-shell--overflow', 'pages-sdk-page-shell--collapsed', 'pages-sdk-page-shell--retry-and-collapse', 'pages-sdk-page-shell--create-first-report'],
@@ -220,6 +240,30 @@ const inventory = {
       source: 'src/components/shared/ui/PaletteFooter.svelte',
       stories: ['components-palette-controls--populated', 'components-palette-controls--narrow'],
     },
+    { source: 'plugins/file-viewer/src/FilesBrowserSection.svelte', stories: [
+      'components-file-viewer--browser', 'components-file-viewer--browser-empty',
+      'components-file-viewer--browser-loading', 'components-file-viewer--browser-failure',
+    ] },
+    { source: 'plugins/file-viewer/src/FileTreeToolbar.svelte', stories: [
+      'components-file-viewer--toolbar', 'components-file-viewer--toolbar-search',
+    ] },
+    { source: 'plugins/file-viewer/src/FileTreeStates.svelte', stories: [
+      'components-file-viewer--tree', 'components-file-viewer--tree-empty',
+      'components-file-viewer--tree-search-empty', 'components-file-viewer--tree-search-loading',
+      'components-file-viewer--tree-search-failure', 'components-file-viewer--tree-search-limit',
+      'components-file-viewer--tree-directory-failure', 'components-file-viewer--tree-reveal-failure',
+    ] },
+    { source: 'plugins/file-viewer/src/FilePreviewPane.svelte', stories: [
+      'components-file-viewer--preview-empty', 'components-file-viewer--preview',
+    ] },
+    { source: 'plugins/file-viewer/src/FileContentViewer.svelte', stories: [
+      'components-file-viewer--content', 'components-file-viewer--content-loading',
+      'components-file-viewer--content-failure', 'components-file-viewer--content-image',
+      'components-file-viewer--content-video', 'components-file-viewer--content-binary',
+      'components-file-viewer--content-document', 'components-file-viewer--content-large',
+      'components-file-viewer--content-empty', 'components-file-viewer--content-overflow',
+    ] },
+    { source: 'plugins/file-viewer/src/MarkdownFilePreview.svelte', stories: ['components-file-viewer--markdown'] },
   ],
   // Unadopted UI is reported by discovery, never parked here to silence coverage.
   exclusions: [],

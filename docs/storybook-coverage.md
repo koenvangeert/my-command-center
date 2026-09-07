@@ -77,6 +77,14 @@ Catalog-ready fixtures, story-environment fixtures, and placeholder host-frame e
 
 `infrastructure-host-frames--plugin-page` is the foundation exception: it mounts File Viewer's exported `FilesViewComponent` in `PageFrame` with the plugin API and context, reads a local directory fixture, and opens a file into its preview. Its play check verifies both the visible contents and the filesystem API requests. The scenario resets the plugin's file-selection stores between renders. Task pane, settings, row-action, and status examples remain explicitly named layout placeholders and have no production contribution assignments.
 
-KVG-4697 still owns the full File Viewer catalog and its inventory entries. Reuse or supersede this one-file smoke when adding those stories rather than duplicating the state matrix here. KVG-4698 owns Terminal, and KVG-4702 owns Task Browser and demo plugins. This smoke does not complete any of those subsystem catalogs.
+KVG-4697 supplies the full File Viewer catalog and inventory entries described below. The foundation smoke remains a host-integration check rather than duplicating that state matrix. KVG-4698 owns Terminal, and KVG-4702 owns Task Browser and demo plugins. This smoke does not complete those subsystem catalogs.
+
+## File Viewer catalog
+
+File Viewer owns its page and Task-pane contributions plus its six visible child modules. Shared SDK controls remain owned by the SDK catalog. Stories use the production components and host frames with an in-memory plugin filesystem; no workspace files are opened or changed.
+
+After building both catalogs, run `node scripts/storybook-file-viewer-check.mjs` to check every File Viewer story in Chromium, including play interactions, video metadata, repeated remounts, and same-document story switching. Unexpected console diagnostics and external requests fail the check. Evidence goes to `artifacts/file-viewer/browser`. These native checks do not replace the canonical screenshot commands.
+
+Fixture edits, selections, pending operations, and saved panel widths reset through the shared story environment. `storybook/shared/fileViewerStories.test.ts` exercises the same lifecycle through portable stories, including fixture edits through the plugin API.
 
 See [the visual review guide](storybook-visuals.md) for screenshot checks and baseline review. Coverage validation does not approve or update screenshots.

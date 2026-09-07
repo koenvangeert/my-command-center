@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises'
 import { resolve, extname, sep } from 'node:path'
 import { freezeSvgMasks } from './svg-motion.mjs'
 import { captureAppearance } from './manifest.mjs'
+import { freezeMotionCss, freezeNativeMedia } from './native-media.mjs'
 
 export async function serve(root) {
   const base = resolve(root)
@@ -45,9 +46,10 @@ export async function capture(browser, url, entry, { mutate, timeout = 30000 } =
     } catch (error) {
       throw new Error(`missing readiness for ${entry.story}: ${entry.ready}\n${errors.join('\n')}\n${error.message}`)
     }
-    await page.addStyleTag({ content: '*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}' })
+    await page.addStyleTag({ content: freezeMotionCss })
     if (mutate) await mutate(page)
     await page.evaluate(freezeSvgMasks)
+    await freezeNativeMedia(page, timeout)
     const bytes = await page.screenshot({ animations: 'disabled', caret: 'hide', scale: 'css' })
     return { bytes, diagnostics: errors }
   } finally {

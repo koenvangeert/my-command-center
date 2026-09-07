@@ -30,6 +30,8 @@ pnpm storybook:visual:unit
 
 For native interactive development use `pnpm storybook:pages` or `pnpm storybook:components`. Native screenshots are not canonical baselines.
 
+The visual unit command also exercises native media capture in local Chromium. Install it with `pnpm exec playwright install chromium` after dependency upgrades. These tests compare repeated captures within one environment; they do not approve repository baselines.
+
 ## Approving a change
 
 1. Run `check` and open `artifacts/storybook-visual/index.html` in a browser.
@@ -58,5 +60,7 @@ Captures use a 30-second default operation/navigation deadline. Failure probes c
 `scripts/storybook-visual/container.mjs` pins the Playwright 1.62.1 Ubuntu Noble image by its Linux arm64 digest. Local Docker and CI's `ubuntu-24.04-arm` runner use that same architecture. Apple Silicon runs it natively; Intel developers need Docker ARM emulation or an ARM Docker host. We do not maintain separate architecture baselines. The frozen workspace lockfile selects Playwright and bundled production fonts. Both catalog builds and browser captures happen inside that container; host `node_modules` is excluded.
 
 Capture fixes Chromium, device scale 1, en-US locale, UTC timezone, application time at `2026-01-02T09:30:00.000Z`, theme/color scheme, reduced motion, disabled CSS animations/transitions, hidden caret, and loaded fonts. Animated SVG masks are derived from the production SVG at their terminal values because CSS reduced motion does not stop embedded SMIL. External browser requests are blocked. Each case gets a fresh browser context. Comparison includes antialiasing pixels with zero threshold.
+
+For native video controls, capture waits for a decoded frame or a real media error and requires the story to leave playback paused. The driver applies the same animation suppression inside Chromium's nested native-control shadow roots through CDP. It does not replace players, remove controls, synthesize errors, or broaden pixel tolerances. Those changes live only in the disposable capture context.
 
 When upgrading Playwright, update the lockfile and image digest together, regenerate the selected baselines in the container, and review them. `environment.json` in each report records the image and actual Chromium version. The first run downloads the container and installs dependencies, so it needs network access and may take several minutes.
