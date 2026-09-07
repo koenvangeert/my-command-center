@@ -6,7 +6,7 @@ import { createThemeRuntime } from './theme'
 function createRuntime(storedTheme: string | null) {
   const root = document.createElement('html')
   const getStoredThemeId = vi.fn(async () => storedTheme)
-  const persistThemeId = vi.fn(async () => undefined)
+  const persistThemeId = vi.fn(async (_themeId: string) => undefined)
   const reportDiagnostic = vi.fn()
   const runtime = createThemeRuntime({
     root,
@@ -18,6 +18,26 @@ function createRuntime(storedTheme: string | null) {
 }
 
 describe('theme runtime', () => {
+  it.each([
+    ['openforge-light', 'light'], ['openforge-dark', 'dark'],
+    ['workshop-light', 'light'], ['workshop-dark', 'dark'],
+    ['openforge-light', 'light'], ['openforge-dark', 'dark'],
+  ] as const)('selects and restores the exact %s variant', async (id, appearance) => {
+    const first = createRuntime(null)
+    await first.runtime.initialize()
+    await first.runtime.registry.selectTheme(id)
+    expect(first.root.dataset.theme).toBe(id)
+    expect(first.root.dataset.themeAppearance).toBe(appearance)
+    expect(first.persistThemeId).toHaveBeenLastCalledWith(id)
+    const restored = createRuntime(first.persistThemeId.mock.lastCall![0])
+    await restored.runtime.initialize()
+    expect(get(restored.runtime.registry.selectedTheme).id).toBe(id)
+    expect(get(restored.runtime.themeMode)).toBe(appearance)
+    expect(restored.root.dataset.theme).toBe(id)
+    expect(restored.root.style.getPropertyValue('--of-canvas')).toBe(first.root.style.getPropertyValue('--of-canvas'))
+    expect(restored.reportDiagnostic).not.toHaveBeenCalled()
+  })
+
   it('makes built-in light available and applied before asynchronous initialization', () => {
     const { root, runtime } = createRuntime(null)
 

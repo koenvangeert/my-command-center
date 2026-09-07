@@ -17,6 +17,7 @@ vi.mock('../../lib/ipc', () => ({
   hasVsCodeProtocolHandler: vi.fn().mockResolvedValue(true),
   getTaskWorkspace: vi.fn().mockResolvedValue(null),
   getConfig: vi.fn().mockResolvedValue(''),
+  setConfig: vi.fn().mockResolvedValue(undefined),
   getProjectConfig: vi.fn().mockResolvedValue(null),
   setProjectConfig: vi.fn().mockResolvedValue(undefined),
   getLatestSession: vi.fn().mockResolvedValue(null),

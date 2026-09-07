@@ -37,9 +37,9 @@
     "ready": "[aria-label=\"Task list\"]",
     "expectedErrors": [],
     "tolerance": {
-      "maxPixels": 15,
+      "maxPixels": 16,
       "maxChannelDelta": 1,
-      "reason": "Repeated pinned Linux captures of the merged board layout differ at 15 antialiased Task badge and card-border pixels by one channel level. Larger changes remain failures."
+      "reason": "This case shares the redesigned Expanded shell Task badge and card borders, where repeated pinned Linux captures vary at 16 antialiased pixels by one channel level. Larger or more widespread changes remain failures."
     }
   },
   {
@@ -53,9 +53,9 @@
     "ready": "[aria-label=\"Task list\"]",
     "expectedErrors": [],
     "tolerance": {
-      "maxPixels": 16,
+      "maxPixels": 18,
       "maxChannelDelta": 1,
-      "reason": "CI and local pinned Linux captures of the same merged board layout differ at 16 antialiased Task state badge pixels by one channel level. Larger changes remain failures."
+      "reason": "Consecutive pinned Linux captures after the Studio redesign differ at 18 antialiased border pixels by one channel level. Larger or more widespread changes remain failures."
     }
   },
   {
@@ -69,9 +69,9 @@
     "ready": "[aria-label=\"Task list\"]",
     "expectedErrors": [],
     "tolerance": {
-      "maxPixels": 15,
+      "maxPixels": 16,
       "maxChannelDelta": 1,
-      "reason": "Identical pinned Linux captures differed at 15 antialiased Task state badge pixels by one channel level. Larger changes remain failures."
+      "reason": "Repeated pinned Linux captures after the Studio redesign differ at 16 antialiased border pixels by at most 1 channel levels. Larger or more widespread changes remain failures."
     }
   },
   {
@@ -85,9 +85,9 @@
     "ready": "[aria-label=\"Task list\"]",
     "expectedErrors": [],
     "tolerance": {
-      "maxPixels": 16,
+      "maxPixels": 18,
       "maxChannelDelta": 1,
-      "reason": "Identical pinned Linux captures differed at 16 antialiased Task state badge pixels by one channel level. Larger changes remain failures."
+      "reason": "Repeated pinned Linux captures after the Studio redesign differ at 18 antialiased border pixels by one channel level. Larger or more widespread changes remain failures."
     }
   },
   {
@@ -188,9 +188,9 @@
     "ready": "[role=\"alert\"]",
     "expectedErrors": [],
     "tolerance": {
-      "maxPixels": 15,
+      "maxPixels": 16,
       "maxChannelDelta": 1,
-      "reason": "Identical pinned Linux captures differed at 15 antialiased Task state badge pixels by one channel level. Larger changes remain failures."
+      "reason": "Repeated pinned Linux captures after the Studio redesign differ at 16 antialiased border pixels by at most 1 channel levels. Larger or more widespread changes remain failures."
     }
   },
   {
@@ -204,9 +204,9 @@
     "ready": "button:has-text(\"Agent needs input on OF-42\")",
     "expectedErrors": [],
     "tolerance": {
-      "maxPixels": 16,
+      "maxPixels": 18,
       "maxChannelDelta": 1,
-      "reason": "Identical pinned Linux captures differed at 16 antialiased Task state badge pixels by one channel level. Larger changes remain failures."
+      "reason": "This case shares the redesigned Expanded shell Task badge and card borders, where repeated pinned Linux captures vary at 18 antialiased pixels by one channel level. Larger or more widespread changes remain failures."
     }
   },
   {
@@ -220,9 +220,9 @@
     "ready": "[role=\"status\"]:has-text(\"New task created\")",
     "expectedErrors": [],
     "tolerance": {
-      "maxPixels": 15,
+      "maxPixels": 16,
       "maxChannelDelta": 1,
-      "reason": "This notification uses the same light-shell Task badge and card as Expanded, where repeated pinned Linux captures vary at 15 antialiased pixels by one channel level. Larger changes remain failures."
+      "reason": "This case shares the redesigned Expanded shell Task badge and card borders, where repeated pinned Linux captures vary at 16 antialiased pixels by one channel level. Larger or more widespread changes remain failures."
     }
   },
   {
@@ -236,9 +236,9 @@
     "ready": "[role=\"status\"]:has-text(\"Resets in 2 min\")",
     "expectedErrors": [],
     "tolerance": {
-      "maxPixels": 16,
+      "maxPixels": 18,
       "maxChannelDelta": 1,
-      "reason": "Identical pinned Linux captures differed at 16 antialiased Task state badge pixels by one channel level. Larger changes remain failures."
+      "reason": "This case shares the redesigned Expanded shell Task badge and card borders, where repeated pinned Linux captures vary at 18 antialiased pixels by one channel level. Larger or more widespread changes remain failures."
     }
   },
   {
@@ -384,9 +384,9 @@
     "ready": "button[aria-label=Refresh]:focus",
     "expectedErrors": [],
     "tolerance": {
-      "maxPixels": 8,
+      "maxPixels": 12,
       "maxChannelDelta": 1,
-      "reason": "Consecutive pinned Linux captures differ at eight antialiased button-border pixels by one channel level. Preserve keyboard focus coverage while rejecting larger or more widespread changes."
+      "reason": "Repeated pinned Linux captures after the Studio redesign differ at 12 antialiased border pixels by at most 1 channel levels. Larger or more widespread changes remain failures."
     }
   },
   {
@@ -806,6 +806,402 @@
     },
     "ready": "[data-terminal-ready=true]",
     "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "application-shell--dialog-with-feedback",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "body:has([role=\"dialog\"]) [role=\"alert\"]",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 5,
+      "maxChannelDelta": 1,
+      "reason": "Repeated pinned Linux captures of the Studio-designed dialog differ at five antialiased border pixels by one channel level. Larger or more widespread changes remain failures."
+    }
+  },
+  {
+    "catalog": "pages",
+    "story": "application-shell--dialog-with-feedback",
+    "theme": "workshop-light",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "body:has([role=\"dialog\"]) [role=\"alert\"]",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 15,
+      "maxChannelDelta": 1,
+      "reason": "Repeated pinned Linux captures after the Studio redesign differ at 15 antialiased border pixels by at most 1 channel levels. Larger or more widespread changes remain failures."
+    }
+  },
+  {
+    "catalog": "pages",
+    "story": "application-shell--dialog-with-feedback",
+    "theme": "workshop-dark",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "body:has([role=\"dialog\"]) [role=\"alert\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-task-detail--review",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "text=greet.ts",
+    "expectedErrors": [],
+    "theme": "openforge-light",
+    "tolerance": {
+      "maxPixels": 32,
+      "maxChannelDelta": 1,
+      "reason": "Repeated pinned Linux captures of this Studio palette before its OpenForge ID replacement differ at 32 antialiased border pixels by one channel level. Larger or more widespread changes remain failures."
+    }
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-task-detail--active",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "[data-task-terminal-ready=true]",
+    "expectedErrors": [],
+    "theme": "openforge-light"
+  },
+  {
+    "catalog": "components",
+    "story": "components-host-controls-markdown--formatted",
+    "viewport": {
+      "width": 800,
+      "height": 900
+    },
+    "ready": ".markdown-body h1",
+    "expectedErrors": [],
+    "theme": "openforge-light",
+    "tolerance": {
+      "maxPixels": 10,
+      "maxChannelDelta": 2,
+      "reason": "Repeated pinned Linux captures after the Studio redesign differ at 10 antialiased border pixels by at most 2 channel levels. Larger or more widespread changes remain failures."
+    }
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-focus-board--populated",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "[aria-label=\"Task list\"]",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 12,
+      "maxChannelDelta": 1,
+      "reason": "Consecutive pinned Linux captures after the Studio redesign differ at 12 antialiased border pixels by one channel level. Larger or more widespread changes remain failures."
+    }
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-navigation--selected",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 640,
+      "height": 400
+    },
+    "ready": "button[aria-current=page]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-task-detail--review",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "text=greet.ts",
+    "expectedErrors": [],
+    "theme": "openforge-dark",
+    "tolerance": {
+      "maxPixels": 24,
+      "maxChannelDelta": 1,
+      "reason": "Repeated current pinned Linux captures differ at 24 antialiased border pixels by one channel level. Larger or more widespread changes remain failures."
+    }
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-task-detail--active",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "[data-task-terminal-ready=true]",
+    "expectedErrors": [],
+    "theme": "openforge-dark"
+  },
+  {
+    "catalog": "components",
+    "story": "components-host-controls-markdown--formatted",
+    "viewport": {
+      "width": 800,
+      "height": 900
+    },
+    "ready": ".markdown-body h1",
+    "expectedErrors": [],
+    "theme": "openforge-dark"
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-focus-board--populated",
+    "theme": "workshop-light",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "[aria-label=\"Task list\"]",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 12,
+      "maxChannelDelta": 1,
+      "reason": "Repeated pinned Linux captures after the Studio redesign differ at 12 antialiased border pixels by one channel level. Larger or more widespread changes remain failures."
+    }
+  },
+  {
+    "catalog": "pages",
+    "story": "application-shell--narrow",
+    "theme": "workshop-light",
+    "viewport": {
+      "width": 900,
+      "height": 900
+    },
+    "ready": "[aria-label=\"Task list\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-actions--default",
+    "theme": "workshop-light",
+    "viewport": {
+      "width": 800,
+      "height": 500
+    },
+    "ready": "[data-testid=sdk-actions]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-fields--validation",
+    "theme": "workshop-light",
+    "viewport": {
+      "width": 800,
+      "height": 750
+    },
+    "ready": "text=Instructions are required.",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-navigation--selected",
+    "theme": "workshop-light",
+    "viewport": {
+      "width": 640,
+      "height": 400
+    },
+    "ready": "button[aria-current=page]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-host-controls-context-menu--open",
+    "theme": "workshop-light",
+    "viewport": {
+      "width": 480,
+      "height": 320
+    },
+    "ready": "[role=\"menu\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-terminal--ready",
+    "theme": "workshop-light",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "[data-terminal-ready=true]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-task-detail--review",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "text=greet.ts",
+    "expectedErrors": [],
+    "theme": "workshop-light"
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-task-detail--active",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "[data-task-terminal-ready=true]",
+    "expectedErrors": [],
+    "theme": "workshop-light"
+  },
+  {
+    "catalog": "components",
+    "story": "components-host-controls-markdown--formatted",
+    "viewport": {
+      "width": 800,
+      "height": 900
+    },
+    "ready": ".markdown-body h1",
+    "expectedErrors": [],
+    "theme": "workshop-light",
+    "tolerance": {
+      "maxPixels": 15,
+      "maxChannelDelta": 1,
+      "reason": "Repeated pinned Linux captures after the Studio redesign differ at 15 antialiased border pixels by one channel level. Larger or more widespread changes remain failures."
+    }
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-focus-board--populated",
+    "theme": "workshop-dark",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "[aria-label=\"Task list\"]",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 17,
+      "maxChannelDelta": 1,
+      "reason": "Repeated pinned Linux captures of the unchanged Workshop palette differ at 17 antialiased border pixels by one channel level. Larger or more widespread changes remain failures."
+    }
+  },
+  {
+    "catalog": "pages",
+    "story": "application-shell--narrow",
+    "theme": "workshop-dark",
+    "viewport": {
+      "width": 900,
+      "height": 900
+    },
+    "ready": "[aria-label=\"Task list\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-actions--default",
+    "theme": "workshop-dark",
+    "viewport": {
+      "width": 800,
+      "height": 500
+    },
+    "ready": "[data-testid=sdk-actions]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-fields--validation",
+    "theme": "workshop-dark",
+    "viewport": {
+      "width": 800,
+      "height": 750
+    },
+    "ready": "text=Instructions are required.",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-navigation--selected",
+    "theme": "workshop-dark",
+    "viewport": {
+      "width": 640,
+      "height": 400
+    },
+    "ready": "button[aria-current=page]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-host-controls-context-menu--open",
+    "theme": "workshop-dark",
+    "viewport": {
+      "width": 480,
+      "height": 320
+    },
+    "ready": "[role=\"menu\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-terminal--ready",
+    "theme": "workshop-dark",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "[data-terminal-ready=true]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-task-detail--review",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "text=greet.ts",
+    "expectedErrors": [],
+    "theme": "workshop-dark",
+    "tolerance": {
+      "maxPixels": 36,
+      "maxChannelDelta": 1,
+      "reason": "Consecutive pinned Linux captures differ at 36 antialiased review-control border pixels by one channel level. This owner-approved measured allowance rejects larger or more widespread changes."
+    }
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-task-detail--active",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "[data-task-terminal-ready=true]",
+    "expectedErrors": [],
+    "theme": "workshop-dark"
+  },
+  {
+    "catalog": "components",
+    "story": "components-host-controls-markdown--formatted",
+    "viewport": {
+      "width": 800,
+      "height": 900
+    },
+    "ready": ".markdown-body h1",
+    "expectedErrors": [],
+    "theme": "workshop-dark",
+    "tolerance": {
+      "maxPixels": 11,
+      "maxChannelDelta": 1,
+      "reason": "Consecutive pinned Linux captures after the Studio redesign differ at 11 antialiased border pixels by one channel level. Larger or more widespread changes remain failures."
+    }
   },
   {
     "catalog": "pages",

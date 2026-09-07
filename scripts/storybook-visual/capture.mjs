@@ -2,6 +2,7 @@ import { createServer } from 'node:http'
 import { readFile } from 'node:fs/promises'
 import { resolve, extname, sep } from 'node:path'
 import { freezeSvgMasks } from './svg-motion.mjs'
+import { captureAppearance } from './manifest.mjs'
 
 export async function serve(root) {
   const base = resolve(root)
@@ -23,7 +24,7 @@ export async function serve(root) {
 }
 
 export async function capture(browser, url, entry, { mutate, timeout = 30000 } = {}) {
-  const context = await browser.newContext({ viewport: entry.viewport, deviceScaleFactor: 1, locale: 'en-US', timezoneId: 'UTC', colorScheme: entry.theme.endsWith('dark') ? 'dark' : 'light', reducedMotion: 'reduce', serviceWorkers: 'block' })
+  const context = await browser.newContext({ viewport: entry.viewport, deviceScaleFactor: 1, locale: 'en-US', timezoneId: 'UTC', colorScheme: captureAppearance(entry.theme), reducedMotion: 'reduce', serviceWorkers: 'block' })
   try {
     // Stories may only fetch their local catalog. Fonts ship with production CSS.
     await context.route('**/*', route => new URL(route.request().url()).origin === new URL(url).origin ? route.continue() : route.abort('blockedbyclient'))

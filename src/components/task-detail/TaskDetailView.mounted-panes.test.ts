@@ -23,6 +23,32 @@ const {
 describe('TaskDetailView mounted-pane behavior', () => {
   beforeEach(resetTaskDetailViewTestState)
 
+  it('keeps task input and the active agent pane mounted across theme changes', async () => {
+    const { getTaskWorkspace } = await import('../../lib/ipc')
+    const { themeRegistry } = await import('../../lib/theme')
+    vi.mocked(getTaskWorkspace).mockResolvedValue(createTaskWorkspaceInfo())
+    const { unmount } = render(TaskDetailView, { props: { task: baseTask, onRunAction: mockOnRunAction } })
+    try {
+      const pane = await screen.findByTestId('agent-workbench')
+      await fireEvent.click(screen.getByRole('button', { name: 'Rename task' }))
+      const input = await screen.findByRole('textbox', { name: 'Task title' }) as HTMLInputElement
+      await fireEvent.input(input, { target: { value: 'Unsent title draft' } })
+      terminalAttachmentDetach.mockClear()
+      for (const id of ['openforge-light', 'workshop-dark', 'openforge-dark', 'workshop-light']) {
+        await themeRegistry.selectTheme(id)
+        await waitFor(() => expect(document.documentElement.dataset.theme).toBe(id))
+        expect(screen.getByTestId('agent-workbench')).toBe(pane)
+        expect(pane.getAttribute('aria-hidden')).toBe('false')
+        expect(screen.getByRole('textbox', { name: 'Task title' })).toBe(input)
+        expect(input.value).toBe('Unsent title draft')
+        expect(terminalAttachmentDetach).not.toHaveBeenCalled()
+      }
+    } finally {
+      unmount()
+      await themeRegistry.selectTheme('openforge-light')
+    }
+  })
+
   it('remounts the review pane when switching tasks while review is active', async () => {
     const { getTaskWorkspace } = await import('../../lib/ipc')
     const { createDiffLoader } = await import('../../lib/useDiffLoader.svelte')

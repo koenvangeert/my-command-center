@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  BUILTIN_THEMES,
   DARK_THEME,
   LIGHT_THEME,
   THEME_TOKEN_CSS_PROPERTIES,
@@ -10,18 +11,16 @@ import { createThemeDocumentAdapter } from './themeDocumentAdapter'
 import { createThemeRegistry } from './themeRegistry'
 
 describe('theme document adapter', () => {
-  it('applies every semantic token and separate identity and appearance attributes', () => {
+  it.each(BUILTIN_THEMES)('applies all $label content tokens and declared appearance', (theme) => {
     const root = document.createElement('html')
     const adapter = createThemeDocumentAdapter(root)
-
-    adapter.apply(LIGHT_THEME)
-
+    adapter.apply(theme)
     for (const token of THEME_TOKEN_NAMES) {
-      expect(root.style.getPropertyValue(THEME_TOKEN_CSS_PROPERTIES[token])).toBe(LIGHT_THEME.tokens[token])
+      expect(root.style.getPropertyValue(THEME_TOKEN_CSS_PROPERTIES[token])).toBe(theme.tokens[token])
     }
-    expect(root.dataset.theme).toBe(LIGHT_THEME.id)
-    expect(root.dataset.themeAppearance).toBe('light')
-    expect(root.style.colorScheme).toBe('light')
+    expect(root.dataset.theme).toBe(theme.id)
+    expect(root.dataset.themeAppearance).toBe(theme.appearance)
+    expect(root.style.colorScheme).toBe(theme.appearance)
   })
 
   it('updates a mounted document only through registry selection', async () => {

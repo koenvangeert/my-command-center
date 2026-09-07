@@ -61,7 +61,7 @@ export function taskDetailScenario(kind: TaskDetailScenario = 'active', reviewSt
         get_latest_session: session,
         get_pty_buffer: {
           buffer: transcript, isLive: session?.status === 'running' || session?.status === 'paused', instanceId: session ? 42 : null,
-          ...(session ? { snapshot: { data: btoa(transcript ?? ''), instanceId: 42, watermark: 0 } } : {}),
+          ...(session ? { snapshot: { data: btoa(transcript ?? ''), continuationData: '', instanceId: 42, watermark: 0 } } : {}),
         },
         pty_resize: undefined, pty_write: undefined, mark_agent_output_viewed: true,
         has_vscode_protocol_handler: false,
