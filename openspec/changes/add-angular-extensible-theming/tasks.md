@@ -77,9 +77,9 @@
 
 ## 8. Documentation and affected-system validation
 
-- [ ] 8.1 Update plugin authoring, capability, SDK reference, styling, and testing documentation with app-level theme registration, token requirements, optional selected stylesheets, Trusted Plugin risks, fallback behavior, and a complete example; verify documentation links and example imports resolve.
-- [ ] 8.2 Update plugin package fixtures and authoring-contract examples for the additive `themes` capability and public UI exports; verify package metadata, entrypoint registry, and dry-pack checks pass.
-- [ ] 8.3 Run focused affected-package checks with `pnpm packages:test`, `pnpm packages:build`, `pnpm packages:contract:check`, `pnpm packages:metadata:check`, and `pnpm build:plugins`; record commands and resolve all failures.
-- [ ] 8.4 Run full renderer static and behavior checks with `pnpm test`, `pnpm exec tsc --noEmit`, and `pnpm lint`; record commands and resolve all failures.
-- [ ] 8.5 Run the production renderer build with `pnpm build` and any applicable cross-boundary contract checks selected from the final diff; record skipped checks and remaining gaps.
+- [x] 8.1 Update plugin authoring, capability, SDK reference, styling, and testing documentation with app-level theme registration, token requirements, optional selected stylesheets, Trusted Plugin risks, fallback behavior, and a complete example; verify documentation links and example imports resolve.
+- [x] 8.2 Update plugin package fixtures and authoring-contract examples for the additive `themes` capability and public UI exports; verify package metadata, entrypoint registry, and dry-pack checks pass.
+- [x] 8.3 Run focused affected-package checks with `pnpm packages:test`, `pnpm packages:build`, `pnpm packages:contract:check`, `pnpm packages:metadata:check`, and `pnpm build:plugins`; record commands and resolve all failures.
+- [x] 8.4 Run full renderer static and behavior checks with `pnpm test`, `pnpm exec tsc --noEmit`, and `pnpm lint`; record commands and resolve all failures.
+- [x] 8.5 Run the production renderer build with `pnpm build` and any applicable cross-boundary contract checks selected from the final diff; record skipped checks and remaining gaps.
 - [ ] 8.6 Exercise the packaged or development Electron app in built-in light, built-in dark, a token-only contributed theme, and a contributed theme with custom CSS; verify selection, restart restoration, reload, disable fallback, terminal, diff, Mermaid, keyboard focus, reduced motion, and recovery from a broken theme.

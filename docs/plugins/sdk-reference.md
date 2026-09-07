@@ -98,6 +98,8 @@ The host loads candidate files through `plugin://` with inactive media. Only aft
 
 Theme CSS runs under the Trusted Plugin model and can override host layout or accessibility. Prefer tokens; use CSS only when tokens are insufficient. Disable the plugin to recover the built-in light theme. The [selected-theme fixture](../../src/lib/plugin/fixtures/selected-theme/README.md) contains a complete installable example.
 
+See the [theme authoring guide](./theming.md) for the complete token contract, token-only variants, package ownership, restart behavior, CLI recovery when settings is obscured, and release testing.
+
 ### Review row actions
 
 `openforge.reviewUI.registerRowAction({ id, order?, component })` puts a control on every review-requested pull-request row a host surface shows. Today that is the cross-project attention overview. The component receives `api`, `context`, `pr` (the row's `ReviewPullRequest`) and `projectId`, and is ordered by numeric `order`, then namespaced contribution id.
@@ -443,6 +445,10 @@ Core controls use scoped component CSS and semantic `--of-*` properties supplied
 | `Switch` | `@openforge-app/plugin-sdk/ui/Switch.svelte` | A labeled native switch with bindable checked state and validation. |
 | `Badge` | `@openforge-app/plugin-sdk/ui/Badge.svelte` | A presentation-only status badge with semantic variants. |
 | `Panel` | `@openforge-app/plugin-sdk/ui/Panel.svelte` | A presentation-only panel with optional caller-owned header and footer. |
+| `Select` | `@openforge-app/plugin-sdk/ui/Select.svelte` | A named single-value select with a portalled listbox. |
+| `Tabs` | `@openforge-app/plugin-sdk/ui/Tabs.svelte` | Keyboard-operated tabs with caller-owned panels. |
+| `AnchoredMenu` | `@openforge-app/plugin-sdk/ui/AnchoredMenu.svelte` | A button-triggered action menu. |
+| `Tooltip` | `@openforge-app/plugin-sdk/ui/Tooltip.svelte` | A named button with a portalled text description. |
 | `CollapsibleSection` | `@openforge-app/plugin-sdk/ui/CollapsibleSection.svelte` | A disclosure section with shared, persisted collapse state. |
 | `FileTypeIcon` | `@openforge-app/plugin-sdk/ui/FileTypeIcon.svelte` | A decorative file or folder icon selected from a filename. |
 | `MarkdownContent` | `@openforge-app/plugin-sdk/ui/MarkdownContent.svelte` | Sanitized Markdown with host-routed links and optional media handling. |
@@ -455,6 +461,77 @@ Core controls use scoped component CSS and semantic `--of-*` properties supplied
 | `ResizablePanel` | `@openforge-app/plugin-sdk/ui/ResizablePanel.svelte` | A mouse and keyboard resizable panel with persisted width. |
 
 Test behavior through accessible roles, names, state, and callbacks. Do not assert Tailwind utilities, daisyUI classes, SVG paths, or other visual details. Use the fakes from `@openforge-app/plugin-sdk/testing` when a component test calls a host API.
+
+### `Select`
+
+Import `Select` from `@openforge-app/plugin-sdk/ui/Select.svelte`. Supply a required `label` and `options`, a readonly array of `{ value: string, label: string, disabled?: boolean }`. Values must identify options uniquely.
+
+`value` and `open` are bindable, defaulting to `''` and `false`. `onValueChange(value)` and `onOpenChange(open)` report changes. Optional props are `placeholder`, `helperText`, `error`, `invalid`, `disabled`, `required`, `name`, `id`, `class`, `testId`, `hideLabel`, and `aria-describedby`. `hideLabel` preserves the accessible name when the caller owns a visible caption; link any caller-owned description with `aria-describedby`. Error and helper text are linked automatically. This is a single-select control, not a native `<select>` or free-text combobox.
+
+```svelte
+<script lang="ts">
+  import Select from '@openforge-app/plugin-sdk/ui/Select.svelte'
+  let value = $state('paper')
+  const options = [{ value: 'paper', label: 'Paper' }, { value: 'ink', label: 'Ink' }]
+</script>
+<Select label="Preview palette" {options} bind:value />
+```
+
+The named button opens a portalled listbox. Arrow keys, Home/End, Enter, and Escape operate it; disabled options cannot be selected. Test the button name, listbox options and selected state, callback values, and retained trigger focus. Token-driven fields, focus, and overlay styling update without resetting `value`; reduced motion removes nonessential transitions.
+
+### `Tabs`
+
+Import `Tabs` from `@openforge-app/plugin-sdk/ui/Tabs.svelte`. Required props are `label` and `tabs`, a readonly array of `{ value: string, label: string, disabled?: boolean }`. Use unique values. Bind `value` or handle `onValueChange(value)`. Optional props are `orientation`, default `horizontal`, `activationMode`, default `automatic`, `loop`, default `true`, `disabled`, `fill`, `class`, and `testId`. Orientation also accepts `vertical`; activation mode also accepts `manual`. There are no color-variant props.
+
+```svelte
+<script lang="ts">
+  import Tabs from '@openforge-app/plugin-sdk/ui/Tabs.svelte'
+  let value = $state('preview')
+  const tabs = [{ value: 'preview', label: 'Preview' }, { value: 'notes', label: 'Notes' }]
+</script>
+<Tabs label="Theme example" {tabs} bind:value>
+  {#snippet children(active)}
+    {#if active === 'preview'}Preview content{:else}Author notes{/if}
+  {/snippet}
+</Tabs>
+```
+
+The component owns tablist/tab/panel relationships and keyboard focus. The `children(activeValue)` snippet owns content. Test selected and disabled semantics, arrow-key navigation, manual activation if used, and the content associated with each tab. Styling uses active theme tokens and respects reduced motion.
+
+### `AnchoredMenu`
+
+Import `AnchoredMenu` from `@openforge-app/plugin-sdk/ui/AnchoredMenu.svelte`. Required props are `label`, `items`, and a `trigger` snippet. Each item is `{ value: string, label: string, disabled?: boolean, danger?: boolean, checked?: boolean, closeOnSelect?: boolean }`. `checked` supplies checkbox-menu semantics; the caller updates checked state after `onSelect(value)`. `danger` is the destructive presentation variant. `closeOnSelect: false` keeps an action's menu open.
+
+Bind `open` or use `onOpenChange(open)`. Positioning props are `side`, one of `top`, `right`, `bottom`, `left`, default `bottom`; `align`, one of `start`, `center`, `end`, default `start`; and `sideOffset`, default `4`. Other props are `disabled`, `class`, `testId`, `ariaDescribedby`, and the optional `item(menuItem)` rendering snippet.
+
+```svelte
+<script lang="ts">
+  import AnchoredMenu from '@openforge-app/plugin-sdk/ui/AnchoredMenu.svelte'
+  const items = [{ value: 'copy', label: 'Copy theme ID' }]
+</script>
+<AnchoredMenu label="Theme actions" {items} onSelect={(value) => console.log(value)}>
+  {#snippet trigger()}Actions{/snippet}
+</AnchoredMenu>
+```
+
+The component renders the trigger button, so put text or an icon in `trigger`, not another button or link. Keep custom item content noninteractive and preserve its meaningful label. The menu owns keyboard navigation, disabled behavior, outside/Escape dismissal, and trigger focus restoration. Test actions by role and name, callback values, checkbox state, and focus after dismissal. Portalled styling uses theme surface, semantic danger, and focus tokens with reduced-motion behavior.
+
+### `Tooltip`
+
+Import `Tooltip` from `@openforge-app/plugin-sdk/ui/Tooltip.svelte`. Required props are `label`, `content`, and a `trigger` snippet. `label` names the button; `content` supplies its tooltip description. Do not put essential instructions only in a tooltip.
+
+Bind `open` or use `onOpenChange(open)`. Optional props are `disabled`, `delayDuration`, default `300` milliseconds, `side`, default `top`, `align`, default `center`, `sideOffset`, default `6`, `class`, and `testId`. Side and align accept the same values as `AnchoredMenu`. Trigger customization uses `triggerClass`, `triggerRole`, `triggerTabindex`, `triggerTitle`, and `triggerAriaDescribedby`; preserve keyboard access and correct semantics. `onTriggerClick(event)` and `onTriggerKeydown(event)` receive native events. There are no color variants.
+
+```svelte
+<script lang="ts">
+  import Tooltip from '@openforge-app/plugin-sdk/ui/Tooltip.svelte'
+</script>
+<Tooltip label="Theme help" content="Theme changes apply to all projects.">
+  {#snippet trigger()}Help{/snippet}
+</Tooltip>
+```
+
+The component owns a native button and a portalled text tooltip. The trigger snippet must not contain another interactive control. Focus or hover reveals the description; Escape dismisses it without moving focus. Test its accessible name and description, focus behavior, dismissal, and callbacks rather than implementation attributes. Appearance follows theme overlay and text tokens; reduced motion removes nonessential transitions.
 
 ### `Button`
 

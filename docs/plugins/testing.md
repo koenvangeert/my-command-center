@@ -155,6 +155,39 @@ it('rejects duplicate command registrations in the same namespace', async () => 
 })
 ```
 
+## Testing application themes
+
+Test at the public `openforge.themes.register` boundary. Activate the real frontend entry with `createOpenForgeRegistryFake({ pluginId, packageMetadata })`, where metadata declares `enablement: 'app'` and `requires: ['appEnablement', 'themes']`. Do not omit metadata, or the capability gate should reject registration. Use the complete palette from the [installable example](../../src/lib/plugin/fixtures/selected-theme/README.md), not placeholder values or a cast that hides missing tokens.
+
+Theme IDs use a colon, unlike command IDs. Assert `registry.snapshot.themes` contains `qualifiedId: 'selected-theme-fixture:paper'`, `appearance: 'light'`, and the expected palette. Calls are recorded in `registry.calls.themeRegistrations`. Call `registry.disposeAll()` and assert that no themes remain. Also cover missing capability, project enablement, duplicate local IDs, incomplete tokens, and invalid stylesheet paths when testing the contract itself.
+
+A registry fake does not load CSS, render settings, persist a host selection, or restart Electron. Use host integration tests for those boundaries. The existing suites are:
+
+```sh
+pnpm exec vitest run packages/plugin-sdk/src/testing.themes.test.ts src/lib/plugin/pluginRegistry.themeStylesheets.test.ts src/lib/themeStylesheetLifecycle.test.ts
+pnpm --filter @openforge-app/plugin-sdk check:entrypoints
+pnpm packages:metadata:check
+pnpm packages:contract:check
+pnpm packages:pack:dry-run
+```
+
+The published contract installs packed SDK artifacts into clean consumers, type-checks authoring fixtures, compiles public UI components, builds an external plugin, and checks the shared Svelte runtime. Build the actual plugin and inspect its package as well: `npm pack --dry-run` must include the frontend entry, imported local token files, ordinary view CSS, and every selected stylesheet. Installing does not build missing artifacts.
+
+Run the following in an isolated development or packaged Electron app. Use a disposable copy of the example for destructive failure cases, not a user's active plugin package.
+
+| Scenario | Required observations |
+| --- | --- |
+| Built-in light and dark | Select through settings; verify labels, focus, contrast, disabled states, dialogs and menus at normal and reduced desktop widths. |
+| Token-only contribution | Omit `stylesheets` in a copied example. Enabling lists the owned theme without changing selection. Selecting updates mounted controls without losing field state. |
+| Selected CSS contribution | All candidate files load before activation. Switching away removes selected CSS but keeps ordinary view CSS. |
+| Restart | The same qualified ID and presentation return after app-level activation. A missing saved ID falls back to built-in light and remains light after another restart. |
+| Reload and disable | Reinstall rebuilt artifacts before reload. Successful reload restores the selected contribution; disable removes it and its CSS and persists built-in light. |
+| Broken theme | Test invalid tokens, a missing CSS artifact, and valid but disruptive CSS separately. Validation/load failure must leave a valid theme. Recover from disruptive CSS through app-level CLI disable. |
+| Mounted consumers | Keep a terminal, diff, and Mermaid preview open across changes. Verify palette and explicit appearance, including a dark ID without `dark` and a light ID containing it. |
+| Keyboard and reduced motion | Use Tab, arrows, Enter, and Escape; verify focus remains visible and returns after overlays. Enable reduced motion and check computed transitions, not just screenshots. |
+
+Record app mode, revision, platform, commands, observed results, console errors, and artifact paths. Mark each unexercised case as unverified. Browser-only fixtures and jsdom-controlled stylesheet events are useful but do not satisfy the Electron release matrix.
+
 ## Lifecycle cleanup
 
 Registration methods return disposables. Plugin code should add those disposables to `context.subscriptions`; tests should call `registry.disposeAll()` to simulate deactivation and assert cleanup.
