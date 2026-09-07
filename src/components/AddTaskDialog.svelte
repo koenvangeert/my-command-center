@@ -1,13 +1,13 @@
 <script lang="ts">
   import { onMount, onDestroy, untrack } from 'svelte'
+  import { Info } from '@lucide/svelte'
   import { HIERARCHICAL_SETTINGS } from '../lib/hierarchicalSettings'
   import { activeProjectId } from '../lib/stores'
   import Modal from '@openforge-app/plugin-sdk/ui/Modal.svelte'
   import Button from '@openforge-app/plugin-sdk/ui/Button.svelte'
   import PromptInput from './prompt/PromptInput.svelte'
   import InjectionPointSlot from './plugin/InjectionPointSlot.svelte'
-  import CreateTaskEnvironment from './create-task/CreateTaskEnvironment.svelte'
-  import CreateTaskProgressiveSettings from './create-task/CreateTaskProgressiveSettings.svelte'
+  import CreateTaskProperties from './create-task/CreateTaskProperties.svelte'
   import CreateTaskPromptAttachments from './create-task/CreateTaskPromptAttachments.svelte'
   import type { InjectionPointLocation } from '@openforge-app/plugin-sdk'
 
@@ -70,7 +70,7 @@
 
 <Modal
   onClose={onClose}
-  maxWidth="720px"
+  maxWidth={mode === 'create' ? '900px' : '720px'}
   overflowVisible
   initialFocus="textarea"
   ariaLabel={dialogTitle}
@@ -101,58 +101,70 @@
     {#if view.savedTaskId}
       <p>Task {view.savedTaskId} is saved. Retrying will continue with this task, not create another.</p>
     {:else}
-      <InjectionPointSlot
-        location={injectionLocation}
-        projectId={$activeProjectId}
-        taskId={mode === 'edit' && task ? task.id : null}
-        onInsert={(text) => {
-          injectableInsertRequest = { id: nextInjectableInsertRequestId, text }
-          nextInjectableInsertRequestId += 1
-        }}
-      />
-      <label class="mb-2 block text-sm font-semibold text-[var(--of-text)]" for="create-task-prompt">What should the agent do?</label>
-      <div class="create-task-prompt-frame relative overflow-visible">
-        {#key view.promptRevision}
-          <PromptInput
-            bind:this={promptEditor}
-            projectId={$activeProjectId || ''}
-            value={view.initialPrompt}
-            textareaId="create-task-prompt"
-            ariaLabel="What should the agent do?"
-            rows={8}
-            textareaClass="p-4 pb-9 text-sm leading-relaxed"
-            textareaStyle="height: 12rem; max-height: 12rem; overflow-y: auto; outline: none;"
-            maxLength={10000}
-            placeholder="Describe the outcome you want…"
-            autofocus={false}
-            commandTrigger={view.draft.aiProvider === 'codex' ? 'dollar' : 'slash'}
-            onTextChange={(prompt) => workflow.attachments.syncWithPrompt(prompt)}
-            onPasteImage={(blob) => workflow.attachments.attachImage(blob)}
-            onImageMarkerClick={(marker) => workflow.attachments.openPreview(marker)}
-            imageMarkerInsertRequest={workflow.attachments.state.insertRequest}
-            injectableInsertRequest={injectableInsertRequest}
-            onSubmit={(prompt) => workflow.submit(mode === 'create' ? 'start' : 'backlog', prompt)}
-            onValueChange={(value) => { view.promptDraft = value }}
-            onCancel={() => onClose?.()}
-          />
-        {/key}
-        <span class="pointer-events-none absolute bottom-3 right-4 text-xs tabular-nums text-[var(--of-text-muted)]">{view.promptDraft.length.toLocaleString()} / 10,000</span>
-      </div>
-      <p class="mt-2 text-xs text-[var(--of-text-secondary)]">Be specific about the goal, constraints, and relevant context.</p>
+      <div class={mode === 'create' ? 'create-task-layout' : undefined}>
+        <div class="create-task-main">
+          <label class="mb-2 block text-sm font-semibold text-[var(--of-text)]" for="create-task-prompt">What should the agent do?</label>
+          <div class="create-task-prompt-frame relative overflow-visible">
+            {#key view.promptRevision}
+              <PromptInput
+                bind:this={promptEditor}
+                projectId={$activeProjectId || ''}
+                value={view.initialPrompt}
+                textareaId="create-task-prompt"
+                ariaLabel="What should the agent do?"
+                rows={8}
+                textareaClass="p-4 pb-9 text-sm leading-relaxed"
+                textareaStyle="height: 12rem; max-height: 12rem; overflow-y: auto; outline: none;"
+                maxLength={10000}
+                placeholder="Describe the outcome you want…"
+                autofocus={false}
+                commandTrigger={view.draft.aiProvider === 'codex' ? 'dollar' : 'slash'}
+                onTextChange={(prompt) => workflow.attachments.syncWithPrompt(prompt)}
+                onPasteImage={(blob) => workflow.attachments.attachImage(blob)}
+                onImageMarkerClick={(marker) => workflow.attachments.openPreview(marker)}
+                imageMarkerInsertRequest={workflow.attachments.state.insertRequest}
+                injectableInsertRequest={injectableInsertRequest}
+                onSubmit={(prompt) => workflow.submit(mode === 'create' ? 'start' : 'backlog', prompt)}
+                onValueChange={(value) => { view.promptDraft = value }}
+                onCancel={() => onClose?.()}
+              />
+            {/key}
+            <span class="pointer-events-none absolute bottom-3 right-4 text-xs tabular-nums text-[var(--of-text-muted)]">{view.promptDraft.length.toLocaleString()} / 10,000</span>
+          </div>
+          <p class="mt-2 text-xs text-[var(--of-text-secondary)]">Be specific about the goal, constraints, and relevant context.</p>
 
-      <div class="flex flex-col gap-2 pb-4">
-        <CreateTaskPromptAttachments
-          attachments={workflow.attachments}
-          onTranscription={(text) => promptEditor?.insertText(text)}
-        />
+          <CreateTaskPromptAttachments
+            attachments={workflow.attachments}
+            onTranscription={(text) => promptEditor?.insertText(text)}
+          >
+            {#snippet leading()}
+              <InjectionPointSlot
+                location={injectionLocation}
+                projectId={$activeProjectId}
+                taskId={mode === 'edit' && task ? task.id : null}
+                onInsert={(text) => {
+                  injectableInsertRequest = { id: nextInjectableInsertRequestId, text }
+                  nextInjectableInsertRequestId += 1
+                }}
+              />
+            {/snippet}
+          </CreateTaskPromptAttachments>
+
+          {#if mode === 'create'}
+            <div class="create-task-note">
+              <Info size={15} class="mt-0.5 shrink-0" aria-hidden="true" />
+              <span>You can refine details after starting. The agent will confirm the plan before making changes.</span>
+            </div>
+          {/if}
+        </div>
+
         {#if mode === 'create'}
-          <CreateTaskEnvironment
+          <CreateTaskProperties
             bind:draft={view.draft}
             worktreeAllowed={view.worktreeAllowed}
             branchList={view.branchList}
             {aiProviderOptions}
           />
-          <CreateTaskProgressiveSettings bind:draft={view.draft} />
         {/if}
       </div>
     {/if}
@@ -207,6 +219,35 @@
 </Modal>
 
 <style>
+  .create-task-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 20rem;
+    gap: var(--of-space6);
+    align-items: start;
+  }
+
+  .create-task-main {
+    min-width: 0;
+  }
+
+  .create-task-note {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--of-space2);
+    margin-top: var(--of-space5);
+    padding: var(--of-space4);
+    border-radius: var(--of-radius-container);
+    background: var(--of-surface-subtle);
+    color: var(--of-text-muted);
+    font-size: var(--of-text-xs);
+  }
+
+  @media (max-width: 48rem) {
+    .create-task-layout {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
   .create-task-prompt-frame {
     border: var(--of-border-width) solid var(--of-border-interactive);
     border-radius: var(--of-radius-container);

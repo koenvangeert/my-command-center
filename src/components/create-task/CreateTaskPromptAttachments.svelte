@@ -1,13 +1,15 @@
 <script lang="ts">
   import { ImagePlus } from '@lucide/svelte'
+  import type { Snippet } from 'svelte'
   import Button from '@openforge-app/plugin-sdk/ui/Button.svelte'
   import Modal from '@openforge-app/plugin-sdk/ui/Modal.svelte'
   import VoiceInput from '../shared/adapters/VoiceInput.svelte'
   import type { TaskCreationAttachments } from './taskCreationAttachments.svelte'
 
-  let { attachments, onTranscription }: {
+  let { attachments, onTranscription, leading }: {
     attachments: TaskCreationAttachments
     onTranscription: (text: string) => void
+    leading?: Snippet
   } = $props()
 
   const pastedImageSummary = $derived(
@@ -23,6 +25,7 @@
 
 <div>
   <div class="flex items-center gap-3 py-4">
+    {@render leading?.()}
     <Button
       type="button"
       variant="outline"

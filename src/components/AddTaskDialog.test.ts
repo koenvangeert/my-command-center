@@ -86,8 +86,10 @@ function stubBranchListNeverResolves() {
   vi.mocked(listGitBranches).mockReturnValue(new Promise(() => {}))
 }
 
+// Environment controls now render inline in the properties rail; this waits for
+// them to be present (defaults resolved) rather than opening a disclosure.
 async function expandEnvironment() {
-  await fireEvent.click(await screen.findByRole('button', { name: 'Edit environment' }))
+  await screen.findByRole('button', { name: 'Provider' })
 }
 
 function setClipboardRead(read: () => Promise<Array<{ types: string[], getType: (type: string) => Promise<Blob> }>>) {
@@ -375,7 +377,6 @@ describe('AddTaskDialog', () => {
     const worktreeToggle = await screen.findByLabelText('Worktree') as HTMLInputElement
     expect(worktreeToggle.checked).toBe(false)
     expect(screen.getAllByText('Project directory').length).toBeGreaterThan(0)
-    expect(screen.getByText('default permissions')).toBeTruthy()
 
     const textbox = await findPromptTextbox()
     await fireEvent.input(textbox, { target: { value: 'Default project-directory task' } })
@@ -434,7 +435,6 @@ describe('AddTaskDialog', () => {
     await fireEvent.click(screen.getByRole('combobox', { name: 'Branch' }))
     await fireEvent.click(await screen.findByRole('option', { name: /^feature\/open-pr/ }))
     expect(screen.getByRole('group', { name: 'Environment summary: Worktree, feature/open-pr, default permissions' })).toBeTruthy()
-    expect(screen.getByText('default permissions')).toBeTruthy()
 
     const textbox = await findPromptTextbox()
     await fireEvent.input(textbox, { target: { value: 'Continue PR work' } })
@@ -466,7 +466,6 @@ describe('AddTaskDialog', () => {
     await expandEnvironment()
     await fireEvent.click(await screen.findByLabelText('Worktree'))
     expect(screen.getByRole('group', { name: 'Environment summary: Project directory, latest main, default permissions' })).toBeTruthy()
-    expect(screen.getByText('default permissions')).toBeTruthy()
     expect(screen.queryByLabelText('New branch from latest main')).toBeNull()
     expect(screen.queryByLabelText('Existing branch')).toBeNull()
 
@@ -645,6 +644,25 @@ describe('AddTaskDialog', () => {
 
     await waitFor(() => {
       expect(createTask).toHaveBeenCalledWith('Untitled body', 'backlog', 'test-project-id', 'default', DEFAULT_WORKTREE_OPTIONS)
+    })
+  })
+
+  it('clears the title and enables AI naming when AI-generated is selected', async () => {
+    render(AddTaskDialog, { props: { mode: 'create' } })
+
+    const textbox = await findPromptTextbox()
+    const titleInput = screen.getByLabelText('Task title') as HTMLInputElement
+    await fireEvent.input(titleInput, { target: { value: 'Typed then abandoned' } })
+    await fireEvent.click(screen.getByLabelText('AI-generated title'))
+    await waitFor(() => expect(screen.queryByLabelText('Task title')).toBeNull())
+    await fireEvent.input(textbox, { target: { value: 'Let the agent name it' } })
+    await clickAddToBacklogFromMore()
+
+    await waitFor(() => {
+      expect(createTask).toHaveBeenCalledWith('Let the agent name it', 'backlog', 'test-project-id', 'default', {
+        ...DEFAULT_WORKTREE_OPTIONS,
+        taskDisplayTitleUpdatesEnabled: true,
+      })
     })
   })
 
@@ -939,7 +957,7 @@ describe('AddTaskDialog', () => {
     await fireEvent.keyDown(select, { key: 'ArrowDown' })
     await fireEvent.keyDown(select, { key: 'ArrowDown' })
     await fireEvent.keyDown(select, { key: 'Enter' })
-    expect(screen.getByText('autorun')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Mode' }).textContent).toContain('Autorun')
     await fireEvent.input(textbox, { target: { value: 'Task with autorun' } })
     await clickAddToBacklogFromMore()
 
@@ -977,9 +995,9 @@ describe('AddTaskDialog', () => {
     const textbox = await findPromptTextbox()
 
     await waitFor(() => {
-      expect(screen.queryByRole('button', { name: 'Provider' })).toBeNull()
-      expect(screen.queryByRole('button', { name: 'Mode' })).toBeNull()
+      expect(screen.getByRole('button', { name: 'Provider' })).toBeTruthy()
     })
+    expect(screen.queryByRole('button', { name: 'Mode' })).toBeNull()
 
     await fireEvent.input(textbox, { target: { value: 'Task for default agent' } })
     await fireEvent.click(await screen.findByRole('button', { name: /Start Task/ }))

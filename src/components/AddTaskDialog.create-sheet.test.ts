@@ -70,45 +70,49 @@ describe('Create Task sheet', () => {
     expect(onClose).toHaveBeenCalledOnce()
   })
 
-  it('collapses environment controls behind a semantic summary', async () => {
+  it('lays out environment controls inline with a semantic summary', async () => {
     render(AddTaskDialog, { props: { mode: 'create', projectPath: '/repo' } })
     await findPromptTextbox()
 
-    expect(screen.getByRole('button', { name: 'Edit environment' })).toBeTruthy()
     expect(screen.getByRole('group', { name: 'Environment summary: Worktree, latest main, default permissions' })).toBeTruthy()
-    expect(screen.queryByLabelText('Worktree')).toBeNull()
-    expect(screen.queryByLabelText('New branch from latest main')).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Provider' })).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Mode' })).toBeNull()
+    expect(await screen.findByRole('button', { name: 'Provider' })).toBeTruthy()
+    expect(screen.getByLabelText('Worktree')).toBeTruthy()
+    expect(screen.getByLabelText('New branch from latest main')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Edit environment' })).toBeNull()
   })
 
-  it('keeps optional settings progressively disclosed', async () => {
+  it('shows the permission mode control for Claude Code', async () => {
     render(AddTaskDialog, { props: { mode: 'create', projectPath: '/repo' } })
     await findPromptTextbox()
 
-    const titleSection = screen.getByText('Title and source ticket').closest('details')
-    const advancedSection = screen.getByText('Advanced settings').closest('details')
-    expect(titleSection?.open).toBe(false)
-    expect(advancedSection?.open).toBe(false)
+    expect(await screen.findByRole('button', { name: 'Mode' })).toBeTruthy()
+  })
 
-    await fireEvent.click(screen.getByText('Title and source ticket'))
-    await fireEvent.click(screen.getByText('Advanced settings'))
+  it('lays out the title and source ticket fields without progressive disclosure', async () => {
+    render(AddTaskDialog, { props: { mode: 'create', projectPath: '/repo' } })
+    await findPromptTextbox()
 
-    expect(titleSection?.open).toBe(true)
-    expect(advancedSection?.open).toBe(true)
+    expect(screen.queryByText('Title and source ticket')).toBeNull()
+    expect(screen.queryByText('Advanced settings')).toBeNull()
+    expect(screen.getByLabelText('Custom title')).toBeTruthy()
+    expect(screen.getByLabelText('AI-generated title')).toBeTruthy()
     expect(screen.getByLabelText('Task title')).toBeTruthy()
     expect(screen.getByLabelText('Source ticket link')).toBeTruthy()
-    expect(screen.queryByLabelText('Code cleanup tasks')).toBeNull()
   })
 
-  it('expands environment controls from the Edit action', async () => {
+  it('defaults the title to custom and hides the manual field when AI-generated is chosen', async () => {
     render(AddTaskDialog, { props: { mode: 'create', projectPath: '/repo' } })
     await findPromptTextbox()
 
-    expect(screen.queryByLabelText('Worktree')).toBeNull()
-    await fireEvent.click(screen.getByRole('button', { name: 'Edit environment' }))
+    const custom = screen.getByLabelText('Custom title') as HTMLInputElement
+    const ai = screen.getByLabelText('AI-generated title') as HTMLInputElement
+    expect(custom.checked).toBe(true)
+    expect(ai.checked).toBe(false)
+    expect(screen.getByLabelText('Task title')).toBeTruthy()
 
-    await waitFor(() => expect(screen.getByLabelText('Worktree')).toBeTruthy())
-    expect(screen.getByLabelText('New branch from latest main')).toBeTruthy()
+    await fireEvent.click(ai)
+
+    await waitFor(() => expect(screen.queryByLabelText('Task title')).toBeNull())
+    expect(screen.getByText('The agent names this task and keeps it updated as work progresses.')).toBeTruthy()
   })
 })

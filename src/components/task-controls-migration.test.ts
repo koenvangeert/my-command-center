@@ -3,8 +3,7 @@ import { describe, expect, it } from 'vitest'
 
 const MIGRATED_TASK_CONTROL_FILES = [
   './AddTaskDialog.svelte',
-  './create-task/CreateTaskEnvironment.svelte',
-  './create-task/CreateTaskProgressiveSettings.svelte',
+  './create-task/CreateTaskProperties.svelte',
   './create-task/CreateTaskPromptAttachments.svelte',
   './focus-board/BacklogLabelFilterDropdown.svelte',
   './focus-board/BacklogReadyFilterToggle.svelte',
@@ -19,8 +18,7 @@ const MIGRATED_TASK_CONTROL_FILES = [
 
 const EXPECTED_PUBLIC_CONTROLS = {
   './AddTaskDialog.svelte': ['Button', 'Modal'],
-  './create-task/CreateTaskEnvironment.svelte': ['Button', 'Panel', 'SearchableSelect', 'Select', 'Switch'],
-  './create-task/CreateTaskProgressiveSettings.svelte': ['Switch', 'TextField'],
+  './create-task/CreateTaskProperties.svelte': ['Badge', 'SearchableSelect', 'Select', 'Switch', 'TextField'],
   './create-task/CreateTaskPromptAttachments.svelte': ['Button', 'Modal'],
   './focus-board/BacklogLabelFilterDropdown.svelte': ['AnchoredMenu'],
   './focus-board/BacklogReadyFilterToggle.svelte': ['Button'],
@@ -33,7 +31,7 @@ const EXPECTED_PUBLIC_CONTROLS = {
 } as const
 
 const ALLOWED_NATIVE_CONTROL_COUNTS = new Map<string, number>([
-  ['./create-task/CreateTaskEnvironment.svelte', 2], // Worktree source radios.
+  ['./create-task/CreateTaskProperties.svelte', 4], // Title-mode + worktree-source segmented radios.
   ['./focus-board/BoardTextFilter.svelte', 1], // Feature-owned inline search interaction.
   ['./focus-board/TaskListItem.svelte', 1], // Feature-owned inline title rename.
 ])

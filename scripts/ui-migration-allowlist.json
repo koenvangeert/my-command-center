@@ -254,7 +254,8 @@
     {"tag":"span","context":"class=\"block max-w-56 truncate text-sm font-medium text-[var(--of-text)]\"","tokens":["max-w-56"],"count":1,"reason":"Reserve the metadata, status glyph or alignment column without sizing a shared control."},
     {"tag":"div","context":"class=\"max-h-[calc(90vh-4rem)] overflow-y-auto p-6\"","tokens":["max-h-[calc(90vh-4rem)]"],"count":1,"reason":"Feature pane, header, divider or content viewport geometry; not shared control sizing."},
     {"tag":"div","context":"class=\"flex min-w-0 items-center gap-3\"","tokens":["min-w-0"],"count":1,"reason":"Let this flex/grid child shrink and scroll rather than overflow its feature pane."},
-    {"tag":"Button","context":"class=\"min-w-36\"","tokens":["min-w-36"],"count":1,"reason":"Feature-specific control/content width within this row; height and corners remain token-owned."}
+    {"tag":"Button","context":"class=\"min-w-36\"","tokens":["min-w-36"],"count":1,"reason":"Feature-specific control/content width within this row; height and corners remain token-owned."},
+    {"tag":"style","context":".create-task-main","tokens":["min-width: 0"],"count":1,"reason":"Let the two-column create-task layout's prompt column shrink instead of overflowing the dialog."}
   ],
   "src/components/attention/AttentionOverviewDialog.svelte": [
     {"tag":"Modal","context":"boxClass=\"h-[calc(100vh-2rem)] max-h-[calc(100vh-2rem)]!\"","tokens":["h-[calc(100vh-2rem)]","max-h-[calc(100vh-2rem)]!"],"count":1,"reason":"Feature-owned overlay/list viewport bounds; the SDK owns control and overlay corners."},
@@ -271,13 +272,10 @@
     {"tag":"span","context":"class=\"min-w-0 flex-1 truncate text-sm text-base-content\"","tokens":["min-w-0"],"count":1,"reason":"Let this flex/grid child shrink and scroll rather than overflow its feature pane."},
     {"tag":"span","context":"class=\"w-4 grid place-items-center shrink-0 text-error\"","tokens":["w-4"],"count":1,"reason":"Reserve the metadata, status glyph or alignment column without sizing a shared control."}
   ],
-  "src/components/create-task/CreateTaskEnvironment.svelte": [
+  "src/components/create-task/CreateTaskProperties.svelte": [
     {"tag":"style","context":".branch-placeholder","tokens":["min-width: 0"],"count":1,"reason":"Let this flex/grid child shrink and scroll rather than overflow its feature pane."},
-    {"tag":"div","context":"class=\"flex min-w-0 items-start gap-3\"","tokens":["min-w-0"],"count":3,"reason":"Let this flex/grid child shrink and scroll rather than overflow its feature pane."},
-    {"tag":"div","context":"class=\"min-w-0\"","tokens":["min-w-0"],"count":4,"reason":"Let this flex/grid child shrink and scroll rather than overflow its feature pane."},
-    {"tag":"div","context":"class=\"min-w-0 space-y-2\"","tokens":["min-w-0"],"count":1,"reason":"Let this flex/grid child shrink and scroll rather than overflow its feature pane."},
-    {"tag":"div","context":"class=\"flex min-h-7 items-center justify-between gap-3\"","tokens":["min-h-7"],"count":1,"reason":"Feature pane, header, divider or content viewport geometry; not shared control sizing."},
-    {"tag":"div","context":"class=\"grid min-w-0 grid-cols-2\"","tokens":["min-w-0"],"count":1,"reason":"Let this flex/grid child shrink and scroll rather than overflow its feature pane."}
+    {"tag":"div","context":"class=\"grid min-w-0 grid-cols-2\"","tokens":["min-w-0"],"count":2,"reason":"Let the title-mode and worktree-source segmented groups shrink rather than overflow the properties rail."},
+    {"tag":"div","context":"class=\"flex min-h-7 items-center justify-between gap-3\"","tokens":["min-h-7"],"count":1,"reason":"Feature pane, header, divider or content viewport geometry; not shared control sizing."}
   ],
   "src/components/create-task/CreateTaskPromptAttachments.svelte": [
     {"tag":"img","context":"class=\"max-h-[70vh] w-full rounded-[var(--of-radius-container)] border border-[var(--of-border)] bg-[var(--of-surface-subtle)] object-contain\"","tokens":["max-h-[70vh]"],"count":1,"reason":"Bound the media preview to its available viewport while preserving aspect ratio."}
