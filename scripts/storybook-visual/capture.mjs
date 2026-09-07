@@ -36,6 +36,9 @@ export async function capture(browser, url, entry, { mutate, timeout = 30000 } =
     await page.clock.setFixedTime(new Date('2026-01-02T09:30:00.000Z'))
     await page.goto(`${url}/${entry.catalog}/iframe.html?id=${entry.story}&viewMode=story&globals=openforgeTheme:${entry.theme}`, { waitUntil: 'networkidle', timeout })
     try {
+      // A ready selector can match the initial state before the play function edits it.
+      // Storybook 10's pinned preview exposes the terminal render phase here.
+      await page.waitForFunction(() => window.__STORYBOOK_PREVIEW__?.currentRender?.phase === 'finished')
       await page.locator(entry.ready).first().waitFor({ state: 'visible' })
       await page.evaluate(() => document.fonts.ready)
       await page.waitForFunction(() => document.fonts.check('14px Inter'))

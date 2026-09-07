@@ -47,7 +47,8 @@
       <Button
         type="button"
         data-settings-category
-        variant={activeId === category.id ? 'secondary' : category.danger ? 'danger' : 'ghost'}
+        variant="ghost"
+        data-danger={category.danger || undefined}
         class="settings-category-button w-full text-left"
         size="sm"
         aria-current={activeId === category.id ? 'page' : undefined}
@@ -69,5 +70,19 @@
     justify-content: flex-start;
     gap: var(--of-space2);
     min-width: 0;
+    font-weight: var(--of-weight-regular);
+    color: var(--of-text-muted);
+  }
+
+  nav :global(button.settings-category-button[aria-current='page']),
+  nav :global(button.settings-category-button[aria-current='page']:hover) {
+    background: var(--of-accent-subtle);
+    color: var(--of-text);
+    font-weight: var(--of-weight-medium);
+  }
+
+  nav :global(button.settings-category-button[data-danger]),
+  nav :global(button.settings-category-button[data-danger]:hover) {
+    color: var(--of-danger);
   }
 </style>

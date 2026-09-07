@@ -13,7 +13,9 @@ export type StoryDesktopResponse = unknown | ((payload: unknown) => unknown | Pr
 export interface StoryDesktopDefinition {
   responses?: Readonly<Record<string, StoryDesktopResponse>>
   deferred?: readonly string[]
-  failures?: Readonly<Record<string, string>>
+  failures?: Readonly<Record<string, string | ((payload: unknown) => string | undefined)>>
+  /** Sidecar-style string rejections keep declared UI diagnostics deterministic. */
+  failureMode?: 'error' | 'message'
   config?: Readonly<Record<string, string>>
   projectConfig?: Readonly<Record<string, Readonly<Record<string, string>>>>
   files?: Readonly<Record<string, FileContent>>
@@ -113,8 +115,10 @@ export function createStoryDesktopAdapter(
       })
     }
 
-    const failure = failures[command]
+    const declaredFailure = failures[command]
+    const failure = typeof declaredFailure === 'function' ? declaredFailure(copy(payload)) : declaredFailure
     if (failure !== undefined) {
+      if (definition.failureMode === 'message') throw failure
       const error = new Error(failure)
       // Intentional fixture failures have stable diagnostics across ports and built asset names.
       // Unexpected failures retain their full stacks.
@@ -226,7 +230,7 @@ export function createStoryDesktopAdapter(
     installed = false
   }
 
-  return Object.freeze({ bridge, calls, install, reset, emit, defer, release, dispose })
+  return Object.freeze({ bridge, calls, install, settle: drainPending, reset, emit, defer, release, dispose })
 }
 
 function readFixture<T>(fixtures: Map<string, T>, key: string): T {

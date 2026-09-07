@@ -55,6 +55,25 @@ class MockWorker {
 
 globalThis.Worker = MockWorker as unknown as typeof Worker
 
+// jsdom cannot emulate media preferences or SMIL. Test motion behavior in Chromium.
+if (typeof window !== 'undefined' && !window.matchMedia) {
+  window.matchMedia = (media) => ({
+    media,
+    matches: false,
+    onchange: null,
+    addListener() {},
+    removeListener() {},
+    addEventListener() {},
+    removeEventListener() {},
+    dispatchEvent() { return true },
+  })
+}
+
+if (typeof SVGSVGElement !== 'undefined') {
+  SVGSVGElement.prototype.pauseAnimations = () => {}
+  SVGSVGElement.prototype.unpauseAnimations = () => {}
+}
+
 if (typeof HTMLCanvasElement !== 'undefined') {
   Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
     value: function getContext(this: HTMLCanvasElement, contextId: string) {

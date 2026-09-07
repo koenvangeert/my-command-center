@@ -1,4 +1,5 @@
 import { createTrackedDebouncedSave } from '../../lib/createTrackedDebouncedSave'
+import { trackSettingsSave } from '../../lib/settingsSaveLifecycle'
 import { saveGlobalSettings, saveProjectSettings } from '../../lib/settingsSaver'
 import type { GlobalSettingsSavePayload, ProjectSettingsSavePayload } from '../../lib/settingsSaver'
 
@@ -26,6 +27,7 @@ export function createSettingsPersistenceController(options: SettingsPersistence
   let pendingProjectSave: ProjectSettingsSavePayload | null = null
   let pendingGlobalSave: GlobalSettingsSavePayload | null = null
   let savedStatusTimer: ReturnType<typeof setTimeout> | null = null
+  let destroyed = false
 
   const trackedSave = createTrackedDebouncedSave({
     delayMs: options.delayMs,
@@ -43,7 +45,7 @@ export function createSettingsPersistenceController(options: SettingsPersistence
     saved = false
     saveError = null
     saveStatus = 'dirty'
-    void trackedSave.schedule().catch(() => {})
+    void trackSettingsSave(trackedSave.schedule()).catch(() => {})
   }
 
   function scheduleProject(payload: ProjectSettingsSavePayload): void {
@@ -77,7 +79,7 @@ export function createSettingsPersistenceController(options: SettingsPersistence
       }
       saved = true
       saveStatus = 'saved'
-      savedStatusTimer = setTimeout(() => {
+      if (!destroyed) savedStatusTimer = setTimeout(() => {
         saved = false
         if (saveStatus === 'saved') saveStatus = 'idle'
         savedStatusTimer = null
@@ -101,12 +103,13 @@ export function createSettingsPersistenceController(options: SettingsPersistence
       pendingProjectSave = fallbackProjectPayload
     }
     if (!pendingProjectSave && !pendingGlobalSave) return Promise.resolve()
-    return trackedSave.runImmediately()
+    return trackSettingsSave(trackedSave.runImmediately())
   }
 
   function destroy(): void {
+    destroyed = true
     clearSavedStatusTimer()
-    void trackedSave.flush().catch(() => {})
+    void trackSettingsSave(trackedSave.flush()).catch(() => {})
   }
 
   return {
