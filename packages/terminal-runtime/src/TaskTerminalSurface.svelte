@@ -109,7 +109,7 @@
   <p id={focusDescriptionId} class="sr-only">{TERMINAL_FOCUS_DESCRIPTION_TEXT}</p>
   <!-- svelte-ignore a11y_no_noninteractive_tabindex (terminal regions are intentionally keyboard-focusable landmarks) -->
   <div
-    class="flex-1 overflow-hidden min-h-0 relative rounded-[var(--of-radius-container)] focus-within:ring-2 focus-within:ring-primary focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
+    class="flex-1 overflow-hidden min-h-0 relative outline-none focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-primary focus-visible:-outline-offset-2"
     role="region"
     tabindex="0"
     aria-label={terminalRegionLabel}
