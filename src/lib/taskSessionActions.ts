@@ -6,6 +6,8 @@ import {
   activeSessions,
   error,
   startingTasks,
+  taskStartErrors,
+  taskDetailsById,
   taskRuntimeInfo,
   tasks,
 } from './stores'
@@ -33,19 +35,22 @@ function setError(errorValue: unknown): void {
   error.set(String(errorValue))
 }
 
+function clearStartError(taskId: string): void {
+  taskStartErrors.update(errors => {
+    const next = new Map(errors)
+    next.delete(taskId)
+    return next
+  })
+}
+
 export function createTaskSessionActions(options: TaskSessionActionOptions) {
   async function runAction(data: RunActionData): Promise<{ error: unknown } | undefined> {
-    const activeProject = options.getActiveProject()
-    if (!activeProject) {
-      error.set('No active project selected')
-      return { error: new Error('No active project selected') }
-    }
-
     const { taskId, actionPrompt, promptPrefix = null } = data
 
     if (agentTerminalSessions.isPtyActive(taskId)) {
+      clearStartError(taskId)
       try {
-        await writePtyWithSubmit(taskId, actionPrompt)
+        if (actionPrompt.trim()) await writePtyWithSubmit(taskId, actionPrompt)
         agentTerminalSessions.focusTerminal(taskId)
       } catch (errorValue) {
         options.logError('[session] Failed to write action to PTY:', errorValue)
@@ -54,29 +59,26 @@ export function createTaskSessionActions(options: TaskSessionActionOptions) {
       }
       return
     }
-
-    let resolution: DivergenceResolution | undefined
-    try {
-      const task = get(tasks).find((candidate) => candidate.id === taskId)
-      if (task) {
-        const outcome = await resolveBranchStart(task, activeProject.path)
-        if (!outcome.start) {
-          return { error: new Error('Task start was canceled.') }
-        }
-        resolution = outcome.resolution
-      }
-    } catch (errorValue) {
-      options.logError('[session] Failed to inspect existing branch before start:', errorValue)
-      setError(errorValue)
-      return { error: errorValue }
+    if (get(startingTasks).has(taskId)) return
+    if (!actionPrompt.trim() && get(activeSessions).get(taskId)?.status === 'running') {
+      clearStartError(taskId)
+      return
     }
 
-    const starting = new Set(get(startingTasks))
-    starting.add(taskId)
-    startingTasks.set(starting)
-
+    startingTasks.update(starting => new Set(starting).add(taskId))
+    clearStartError(taskId)
     let releaseTerminalOnStartFailure = false
     try {
+      const activeProject = options.getActiveProject()
+      if (!activeProject) throw new Error('No active project selected')
+      const task = get(taskDetailsById).get(taskId) ?? get(tasks).find(candidate => candidate.id === taskId)
+      let resolution: DivergenceResolution | undefined
+      if (task) {
+        const outcome = await resolveBranchStart(task, activeProject.path)
+        if (!outcome.start) throw new Error('Task start was canceled.')
+        resolution = outcome.resolution
+      }
+
       let terminalImageProtocol = null
       try {
         const terminalAlreadyExists = agentTerminalSessions.hasTerminal(taskId)
@@ -97,9 +99,7 @@ export function createTaskSessionActions(options: TaskSessionActionOptions) {
       )
       releaseTerminalOnStartFailure = false
       const updatedRuntimeInfo = new Map(get(taskRuntimeInfo))
-      updatedRuntimeInfo.set(taskId, {
-        workspacePath: result.workspace_path,
-      })
+      updatedRuntimeInfo.set(taskId, { workspacePath: result.workspace_path })
       taskRuntimeInfo.set(updatedRuntimeInfo)
 
       try {
@@ -115,8 +115,7 @@ export function createTaskSessionActions(options: TaskSessionActionOptions) {
         await options.loadTasks()
         agentTerminalSessions.focusTerminal(taskId)
       } catch (refreshError) {
-        // The implementation is running. Do not offer to start it again merely
-        // because refreshing the board or focusing its terminal failed.
+        // Startup succeeded. A refresh or presentation failure must not offer a second start.
         options.logError('[session] Failed to refresh task after start:', refreshError)
         setError(refreshError)
       }
@@ -124,11 +123,14 @@ export function createTaskSessionActions(options: TaskSessionActionOptions) {
       if (releaseTerminalOnStartFailure) agentTerminalSessions.release(taskId)
       options.logError('[session] Failed to start task:', errorValue)
       setError(errorValue)
+      taskStartErrors.update(errors => new Map(errors).set(taskId, String(errorValue)))
       return { error: errorValue }
     } finally {
-      const next = new Set(get(startingTasks))
-      next.delete(taskId)
-      startingTasks.set(next)
+      startingTasks.update(starting => {
+        const next = new Set(starting)
+        next.delete(taskId)
+        return next
+      })
     }
   }
 
@@ -136,21 +138,15 @@ export function createTaskSessionActions(options: TaskSessionActionOptions) {
     await runAction(data)
   }
 
-  /** For workflows that must remain open and retry when starting fails. */
+  /** For callers that need the start outcome in addition to task-page feedback. */
   async function runActionOrThrow(data: RunActionData): Promise<void> {
     const failure = await runAction(data)
     if (failure) throw failure.error
   }
 
   async function deleteTaskAndReload(taskId: string): Promise<void> {
-    if (await runCompleteTask(taskId)) {
-      await options.loadTasks()
-    }
+    if (await runCompleteTask(taskId)) await options.loadTasks()
   }
 
-  return {
-    handleRunAction,
-    runActionOrThrow,
-    deleteTaskAndReload,
-  }
+  return { handleRunAction, runActionOrThrow, deleteTaskAndReload }
 }

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { cacheTaskRead } from './lib/tasksState'
   import { onMount, onDestroy } from 'svelte'
   import { get } from 'svelte/store'
   import { tasks, taskDetailsById, dependencyReferenceTasks, pendingTask, selectedTaskId, activeSessions, ticketPrs, taskAttentionRows, taskAttentionLoaded, isLoading, projects, activeProjectId, currentView, reviewRequestCount, activeRepoReviewRequestCount, activeProjectAttentionCount, projectAttention, focusBoardFilters, outOfFocusTaskIdsByProject, sidebarPluginViewKeys, taskActiveView } from './lib/stores'
@@ -121,7 +122,9 @@
     loadTasks: appData.loadTasks,
     resetToBoard: () => { router.resetToBoard() },
     navigateToTask: (taskId) => { router.navigateToTask(taskId) },
-    runAction: taskActions.runActionOrThrow,
+    publishTask: (task) => { cacheTaskRead(task.projectId, { task, related: [] }) },
+    runAction: taskActions.handleRunAction,
+    reportError: (value) => { console.error('[task creation] Follow-up failed:', value) },
   })
   const navigation = createAppNavigationController({
     router,

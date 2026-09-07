@@ -1,20 +1,18 @@
 import type { TaskDetail } from './types'
 import type { RunActionData } from './taskActionRunner'
-import type { TaskComposeResult } from './taskCompose'
-import { settleTaskCompose } from './taskCompose'
 
 interface AppTaskCreationControllerOptions {
   getTasks(): TaskDetail[]
   loadTasks(): Promise<void>
+  publishTask(task: TaskDetail): void
   resetToBoard(): void
   navigateToTask(taskId: string): void
   runAction(data: RunActionData): Promise<void>
-  settleCompose?(result: TaskComposeResult | null): void
+  reportError(error: unknown): void
 }
 
 export function useAppTaskCreationController(options: AppTaskCreationControllerOptions) {
   let dialog = $state<{ mode: 'create' | 'edit'; task: TaskDetail | null } | null>(null)
-  const settleCompose = options.settleCompose ?? settleTaskCompose
 
   function openNewTask(): void {
     dialog = { mode: 'create', task: null }
@@ -30,48 +28,28 @@ export function useAppTaskCreationController(options: AppTaskCreationControllerO
     dialog = null
   }
 
-  async function navigateAndRun(data: RunActionData): Promise<void> {
-    options.resetToBoard()
-    options.navigateToTask(data.taskId)
-    await options.runAction(data)
-  }
-
-  async function runTask(taskId: string, actionPrompt: string): Promise<void> {
-    await options.loadTasks()
-    await navigateAndRun({ taskId, actionPrompt })
+  function taskCreated(task: TaskDetail, intent: 'backlog' | 'start'): void {
+    options.publishTask(task)
+    closeTaskDialog()
+    if (intent === 'start') {
+      options.resetToBoard()
+      options.navigateToTask(task.id)
+      void options.runAction({ taskId: task.id, actionPrompt: '' }).catch(options.reportError)
+    }
+    void options.loadTasks().catch(options.reportError)
   }
 
   async function taskSaved(): Promise<void> {
     await options.loadTasks()
   }
 
-  function cancelCompose(): void {
-    settleCompose(null)
-  }
-
-  async function saveComposedTask(task?: TaskDetail, saveOptions?: { started: boolean }): Promise<void> {
-    await options.loadTasks()
-    if (task) {
-      settleCompose({ task, started: saveOptions?.started ?? false })
-    }
-  }
-
-  async function runComposedTask(taskId: string, actionPrompt: string): Promise<void> {
-    await navigateAndRun({ taskId, actionPrompt })
-  }
-
   return {
-    get dialog() {
-      return dialog
-    },
+    get dialog() { return dialog },
     openNewTask,
     openEditTask,
     closeTaskDialog,
-    runTask,
+    taskCreated,
     taskSaved,
-    cancelCompose,
-    saveComposedTask,
-    runComposedTask,
   }
 }
 

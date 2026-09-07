@@ -112,10 +112,14 @@ vi.mock('../lib/stores', () => {
     focusBoardFilters: writable(new Map()),
     outOfFocusTaskIdsByProject: writable(new Map()),
     startingTasks: writable<Set<string>>(new Set()),
+    taskStartErrors: writable<Map<string, string>>(new Map()),
   }
 })
 
 vi.mock('../lib/tasksState', () => ({
+  cacheTaskRead: vi.fn((_projectId: string, read: import('../lib/types').TaskRead) => {
+    mockTaskDetailsByIdStore.update(current => new Map(current).set(read.task.id, read.task))
+  }),
   activeTasks: mockTasksStore,
   taskDetailsById: mockTaskDetailsByIdStore,
   dependencyReferenceTasks: mockDependencyReferenceTasksStore,

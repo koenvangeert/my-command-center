@@ -22,7 +22,7 @@
   // control never drifts from the global/project provider options.
   const aiProviderOptions = HIERARCHICAL_SETTINGS.find((setting) => setting.key === 'ai_provider')?.options ?? []
 
-  let { mode = 'create', task = null, projectPath = null, projectName = null, promptSeed = '', sourceTicketUrlSeed = null, titleSeed = null, worktreeSourceSeed = null, worktreeBranchSeed = null, onClose, onTaskSaved, onRunAction }: Props = $props()
+  let { mode = 'create', task = null, projectPath = null, projectName = null, promptSeed = '', sourceTicketUrlSeed = null, titleSeed = null, worktreeSourceSeed = null, worktreeBranchSeed = null, onClose, onTaskSaved, onTaskCreated }: Props = $props()
   const dialogTitle = $derived(mode === 'create' ? 'Create task' : 'Edit task')
 
   const workflow = createTaskCreationWorkflow(productionTaskCreationAdapter)
@@ -34,7 +34,7 @@
 
   function workflowInput() {
     return { projectId: $activeProjectId, mode, task, projectPath, promptSeed, sourceTicketUrlSeed, titleSeed,
-      worktreeSourceSeed, worktreeBranchSeed, onClose, onTaskSaved, onRunAction }
+      worktreeSourceSeed, worktreeBranchSeed, onClose, onTaskSaved, onTaskCreated }
   }
   untrack(() => workflow.configure(workflowInput()))
   $effect(() => {
@@ -98,9 +98,6 @@
       <div class="mb-4 rounded-[var(--of-radius-container)] border border-[var(--of-danger)] bg-[var(--of-danger-subtle)] px-3 py-2 text-sm text-[var(--of-danger)]" role="alert">{view.error}</div>
     {/if}
 
-    {#if view.savedTaskId}
-      <p>Task {view.savedTaskId} is saved. Retrying will continue with this task, not create another.</p>
-    {:else}
       <div class={mode === 'create' ? 'create-task-layout' : undefined}>
         <div class="create-task-main">
           <label class="mb-2 block text-sm font-semibold text-[var(--of-text)]" for="create-task-prompt">What should the agent do?</label>
@@ -167,7 +164,6 @@
           />
         {/if}
       </div>
-    {/if}
   </div>
 
   <footer class="flex items-center justify-between gap-4 border-t border-[var(--of-border)] bg-[var(--of-surface)] px-6 py-4">
@@ -182,11 +178,7 @@
     </div>
 
     <div class="flex shrink-0 items-center gap-2">
-      {#if view.savedTaskId}
-        <Button type="button" disabled={view.isSaving} onclick={() => workflow.submit()}>
-          {view.isSaving ? 'Retrying…' : 'Retry'}
-        </Button>
-      {:else if mode === 'create'}
+      {#if mode === 'create'}
         <Button
           variant="outline"
           type="button"

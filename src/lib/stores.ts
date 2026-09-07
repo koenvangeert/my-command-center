@@ -130,6 +130,9 @@ export const agentReviewComments = writable<AgentReviewComment[]>([]);
 /** Set of task IDs currently starting (worktree creation + agent spawn in progress) */
 export const startingTasks = writable<Set<string>>(new Set());
 
+/** Failed start attempts, retained for recovery on the saved Task's page. */
+export const taskStartErrors = writable<Map<string, string>>(new Map());
+
 /** Set of Task IDs with completion in flight, awaiting the backend lifecycle. */
 export const completingTasks = writable<Set<string>>(new Set());
 

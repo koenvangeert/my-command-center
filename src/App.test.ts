@@ -262,9 +262,8 @@ describe('App startup data loading', { timeout: 15_000 }, () => {
       })
 
       return getLatestComponentProps<{
-        onTaskSaved: (task?: TaskDetail) => Promise<void> | void
-        onRunAction: (taskId: string, actionPrompt: string) => Promise<void>
-      }>(vi.mocked(addTaskDialogModule.default), 'onRunAction')
+        onTaskCreated: (task: TaskDetail, intent: 'backlog' | 'start') => void
+      }>(vi.mocked(addTaskDialogModule.default), 'onTaskCreated')
     }
 
     it('navigates to a newly-created task before waiting for its immediate start to finish', async () => {
@@ -279,7 +278,7 @@ describe('App startup data loading', { timeout: 15_000 }, () => {
       vi.mocked(ipc.getSessionStatus).mockResolvedValue({ ticket_id: createdTask.id, status: 'running' } as any)
 
       const dialogProps = await openCreateTaskDialog()
-      const runPromise = dialogProps.onRunAction(createdTask.id, '')
+      dialogProps.onTaskCreated(createdTask, 'start')
 
       await vi.waitFor(() => {
         expect(mockRouterNavigateToTask).toHaveBeenCalledWith(createdTask.id)
@@ -288,7 +287,7 @@ describe('App startup data loading', { timeout: 15_000 }, () => {
       expect(get(stores.selectedTaskId)).toBe(createdTask.id)
 
       resolveStart({ session_id: 'session-new', workspace_path: '/workspace/T-new', task_id: createdTask.id, port: 0 })
-      await runPromise
+      await vi.waitFor(() => expect(get(stores.startingTasks).size).toBe(0))
     }, 15000)
 
     it('resets to the board before navigating to a newly-created task from a plugin view', async () => {
@@ -299,7 +298,7 @@ describe('App startup data loading', { timeout: 15_000 }, () => {
       vi.mocked(ipc.getSessionStatus).mockResolvedValue({ ticket_id: createdTask.id, status: 'running' } as any)
 
       const dialogProps = await openCreateTaskDialog(FILE_VIEWER_VIEW_KEY)
-      await dialogProps.onRunAction(createdTask.id, '')
+      dialogProps.onTaskCreated(createdTask, 'start')
 
       expect(mockRouterResetToBoard).toHaveBeenCalled()
       expect(mockRouterNavigateToTask).toHaveBeenCalledWith(createdTask.id)
@@ -314,7 +313,7 @@ describe('App startup data loading', { timeout: 15_000 }, () => {
       vi.mocked(ipc.readActiveTasks).mockResolvedValue({ tasks: [createdTask], related: [] })
 
       const dialogProps = await openCreateTaskDialog(FILE_VIEWER_VIEW_KEY)
-      await dialogProps.onTaskSaved(createdTask)
+      dialogProps.onTaskCreated(createdTask, 'backlog')
 
       expect(mockRouterResetToBoard).not.toHaveBeenCalled()
       expect(mockRouterNavigateToTask).not.toHaveBeenCalled()

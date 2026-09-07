@@ -95,9 +95,7 @@ describe('App compose dialog', { timeout: 15_000 }, () => {
     const props = await waitFor(() =>
       getLatestComponentProps<ComposeDialogProps>(vi.mocked(AddTaskDialog), 'promptSeed'),
     )
-    await props.onTaskSaved(task, {
-      started: true,
-    })
+    props.onTaskCreated(task, 'start')
 
     await expect(pending).resolves.toEqual({ task, started: true })
   })

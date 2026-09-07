@@ -13,6 +13,7 @@
   import type { TaskDetailHostLifecycleState } from './taskDetailHostLifecycle'
   import type { TaskRunAppRegistration } from './taskRunAppController'
   import TaskDetailView from './TaskDetailView.svelte'
+  import TaskStartFeedback from './TaskStartFeedback.svelte'
 
   interface Props {
     project: Project | null
@@ -89,46 +90,51 @@
   />
 {/snippet}
 
-{#key `${project?.id ?? ''}:${task.id}`}
-  <TaskDetailHostLifecycle
-    taskId={task.id}
-    projectId={project?.id ?? null}
-    taskPaneTabs={resolvedContributions.taskPaneTabs}
-    {onRunAppRegistrationChange}
-  >
-    {#snippet children(hostLifecycle)}
-      {#if selectedProvider && project && providerFailed}
-        {@render coreTaskDetail(hostLifecycle)}
-      {:else if selectedProvider && resolvedComponent && componentReady && project}
-        {@const TaskWorkspace = resolvedComponent}
-        {@const renderProps = getPluginRenderProps(selectedProvider.pluginId, {
-          projectId: project.id,
-          taskId: task.id,
-        })}
-        {#key `${project.id}:${task.id}:${selectedProvider.qualifiedId}`}
-          <svelte:boundary onerror={providerState.handleRenderError}>
-            {#snippet failed(_error, _reset)}
-              {@render coreTaskDetail(hostLifecycle)}
-            {/snippet}
-            <TaskWorkspace
-              {...renderProps}
-              {project}
-              {task}
-              {relatedTasks}
-              onOpenTask={(taskId, projectId) => onOpenTask?.(taskId, projectId)}
-              onEditTask={() => onEdit?.(task.id)}
-              onOpenTaskActions={() => onOpenTaskActions?.()}
-              onRefreshTask={() => onRefreshTask?.()}
-            />
-          </svelte:boundary>
-        {/key}
-      {:else if selectedProvider}
-        <div class="flex h-full flex-1 items-center justify-center text-base-content/50" aria-label="Loading task workspace">
-          <span class="loading loading-spinner loading-md text-primary"></span>
-        </div>
-      {:else}
-        {@render coreTaskDetail(hostLifecycle)}
-      {/if}
-    {/snippet}
-  </TaskDetailHostLifecycle>
-{/key}
+<div class="flex flex-1 flex-col overflow-hidden">
+  <TaskStartFeedback taskId={task.id} {onRunAction} />
+  <div class="flex flex-1 flex-col overflow-hidden">
+    {#key `${project?.id ?? ''}:${task.id}`}
+      <TaskDetailHostLifecycle
+        taskId={task.id}
+        projectId={project?.id ?? null}
+        taskPaneTabs={resolvedContributions.taskPaneTabs}
+        {onRunAppRegistrationChange}
+      >
+        {#snippet children(hostLifecycle)}
+          {#if selectedProvider && project && providerFailed}
+            {@render coreTaskDetail(hostLifecycle)}
+          {:else if selectedProvider && resolvedComponent && componentReady && project}
+            {@const TaskWorkspace = resolvedComponent}
+            {@const renderProps = getPluginRenderProps(selectedProvider.pluginId, {
+              projectId: project.id,
+              taskId: task.id,
+            })}
+            {#key `${project.id}:${task.id}:${selectedProvider.qualifiedId}`}
+              <svelte:boundary onerror={providerState.handleRenderError}>
+                {#snippet failed(_error, _reset)}
+                  {@render coreTaskDetail(hostLifecycle)}
+                {/snippet}
+                <TaskWorkspace
+                  {...renderProps}
+                  {project}
+                  {task}
+                  {relatedTasks}
+                  onOpenTask={(taskId, projectId) => onOpenTask?.(taskId, projectId)}
+                  onEditTask={() => onEdit?.(task.id)}
+                  onOpenTaskActions={() => onOpenTaskActions?.()}
+                  onRefreshTask={() => onRefreshTask?.()}
+                />
+              </svelte:boundary>
+            {/key}
+          {:else if selectedProvider}
+            <div class="flex h-full flex-1 items-center justify-center text-base-content/50" aria-label="Loading task workspace">
+              <span class="loading loading-spinner loading-md text-primary"></span>
+            </div>
+          {:else}
+            {@render coreTaskDetail(hostLifecycle)}
+          {/if}
+        {/snippet}
+      </TaskDetailHostLifecycle>
+    {/key}
+  </div>
+</div>
