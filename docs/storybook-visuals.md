@@ -1,6 +1,6 @@
 # Review screenshot changes
 
-The manifest selects the foundation Focus Board and SDK Button, plus [host chrome and feedback baselines](storybook-host-chrome.md). It does not enforce coverage of the remaining Storybook catalog.
+The manifest selects the foundation Focus Board and SDK Button, [host chrome and feedback baselines](storybook-host-chrome.md), and [SDK composite layouts](storybook-sdk-composites.md). It does not enforce coverage of the remaining Storybook catalog.
 
 ## Commands
 
@@ -18,7 +18,7 @@ pnpm storybook:visual:unit
 
 `update` uses the same capture path but writes only the images selected by `storybook/visual-manifest.json`. It validates all selected captures before writing any of them. It lists obsolete PNGs without deleting them. Review and remove obsolete images explicitly, then run `check`. Never update screenshots just to silence a failure.
 
-`test` first checks the committed baselines, then proves repeated capture of both cases is unchanged. It changes a button's color in disposable container build output, requires the real check command to fail, and saves its before/current/difference report at `artifacts/storybook-visual/self-test/intentional-change/index.html`. It also probes update evidence, missing readiness, unexpected console errors with preserved screenshots, exact declared failures, and restoration. `unit` tests manifest validation, missing stories, duplicate identities, missing/obsolete/unexpected baselines, pixel comparison, and report escaping without Docker.
+`test` first checks the selected baselines, then proves repeated capture of every case stays within its declared bounds. It changes a button's color in disposable container build output, requires the real check command to fail, and saves its before/current/difference report at `artifacts/storybook-visual/self-test/intentional-change/index.html`. It also probes update evidence, missing readiness, unexpected console errors with preserved screenshots, exact declared failures, and restoration. `unit` tests manifest validation, missing stories, duplicate identities, missing/obsolete/unexpected baselines, pixel comparison, report escaping, and SVG-mask freezing without Docker.
 
 For native interactive development use `pnpm storybook:pages` or `pnpm storybook:components`. Native screenshots are not canonical baselines.
 
@@ -39,12 +39,12 @@ Images are named `<catalog>/<story>--<theme>--<width>x<height>.png`. Renaming an
 
 Readiness must identify the intended final state, not just a generic root element or spinner. Interactive cases must choose a selector that proves their interaction has finished, such as the host context menu's visible menu. Deliberately failed cases must list complete console/page-error messages in `expectedErrors`, including multiplicity. Missing expected messages fail too. No substring allowlist is used.
 
-Comparison is exact by default. The Focus Board and selected host-shell cases declare measured one-channel antialiasing allowances in the manifest. The manifest requires a reason and rejects allowances over 20 pixels or one channel level. Reports retain raw pixel counts and difference images, including accepted noise. All other cases use exact comparison.
+Comparison is exact by default. Per-entry rasterization allowances require measured evidence and a reason, with hard caps of 20 changed pixels and two channel levels. Focus Board and selected host-shell cases retain their measured one-channel allowances. Six repeated Linux captures establish the SDK tabs' bound of four pixels at two levels, the rich-markdown bound of 14 pixels at two levels, and the modals' bound of five one-level button-corner pixels. Reports retain raw counts and difference images, including accepted noise. Loading remains exact: animation is frozen, never masked by a tolerance. All cases without an explicit allowance use exact comparison.
 
 ## Canonical environment
 
 `scripts/storybook-visual/container.mjs` pins the Playwright 1.62.1 Ubuntu Noble image by its Linux arm64 digest. Local Docker and CI's `ubuntu-24.04-arm` runner use that same architecture. Apple Silicon runs it natively; Intel developers need Docker ARM emulation or an ARM Docker host. We do not maintain separate architecture baselines. The frozen workspace lockfile selects Playwright and bundled production fonts. Both catalog builds and browser captures happen inside that container; host `node_modules` is excluded.
 
-Capture fixes Chromium, device scale 1, en-US locale, UTC timezone, application time at `2026-01-02T09:30:00.000Z`, theme/color scheme, reduced motion, disabled CSS animations/transitions, hidden caret, and loaded fonts. External browser requests are blocked. Each case gets a fresh browser context. Comparison includes antialiasing pixels with zero threshold.
+Capture fixes Chromium, device scale 1, en-US locale, UTC timezone, application time at `2026-01-02T09:30:00.000Z`, theme/color scheme, reduced motion, disabled CSS animations/transitions, hidden caret, and loaded fonts. Animated SVG masks are derived from the production SVG at their terminal values because CSS reduced motion does not stop embedded SMIL. External browser requests are blocked. Each case gets a fresh browser context. Comparison includes antialiasing pixels with zero threshold.
 
-When upgrading Playwright, update the lockfile and image digest together, regenerate both baselines in the container, and review them. `environment.json` in each report records the image and actual Chromium version. The first run downloads the container and installs dependencies, so it needs network access and may take several minutes.
+When upgrading Playwright, update the lockfile and image digest together, regenerate the selected baselines in the container, and review them. `environment.json` in each report records the image and actual Chromium version. The first run downloads the container and installs dependencies, so it needs network access and may take several minutes.
