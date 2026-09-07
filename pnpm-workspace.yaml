@@ -3,6 +3,8 @@ packages:
   - '!apps/mobile_companion'
   - packages/*
   - plugins/*
+allowBuilds:
+  electron: true
 
 catalog:
   '@babel/parser': ^7.29.8
@@ -10,11 +12,11 @@ catalog:
   '@git-diff-view/core': 0.1.7
   '@git-diff-view/lowlight': ^0.1.7
   '@git-diff-view/svelte': ^0.1.7
-  '@lucide/svelte': ^1.34.0
+  '@lucide/svelte': ^1.39.0
   '@sveltejs/vite-plugin-svelte': ^7.3.0
   '@tanstack/virtual-core': ^3.17.8
   '@testing-library/svelte': ^5.4.2
-  '@types/node': ^26.3.0
+  '@types/node': ^26.4.1
   '@xterm/addon-fit': ^0.11.0
   '@xterm/addon-image': ^0.9.0
   '@xterm/addon-web-links': ^0.12.0
@@ -25,15 +27,15 @@ catalog:
   marked: ^18.0.11
   mermaid: ^11.17.2
   semver: ^7.8.5
-  svelte: ^5.56.10
+  svelte: ^5.57.0
   typescript: ^7.0.2
   vite: ^8.2.2
   vitest: ^4.1.11
 
 catalogs:
   pinned:
-    '@types/node': 26.3.0
-    svelte: 5.56.10
+    '@types/node': 26.4.1
+    svelte: 5.57.0
   typescript6:
     typescript: ^6.0.3
 
@@ -41,7 +43,5 @@ catalogs:
 # Keep Renovate's npm minimumReleaseAge in renovate.json aligned with this value,
 # because Renovate does not infer pnpm's release-age policy.
 minimumReleaseAge: 7200
-allowBuilds:
-  electron: true
 patchedDependencies:
   '@git-diff-view/svelte@0.1.7': patches/@git-diff-view__svelte@0.1.7.patch

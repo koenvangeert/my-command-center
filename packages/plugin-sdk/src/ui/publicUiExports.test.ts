@@ -133,7 +133,7 @@ describe('plugin-sdk public UI exports', () => {
     }
 
     expect(packageJson.dependencies?.['bits-ui']).toBe('^2.19.0')
-    expect(packageJson.dependencies?.['@internationalized/date']).toBe('^3.12.3')
+    expect(packageJson.dependencies?.['@internationalized/date']).toBe('^3.12.4')
     expect(packageJson.peerDependencies?.svelte).toBe('^5.0.0')
   })
 
