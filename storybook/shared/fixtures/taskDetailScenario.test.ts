@@ -1,6 +1,26 @@
-import { describe, expect, it } from 'vitest'
 import { Terminal } from '@xterm/xterm'
+import { describe, expect, it, vi } from 'vitest'
+import { createDesktopTerminalTransport, type DesktopPtyBufferState } from '../../../src/lib/desktopTerminalTransport'
+import { createStoryDesktopAdapter } from '../environment/storyDesktopAdapter'
 import { taskDetailScenario } from './taskDetailScenario'
+
+describe('task workspace terminal replay', () => {
+  it.each(['active', 'waiting', 'failed', 'completed', 'review'] as const)('decodes the %s fixture through the production transport', async kind => {
+    const desktop = createStoryDesktopAdapter(taskDetailScenario(kind).environment.desktop)
+    const transport = createDesktopTerminalTransport({
+      getPtyBuffer: async () => await desktop.bridge.invoke('get_pty_buffer', {}) as DesktopPtyBufferState,
+      listenEvent: vi.fn(), writePty: vi.fn(), resizePty: vi.fn(),
+    })
+    try {
+      const replay = await transport.readReplay('T-42')
+      expect(new TextDecoder().decode(replay.snapshot?.data)).toContain('OpenForge agent')
+      expect(replay.snapshot?.continuationData).toEqual(new Uint8Array())
+    } finally {
+      transport.dispose()
+      desktop.dispose()
+    }
+  })
+})
 
 describe('Task Detail terminal replay fixtures', () => {
   it.each(['active', 'waiting', 'failed', 'completed', 'terminal', 'review', 'long-content'] as const)(

@@ -105,9 +105,8 @@ export async function selfTest({ browser, url, entries, output }) {
   function probe(name, mode = 'check') {
     const destination = join(output, 'self-test', name)
     const result = spawnSync(process.execPath, ['scripts/storybook-visual/run.mjs', mode], {
-      // Each probe runs the full manifest; the original two-case deadline must
-      // grow with catalog adoption without weakening any comparison assertions.
-      env: { ...process.env, VISUAL_OUTPUT: destination, VISUAL_BASELINES: probeBaselines }, encoding: 'utf8', timeout: Math.max(120000, entries.length * 30000),
+      // Child commands capture only the selected per-catalog probe cases.
+      env: { ...process.env, VISUAL_OUTPUT: destination, VISUAL_BASELINES: probeBaselines }, encoding: 'utf8', timeout: Math.max(120000, probeEntries.length * 30000),
     })
     if (result.error) throw result.error
     return { ...result, destination }

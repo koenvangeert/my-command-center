@@ -3,6 +3,7 @@ import { selfReviewStateByTask, emptySelfReviewTaskState } from '../../../src/li
 import { agentTerminalSessions } from '../../../src/lib/terminalSessionService'
 import { clearTaskReviewPaneState } from '../../../src/lib/taskReviewPaneState'
 import type { AgentSession, GitStatusSummary } from '../../../src/lib/types'
+import type { DesktopPtyBufferState } from '../../../src/lib/desktopTerminalTransport'
 import { INITIAL_TASK_RUN_APP_STATE } from '../../../src/components/task-detail/taskRunAppController'
 import type { StoryScenarioDefinition } from '../storyEnvironmentPreview'
 import { createStoryStoreAdapter as seed } from '../environment/storyStoreAdapter'
@@ -62,7 +63,7 @@ export function taskDetailScenario(kind: TaskDetailScenario = 'active', reviewSt
         get_pty_buffer: {
           buffer: transcript, isLive: session?.status === 'running' || session?.status === 'paused', instanceId: session ? 42 : null,
           ...(session ? { snapshot: { data: btoa(transcript ?? ''), continuationData: '', instanceId: 42, watermark: 0 } } : {}),
-        },
+        } satisfies DesktopPtyBufferState,
         pty_resize: undefined, pty_write: undefined, mark_agent_output_viewed: true,
         has_vscode_protocol_handler: false,
         get_task_git_status: gitStatus,
