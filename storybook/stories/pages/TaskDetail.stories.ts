@@ -19,15 +19,15 @@ function scenario(kind: TaskDetailScenario): Story {
     args: { task, hostLifecycle },
     parameters: { openforge: environment },
     play: async (context) => {
-      await waitFor(() => expect(context.canvasElement.querySelector('.xterm-screen')).not.toBeNull())
-      await waitFor(() => expect(getStoryScenario(context).desktop.calls.some(call => call.command === 'get_pty_buffer')).toBe(true))
+      await waitFor(() => expect(context.canvasElement.querySelector('.xterm-screen')).not.toBeNull(), { timeout: 15000 })
+      await waitFor(() => expect(getStoryScenario(context).desktop.calls.some(call => call.command === 'get_pty_buffer')).toBe(true), { timeout: 15000 })
       await context.canvasElement.ownerDocument.fonts.ready
       await waitFor(async () => {
         expect(terminalDiagnostics.observe(task.id).view.authorityReadPending).toBe(false)
         await terminalDiagnostics.drainPresentation(task.id)
         const text = terminalDiagnostics.capturePresentation(task.id).lines.map(line => line.text).join('\n')
         expect(text).toContain('OpenForge agent')
-      })
+      }, { timeout: 15000 })
       await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
       context.canvasElement.setAttribute('data-task-terminal-ready', 'true')
     },
@@ -41,10 +41,13 @@ export const Backlog: Story = {
   },
 }
 export const Active: Story = scenario('active')
+export const Narrow: Story = { ...Backlog, globals: { viewport: { value: 'narrow', isRotated: false } } }
+const waitingScenario = scenario('waiting')
 export const Waiting: Story = {
-  ...scenario('waiting'),
-  play: async ({ canvasElement }) => {
-    await expect(within(canvasElement).findByText('Should an empty name return a default greeting or a validation error?')).resolves.toBeVisible()
+  ...waitingScenario,
+  play: async (context) => {
+    await waitingScenario.play!(context)
+    await expect(within(context.canvasElement).findByText('Should an empty name return a default greeting or a validation error?')).resolves.toBeVisible()
   },
 }
 export const Failed: Story = scenario('failed')

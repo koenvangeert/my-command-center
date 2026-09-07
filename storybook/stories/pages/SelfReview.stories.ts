@@ -47,6 +47,7 @@ export const SendFeedback: Story = {
     await expect(args.onRunAction).toHaveBeenCalledWith({
       taskId: 'T-42', actionPrompt: expect.stringContaining('Please cover the empty-name case too.'),
     })
+    await expect(canvas.findByText('Feedback sent to agent!', {}, { timeout: 15000 })).resolves.toBeVisible()
   },
 }
 export const FinishLoading: Story = {

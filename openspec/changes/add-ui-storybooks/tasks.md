@@ -1,3 +1,7 @@
+## KVG-4696 slice
+
+This ticket adds the attention destination from 4.3, the host board/task-workspace/Self Review components from 5.7, and their inventory and baseline states. The broader checkboxes remain open for sibling tickets. Shared PR review and terminal package modules are not adopted here. See `docs/storybook-task-workspaces.md` for ownership, scenarios, and validation commands.
+
 ## 1. Catalog foundations
 
 - [x] 1.1 Add the compatible Svelte Storybook dependency set and root scripts for independent page and component development servers, then verify `pnpm install --frozen-lockfile` succeeds and each help/start command resolves its own configuration.

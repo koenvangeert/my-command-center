@@ -47,6 +47,52 @@ describe('capture readiness', () => {
   })
 })
 
+const entry = {
+  catalog: 'components', story: 'components-probe--ready', theme: 'openforge-light',
+  viewport: { width: 480, height: 240 }, ready: '#ready', expectedErrors: [],
+}
+
+function browserFixture(frames) {
+  const page = {
+    setDefaultTimeout: vi.fn(), on: vi.fn(),
+    clock: { setFixedTime: vi.fn(), pauseAt: vi.fn(), runFor: vi.fn() },
+    goto: vi.fn(), waitForFunction: vi.fn(),
+    locator: () => ({ first: () => ({ waitFor: vi.fn() }) }),
+    evaluate: vi.fn(), addStyleTag: vi.fn(), waitForTimeout: vi.fn(),
+    screenshot: vi.fn(async () => Buffer.from(frames.length > 1 ? frames.shift() : frames[0])),
+  }
+  const context = { route: vi.fn(), newPage: async () => page, close: vi.fn() }
+  return { browser: { newContext: async () => context }, page, context }
+}
+
+describe('visual capture boundary', () => {
+  it('waits for consecutive identical painted frames instead of returning the first canvas image', async () => {
+    const { browser, page, context } = browserFixture(['empty canvas', 'terminal replay', 'terminal replay'])
+    const result = await capture(browser, 'http://localhost:6006', entry)
+    expect(result.bytes.toString()).toBe('terminal replay')
+    expect(page.screenshot).toHaveBeenCalledTimes(3)
+    expect(page.clock.pauseAt).toHaveBeenCalledWith(new Date('2026-01-02T09:30:00.000Z'))
+    expect(page.clock.runFor).toHaveBeenCalledTimes(3)
+    expect(context.close).toHaveBeenCalledOnce()
+  })
+
+  it('rejects unsettled output and still releases the browser context', async () => {
+    const { browser, page, context } = browserFixture(['unused'])
+    let frame = 0
+    page.screenshot.mockImplementation(async () => Buffer.from(String(frame++)))
+    await expect(capture(browser, 'http://localhost:6006', entry, { timeout: 10 })).rejects.toThrow('visual state did not settle')
+    expect(context.close).toHaveBeenCalledOnce()
+  })
+
+  it('rejects failed story interactions before taking a screenshot', async () => {
+    const { browser, page, context } = browserFixture(['unused'])
+    page.evaluate.mockResolvedValue('errored')
+    await expect(capture(browser, 'http://localhost:6006', entry)).rejects.toThrow('story interaction failed')
+    expect(page.screenshot).not.toHaveBeenCalled()
+    expect(context.close).toHaveBeenCalledOnce()
+  })
+})
+
 it.each([[undefined, 30000], [3000, 3000]])('uses the capture deadline %s and releases a failed navigation', async (timeout, expected) => {
   const page = {
     setDefaultTimeout: vi.fn(),
@@ -58,7 +104,7 @@ it.each([[undefined, 30000], [3000, 3000]])('uses the capture deadline %s and re
   const browser = { newContext: vi.fn().mockResolvedValue(context) }
   const entry = { catalog: 'pages', story: 'example', theme: 'openforge-light', viewport: { width: 1280, height: 800 } }
   await expect(capture(browser, 'http://localhost', entry, { timeout })).rejects.toThrow('load failed')
-  expect(page.goto).toHaveBeenCalledWith(expect.any(String), { waitUntil: 'networkidle', timeout: expected })
+  expect(page.goto).toHaveBeenCalledWith(expect.any(String), { waitUntil: 'domcontentloaded', timeout: expected })
   expect(page.setDefaultTimeout).toHaveBeenCalledWith(expected)
   expect(context.close).toHaveBeenCalledOnce()
 })
