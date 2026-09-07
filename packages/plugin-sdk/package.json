@@ -124,7 +124,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@internationalized/date": "^3.12.3",
+    "@internationalized/date": "^3.12.4",
     "bits-ui": "^2.19.0",
     "dompurify": "catalog:",
     "github-slugger": "catalog:",
