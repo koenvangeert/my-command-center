@@ -79,7 +79,7 @@
     {"tag":"span","context":"class=\"w-1.5 h-1.5 rounded-[var(--of-radius-round)] {variantClasses[chip.variant].dot}\"","tokens":["w-1.5","h-1.5"],"count":1,"reason":"Domain status dot or author-avatar dimensions; roundness follows the theme token."}
   ],
   "packages/terminal-runtime/src/TaskTerminalSurface.svelte": [
-    {"tag":"div","context":"class=\"flex-1 overflow-hidden min-h-0 relative rounded-[var(--of-radius-container)] focus-within:ring-2 focus-within:ring-primary focus-visible:ring-2 focus-visible:ring-primary focus:outline-none\"","tokens":["min-h-0"],"count":1,"reason":"Let this flex/grid child shrink and scroll rather than overflow its feature pane."}
+    {"tag":"div","context":"class=\"flex-1 overflow-hidden min-h-0 relative outline-none focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-primary focus-visible:-outline-offset-2\"","tokens":["min-h-0"],"count":1,"reason":"Let this flex/grid child shrink and scroll rather than overflow its feature pane."}
   ],
   "packages/terminal-runtime/src/TerminalTabsShell.svelte": [
     {"tag":"div","context":"class=\"flex-1 min-h-0 overflow-hidden relative\"","tokens":["min-h-0"],"count":1,"reason":"Let this flex/grid child shrink and scroll rather than overflow its feature pane."}
@@ -249,7 +249,6 @@
   ],
   "plugins/terminal/src/TerminalProjectView.svelte": [
     {"tag":"div","context":"class=\"flex flex-col h-full min-h-0 overflow-hidden\"","tokens":["min-h-0"],"count":1,"reason":"Let this flex/grid child shrink and scroll rather than overflow its feature pane."},
-    {"tag":"Badge","context":"class=\"max-w-[50%] truncate\"","tokens":["max-w-[50%]"],"count":1,"reason":"Feature-specific control/content width within this row; height and corners remain token-owned."},
     {"tag":"div","context":"class=\"flex flex-1 min-h-0 overflow-hidden\"","tokens":["min-h-0"],"count":1,"reason":"Let this flex/grid child shrink and scroll rather than overflow its feature pane."},
     {"tag":"div","context":"class=\"flex-1 min-w-0 h-full overflow-hidden\"","tokens":["min-w-0"],"count":1,"reason":"Let this flex/grid child shrink and scroll rather than overflow its feature pane."}
   ],
