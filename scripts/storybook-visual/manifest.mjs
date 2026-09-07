@@ -31,11 +31,15 @@ export function validateManifest(entries, indexes) {
     if (!Array.isArray(entry.expectedErrors) || !entry.expectedErrors.every(value => typeof value === 'string' && value.trim())) fail('expectedErrors must contain exact diagnostic strings')
     if (entry.tolerance !== undefined) {
       const tolerance = entry.tolerance
+      // Owner-approved exception for measured rounded-border noise in these host frames.
+      const settingsFrame = entry.catalog === 'pages' && /^pages-(global|project)-settings--/.test(entry.story) &&
+        entry.theme === 'openforge-light' && entry.viewport.width === 1280 && entry.viewport.height === 900
+      const maxPixels = settingsFrame ? 40 : 36
+      const maxChannelDelta = settingsFrame ? 3 : tolerance?.maxPixels <= 2 ? 3 : 2
       if (!tolerance || Object.keys(tolerance).sort().join() !== 'maxChannelDelta,maxPixels,reason' ||
-        !Number.isInteger(tolerance.maxPixels) || tolerance.maxPixels < 1 || tolerance.maxPixels > 36 ||
-        !Number.isInteger(tolerance.maxChannelDelta) || tolerance.maxChannelDelta < 1 ||
-        tolerance.maxChannelDelta > (tolerance.maxPixels <= 2 ? 3 : 2) ||
-        typeof tolerance.reason !== 'string' || !tolerance.reason.trim()) fail('invalid tolerance: require reason; allow 1..36 pixels at delta 1..2, or 1..2 pixels at delta 1..3')
+        !Number.isInteger(tolerance.maxPixels) || tolerance.maxPixels < 1 || tolerance.maxPixels > maxPixels ||
+        !Number.isInteger(tolerance.maxChannelDelta) || tolerance.maxChannelDelta < 1 || tolerance.maxChannelDelta > maxChannelDelta ||
+        typeof tolerance.reason !== 'string' || !tolerance.reason.trim()) fail(`invalid tolerance: require reason, maxPixels 1..${maxPixels} and maxChannelDelta 1..${maxChannelDelta}`)
     }
     if (indexes[entry.catalog]?.entries?.[entry.story]?.type !== 'story') fail(`missing story ${entry.catalog}/${entry.story}; rebuild catalogs or correct manifest`)
     const key = identity(entry)

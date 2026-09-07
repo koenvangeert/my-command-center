@@ -39,6 +39,8 @@ export const Edited: Story = { play: async (context) => {
   await userEvent.type(input, 'TEAM')
   await expect(canvas.findByText('All changes saved')).resolves.toBeVisible()
   await expect(getStoryScenario(context).desktop.bridge.invoke('get_config', { key: 'task_id_prefix' })).resolves.toBe('TEAM')
+  // Capture the persisted resting state, not the short-lived saved confirmation.
+  await expect(canvas.findByText('Autosaves changes', {}, { timeout: 5000 })).resolves.toBeVisible()
 } }
 export const Loading: Story = {
   parameters: { openforge: settingsScenario('global', 'loading') },

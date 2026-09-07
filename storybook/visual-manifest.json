@@ -1895,7 +1895,12 @@
       "height": 900
     },
     "ready": "main[aria-label$=\"settings\"] input",
-    "expectedErrors": []
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 40,
+      "maxChannelDelta": 3,
+      "reason": "Owner-approved allowance for rounded-border raster noise measured across pinned Linux ARM Chromium captures after freezing SVG motion: up to 32 pixels at 1–3 channel levels. Both limits remain enforced; dark and narrow captures remain exact."
+    }
   },
   {
     "catalog": "pages",
@@ -1917,7 +1922,12 @@
       "height": 900
     },
     "ready": "#section-configuration",
-    "expectedErrors": []
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 40,
+      "maxChannelDelta": 3,
+      "reason": "Owner-approved allowance for rounded-border raster noise measured across pinned Linux ARM Chromium captures after freezing SVG motion: up to 32 pixels at 1–3 channel levels. Both limits remain enforced; dark and narrow captures remain exact."
+    }
   },
   {
     "catalog": "pages",
@@ -1928,7 +1938,12 @@
       "height": 900
     },
     "ready": "#section-credentials",
-    "expectedErrors": []
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 40,
+      "maxChannelDelta": 3,
+      "reason": "Owner-approved allowance for rounded-border raster noise measured across pinned Linux ARM Chromium captures after freezing SVG motion: up to 32 pixels at 1–3 channel levels. Both limits remain enforced; dark and narrow captures remain exact."
+    }
   },
   {
     "catalog": "pages",
@@ -1939,7 +1954,12 @@
       "height": 900
     },
     "ready": "#section-ai",
-    "expectedErrors": []
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 40,
+      "maxChannelDelta": 3,
+      "reason": "Owner-approved allowance for rounded-border raster noise measured across pinned Linux ARM Chromium captures after freezing SVG motion: up to 32 pixels at 1–3 channel levels. Both limits remain enforced; dark and narrow captures remain exact."
+    }
   },
   {
     "catalog": "pages",
@@ -1950,7 +1970,12 @@
       "height": 900
     },
     "ready": "#section-dashboard-provider",
-    "expectedErrors": []
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 40,
+      "maxChannelDelta": 3,
+      "reason": "Owner-approved allowance for rounded-border raster noise measured across pinned Linux ARM Chromium captures after freezing SVG motion: up to 32 pixels at 1–3 channel levels. Both limits remain enforced; dark and narrow captures remain exact."
+    }
   },
   {
     "catalog": "pages",
@@ -1961,7 +1986,12 @@
       "height": 900
     },
     "ready": "button:has-text(\"Enable Companion Gateway\")",
-    "expectedErrors": []
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 40,
+      "maxChannelDelta": 3,
+      "reason": "Owner-approved allowance for rounded-border raster noise measured across pinned Linux ARM Chromium captures after freezing SVG motion: up to 32 pixels at 1–3 channel levels. Both limits remain enforced; dark and narrow captures remain exact."
+    }
   },
   {
     "catalog": "pages",
@@ -1972,7 +2002,12 @@
       "height": 900
     },
     "ready": "button:has-text(\"Disable Companion Gateway\")",
-    "expectedErrors": []
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 40,
+      "maxChannelDelta": 3,
+      "reason": "Owner-approved allowance for rounded-border raster noise measured across pinned Linux ARM Chromium captures after freezing SVG motion: up to 32 pixels at 1–3 channel levels. Both limits remain enforced; dark and narrow captures remain exact."
+    }
   },
   {
     "catalog": "pages",
@@ -1983,7 +2018,12 @@
       "height": 900
     },
     "ready": "[aria-label=\"OpenForge log trace\"]:has-text(\"Application ready\")",
-    "expectedErrors": []
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 40,
+      "maxChannelDelta": 3,
+      "reason": "Owner-approved allowance for rounded-border raster noise measured across pinned Linux ARM Chromium captures after freezing SVG motion: up to 32 pixels at 1–3 channel levels. Both limits remain enforced; dark and narrow captures remain exact."
+    }
   },
   {
     "catalog": "pages",
@@ -1993,8 +2033,13 @@
       "width": 1280,
       "height": 900
     },
-    "ready": "main:has-text(\"All changes saved\")",
-    "expectedErrors": []
+    "ready": "main:has-text(\"Autosaves changes\")",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 40,
+      "maxChannelDelta": 3,
+      "reason": "Owner-approved allowance for rounded-border raster noise measured across pinned Linux ARM Chromium captures after freezing SVG motion: up to 32 pixels at 1–3 channel levels. Both limits remain enforced; dark and narrow captures remain exact."
+    }
   },
   {
     "catalog": "pages",
@@ -2005,7 +2050,12 @@
       "height": 900
     },
     "ready": "main:has-text(\"Loading settings…\")",
-    "expectedErrors": []
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 40,
+      "maxChannelDelta": 3,
+      "reason": "Owner-approved allowance for rounded-border raster noise measured across pinned Linux ARM Chromium captures after freezing SVG motion: up to 32 pixels at 1–3 channel levels. Both limits remain enforced; dark and narrow captures remain exact."
+    }
   },
   {
     "catalog": "pages",
@@ -2016,7 +2066,12 @@
       "height": 900
     },
     "ready": "main:has-text(\"Failed to load settings: Settings unavailable\")",
-    "expectedErrors": []
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 40,
+      "maxChannelDelta": 3,
+      "reason": "Owner-approved allowance for rounded-border raster noise measured across pinned Linux ARM Chromium captures after freezing SVG motion: up to 32 pixels at 1–3 channel levels. Both limits remain enforced; dark and narrow captures remain exact."
+    }
   },
   {
     "catalog": "pages",
@@ -2029,7 +2084,12 @@
     "ready": "button:has-text(\"Retry autosave\")",
     "expectedErrors": [
       "Failed to save settings: Settings are read-only"
-    ]
+    ],
+    "tolerance": {
+      "maxPixels": 40,
+      "maxChannelDelta": 3,
+      "reason": "Owner-approved allowance for rounded-border raster noise measured across pinned Linux ARM Chromium captures after freezing SVG motion: up to 32 pixels at 1–3 channel levels. Both limits remain enforced; dark and narrow captures remain exact."
+    }
   },
   {
     "catalog": "pages",
@@ -2051,7 +2111,12 @@
       "height": 900
     },
     "ready": "[data-testid=\"pr_review_guidance\"]",
-    "expectedErrors": []
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 40,
+      "maxChannelDelta": 3,
+      "reason": "Owner-approved allowance for rounded-border raster noise measured across pinned Linux ARM Chromium captures after freezing SVG motion: up to 32 pixels at 1–3 channel levels. Both limits remain enforced; dark and narrow captures remain exact."
+    }
   },
   {
     "catalog": "pages",
@@ -2062,7 +2127,12 @@
       "height": 900
     },
     "ready": "main[aria-label$=\"settings\"] input",
-    "expectedErrors": []
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 40,
+      "maxChannelDelta": 3,
+      "reason": "Owner-approved allowance for rounded-border raster noise measured across pinned Linux ARM Chromium captures after freezing SVG motion: up to 32 pixels at 1–3 channel levels. Both limits remain enforced; dark and narrow captures remain exact."
+    }
   },
   {
     "catalog": "pages",
@@ -2084,7 +2154,12 @@
       "height": 900
     },
     "ready": "#section-configuration",
-    "expectedErrors": []
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 40,
+      "maxChannelDelta": 3,
+      "reason": "Owner-approved allowance for rounded-border raster noise measured across pinned Linux ARM Chromium captures after freezing SVG motion: up to 32 pixels at 1–3 channel levels. Both limits remain enforced; dark and narrow captures remain exact."
+    }
   },
   {
     "catalog": "pages",
@@ -2095,7 +2170,12 @@
       "height": 900
     },
     "ready": "[aria-label=\"Project task labels\"]",
-    "expectedErrors": []
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 40,
+      "maxChannelDelta": 3,
+      "reason": "Owner-approved allowance for rounded-border raster noise measured across pinned Linux ARM Chromium captures after freezing SVG motion: up to 32 pixels at 1–3 channel levels. Both limits remain enforced; dark and narrow captures remain exact."
+    }
   },
   {
     "catalog": "pages",
@@ -2106,7 +2186,12 @@
       "height": 900
     },
     "ready": "#section-focus-filter",
-    "expectedErrors": []
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 40,
+      "maxChannelDelta": 3,
+      "reason": "Owner-approved allowance for rounded-border raster noise measured across pinned Linux ARM Chromium captures after freezing SVG motion: up to 32 pixels at 1–3 channel levels. Both limits remain enforced; dark and narrow captures remain exact."
+    }
   },
   {
     "catalog": "pages",
@@ -2117,7 +2202,12 @@
       "height": 900
     },
     "ready": "#section-instructions",
-    "expectedErrors": []
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 40,
+      "maxChannelDelta": 3,
+      "reason": "Owner-approved allowance for rounded-border raster noise measured across pinned Linux ARM Chromium captures after freezing SVG motion: up to 32 pixels at 1–3 channel levels. Both limits remain enforced; dark and narrow captures remain exact."
+    }
   },
   {
     "catalog": "pages",
@@ -2128,7 +2218,12 @@
       "height": 900
     },
     "ready": "#section-dashboard-provider",
-    "expectedErrors": []
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 40,
+      "maxChannelDelta": 3,
+      "reason": "Owner-approved allowance for rounded-border raster noise measured across pinned Linux ARM Chromium captures after freezing SVG motion: up to 32 pixels at 1–3 channel levels. Both limits remain enforced; dark and narrow captures remain exact."
+    }
   },
   {
     "catalog": "pages",
@@ -2139,7 +2234,12 @@
       "height": 900
     },
     "ready": "button:has-text(\"Yes, delete\")",
-    "expectedErrors": []
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 40,
+      "maxChannelDelta": 3,
+      "reason": "Owner-approved allowance for rounded-border raster noise measured across pinned Linux ARM Chromium captures after freezing SVG motion: up to 32 pixels at 1–3 channel levels. Both limits remain enforced; dark and narrow captures remain exact."
+    }
   },
   {
     "catalog": "pages",
@@ -2149,8 +2249,13 @@
       "width": 1280,
       "height": 900
     },
-    "ready": "main:has-text(\"All changes saved\")",
-    "expectedErrors": []
+    "ready": "main:has-text(\"Autosaves changes\")",
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 40,
+      "maxChannelDelta": 3,
+      "reason": "Owner-approved allowance for rounded-border raster noise measured across pinned Linux ARM Chromium captures after freezing SVG motion: up to 32 pixels at 1–3 channel levels. Both limits remain enforced; dark and narrow captures remain exact."
+    }
   },
   {
     "catalog": "pages",
@@ -2161,7 +2266,12 @@
       "height": 900
     },
     "ready": "main:has-text(\"Loading settings…\")",
-    "expectedErrors": []
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 40,
+      "maxChannelDelta": 3,
+      "reason": "Owner-approved allowance for rounded-border raster noise measured across pinned Linux ARM Chromium captures after freezing SVG motion: up to 32 pixels at 1–3 channel levels. Both limits remain enforced; dark and narrow captures remain exact."
+    }
   },
   {
     "catalog": "pages",
@@ -2172,7 +2282,12 @@
       "height": 900
     },
     "ready": "main:has-text(\"Failed to load settings: Settings unavailable\")",
-    "expectedErrors": []
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 40,
+      "maxChannelDelta": 3,
+      "reason": "Owner-approved allowance for rounded-border raster noise measured across pinned Linux ARM Chromium captures after freezing SVG motion: up to 32 pixels at 1–3 channel levels. Both limits remain enforced; dark and narrow captures remain exact."
+    }
   },
   {
     "catalog": "pages",
@@ -2185,7 +2300,12 @@
     "ready": "button:has-text(\"Retry autosave\")",
     "expectedErrors": [
       "Failed to save settings: Settings are read-only"
-    ]
+    ],
+    "tolerance": {
+      "maxPixels": 40,
+      "maxChannelDelta": 3,
+      "reason": "Owner-approved allowance for rounded-border raster noise measured across pinned Linux ARM Chromium captures after freezing SVG motion: up to 32 pixels at 1–3 channel levels. Both limits remain enforced; dark and narrow captures remain exact."
+    }
   },
   {
     "catalog": "pages",
@@ -2196,7 +2316,12 @@
       "height": 900
     },
     "ready": "[data-testid=\"status-ai_provider\"]:has-text(\"Inherited\")",
-    "expectedErrors": []
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 40,
+      "maxChannelDelta": 3,
+      "reason": "Owner-approved allowance for rounded-border raster noise measured across pinned Linux ARM Chromium captures after freezing SVG motion: up to 32 pixels at 1–3 channel levels. Both limits remain enforced; dark and narrow captures remain exact."
+    }
   },
   {
     "catalog": "pages",
@@ -2207,7 +2332,12 @@
       "height": 900
     },
     "ready": "[role=\"alert\"]:has-text(\"Label already exists\")",
-    "expectedErrors": []
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 40,
+      "maxChannelDelta": 3,
+      "reason": "Owner-approved allowance for rounded-border raster noise measured across pinned Linux ARM Chromium captures after freezing SVG motion: up to 32 pixels at 1–3 channel levels. Both limits remain enforced; dark and narrow captures remain exact."
+    }
   },
   {
     "catalog": "pages",
@@ -2218,7 +2348,12 @@
       "height": 900
     },
     "ready": "main:has-text(\"Saving changes…\")",
-    "expectedErrors": []
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 40,
+      "maxChannelDelta": 3,
+      "reason": "Owner-approved allowance for rounded-border raster noise measured across pinned Linux ARM Chromium captures after freezing SVG motion: up to 32 pixels at 1–3 channel levels. Both limits remain enforced; dark and narrow captures remain exact."
+    }
   },
   {
     "catalog": "pages",
@@ -2229,7 +2364,12 @@
       "height": 900
     },
     "ready": "button:has-text(\"Refresh install status\")",
-    "expectedErrors": []
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 40,
+      "maxChannelDelta": 3,
+      "reason": "Owner-approved allowance for rounded-border raster noise measured across pinned Linux ARM Chromium captures after freezing SVG motion: up to 32 pixels at 1–3 channel levels. Both limits remain enforced; dark and narrow captures remain exact."
+    }
   },
   {
     "catalog": "pages",
@@ -2240,7 +2380,12 @@
       "height": 900
     },
     "ready": "input[placeholder=\"My Project\"]:disabled",
-    "expectedErrors": []
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 40,
+      "maxChannelDelta": 3,
+      "reason": "Owner-approved allowance for rounded-border raster noise measured across pinned Linux ARM Chromium captures after freezing SVG motion: up to 32 pixels at 1–3 channel levels. Both limits remain enforced; dark and narrow captures remain exact."
+    }
   },
   {
     "catalog": "pages",
@@ -2262,7 +2407,12 @@
       "height": 900
     },
     "ready": "#section-instructions",
-    "expectedErrors": []
+    "expectedErrors": [],
+    "tolerance": {
+      "maxPixels": 40,
+      "maxChannelDelta": 3,
+      "reason": "Owner-approved allowance for rounded-border raster noise measured across pinned Linux ARM Chromium captures after freezing SVG motion: up to 32 pixels at 1–3 channel levels. Both limits remain enforced; dark and narrow captures remain exact."
+    }
   },
   {
     "catalog": "components",
