@@ -1,3 +1,10 @@
+// Basic SDK controls belong to KVG-4691; composite exports belong to KVG-4692.
+const sdkActions = ['default', 'disabled', 'loading', 'narrow-overflow', 'keyboard'].map(state => `components-plugin-sdk-actions--${state}`)
+const sdkFields = ['default', 'selected', 'disabled', 'validation', 'narrow-overflow', 'keyboard'].map(state => `components-plugin-sdk-fields--${state}`)
+const sdkSelectors = ['default', 'selected', 'disabled', 'validation', 'open', 'narrow-overflow', 'empty', 'no-matches', 'keyboard'].map(state => `components-plugin-sdk-selectors--${state}`)
+const sdkPresentation = ['default', 'narrow-overflow'].map(state => `components-plugin-sdk-presentation--${state}`)
+const sdkNavigation = ['default', 'selected', 'collapsed', 'narrow-overflow', 'keyboard'].map(state => `components-plugin-sdk-navigation--${state}`)
+
 /** @type {import('./coverage-types.ts').CoverageInventory} */
 const inventory = {
   pages: [
@@ -54,7 +61,19 @@ const inventory = {
     },
   ],
   components: [
-    { source: 'packages/plugin-sdk/src/ui/Button.svelte', stories: ['components-button--primary'] },
+    { source: 'packages/plugin-sdk/src/ui/Button.svelte', stories: ['components-button--primary', ...sdkActions] },
+    { source: 'packages/plugin-sdk/src/ui/ButtonControl.svelte', stories: sdkActions },
+    { source: 'packages/plugin-sdk/src/ui/IconButton.svelte', stories: sdkActions },
+    { source: 'packages/plugin-sdk/src/ui/TextField.svelte', stories: sdkFields },
+    { source: 'packages/plugin-sdk/src/ui/Textarea.svelte', stories: sdkFields },
+    { source: 'packages/plugin-sdk/src/ui/Checkbox.svelte', stories: sdkFields },
+    { source: 'packages/plugin-sdk/src/ui/Switch.svelte', stories: sdkFields },
+    { source: 'packages/plugin-sdk/src/ui/Select.svelte', stories: sdkSelectors },
+    { source: 'packages/plugin-sdk/src/ui/SearchableSelect.svelte', stories: sdkSelectors },
+    { source: 'packages/plugin-sdk/src/ui/Badge.svelte', stories: sdkPresentation },
+    { source: 'packages/plugin-sdk/src/ui/Panel.svelte', stories: sdkPresentation },
+    { source: 'packages/plugin-sdk/src/ui/FileTypeIcon.svelte', stories: sdkPresentation },
+    { source: 'packages/plugin-sdk/src/ui/PluginSidebarLink.svelte', stories: sdkNavigation },
   ],
   // Unadopted UI is reported by discovery, never parked here to silence coverage.
   exclusions: [],
