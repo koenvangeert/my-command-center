@@ -20,6 +20,21 @@ vi.mock('../../lib/ipc', async () => {
 })
 
 describe('SettingsView theme selection', () => {
+  it.each([
+    ['openforge-light', 'OpenForge Light'], ['openforge-dark', 'OpenForge Dark'],
+    ['workshop-light', 'Workshop Light'], ['workshop-dark', 'Workshop Dark'],
+  ])('selects %s through the existing theme preference', async (id, label) => {
+    await themeRegistry.selectTheme(id === 'openforge-light' ? 'openforge-dark' : 'openforge-light')
+    themeIpc.setConfig.mockClear()
+    render(SettingsView, { props: { ...defaultProps, mode: 'global' as const } })
+    const select = await screen.findByRole('button', { name: 'Theme' })
+    await chooseSelectOption(select, new RegExp(`^${label} `))
+    await vi.waitFor(() => expect(select.textContent).toContain(label))
+    expect(get(themeRegistry.selectedTheme).id).toBe(id)
+    expect(document.documentElement.dataset.theme).toBe(id)
+    expect(themeIpc.setConfig).toHaveBeenLastCalledWith('theme', id)
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
     error.set(null)

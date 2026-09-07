@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DARK_THEME, LIGHT_THEME, type ThemeDefinition, type ThemeTokenName } from './themeContract'
+import { BUILTIN_THEMES, DARK_THEME, LIGHT_THEME, type ThemeDefinition, type ThemeTokenName } from './themeContract'
 
 type ContrastPair = readonly [ThemeTokenName, ThemeTokenName, number]
 
@@ -35,18 +35,18 @@ const builtins: readonly [string, ThemeDefinition][] = [
   ['dark', DARK_THEME],
 ]
 
-describe.each(builtins)('angular %s theme', (_name, theme) => {
+describe.each(builtins)('OpenForge %s theme', (_name, theme) => {
   it.each(CONTRAST_PAIRS)('%s remains visible against %s', (foreground, background, minimum) => {
     expect(contrastRatio(theme.tokens[foreground], theme.tokens[background])).toBeGreaterThanOrEqual(minimum)
   })
 
-  it('uses compact angular geometry and technical typography', () => {
+  it('uses rounded Studio geometry without changing density or typography', () => {
     expect(theme.tokens).toMatchObject({
       borderWidth: '1px',
       focusWidth: '2px',
-      radiusControl: '3px',
-      radiusContainer: '2px',
-      radiusOverlay: '4px',
+      radiusControl: '8px',
+      radiusContainer: '12px',
+      radiusOverlay: '16px',
       controlHeightCompact: '28px',
       controlHeight: '36px',
       fontSans: "'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif",
@@ -55,26 +55,45 @@ describe.each(builtins)('angular %s theme', (_name, theme) => {
   })
 })
 
-describe('angular built-in palette', () => {
-  it('matches the approved website-aligned light reference', () => {
-    expect(LIGHT_THEME.tokens).toMatchObject({
-      canvas: '#FBFBFA',
-      surface: '#FFFFFF',
-      text: '#111318',
-      border: '#E1E3E6',
-      accent: '#2947FF',
-      shadowSurface: '0 1px 2px rgb(17 19 24 / 6%)',
-    })
-  })
+const stylePairs: ContrastPair[] = [
+  ...CONTRAST_PAIRS,
+  ['textMuted', 'surfaceSubtle', 4.5], ['textSecondary', 'surfaceRaised', 4.5],
+  ['controlText', 'controlHover', 4.5], ['controlText', 'controlPressed', 4.5],
+  ['controlText', 'field', 4.5], ['controlText', 'fieldHover', 4.5],
+  ['onAccent', 'accentHover', 4.5], ['onAccent', 'accentPressed', 4.5],
+  ['onAccentSubtle', 'accentSubtle', 4.5], ['link', 'canvas', 4.5],
+  ['focusRing', 'canvas', 3], ['focusRing', 'surfaceRaised', 3],
+  ['borderInteractive', 'field', 3], ['fieldInvalid', 'field', 3],
+  ['codeText', 'codeCanvas', 4.5], ['codeMuted', 'codeCanvas', 4.5],
+  ['diffAdded', 'diffAddedSubtle', 4.5], ['diffRemoved', 'diffRemovedSubtle', 4.5], ['diffChanged', 'diffChangedSubtle', 4.5],
+  ['terminalForeground', 'terminalBackground', 4.5], ['terminalSelectionForeground', 'terminalSelectionBackground', 4.5],
+  ['terminalCursor', 'terminalBackground', 3], ['terminalCursorAccent', 'terminalCursor', 4.5],
+]
+for (const [foreground, background] of [
+  ['onInfo', 'info'], ['onSuccess', 'success'], ['onWarning', 'warning'], ['onDanger', 'danger'],
+  ['onStatusNeutral', 'statusNeutralSubtle'], ['onStatusRunning', 'statusRunningSubtle'],
+  ['onStatusWaiting', 'statusWaitingSubtle'], ['onStatusSuccess', 'statusSuccessSubtle'],
+  ['onStatusWarning', 'statusWarningSubtle'], ['onStatusDanger', 'statusDangerSubtle'],
+] as const) stylePairs.push([foreground, background, 4.5])
+for (const token of [
+  'terminalBlack', 'terminalRed', 'terminalGreen', 'terminalYellow', 'terminalBlue', 'terminalMagenta', 'terminalCyan', 'terminalWhite',
+  'terminalBrightBlack', 'terminalBrightRed', 'terminalBrightGreen', 'terminalBrightYellow', 'terminalBrightBlue', 'terminalBrightMagenta', 'terminalBrightCyan', 'terminalBrightWhite',
+] as const) stylePairs.push([token, 'terminalBackground', 4.5])
 
-  it('uses the approved independent dark reference', () => {
-    expect(DARK_THEME.tokens).toMatchObject({
-      canvas: '#0D0F14',
-      surface: '#14171D',
-      text: '#F3F5F7',
-      border: '#2D333D',
-      accent: '#8494FF',
-      shadowSurface: 'none',
+describe.each(BUILTIN_THEMES.filter(theme => ['openforge-light', 'openforge-dark', 'workshop-light', 'workshop-dark'].includes(theme.id)))(
+  '$label semantic contrast', (theme) => {
+    it.each(stylePairs)('%s is readable against %s', (foreground, background, minimum) => {
+      expect(contrastRatio(theme.tokens[foreground], theme.tokens[background])).toBeGreaterThanOrEqual(minimum)
     })
+  },
+)
+
+describe.each(builtins)('Studio-designed OpenForge %s palette', (_name, theme) => {
+  it('uses neutral surfaces and primary actions', () => {
+    for (const name of ['canvas', 'text', 'accent'] as const) {
+      const channels = theme.tokens[name].slice(1).match(/../g)!
+      expect(new Set(channels).size).toBe(1)
+    }
+    expect(relativeLuminance(LIGHT_THEME.tokens.canvas)).toBeGreaterThan(relativeLuminance(DARK_THEME.tokens.canvas))
   })
 })

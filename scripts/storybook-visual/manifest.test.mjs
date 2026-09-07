@@ -1,9 +1,27 @@
 import { describe, it, expect } from 'vitest'
-import { validateManifest, validateBaselines, identity } from './manifest.mjs'
+import { validateManifest, validateBaselines, identity, captureAppearance } from './manifest.mjs'
 
 const entry = { catalog: 'pages', story: 'pages-focus-board--populated', theme: 'openforge-light', viewport: { width: 1280, height: 800 }, ready: '[aria-label="Task list"]', expectedErrors: [] }
 const indexes = { pages: { entries: { [entry.story]: { type: 'story' } } } }
 describe('visual manifest contract', () => {
+  it('accepts the measured two-level Markdown allowance', () => {
+    const measured = { ...entry, tolerance: { maxPixels: 10, maxChannelDelta: 2, reason: 'Measured Markdown code-block border variation' } }
+    expect(validateManifest([measured], indexes)).toEqual([measured])
+  })
+  it('accepts the measured 36-pixel allowance with a one-level channel bound', () => {
+    const measured = { ...entry, tolerance: { maxPixels: 36, maxChannelDelta: 1, reason: 'Measured repeated pinned Linux antialiasing variation' } }
+    expect(validateManifest([measured], indexes)).toEqual([measured])
+  })
+  it.each([
+    ['openforge-light', 'light'], ['openforge-dark', 'dark'],
+    ['workshop-light', 'light'], ['workshop-dark', 'dark'],
+  ])('accepts %s for deterministic capture', (theme, appearance) => {
+    expect(validateManifest([{ ...entry, theme }], indexes)).toEqual([{ ...entry, theme }])
+    expect(captureAppearance(theme)).toBe(appearance)
+  })
+  it('rejects unknown capture appearance instead of inferring from a suffix', () => {
+    expect(() => captureAppearance('unknown-dark')).toThrow('invalid theme')
+  })
   it('resolves stable identities', () => {
     expect(validateManifest([entry], indexes)).toEqual([entry])
     expect(identity(entry)).toBe('pages/pages-focus-board--populated--openforge-light--1280x800')
@@ -25,8 +43,9 @@ describe('visual manifest contract', () => {
     [[{ ...entry, viewport: { width: 0, height: 800 } }], /viewport/],
     [[{ ...entry, ready: '' }], /ready/],
     [[{ ...entry, typo: true }], /unknown/],
-    [[{ ...entry, tolerance: { maxPixels: 21, maxChannelDelta: 1, reason: 'too broad' } }], /tolerance/],
+    [[{ ...entry, tolerance: { maxPixels: 37, maxChannelDelta: 1, reason: 'too broad' } }], /tolerance/],
     [[{ ...entry, tolerance: { maxPixels: 20, maxChannelDelta: 3, reason: 'too broad' } }], /tolerance/],
+    [[{ ...entry, tolerance: { maxPixels: 20, maxChannelDelta: 1.5, reason: 'fractional' } }], /tolerance/],
     [[{ ...entry, tolerance: { maxPixels: 20, maxChannelDelta: 1, reason: '' } }], /tolerance/],
     [[entry, entry], /duplicate/],
     [[{ ...entry, story: 'missing' }], /missing story/],

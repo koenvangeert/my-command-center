@@ -1,8 +1,23 @@
 import { describe, expect, it } from 'vitest'
-import { DARK_THEME } from './themeContract'
+import { BUILTIN_THEMES, DARK_THEME } from './themeContract'
 import { createTerminalThemeSnapshot } from './terminalThemePresentation'
 
 describe('terminal theme presentation adapter', () => {
+  it.each(BUILTIN_THEMES)('presents $label without prescribing a terminal font', (theme) => {
+    const snapshot = createTerminalThemeSnapshot(theme)
+    expect(snapshot.appearance).toBe(theme.appearance)
+    expect(snapshot.terminalTheme).toMatchObject({
+      background: theme.tokens.terminalBackground, foreground: theme.tokens.terminalForeground,
+      cursor: theme.tokens.terminalCursor, cursorAccent: theme.tokens.terminalCursorAccent,
+      selectionBackground: theme.tokens.terminalSelectionBackground, selectionForeground: theme.tokens.terminalSelectionForeground,
+      red: theme.tokens.terminalRed, green: theme.tokens.terminalGreen,
+      blue: theme.tokens.terminalBlue, yellow: theme.tokens.terminalYellow,
+    })
+    expect(Object.keys(snapshot.terminalTheme)).toHaveLength(22)
+    expect(snapshot).not.toHaveProperty('fontFamily')
+    expect(snapshot.terminalTheme).not.toHaveProperty('fontFamily')
+  })
+
   it('maps explicit appearance and every selected terminal token without inspecting the theme id', () => {
     const theme = {
       ...DARK_THEME,

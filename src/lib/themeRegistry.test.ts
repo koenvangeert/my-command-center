@@ -8,6 +8,10 @@ import {
 } from './themeContract'
 import { createThemeRegistry } from './themeRegistry'
 
+const expectedBuiltinIds = [
+  'openforge-light', 'openforge-dark', 'workshop-light', 'workshop-dark',
+]
+
 function contributedTheme(id = 'com.example.theme:paper'): ThemeDefinition {
   return {
     ...LIGHT_THEME,
@@ -22,10 +26,7 @@ describe('theme registry', () => {
     const registry = createThemeRegistry()
     const snapshot = get(registry.snapshot)
 
-    expect(snapshot.availableThemes.map((theme) => theme.id)).toEqual([
-      LIGHT_THEME.id,
-      DARK_THEME.id,
-    ])
+    expect(snapshot.availableThemes.map((theme) => theme.id)).toEqual(expectedBuiltinIds)
     expect(snapshot.selectedTheme.id).toBe(BUILTIN_LIGHT_THEME_ID)
     expect(snapshot.availableThemes[0]?.owner).toEqual({ kind: 'builtin' })
     expect(Object.isFrozen(snapshot)).toBe(true)
@@ -64,8 +65,7 @@ describe('theme registry', () => {
     ], owner)
 
     expect(observed).toEqual([[
-      LIGHT_THEME.id,
-      DARK_THEME.id,
+      ...expectedBuiltinIds,
       'com.example.theme:paper',
       'com.example.theme:ink',
     ]])
@@ -132,7 +132,7 @@ describe('theme registry', () => {
 
     expect(observed).toEqual([{
       selected: BUILTIN_LIGHT_THEME_ID,
-      available: [LIGHT_THEME.id, DARK_THEME.id],
+      available: expectedBuiltinIds,
     }])
     expect(applyTheme).toHaveBeenLastCalledWith(expect.objectContaining({ id: BUILTIN_LIGHT_THEME_ID }))
     expect(persistSelection).toHaveBeenLastCalledWith(BUILTIN_LIGHT_THEME_ID)

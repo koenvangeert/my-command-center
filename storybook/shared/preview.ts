@@ -1,6 +1,7 @@
 import type { Preview } from '@storybook/svelte-vite'
 import './preview.css'
 import { storyEnvironmentPreview } from './storyEnvironmentPreview'
+import { BUILTIN_THEMES } from '../../src/lib/themeContract'
 
 const preview: Preview = {
   beforeEach: storyEnvironmentPreview.beforeEach,
@@ -23,10 +24,7 @@ const preview: Preview = {
       description: 'OpenForge theme',
       toolbar: {
         icon: 'paintbrush',
-        items: [
-          { value: 'openforge-light', title: 'Light' },
-          { value: 'openforge-dark', title: 'Dark' },
-        ],
+        items: BUILTIN_THEMES.map((theme) => ({ value: theme.id, title: theme.label })),
       },
     },
   },

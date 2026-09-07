@@ -1,3 +1,14 @@
+const themeAppearances = new Map([
+  ['openforge-light', 'light'], ['openforge-dark', 'dark'],
+  ['workshop-light', 'light'], ['workshop-dark', 'dark'],
+])
+
+export function captureAppearance(themeId) {
+  const appearance = themeAppearances.get(themeId)
+  if (!appearance) throw new Error('invalid theme')
+  return appearance
+}
+
 export function identity(entry) {
   return `${entry.catalog}/${entry.story}--${entry.theme}--${entry.viewport.width}x${entry.viewport.height}`
 }
@@ -13,7 +24,7 @@ export function validateManifest(entries, indexes) {
     }
     if (!['pages', 'components'].includes(entry.catalog)) fail('invalid catalog')
     if (!/^[a-z0-9-]+$/.test(entry.story ?? '')) fail('invalid story identity')
-    if (!['openforge-light', 'openforge-dark'].includes(entry.theme)) fail('invalid theme')
+    if (!themeAppearances.has(entry.theme)) fail('invalid theme')
     if (!entry.viewport || Object.keys(entry.viewport).sort().join() !== 'height,width' ||
       !Object.values(entry.viewport).every(value => Number.isInteger(value) && value >= 100 && value <= 3840)) fail('invalid viewport')
     if (typeof entry.ready !== 'string' || !entry.ready.trim()) fail('ready selector is required')
@@ -21,10 +32,10 @@ export function validateManifest(entries, indexes) {
     if (entry.tolerance !== undefined) {
       const tolerance = entry.tolerance
       if (!tolerance || Object.keys(tolerance).sort().join() !== 'maxChannelDelta,maxPixels,reason' ||
-        !Number.isInteger(tolerance.maxPixels) || tolerance.maxPixels < 1 || tolerance.maxPixels > 20 ||
+        !Number.isInteger(tolerance.maxPixels) || tolerance.maxPixels < 1 || tolerance.maxPixels > 36 ||
         !Number.isInteger(tolerance.maxChannelDelta) || tolerance.maxChannelDelta < 1 ||
         tolerance.maxChannelDelta > (tolerance.maxPixels <= 2 ? 3 : 2) ||
-        typeof tolerance.reason !== 'string' || !tolerance.reason.trim()) fail('invalid tolerance: require reason; allow 1..20 pixels at delta 1..2, or 1..2 pixels at delta 1..3')
+        typeof tolerance.reason !== 'string' || !tolerance.reason.trim()) fail('invalid tolerance: require reason; allow 1..36 pixels at delta 1..2, or 1..2 pixels at delta 1..3')
     }
     if (indexes[entry.catalog]?.entries?.[entry.story]?.type !== 'story') fail(`missing story ${entry.catalog}/${entry.story}; rebuild catalogs or correct manifest`)
     const key = identity(entry)

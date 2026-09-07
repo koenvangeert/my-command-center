@@ -3,6 +3,7 @@ import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import TaskDetailPage from '../../shared/frames/TaskDetailPage.svelte'
 import { taskDetailScenario, type TaskDetailScenario } from '../../shared/fixtures/taskDetailScenario'
 import { getStoryScenario } from '../../shared/storyEnvironmentPreview'
+import { terminalDiagnostics } from '../../../src/lib/terminalSessionService'
 
 const meta = {
   title: 'Pages/Task Detail',
@@ -20,6 +21,15 @@ function scenario(kind: TaskDetailScenario): Story {
     play: async (context) => {
       await waitFor(() => expect(context.canvasElement.querySelector('.xterm-screen')).not.toBeNull())
       await waitFor(() => expect(getStoryScenario(context).desktop.calls.some(call => call.command === 'get_pty_buffer')).toBe(true))
+      await context.canvasElement.ownerDocument.fonts.ready
+      await waitFor(async () => {
+        expect(terminalDiagnostics.observe(task.id).view.authorityReadPending).toBe(false)
+        await terminalDiagnostics.drainPresentation(task.id)
+        const text = terminalDiagnostics.capturePresentation(task.id).lines.map(line => line.text).join('\n')
+        expect(text).toContain('OpenForge agent')
+      })
+      await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+      context.canvasElement.setAttribute('data-task-terminal-ready', 'true')
     },
   }
 }
