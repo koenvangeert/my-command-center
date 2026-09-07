@@ -133,7 +133,7 @@
               class="project-status-indicator project-status-attention"
               title="{attentionCount} item{attentionCount === 1 ? '' : 's'} needing attention"
             >
-              <Bot size={9} />
+              <Bot size={12} />
             </span>
           {/if}
           {#if reviewCount > 0}
@@ -141,7 +141,7 @@
               class="project-status-indicator project-status-review"
               title="{reviewCount} PR{reviewCount === 1 ? '' : 's'} awaiting your review"
             >
-              <GitPullRequest size={9} />
+              <GitPullRequest size={12} />
             </span>
           {/if}
         </IconButton>
@@ -315,24 +315,24 @@
     position: absolute;
     display: grid;
     place-items: center;
-    width: var(--of-space4);
-    height: var(--of-space4);
+    width: var(--of-space6);
+    height: var(--of-space6);
     border-radius: var(--of-radius-round);
-    box-shadow: 0 0 0 var(--of-focus-width) var(--of-surface);
+    box-shadow: 0 0 0 var(--of-border-width) var(--of-surface);
   }
 
   .project-status-attention {
-    right: calc(var(--of-space1) * -1);
-    bottom: calc(var(--of-space1) * -1);
-    background: var(--of-status-success);
-    color: var(--of-on-status-success);
+    right: var(--of-space1);
+    bottom: var(--of-space1);
+    background: var(--of-success);
+    color: var(--of-on-success);
   }
 
   .project-status-review {
-    right: calc(var(--of-space1) * -1);
-    top: calc(var(--of-space1) * -1);
-    background: var(--of-status-danger);
-    color: var(--of-on-status-danger);
+    right: var(--of-space1);
+    top: var(--of-space1);
+    background: var(--of-danger);
+    color: var(--of-on-danger);
   }
 
   .project-row,
