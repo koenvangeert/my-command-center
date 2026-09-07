@@ -116,7 +116,7 @@
           <Textarea
             label="Edit your question"
             rows={2}
-            class="min-h-[44px] w-full resize-y text-[0.8rem]"
+            class="w-full resize-y text-[0.8rem]"
             bind:value={editText}
             onkeydown={(event: KeyboardEvent) => {
               if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {

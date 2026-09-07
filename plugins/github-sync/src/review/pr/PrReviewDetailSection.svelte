@@ -246,7 +246,7 @@
           onclick={() => { questionsPanelOpen = true }}
           title="Find all your questions and undecided AI suggestions in one place"
         >
-          <ListChecks class="w-3.5 h-3.5" aria-hidden="true" />
+          <ListChecks size={14} aria-hidden="true" />
           Questions
           {#if questionsIndex.actionableCount > 0}
             <Badge variant="info" class="ml-1">{questionsIndex.actionableCount}</Badge>

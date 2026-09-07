@@ -1,5 +1,7 @@
 <script lang="ts">
   import { X } from '@lucide/svelte'
+  import Badge from '@openforge-app/plugin-sdk/ui/Badge.svelte'
+  import IconButton from '@openforge-app/plugin-sdk/ui/IconButton.svelte'
   import type { QuestionGroupKey, QuestionItem, QuestionsIndex } from '../../lib/questionsIndex'
 
   interface Props {
@@ -45,12 +47,12 @@
     <h3 class="text-sm font-semibold text-base-content m-0 flex-1">
       Questions
       {#if index.actionableCount > 0}
-        <span class="badge badge-primary badge-sm ml-1">{index.actionableCount} to check</span>
+        <Badge variant="info" class="ml-1">{index.actionableCount} to check</Badge>
       {/if}
     </h3>
-    <button class="btn btn-ghost btn-xs btn-square" onclick={onClose} aria-label="Close questions panel">
-      <X class="w-4 h-4" />
-    </button>
+    <IconButton variant="ghost" size="xs" onclick={onClose} label="Close questions panel">
+      <X size={16} aria-hidden="true" />
+    </IconButton>
   </div>
 
   <div class="flex-1 min-h-0 overflow-y-auto">
@@ -76,7 +78,7 @@
               <span class="text-xs font-semibold uppercase tracking-wide text-base-content/70">
                 {GROUP_META[groupKey].label}
               </span>
-              <span class="badge badge-ghost badge-xs">{items.length}</span>
+              <Badge variant="neutral">{items.length}</Badge>
               {#if collapsible}
                 <span class="flex-1"></span>
                 <span class="text-xs text-base-content/40">{expanded ? 'Hide' : 'Show'}</span>
