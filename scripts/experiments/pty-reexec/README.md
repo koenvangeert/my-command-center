@@ -2,7 +2,7 @@
 
 KVG-4714, a bounded part of KVG-4532 and the [preserve-sessions-across-updates feasibility gate](../../../openspec/changes/preserve-sessions-across-updates/design.md). This is not a Session Daemon or production PTY extraction.
 
-KVG-4715 extends this fixture with refusal and controlled recovery. Its [current findings and commands](RECOVERY.md) include a failed terminal presentation recovery gate. Production extraction remains blocked. The KVG-4714 results and original checkpoint layout below are historical, not the complete current fixture contract.
+KVG-4715 extends this fixture with refusal and controlled recovery. Its [current findings and commands](RECOVERY.md) record the initial presentation recovery failure and the owner-approved continuation repair. The full replacement gate remains incomplete and production extraction remains blocked. The KVG-4714 results and original checkpoint layout below are historical, not the complete current fixture contract.
 
 ## Run
 

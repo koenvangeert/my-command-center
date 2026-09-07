@@ -1,0 +1,678 @@
+{
+  "platform": "macOS-26.6.2-arm64-arm-64bit",
+  "architecture": "arm64",
+  "python": "3.9.6",
+  "clang": "Apple clang version 21.0.0 (clang-2100.1.1.101)\nTarget: arm64-apple-darwin25.6.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin",
+  "sources": {
+    "run.py": "b513ecde348a850b19c33b2f8ced526e3b3c56e3665e2425960ca89c02f914cd",
+    "macos.py": "3bd50d1c08e473c2356a3f21b35bdc01e9e2246ffcbd8a1f094c84bc0b0c845c",
+    "test_cleanup.py": "1ca4f5762f7b34306013dd8a5fcf6fb951ee31b91a018175a270cf5ce8f470ff",
+    "preflight.h": "8b5390f65c4ae917f35235142abbd042a06f72f1d1f3d0b14cad2995d0f3ab50",
+    "host.c": "5017cfc59bfe1efe2e0f74b0aeca7b212e9215dc6cfa80c3f114fd461f22cb13",
+    "fixture.c": "26f7f5fd0f871e625013c0a95af69c4fdeaa5ed7c5d463a5fab90183892ba6c1",
+    "live_authority.py": "7d20ed9e765f44394754e39d3134bf5c26c4a16512ae6843314dfee36547ce83",
+    "model_fixture.c": "5edaad4b47461f229e282281576e59b8c0c1857ae691c207baffa4d1a80d9a60"
+  },
+  "negativeControl": false,
+  "testsRun": 1,
+  "passed": true,
+  "failures": [],
+  "events": [
+    {
+      "event": "test",
+      "name": "__main__.Continuity.test_invalid_targets_are_refused_and_sessions_remain_usable",
+      "runtimeRoot": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-61lZGc/openforge-pty-reexec-74a3z451",
+      "mode": "0o700"
+    },
+    {
+      "event": "initial",
+      "inventory": {
+        "version": 1,
+        "host": 87519,
+        "recoveries": 0,
+        "fds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "stateFd": 3,
+        "sentinel": 4,
+        "children": [
+          {
+            "pid": 87545,
+            "fd": 5,
+            "tty": "/dev/ttys019",
+            "device": 251658259,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 87546,
+            "fd": 6,
+            "tty": "/dev/ttys021",
+            "device": 251658261,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          }
+        ]
+      },
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-61lZGc/openforge-pty-reexec-74a3z451/v1",
+      "processes": [
+        {
+          "pid": 87519,
+          "ppid": 87368,
+          "uid": 501,
+          "pgid": 87519,
+          "status": 2,
+          "sec": 1788768401,
+          "usec": 49798,
+          "tdev": 4294967295
+        },
+        {
+          "pid": 87545,
+          "ppid": 87519,
+          "uid": 501,
+          "pgid": 87545,
+          "status": 2,
+          "sec": 1788768402,
+          "usec": 402179,
+          "tdev": 268435475
+        },
+        {
+          "pid": 87546,
+          "ppid": 87519,
+          "uid": 501,
+          "pgid": 87546,
+          "status": 2,
+          "sec": 1788768402,
+          "usec": 404285,
+          "tdev": 268435477
+        },
+        {
+          "pid": 87556,
+          "ppid": 87546,
+          "uid": 501,
+          "pgid": 87546,
+          "status": 2,
+          "sec": 1788768402,
+          "usec": 790450,
+          "tdev": 268435477
+        }
+      ]
+    },
+    {
+      "event": "invalidTargetRefusal",
+      "target": "malformed",
+      "response": {
+        "refused": "target checkpoint contract or executable"
+      },
+      "seconds": 0.3835582089999994,
+      "inventory": {
+        "version": 1,
+        "host": 87519,
+        "recoveries": 0,
+        "fds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "stateFd": 3,
+        "sentinel": 4,
+        "children": [
+          {
+            "pid": 87545,
+            "fd": 5,
+            "tty": "/dev/ttys019",
+            "device": 251658259,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 87546,
+            "fd": 6,
+            "tty": "/dev/ttys021",
+            "device": 251658261,
+            "cursor": 183,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          }
+        ]
+      }
+    },
+    {
+      "event": "invalidTargetRefusal",
+      "target": "truncated",
+      "response": {
+        "refused": "target checkpoint contract or executable"
+      },
+      "seconds": 0.7225198339999999,
+      "inventory": {
+        "version": 1,
+        "host": 87519,
+        "recoveries": 0,
+        "fds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "stateFd": 3,
+        "sentinel": 4,
+        "children": [
+          {
+            "pid": 87545,
+            "fd": 5,
+            "tty": "/dev/ttys019",
+            "device": 251658259,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 87546,
+            "fd": 6,
+            "tty": "/dev/ttys021",
+            "device": 251658261,
+            "cursor": 1307,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          }
+        ]
+      }
+    },
+    {
+      "event": "invalidTargetRefusal",
+      "target": "non-executable",
+      "response": {
+        "refused": "target checkpoint contract or executable"
+      },
+      "seconds": 0.46941037499999894,
+      "inventory": {
+        "version": 1,
+        "host": 87519,
+        "recoveries": 0,
+        "fds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "stateFd": 3,
+        "sentinel": 4,
+        "children": [
+          {
+            "pid": 87545,
+            "fd": 5,
+            "tty": "/dev/ttys019",
+            "device": 251658259,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 87546,
+            "fd": 6,
+            "tty": "/dev/ttys021",
+            "device": 251658261,
+            "cursor": 2504,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          }
+        ]
+      }
+    },
+    {
+      "event": "invalidTargetRefusal",
+      "target": "missing",
+      "response": {
+        "refused": "target checkpoint contract or executable"
+      },
+      "seconds": 0.1916252500000013,
+      "inventory": {
+        "version": 1,
+        "host": 87519,
+        "recoveries": 0,
+        "fds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "stateFd": 3,
+        "sentinel": 4,
+        "children": [
+          {
+            "pid": 87545,
+            "fd": 5,
+            "tty": "/dev/ttys019",
+            "device": 251658259,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 87546,
+            "fd": 6,
+            "tty": "/dev/ttys021",
+            "device": 251658261,
+            "cursor": 3431,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          }
+        ]
+      }
+    },
+    {
+      "event": "invalidTargetRefusal",
+      "target": "openforge-pty-reexec-74a3z451",
+      "response": {
+        "refused": "target checkpoint contract or executable"
+      },
+      "seconds": 0.21856679100000065,
+      "inventory": {
+        "version": 1,
+        "host": 87519,
+        "recoveries": 0,
+        "fds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "stateFd": 3,
+        "sentinel": 4,
+        "children": [
+          {
+            "pid": 87545,
+            "fd": 5,
+            "tty": "/dev/ttys019",
+            "device": 251658259,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 87546,
+            "fd": 6,
+            "tty": "/dev/ttys021",
+            "device": 251658261,
+            "cursor": 4294,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          }
+        ]
+      }
+    },
+    {
+      "event": "invalidTargetRefusal",
+      "target": "stuck-probe",
+      "response": {
+        "refused": "target checkpoint contract or executable"
+      },
+      "seconds": 2.3750280419999985,
+      "inventory": {
+        "version": 1,
+        "host": 87519,
+        "recoveries": 0,
+        "fds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "stateFd": 3,
+        "sentinel": 4,
+        "children": [
+          {
+            "pid": 87545,
+            "fd": 5,
+            "tty": "/dev/ttys019",
+            "device": 251658259,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 87546,
+            "fd": 6,
+            "tty": "/dev/ttys021",
+            "device": 251658261,
+            "cursor": 4901,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          }
+        ]
+      }
+    },
+    {
+      "event": "replacement",
+      "inventory": {
+        "version": 2,
+        "host": 87519,
+        "recoveries": 0,
+        "fds": [
+          0,
+          1,
+          2,
+          3,
+          5,
+          6
+        ],
+        "stateFd": 3,
+        "sentinel": 4,
+        "children": [
+          {
+            "pid": 87545,
+            "fd": 5,
+            "tty": "/dev/ttys019",
+            "device": 251658259,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 87546,
+            "fd": 6,
+            "tty": "/dev/ttys021",
+            "device": 251658261,
+            "cursor": 6018,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          }
+        ]
+      },
+      "roundTripMs": 2363.0122500000007,
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/.ctx-mode-61lZGc/openforge-pty-reexec-74a3z451/v2"
+    },
+    {
+      "event": "cleanup",
+      "owned": [
+        {
+          "pid": 87519,
+          "ppid": 87368,
+          "uid": 501,
+          "pgid": 87519,
+          "status": 2,
+          "sec": 1788768401,
+          "usec": 49798,
+          "tdev": 4294967295
+        },
+        {
+          "pid": 87545,
+          "ppid": 87519,
+          "uid": 501,
+          "pgid": 87545,
+          "status": 2,
+          "sec": 1788768402,
+          "usec": 402179,
+          "tdev": 268435475
+        },
+        {
+          "pid": 87546,
+          "ppid": 87519,
+          "uid": 501,
+          "pgid": 87546,
+          "status": 2,
+          "sec": 1788768402,
+          "usec": 404285,
+          "tdev": 268435477
+        },
+        {
+          "pid": 87556,
+          "ppid": 87546,
+          "uid": 501,
+          "pgid": 87546,
+          "status": 2,
+          "sec": 1788768402,
+          "usec": 790450,
+          "tdev": 268435477
+        }
+      ],
+      "survivors": [],
+      "forced": false,
+      "errors": []
+    }
+  ]
+}

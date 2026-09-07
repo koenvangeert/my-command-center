@@ -41,7 +41,8 @@ describe('desktop terminal authority read seam', () => {
     expect(returned).toBe(false)
 
     releaseCheckpoint()
-    await expect(read).resolves.toMatchObject({
+    const replay = await read
+    expect(replay).toMatchObject({
       isLive: true,
       ptyInstanceId: 7,
       snapshot: {
@@ -49,6 +50,7 @@ describe('desktop terminal authority read seam', () => {
         continuationData: Uint8Array.from(new TextEncoder().encode('\x1b[31')),
       },
     })
+    expect(Array.from(replay.snapshot?.continuationData ?? [])).toEqual([27, 91, 51, 49])
   })
 
   it('projects model-output lifecycle diagnostics without changing event payloads', async () => {

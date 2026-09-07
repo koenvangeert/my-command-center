@@ -1,0 +1,257 @@
+{
+  "platform": "macOS-26.6.2-arm64-arm-64bit",
+  "architecture": "arm64",
+  "python": "3.9.6",
+  "clang": "Apple clang version 21.0.0 (clang-2100.1.1.101)\nTarget: arm64-apple-darwin25.6.0\nThread model: posix\nInstalledDir: /Library/Developer/CommandLineTools/usr/bin",
+  "sources": {
+    "run.py": "6a59f501caa3ba135b1203dd6bf309510196c86b43b8ea6a2a2993fa8a8ddf62",
+    "macos.py": "3bd50d1c08e473c2356a3f21b35bdc01e9e2246ffcbd8a1f094c84bc0b0c845c",
+    "test_cleanup.py": "1ca4f5762f7b34306013dd8a5fcf6fb951ee31b91a018175a270cf5ce8f470ff",
+    "preflight.h": "8b5390f65c4ae917f35235142abbd042a06f72f1d1f3d0b14cad2995d0f3ab50",
+    "host.c": "5017cfc59bfe1efe2e0f74b0aeca7b212e9215dc6cfa80c3f114fd461f22cb13",
+    "fixture.c": "26f7f5fd0f871e625013c0a95af69c4fdeaa5ed7c5d463a5fab90183892ba6c1",
+    "live_authority.py": "7d20ed9e765f44394754e39d3134bf5c26c4a16512ae6843314dfee36547ce83",
+    "model_fixture.c": "5edaad4b47461f229e282281576e59b8c0c1857ae691c207baffa4d1a80d9a60"
+  },
+  "negativeControl": true,
+  "testsRun": 1,
+  "passed": true,
+  "failures": [],
+  "events": [
+    {
+      "event": "test",
+      "name": "__main__.Continuity.test_shell_state_echo_resize_and_running_tool_survive",
+      "runtimeRoot": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/openforge-pty-reexec-o4r22kgu",
+      "mode": "0o700"
+    },
+    {
+      "event": "initial",
+      "inventory": {
+        "version": 1,
+        "host": 4880,
+        "recoveries": 0,
+        "fds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "stateFd": 3,
+        "sentinel": 4,
+        "children": [
+          {
+            "pid": 4889,
+            "fd": 5,
+            "tty": "/dev/ttys019",
+            "device": 251658259,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 4890,
+            "fd": 6,
+            "tty": "/dev/ttys021",
+            "device": 251658261,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          }
+        ]
+      },
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/openforge-pty-reexec-o4r22kgu/v1",
+      "processes": [
+        {
+          "pid": 4880,
+          "ppid": 4847,
+          "uid": 501,
+          "pgid": 4880,
+          "status": 2,
+          "sec": 1788769134,
+          "usec": 218756,
+          "tdev": 4294967295
+        },
+        {
+          "pid": 4889,
+          "ppid": 4880,
+          "uid": 501,
+          "pgid": 4889,
+          "status": 2,
+          "sec": 1788769134,
+          "usec": 632426,
+          "tdev": 268435475
+        },
+        {
+          "pid": 4890,
+          "ppid": 4880,
+          "uid": 501,
+          "pgid": 4890,
+          "status": 2,
+          "sec": 1788769134,
+          "usec": 633757,
+          "tdev": 268435477
+        },
+        {
+          "pid": 4908,
+          "ppid": 4890,
+          "uid": 501,
+          "pgid": 4890,
+          "status": 2,
+          "sec": 1788769135,
+          "usec": 184394,
+          "tdev": 268435477
+        }
+      ]
+    },
+    {
+      "event": "replacement",
+      "inventory": {
+        "version": 1,
+        "host": 4880,
+        "recoveries": 0,
+        "fds": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "stateFd": 3,
+        "sentinel": 4,
+        "children": [
+          {
+            "pid": 4889,
+            "fd": 5,
+            "tty": "/dev/ttys019",
+            "device": 251658259,
+            "cursor": 391,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 4890,
+            "fd": 6,
+            "tty": "/dev/ttys021",
+            "device": 251658261,
+            "cursor": 212,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          },
+          {
+            "pid": 0,
+            "fd": -1,
+            "tty": "",
+            "device": 0,
+            "cursor": 0,
+            "reaped": 0,
+            "status": 0
+          }
+        ]
+      },
+      "roundTripMs": 998.681833,
+      "executable": "/private/var/folders/5f/jlmxmscj0gnb0h9z6j5by_rr0000gn/T/openforge-pty-reexec-o4r22kgu/v1"
+    },
+    {
+      "event": "cleanup",
+      "owned": [
+        {
+          "pid": 4880,
+          "ppid": 4847,
+          "uid": 501,
+          "pgid": 4880,
+          "status": 2,
+          "sec": 1788769134,
+          "usec": 218756,
+          "tdev": 4294967295
+        },
+        {
+          "pid": 4889,
+          "ppid": 4880,
+          "uid": 501,
+          "pgid": 4889,
+          "status": 2,
+          "sec": 1788769134,
+          "usec": 632426,
+          "tdev": 268435475
+        },
+        {
+          "pid": 4890,
+          "ppid": 4880,
+          "uid": 501,
+          "pgid": 4890,
+          "status": 2,
+          "sec": 1788769134,
+          "usec": 633757,
+          "tdev": 268435477
+        },
+        {
+          "pid": 4908,
+          "ppid": 4890,
+          "uid": 501,
+          "pgid": 4890,
+          "status": 2,
+          "sec": 1788769135,
+          "usec": 184394,
+          "tdev": 268435477
+        }
+      ],
+      "survivors": [],
+      "forced": false,
+      "errors": []
+    }
+  ],
+  "sourceMutation": {
+    "file": "run.py",
+    "description": "temporary copy inserts a three-second pause before the new reader-service step; NO_REEXEC keeps v1"
+  }
+}
