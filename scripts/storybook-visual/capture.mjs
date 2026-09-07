@@ -22,7 +22,7 @@ export async function serve(root) {
   return { url: `http://127.0.0.1:${server.address().port}`, close: () => new Promise(resolve => server.close(resolve)) }
 }
 
-export async function capture(browser, url, entry, { mutate, timeout = 15000 } = {}) {
+export async function capture(browser, url, entry, { mutate, timeout = 30000 } = {}) {
   const context = await browser.newContext({ viewport: entry.viewport, deviceScaleFactor: 1, locale: 'en-US', timezoneId: 'UTC', colorScheme: entry.theme.endsWith('dark') ? 'dark' : 'light', reducedMotion: 'reduce', serviceWorkers: 'block' })
   try {
     // Stories may only fetch their local catalog. Fonts ship with production CSS.

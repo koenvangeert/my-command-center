@@ -1,10 +1,12 @@
 <script lang="ts">
+  import type { Snippet } from 'svelte'
   import ProjectDashboardProviderHost from '../../../src/components/focus-board/ProjectDashboardProviderHost.svelte'
   import ToastHost from '../../../src/components/feedback/toasts/ToastHost.svelte'
   import { projects, activeProjectId, tasks, taskDetailsById, activeSessions, ticketPrs, taskAttentionRows, taskAttentionLoaded, isLoading } from '../../../src/lib/stores'
   import PageFrame from './PageFrame.svelte'
 
-  let { onOpenTask = () => {}, onNewTask = () => {}, onRunAction = () => {} }: {
+  let { dialogs, onOpenTask = () => {}, onNewTask = () => {}, onRunAction = () => {} }: {
+    dialogs?: Snippet
     onOpenTask?: (taskId: string, projectId?: string | null) => void
     onNewTask?: () => void
     onRunAction?: (data: { taskId: string; actionPrompt: string }) => void
@@ -12,7 +14,7 @@
   let project = $derived($projects.find(project => project.id === $activeProjectId) ?? null)
 </script>
 
-<PageFrame>
+<PageFrame {dialogs}>
   <ProjectDashboardProviderHost
     {project}
     tasks={$tasks}

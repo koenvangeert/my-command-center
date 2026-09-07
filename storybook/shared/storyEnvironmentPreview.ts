@@ -6,6 +6,7 @@ import StoryEnvironmentFrame from './StoryEnvironmentFrame.svelte'
 import { createStoryStorageAdapter } from './environment/storyStorageAdapter'
 import { createStoryThemeAdapter } from './environment/storyThemeAdapter'
 import { createStoryTerminalAdapter, type TerminalStoryDefinition } from './environment/storyTerminalAdapter'
+import { createStorySvgAnimationAdapter } from './environment/storySvgAnimationAdapter'
 
 export interface StoryScenarioDefinition {
   now?: string | number
@@ -17,7 +18,7 @@ export interface StoryScenarioDefinition {
   expectedConsoleErrors?: readonly string[]
 }
 
-function createScenario(id: string, definition: StoryScenarioDefinition, themeId: string) {
+function createScenario(id: string, definition: StoryScenarioDefinition, themeId: string, motion: string) {
   const desktop = createStoryDesktopAdapter(definition.desktop)
   const plugin = createStoryPluginAdapter(definition.plugin)
   const terminal = definition.terminal ? createStoryTerminalAdapter(definition.terminal) : undefined
@@ -28,6 +29,7 @@ function createScenario(id: string, definition: StoryScenarioDefinition, themeId
       createStoryStorageAdapter(window.localStorage),
       createStoryStorageAdapter(window.sessionStorage),
       desktop, createStoryThemeAdapter(themeId), plugin, ...(terminal ? [terminal] : []), ...(definition.adapters?.() ?? []),
+      ...(motion === 'normal' ? [] : [createStorySvgAnimationAdapter(window.document)]),
     ],
   })
   return { environment, desktop, plugin, terminal }
@@ -49,7 +51,7 @@ export const storyEnvironmentPreview = {
   beforeEach: async (context) => {
     const document = context.canvasElement.ownerDocument
     await active.get(document)?.environment.dispose()
-    const scenario = createScenario(context.id, context.parameters.openforge ?? {}, context.globals.openforgeTheme ?? 'openforge-light')
+    const scenario = createScenario(context.id, context.parameters.openforge ?? {}, context.globals.openforgeTheme ?? 'openforge-light', context.globals.openforgeMotion ?? 'reduced')
     await scenario.environment.install()
     active.set(document, scenario)
     context.loaded.openforge = scenario

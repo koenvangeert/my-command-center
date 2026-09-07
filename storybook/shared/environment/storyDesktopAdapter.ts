@@ -114,7 +114,13 @@ export function createStoryDesktopAdapter(
     }
 
     const failure = failures[command]
-    if (failure !== undefined) throw new Error(failure)
+    if (failure !== undefined) {
+      const error = new Error(failure)
+      // Intentional fixture failures have stable diagnostics across ports and built asset names.
+      // Unexpected failures retain their full stacks.
+      error.stack = `${error.name}: ${error.message}`
+      throw error
+    }
 
     switch (command) {
       case 'get_config':

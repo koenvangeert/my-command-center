@@ -29,6 +29,15 @@ describe('StoryDesktopAdapter', () => {
     await expect(getConfig('project_sidebar_order')).resolves.toBe('["P-1","P-2"]')
   })
 
+  it('reports declared failures without build-specific URLs in diagnostics, including after reset', async () => {
+    const adapter = createStoryDesktopAdapter({ failures: { fs_search_files: 'Catalog file search unavailable' } })
+    adapters.push(adapter)
+    adapter.install()
+    for (let i = 0; i < 2; i++) {
+      await expect(fsSearchFiles('project-1', 'ts', 50)).rejects.toHaveProperty('stack', 'Error: Catalog file search unavailable')
+      adapter.reset()
+    }
+  })
   it.each([null, undefined, 0])('rejects non-string configuration and file values: %s', async value => {
     const adapter = createStoryDesktopAdapter()
     adapters.push(adapter)
