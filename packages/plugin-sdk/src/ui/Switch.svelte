@@ -91,8 +91,9 @@
   .of-switch-track {
     box-sizing: border-box;
     display: inline-flex;
+    flex-shrink: 0;
     align-items: center;
-    width: calc(var(--of-control-height-compact) + var(--of-space3));
+    width: calc(var(--of-control-height-compact) * 1.75);
     height: var(--of-control-height-compact);
     padding: var(--of-space1);
     border: var(--of-border-width) solid var(--of-border-interactive);
@@ -119,7 +120,7 @@
 
   input:checked + .of-switch-track::before {
     background: var(--of-on-accent);
-    transform: translateX(var(--of-space3));
+    transform: translateX(calc(var(--of-control-height-compact) * 0.75));
   }
 
   input:focus-visible + .of-switch-track {
