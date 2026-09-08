@@ -6,6 +6,7 @@
 @source '../../packages/terminal-runtime/src';
 @source '../../plugins/*/src';
 @source '../../plugins/file-viewer/src';
+@source '../../plugins/task-schedules/src';
 @source '../';
 
 /* Freeze visual state without replacing runtime timers used by interactions. */

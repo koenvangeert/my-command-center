@@ -23,6 +23,7 @@ __pycache__/
 /artifacts/terminal-presentation/
 /artifacts/storybook-visual/
 /artifacts/file-viewer/
+/artifacts/task-schedules/
 /playwright-report/
 /test-results/
 /openforge-desktop-test-*/

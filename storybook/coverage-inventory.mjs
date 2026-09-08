@@ -21,9 +21,24 @@ const fileViewerTaskPane = [
   'pages-file-viewer--task-narrow', 'pages-file-viewer--task-navigate',
 ]
 
+// KVG-4701 owns Task Schedules only, not Task Browser or GitHub Sync.
+const schedulePages = [
+  'populated', 'empty', 'loading', 'failure', 'no-project', 'narrow', 'long-content',
+  'details', 'history', 'completed', 'cancelled', 'new-schedule',
+  'create-daily', 'create-weekly', 'create-monthly', 'create-custom', 'create-one-off',
+  'edit', 'pause-and-enable', 'filter-and-sort', 'retry', 'finish-loading',
+  'save-failure', 'saving', 'discard', 'discard-and-reopen', 'delete-confirmation',
+  'delete', 'delete-failure', 'run-now', 'run-one-off', 'running', 'cancel-run',
+  'cancelling', 'run-failure', 'run-warning', 'already-running',
+].map(state => `pages-task-schedules--${state}`)
+/** @param {string[]} states */
+const scheduleComponents = states => states.map(state => `components-task-schedules--${state}`)
+
 /** @type {import('./coverage-types.ts').CoverageInventory} */
 const inventory = {
   pages: [
+    { source: 'plugins/task-schedules/src/components/TaskSchedulesView.svelte', stories: schedulePages },
+    { source: 'plugins/task-schedules/src/index.ts', contribution: 'com.openforge.task-schedules:views.register:schedules', stories: schedulePages },
     {"source":"src/components/attention/AttentionOverviewDialog.svelte","stories":["pages-attention-overview--populated","pages-attention-overview--empty","pages-attention-overview--loading","pages-attention-overview--failure","pages-attention-overview--long-content","pages-attention-overview--narrow","pages-attention-overview--open-task","pages-attention-overview--open-review","pages-attention-overview--reviews-hidden","pages-attention-overview--in-flight","pages-attention-overview--finish-loading","pages-attention-overview--retry-failure","pages-attention-overview--collapsed"]},
     {"source":"src/components/task-detail/SelfReviewWorkspace.svelte","stories":["pages-self-review--populated","pages-self-review--empty","pages-self-review--loading","pages-self-review--failure","pages-self-review--long-content","pages-self-review--narrow","pages-self-review--send-feedback","pages-self-review--finish-loading"]},
     { source: 'plugins/terminal/src/TerminalProjectView.svelte', stories: ['pages-terminal--ready', 'pages-terminal--no-project', 'pages-terminal--no-path', 'pages-terminal--runtime-unavailable', 'pages-terminal--empty', 'pages-terminal--overflow', 'pages-terminal--shell-tabs-and-input'] },
@@ -180,6 +195,11 @@ const inventory = {
     { source: 'src/components/feedback/toasts/ToastHost.svelte', stories: ['application-shell--error-feedback', 'application-shell--checkpoint', 'application-shell--pipeline-failure', 'application-shell--task-created', 'application-shell--rate-limited', 'application-shell--dismiss-feedback'] },
   ],
   components: [
+    { source: 'plugins/task-schedules/src/components/TaskSchedulesWorkspace.svelte', stories: scheduleComponents(['workspace', 'workspace-failure']) },
+    { source: 'plugins/task-schedules/src/components/TaskSchedulesListSection.svelte', stories: scheduleComponents(['list', 'list-empty', 'list-loading', 'list-narrow', 'list-long', 'list-selected']) },
+    { source: 'plugins/task-schedules/src/components/TaskScheduleInspector.svelte', stories: scheduleComponents(['inspector', 'inspector-paused', 'inspector-completed', 'inspector-cancelled', 'inspector-history', 'inspector-long', 'inspector-updating', 'inspector-running', 'inspector-success', 'inspector-warning', 'inspector-failure']) },
+    { source: 'plugins/task-schedules/src/components/TaskScheduleComposerSection.svelte', stories: scheduleComponents(['composer', 'composer-weekly', 'composer-monthly', 'composer-custom', 'composer-one-off', 'composer-narrow', 'composer-long', 'composer-mode', 'composer-required', 'composer-cron-validation', 'composer-date-validation', 'composer-saving']) },
+    { source: 'plugins/task-schedules/src/components/TaskSchedulesDialogs.svelte', stories: scheduleComponents(['discard-dialog', 'delete-dialog', 'deleting-dialog']) },
     {"source":"src/components/focus-board/TaskListItem.svelte","stories":["components-board-task-list-item--idle","components-board-task-list-item--backlog","components-board-task-list-item--active","components-board-task-list-item--needs-input","components-board-task-list-item--paused","components-board-task-list-item--agent-done","components-board-task-list-item--failed","components-board-task-list-item--interrupted","components-board-task-list-item--done","components-board-task-list-item--pr-draft","components-board-task-list-item--pr-open","components-board-task-list-item--ci-failed","components-board-task-list-item--changes-requested","components-board-task-list-item--ready-to-merge","components-board-task-list-item--ready-to-enqueue","components-board-task-list-item--pr-queued","components-board-task-list-item--pr-merged","components-board-task-list-item--pr-closed","components-board-task-list-item--ci-running","components-board-task-list-item--review-pending","components-board-task-list-item--unaddressed-comments","components-board-task-list-item--merge-conflict","components-board-task-list-item--merging","components-board-task-list-item--selected","components-board-task-list-item--dependency","components-board-task-list-item--long-content","components-board-task-list-item--keyboard-selection"]},
     {"source":"src/components/focus-board/FocusEmptyState.svelte","stories":["components-board-empty-state--focus","components-board-empty-state--in-flight","components-board-empty-state--out-of-focus","components-board-empty-state--backlog"]},
     {"source":"src/components/focus-board/BoardTextFilter.svelte","stories":["components-board-text-filter--default","components-board-text-filter--filtered","components-board-text-filter--no-matches","components-board-text-filter--editing"]},

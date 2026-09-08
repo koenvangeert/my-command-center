@@ -4882,5 +4882,424 @@
     },
     "ready": "text=Please cover the empty-name case too.",
     "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-task-schedules--populated",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "ready": "[data-schedule-ready=\"pages-task-schedules--populated\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-task-schedules--populated",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "ready": "[data-schedule-ready=\"pages-task-schedules--populated\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-task-schedules--populated",
+    "theme": "workshop-light",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "ready": "[data-schedule-ready=\"pages-task-schedules--populated\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-task-schedules--populated",
+    "theme": "workshop-dark",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "ready": "[data-schedule-ready=\"pages-task-schedules--populated\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-task-schedules--empty",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "[data-schedule-ready=\"pages-task-schedules--empty\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-task-schedules--loading",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "[data-schedule-ready=\"pages-task-schedules--loading\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-task-schedules--failure",
+    "theme": "workshop-light",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "[data-schedule-ready=\"pages-task-schedules--failure\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-task-schedules--no-project",
+    "theme": "workshop-dark",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "ready": "[data-schedule-ready=\"pages-task-schedules--no-project\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-task-schedules--narrow",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 768,
+      "height": 900
+    },
+    "ready": "[data-schedule-ready=\"pages-task-schedules--narrow\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-task-schedules--long-content",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 1280,
+      "height": 900
+    },
+    "ready": "[data-schedule-ready=\"pages-task-schedules--long-content\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-task-schedules--details",
+    "theme": "workshop-dark",
+    "viewport": {
+      "width": 1440,
+      "height": 1000
+    },
+    "ready": "[data-schedule-ready=\"pages-task-schedules--details\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-task-schedules--history",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 1440,
+      "height": 1000
+    },
+    "ready": "[data-schedule-ready=\"pages-task-schedules--history\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-task-schedules--new-schedule",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 1440,
+      "height": 1000
+    },
+    "ready": "[data-schedule-ready=\"pages-task-schedules--new-schedule\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-task-schedules--save-failure",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 1440,
+      "height": 1000
+    },
+    "ready": "[data-schedule-ready=\"pages-task-schedules--save-failure\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-task-schedules--discard",
+    "theme": "workshop-light",
+    "viewport": {
+      "width": 1280,
+      "height": 900
+    },
+    "ready": "[data-schedule-ready=\"pages-task-schedules--discard\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-task-schedules--delete-confirmation",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 1280,
+      "height": 900
+    },
+    "ready": "[data-schedule-ready=\"pages-task-schedules--delete-confirmation\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-task-schedules--list-selected",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 1100,
+      "height": 600
+    },
+    "ready": "[data-schedule-ready=\"components-task-schedules--list-selected\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-task-schedules--list-narrow",
+    "theme": "workshop-dark",
+    "viewport": {
+      "width": 480,
+      "height": 650
+    },
+    "ready": "[data-schedule-ready=\"components-task-schedules--list-narrow\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-task-schedules--inspector",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 480,
+      "height": 800
+    },
+    "ready": "[data-schedule-ready=\"components-task-schedules--inspector\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-task-schedules--inspector-paused",
+    "theme": "workshop-light",
+    "viewport": {
+      "width": 480,
+      "height": 800
+    },
+    "ready": "[data-schedule-ready=\"components-task-schedules--inspector-paused\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-task-schedules--inspector-completed",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 480,
+      "height": 800
+    },
+    "ready": "[data-schedule-ready=\"components-task-schedules--inspector-completed\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-task-schedules--inspector-cancelled",
+    "theme": "workshop-dark",
+    "viewport": {
+      "width": 480,
+      "height": 800
+    },
+    "ready": "[data-schedule-ready=\"components-task-schedules--inspector-cancelled\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-task-schedules--inspector-history",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 620,
+      "height": 1000
+    },
+    "ready": "[data-schedule-ready=\"components-task-schedules--inspector-history\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-task-schedules--inspector-long",
+    "theme": "workshop-light",
+    "viewport": {
+      "width": 380,
+      "height": 900
+    },
+    "ready": "[data-schedule-ready=\"components-task-schedules--inspector-long\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-task-schedules--inspector-running",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 480,
+      "height": 900
+    },
+    "ready": "[data-schedule-ready=\"components-task-schedules--inspector-running\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-task-schedules--inspector-success",
+    "theme": "workshop-dark",
+    "viewport": {
+      "width": 480,
+      "height": 900
+    },
+    "ready": "[data-schedule-ready=\"components-task-schedules--inspector-success\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-task-schedules--inspector-warning",
+    "theme": "workshop-light",
+    "viewport": {
+      "width": 480,
+      "height": 900
+    },
+    "ready": "[data-schedule-ready=\"components-task-schedules--inspector-warning\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-task-schedules--inspector-failure",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 480,
+      "height": 900
+    },
+    "ready": "[data-schedule-ready=\"components-task-schedules--inspector-failure\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-task-schedules--composer",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 480,
+      "height": 900
+    },
+    "ready": "[data-schedule-ready=\"components-task-schedules--composer\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-task-schedules--composer-weekly",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 480,
+      "height": 900
+    },
+    "ready": "[data-schedule-ready=\"components-task-schedules--composer-weekly\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-task-schedules--composer-monthly",
+    "theme": "workshop-light",
+    "viewport": {
+      "width": 480,
+      "height": 900
+    },
+    "ready": "[data-schedule-ready=\"components-task-schedules--composer-monthly\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-task-schedules--composer-custom",
+    "theme": "workshop-dark",
+    "viewport": {
+      "width": 480,
+      "height": 900
+    },
+    "ready": "[data-schedule-ready=\"components-task-schedules--composer-custom\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-task-schedules--composer-one-off",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 480,
+      "height": 900
+    },
+    "ready": "[data-schedule-ready=\"components-task-schedules--composer-one-off\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-task-schedules--composer-narrow",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 360,
+      "height": 900
+    },
+    "ready": "[data-schedule-ready=\"components-task-schedules--composer-narrow\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-task-schedules--composer-cron-validation",
+    "theme": "workshop-light",
+    "viewport": {
+      "width": 480,
+      "height": 900
+    },
+    "ready": "[data-schedule-ready=\"components-task-schedules--composer-cron-validation\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-task-schedules--composer-date-validation",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 480,
+      "height": 900
+    },
+    "ready": "[data-schedule-ready=\"components-task-schedules--composer-date-validation\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-task-schedules--composer-saving",
+    "theme": "workshop-dark",
+    "viewport": {
+      "width": 480,
+      "height": 900
+    },
+    "ready": "[data-schedule-ready=\"components-task-schedules--composer-saving\"]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-task-schedules--deleting-dialog",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 1100,
+      "height": 800
+    },
+    "ready": "[data-schedule-ready=\"components-task-schedules--deleting-dialog\"]",
+    "expectedErrors": []
   }
+
 ]

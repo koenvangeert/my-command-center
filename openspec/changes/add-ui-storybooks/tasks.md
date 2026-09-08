@@ -1,3 +1,7 @@
+## KVG-4701 slice
+
+This ticket covers Task Schedules from 4.6 and 5.9, with its inventory entries, local backend, interaction checks, and visual matrix. History and run status remain part of the production inspector. Task Browser, demo plugins, and GitHub Sync remain with sibling tickets, so the broader checkboxes stay open. See `docs/storybook-task-schedules.md` for ownership and verification commands.
+
 ## KVG-4696 slice
 
 This ticket adds the attention destination from 4.3, the host board/task-workspace/Self Review components from 5.7, and their inventory and baseline states. The broader checkboxes remain open for sibling tickets. Shared PR review and terminal package modules are not adopted here. See `docs/storybook-task-workspaces.md` for ownership, scenarios, and validation commands.
