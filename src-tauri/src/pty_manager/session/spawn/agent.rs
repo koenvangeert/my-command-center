@@ -210,7 +210,7 @@ impl PtyManager {
         .await
     }
 
-    pub(super) async fn spawn_agent_pty<A: AgentPtyProviderAdapter>(
+    pub(in crate::pty_manager::session) async fn spawn_agent_pty<A: AgentPtyProviderAdapter>(
         &self,
         mut adapter: A,
         context: PtySpawnContext<'_>,

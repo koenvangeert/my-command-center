@@ -4,6 +4,14 @@ mod attachment_tests;
 mod commands;
 pub(crate) use commands::PiSessionTarget;
 mod events;
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "KVG-4716 defines the opt-in host contract; caller migration is a later slice"
+    )
+)]
+pub(crate) mod host;
 mod managed_process;
 mod ordered_writer;
 mod pids;
@@ -122,6 +130,14 @@ impl From<std::io::Error> for PtyError {
 #[derive(Clone)]
 pub struct PtyManager {
     terminal_sessions: TerminalSessions,
+    #[cfg_attr(
+        not(test),
+        expect(
+            dead_code,
+            reason = "shared ledger for the opt-in host client, not yet used by legacy callers"
+        )
+    )]
+    host_state: std::sync::Arc<tokio::sync::Mutex<host::HostState>>,
     #[cfg(test)]
     sessions: PtySessions,
     pid_dir_override: Option<PathBuf>,
@@ -238,6 +254,7 @@ impl PtyManager {
             #[cfg(test)]
             pending_shell_spawns: test_handles.pending_shell_spawns,
             terminal_sessions,
+            host_state: std::sync::Arc::new(tokio::sync::Mutex::new(host::HostState::new())),
             pid_dir_override: None,
             #[cfg(test)]
             terminal_model_test_fault: Arc::new(std::sync::Mutex::new(

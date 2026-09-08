@@ -12,7 +12,7 @@ use super::invalid_workspace_cwd;
 
 pub(super) trait AgentPtyProviderAdapter {
     fn label(&self) -> &'static str;
-    fn command_name(&self) -> &'static str;
+    fn command_name(&self) -> &str;
     fn command_args(&self) -> Vec<String>;
     fn prepare(&mut self, cwd: &Path) -> Result<(), PtyError>;
     fn extra_env(&self, task_id: &str, instance_id: u64) -> HashMap<String, String>;

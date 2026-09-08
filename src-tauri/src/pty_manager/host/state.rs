@@ -1,0 +1,199 @@
+use std::collections::HashMap;
+
+use super::*;
+
+#[derive(Clone, PartialEq, Eq)]
+pub(super) enum Mutation {
+    Spawn(SpawnRequest),
+    Terminate(PtyIdentity),
+    Io(IoRequest),
+}
+
+#[derive(Clone)]
+pub(super) enum Receipt {
+    Spawn(PtyIdentity),
+    Done,
+}
+
+struct RecordedOperation {
+    request: Mutation,
+    // Stored before calling the adapter. Cancellation never makes a retry execute twice.
+    result: Result<Receipt, HostError>,
+}
+
+pub(crate) struct HostState {
+    installation: Option<InstallationId>,
+    lifetime: DaemonLifetimeId,
+    generation: u64,
+    pub(super) sessions: HashMap<PtyInstanceId, HostedSession>,
+    pub(super) input_sequences: HashMap<PtyInstanceId, u64>,
+    operations: HashMap<OperationId, RecordedOperation>,
+    retained_bytes: usize,
+}
+
+impl HostState {
+    pub(crate) fn new() -> Self {
+        Self {
+            installation: None,
+            lifetime: DaemonLifetimeId::fresh(),
+            generation: 0,
+            sessions: HashMap::new(),
+            input_sequences: HashMap::new(),
+            operations: HashMap::new(),
+            retained_bytes: 0,
+        }
+    }
+
+    pub(super) fn check_installation(
+        &self,
+        installation: &InstallationId,
+    ) -> Result<(), HostError> {
+        if self
+            .installation
+            .as_ref()
+            .is_some_and(|current| current != installation)
+        {
+            return Err(HostError::ForeignInstallation);
+        }
+        Ok(())
+    }
+
+    pub(super) fn connect(
+        &mut self,
+        installation: InstallationId,
+    ) -> Result<Controller, HostError> {
+        self.check_installation(&installation)?;
+        let generation = self.generation.checked_add(1).ok_or(HostError::Capacity)?;
+        self.installation = Some(installation.clone());
+        self.generation = generation;
+        Ok(Controller {
+            installation,
+            lifetime: self.lifetime.clone(),
+            generation: ControllerGeneration::new(generation)?,
+        })
+    }
+
+    pub(super) fn validate(&self, controller: &Controller) -> Result<(), HostError> {
+        if self.installation.as_ref() != Some(&controller.installation) {
+            return Err(HostError::ForeignInstallation);
+        }
+        if controller.lifetime != self.lifetime || controller.generation.value() != self.generation
+        {
+            return Err(HostError::StaleController);
+        }
+        Ok(())
+    }
+
+    pub(super) fn identity(
+        &self,
+        installation: &InstallationId,
+        instance: PtyInstanceId,
+    ) -> PtyIdentity {
+        PtyIdentity {
+            installation: installation.clone(),
+            lifetime: self.lifetime.clone(),
+            instance,
+        }
+    }
+
+    pub(super) fn session(&self, pty: &PtyIdentity) -> Result<&HostedSession, HostError> {
+        self.sessions
+            .get(&pty.instance)
+            .filter(|session| &session.pty == pty)
+            .ok_or(HostError::StalePty)
+    }
+
+    pub(super) fn observe(
+        &mut self,
+        installation: &InstallationId,
+        inventory: Vec<BackendSession>,
+    ) -> Vec<HostedSession> {
+        for session in self.sessions.values_mut() {
+            session.state = HostedSessionState::Exited;
+        }
+        for item in inventory {
+            let session = HostedSession {
+                pty: self.identity(installation, item.instance),
+                session_key: item.session_key,
+                state: item.state,
+                next_io_sequence: self
+                    .input_sequences
+                    .get(&item.instance)
+                    .copied()
+                    .unwrap_or(0)
+                    .checked_add(1),
+            };
+            self.sessions.insert(item.instance, session);
+        }
+        self.retain_exit_history();
+        let mut inventory: Vec<_> = self.sessions.values().cloned().collect();
+        inventory.sort_by_key(|session| session.pty.instance.value());
+        inventory
+    }
+
+    pub(super) fn retain_exit_history(&mut self) {
+        // Never truncate current ownership to make room for history. Legacy callers
+        // can create sessions beyond this interface's admission limit.
+        let mut exited: Vec<_> = self
+            .sessions
+            .values()
+            .filter(|session| session.state == HostedSessionState::Exited)
+            .map(|session| session.pty.instance)
+            .collect();
+        let excess = exited.len().saturating_sub(MAX_EXIT_HISTORY);
+        exited.sort_by_key(|instance| instance.value());
+        for instance in exited.into_iter().take(excess) {
+            self.sessions.remove(&instance);
+        }
+        // Operation receipts and input counters are separately bounded by admitted
+        // operations. Keep them: expiry of exit history must not permit reexecution.
+    }
+
+    pub(super) fn retry(
+        &self,
+        operation: &OperationId,
+        request: &Mutation,
+    ) -> Result<Option<Receipt>, HostError> {
+        let Some(record) = self.operations.get(operation) else {
+            return Ok(None);
+        };
+        if &record.request != request {
+            return Err(HostError::OperationConflict);
+        }
+        record.result.clone().map(Some)
+    }
+
+    pub(super) fn begin(
+        &mut self,
+        operation: OperationId,
+        request: Mutation,
+        bytes: usize,
+    ) -> Result<(), HostError> {
+        // Ordinary traffic cannot consume the reserved allowance for scoped cleanup.
+        let reserve = if matches!(request, Mutation::Terminate(_)) {
+            MAX_SESSIONS
+        } else {
+            0
+        };
+        if self.operations.len() >= MAX_OPERATIONS + reserve
+            || self.retained_bytes + bytes > MAX_RETAINED_REQUEST_BYTES + reserve * 512
+        {
+            return Err(HostError::Capacity);
+        }
+        self.retained_bytes += bytes;
+        self.operations.insert(
+            operation,
+            RecordedOperation {
+                request,
+                result: Err(HostError::OutcomeUnknown),
+            },
+        );
+        Ok(())
+    }
+
+    pub(super) fn finish(&mut self, operation: &OperationId, result: Result<Receipt, HostError>) {
+        if let Some(record) = self.operations.get_mut(operation) {
+            record.result = result;
+        }
+    }
+}
