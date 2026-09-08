@@ -130,13 +130,6 @@ impl From<std::io::Error> for PtyError {
 #[derive(Clone)]
 pub struct PtyManager {
     terminal_sessions: TerminalSessions,
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "shared ledger for the opt-in host client, not yet used by legacy callers"
-        )
-    )]
     host_state: std::sync::Arc<tokio::sync::Mutex<host::HostState>>,
     #[cfg(test)]
     sessions: PtySessions,
