@@ -4,6 +4,7 @@ import TaskDetailPage from '../../shared/frames/TaskDetailPage.svelte'
 import { taskDetailScenario, type TaskDetailScenario } from '../../shared/fixtures/taskDetailScenario'
 import { getStoryScenario } from '../../shared/storyEnvironmentPreview'
 import { terminalDiagnostics } from '../../../src/lib/terminalSessionService'
+import { terminalProgress } from '../../shared/fixtures/terminalReadiness'
 
 const meta = {
   title: 'Pages/Task Detail',
@@ -19,17 +20,33 @@ function scenario(kind: TaskDetailScenario): Story {
     args: { task, hostLifecycle },
     parameters: { openforge: environment },
     play: async (context) => {
+      context.canvasElement.removeAttribute('data-task-terminal-ready')
+      context.canvasElement.removeAttribute('data-terminal-progress')
+      const progress = (phase: string, detail: Record<string, unknown> = {}) => terminalProgress(context, phase, {
+        key: task.id,
+        state: terminalDiagnostics.list().includes(task.id) ? terminalDiagnostics.observe(task.id) : null,
+        ...detail,
+      })
+      progress('mount')
       await waitFor(() => expect(context.canvasElement.querySelector('.xterm-screen')).not.toBeNull(), { timeout: 15000 })
+      progress('buffer-request')
       await waitFor(() => expect(getStoryScenario(context).desktop.calls.some(call => call.command === 'get_pty_buffer')).toBe(true), { timeout: 15000 })
+      progress('fonts')
       await context.canvasElement.ownerDocument.fonts.ready
       await waitFor(async () => {
+        progress('replay')
         expect(terminalDiagnostics.observe(task.id).view.authorityReadPending).toBe(false)
-        await terminalDiagnostics.drainPresentation(task.id)
+        progress('drain')
+        const evidence = await terminalDiagnostics.drainPresentation(task.id)
         const text = terminalDiagnostics.capturePresentation(task.id).lines.map(line => line.text).join('\n')
         // The overflow transcript scrolls its heading out of the visible rows.
-        expect(text).toContain(kind === 'terminal' ? 'PASS integration case 45' : 'OpenForge agent')
+        const expectedText = kind === 'terminal' ? 'PASS integration case 45' : 'OpenForge agent'
+        progress('text', { evidence, expectedText, textTail: text.slice(-512) })
+        expect(text).toContain(expectedText)
       }, { timeout: 15000 })
+      progress('paint')
       await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+      progress('ready')
       context.canvasElement.setAttribute('data-task-terminal-ready', 'true')
     },
   }

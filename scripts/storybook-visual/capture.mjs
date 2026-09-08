@@ -65,8 +65,8 @@ function readinessEvidence() {
       observedAtMs: Math.round(performance.now()),
     })),
     tabs: {
-      count: document.querySelectorAll('[role=tab]').length,
-      selected: document.querySelector('[role=tab][aria-selected=true]')?.textContent?.slice(0, 160),
+      count: document.querySelectorAll('[role=tab], nav[aria-label="Task workbench tabs"] button[aria-pressed]').length,
+      selected: document.querySelector('[role=tab][aria-selected=true], nav[aria-label="Task workbench tabs"] button[aria-pressed=true]')?.textContent?.slice(0, 160),
     },
     storyError: storyError?.checkVisibility() ? storyError.textContent?.slice(0, 2000) : undefined,
   }
