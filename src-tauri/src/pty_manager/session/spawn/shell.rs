@@ -25,7 +25,7 @@ impl PtyManager {
         .await
     }
 
-    pub(super) async fn spawn_shell_pty_with_command(
+    pub(in crate::pty_manager::session) async fn spawn_shell_pty_with_command(
         &self,
         context: PtySpawnContext<'_>,
         terminal_index: Option<u32>,

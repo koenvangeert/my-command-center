@@ -2,6 +2,14 @@ use std::path::Path;
 
 use super::PtyError;
 
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "existing-host adapter is staged for incremental caller migration after KVG-4716"
+    )
+)]
+mod host_adapter;
 mod lifecycle;
 mod provider_adapter;
 mod spawn;
