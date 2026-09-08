@@ -81,19 +81,18 @@
   }
 
   button[data-variant='primary'] {
-    border-color: var(--of-accent);
+    /* Keep the transparent border's geometry. Painting the same rounded edge
+       twice produces unstable antialiasing at fractional layout positions. */
     background: var(--of-accent);
     color: var(--of-on-accent);
   }
 
   button[data-variant='primary']:hover:not(:disabled) {
-    border-color: var(--of-accent-hover);
     background: var(--of-accent-hover);
     color: var(--of-on-accent);
   }
 
   button[data-variant='primary']:active:not(:disabled) {
-    border-color: var(--of-accent-pressed);
     background: var(--of-accent-pressed);
     color: var(--of-on-accent);
   }

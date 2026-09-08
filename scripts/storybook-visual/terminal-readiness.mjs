@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { capture } from './capture.mjs'
 import { compare, verifyDiagnostics } from './comparison.mjs'
 import { identity } from './manifest.mjs'
+import { verifyRepeatedCapture } from './repetition.mjs'
 
 const overflowStories = ['components-terminal-tabs--overflow', 'components-terminal-runtime--overflow']
 
@@ -87,5 +88,27 @@ export async function checkTerminalReadiness({ browser, url, entries, output, ba
   } finally {
     await writeFile(join(directory, 'results.json'), JSON.stringify(results, null, 2))
     assert.equal(browser.contexts().length, contextsBefore, 'Terminal readiness probes must close every context')
+  }
+}
+
+/** Observe replay through multiple cursor-blink phases; this is not a readiness delay. */
+export async function checkTaskCursorStability({ browser, url, entries, output }) {
+  const selected = entries.filter(entry => entry.story === 'pages-task-detail--active')
+  assert.ok(selected.length, 'Cursor regression requires the active Task Detail story')
+  for (const entry of selected) {
+    const current = await capture(browser, url, entry, {
+      async mutate(page) {
+        const screen = page.locator('.xterm-screen').first()
+        const options = { animations: 'disabled', caret: 'hide', scale: 'css' }
+        const first = await screen.screenshot(options)
+        // xterm blinks every 600ms. Two 650ms samples expose both phases.
+        for (let sample = 0; sample < 2; sample++) {
+          await page.waitForTimeout(650)
+          const next = await screen.screenshot(options)
+          await verifyRepeatedCapture({ ...entry, tolerance: undefined }, first, next, output)
+        }
+      },
+    })
+    verifyDiagnostics(current.diagnostics, entry.expectedErrors)
   }
 }

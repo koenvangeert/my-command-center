@@ -1239,12 +1239,7 @@
       "height": 600
     },
     "ready": "[role='dialog'] input",
-    "expectedErrors": [],
-    "tolerance": {
-      "maxPixels": 7,
-      "maxChannelDelta": 1,
-      "reason": "Thirty pinned Linux ARM Chromium captures plus the baseline produced 465 pairwise comparisons, differing at most at seven antialiased corner pixels by one channel level. CI run 34166000782 shows the same seven pixels. This agrees with the earlier 36-comparison investigation in docs/storybook-modal-raster-investigation.md. CI fixtures and additional evidence: scripts/storybook-visual/fixtures/modal-raster-noise/README.md."
-    }
+    "expectedErrors": []
   },
   {
     "catalog": "components",
@@ -1255,12 +1250,7 @@
       "height": 500
     },
     "ready": "[role='dialog'] input",
-    "expectedErrors": [],
-    "tolerance": {
-      "maxPixels": 5,
-      "maxChannelDelta": 1,
-      "reason": "Six identical pinned Linux Chromium captures differed at most at five antialiased Save-button corner pixels, by one channel level. All 15 pairwise comparisons stayed within this bound."
-    }
+    "expectedErrors": []
   },
   {
     "catalog": "components",

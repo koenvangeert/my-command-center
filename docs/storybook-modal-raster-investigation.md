@@ -34,8 +34,8 @@ All 36 pairwise comparisons among the eight captures and the baseline stayed wit
 
 Each changed RGB channel decreased by exactly one level; alpha stayed at 255. The first five pixels changed from 32 to 31, then 139 to 138 and 45 to 44 at the remaining two coordinates.
 
-To repeat the measurement, build both catalogs in the pinned container, select the unchanged light `sdk-overlays--modal` manifest entry, and call `capture(browser, server.url, entry)` eight times. Verify each capture with `verifyDiagnostics`, then compare RGBA bytes against the approved PNG and every other capture. Preserve coordinates and maximum channel differences, not just screenshot pass/fail status.
+To repeat the historical measurement, use revision `214006c1` in a disposable checkout. Build both catalogs in the pinned container, select the light `sdk-overlays--modal` manifest entry, and call `capture(browser, server.url, entry)` eight times. Verify each capture with `verifyDiagnostics`, then compare RGBA bytes against the approved PNG and every other capture. Preserve coordinates and maximum channel differences, not just screenshot pass/fail status.
 
 ## Bound
 
-Only this manifest entry's pixel-count allowance changes from five to seven. Its one-level channel bound and approved PNG remain unchanged. The comparator still rejects eight changed pixels or a two-level change. Existing comparison tests cover independent pixel-count and channel-bound enforcement. No story is skipped or masked.
+KVG-4835 increased only this entry's pixel-count allowance from five to seven, retaining its one-level channel bound and approved PNG. That allowance was superseded by the [KVG-4819 primary-button paint fix](storybook-visuals.md#modal-ci-follow-up): the redundant border paint is removed and both SDK modal cases now require exact comparison. The measurements above describe the earlier implementation.
