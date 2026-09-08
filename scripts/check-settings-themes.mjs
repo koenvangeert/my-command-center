@@ -83,6 +83,13 @@ try {
     { id: 'openforge-dark', label: 'OpenForge Dark', keys: ['Home', 'ArrowDown'], radius: '3px', text: 'rgb(243, 245, 247)', muted: 'rgb(154, 163, 174)' },
     { id: 'com.example.ink:ink', label: 'Ink', keys: ['End'], radius: '8px', text: 'rgb(243, 245, 247)', muted: 'rgb(154, 163, 174)' },
   ]
+  if (process.argv.includes('--compatibility-only')) {
+    themes.push(
+      { id: 'workshop-light', label: 'Workshop Light', keys: ['Home', 'ArrowDown', 'ArrowDown'] },
+      { id: 'workshop-dark', label: 'Workshop Dark', keys: ['Home', 'ArrowDown', 'ArrowDown', 'ArrowDown'] },
+      { id: 'com.example.copper:copper', label: 'Copper', keys: ['Home', 'ArrowDown', 'ArrowDown', 'ArrowDown', 'ArrowDown'] },
+    )
+  }
   for (const theme of themes) {
     await trigger.focus()
     await trigger.press('ArrowDown')
@@ -111,9 +118,24 @@ try {
     })
     assert.equal(compatibility.id, theme.id, `${theme.label} stable theme ID`)
     assert.deepEqual(compatibility.actual, compatibility.expected, `${theme.label} daisyUI text, border, surface and accent utilities`)
+    const semantic = await page.evaluate(() => {
+      const probe = document.querySelector('[data-testid="semantic-compatibility"]')
+      if (!probe) throw new Error('Missing semantic compatibility probe')
+      const actual = getComputedStyle(probe)
+      const reference = document.createElement('div')
+      reference.style.cssText = 'color:var(--of-text);background:var(--of-surface);border-color:color-mix(in oklab,var(--of-border) 50%,transparent)'
+      probe.append(reference)
+      const expected = getComputedStyle(reference)
+      const result = { actual: [actual.color, actual.backgroundColor, actual.borderTopColor],
+        expected: [expected.color, expected.backgroundColor, expected.borderTopColor] }
+      reference.remove()
+      return result
+    })
+    assert.deepEqual(semantic.actual, semantic.expected, `${theme.label} semantic utility paint`)
+    assert.equal(await field.inputValue(), 'Edited project', `${theme.label} retained edited input`)
 
     if (process.argv.includes('--compatibility-only')) {
-      reports.push({ theme: theme.label, compatibility })
+      reports.push({ theme: theme.label, compatibility, semantic })
       continue
     }
 
@@ -162,6 +184,17 @@ try {
       await page.screenshot({ path: join(artifacts, `${theme.label.replaceAll(' ', '-')}-${width}.png`), fullPage: true })
       reports.push({ theme: theme.label, width, ...presentation, headingColor, descriptionColor })
     }
+  }
+
+  if (process.argv.includes('--compatibility-only')) {
+    await field.focus()
+    const before = await page.locator('[data-testid="semantic-compatibility"]').evaluate(element => getComputedStyle(element).backgroundColor)
+    await page.locator('[data-testid="reload-copper"]').evaluate(button => button.click())
+    await page.waitForFunction(before => getComputedStyle(document.querySelector('[data-testid="semantic-compatibility"]')).backgroundColor !== before, before)
+    assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'com.example.copper:copper')
+    assert.equal(await field.inputValue(), 'Edited project')
+    assert.equal(await field.evaluate(element => document.activeElement === element), true, 'Theme reload retains input focus')
+    reports.push({ theme: 'Copper reloaded', before, after: await page.locator('[data-testid="semantic-compatibility"]').evaluate(element => getComputedStyle(element).backgroundColor) })
   }
 
   const toggle = page.getByRole('switch', { name: 'Default new tasks to worktrees' })

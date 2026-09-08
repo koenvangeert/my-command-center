@@ -10,6 +10,10 @@
 
   const adapter = createThemeDocumentAdapter(document.documentElement)
   const registry = createThemeRegistry({ applyTheme: adapter.apply })
+  let copperTheme = registry.registerContributedTheme({
+    ...LIGHT_THEME, id: 'com.example.copper:copper', label: 'Copper',
+    tokens: { ...LIGHT_THEME.tokens, surface: '#fbefd9', text: '#312419', accent: '#a34621', radiusControl: '12px' },
+  }, { pluginId: 'com.example.copper', generation: 1 })
   const customTheme = registry.registerContributedTheme({
     ...DARK_THEME,
     id: 'com.example.ink:ink',
@@ -18,6 +22,17 @@
   }, { pluginId: 'com.example.ink', generation: 1 })
   const { availableThemes, selectedTheme } = registry
   adapter.apply(LIGHT_THEME)
+  let copperGeneration = 1
+  async function reloadCopper() {
+    await registry.withPluginReload('com.example.copper', async () => {
+      await copperTheme.dispose()
+      copperTheme = registry.registerContributedTheme({
+        ...LIGHT_THEME, id: 'com.example.copper:copper', label: 'Copper',
+        tokens: { ...LIGHT_THEME.tokens, surface: '#e8ddfa', text: '#29133f', accent: '#6439a4', radiusControl: '12px' },
+      }, { pluginId: 'com.example.copper', generation: ++copperGeneration })
+      return true
+    })
+  }
 
   let projectName = $state('OpenForge')
   let projectPath = $state('/workspace/openforge')
@@ -26,15 +41,17 @@
   let terminalFontSize = $state(13)
   let values = $state({ use_worktrees: 'true', task_id_prefix: 'OF', pr_review_guidance: 'Review changes and explain risks.' })
 
-  onDestroy(() => { void customTheme.dispose() })
+  onDestroy(() => { void customTheme.dispose(); void copperTheme.dispose() })
 </script>
 
 <main class="mx-auto flex max-w-5xl flex-col gap-5 p-6" aria-label="Settings migration fixture">
+  <button data-testid="reload-copper" hidden onclick={() => { void reloadCopper() }}>Reload Copper palette</button>
   <div data-testid="daisy-compatibility" class="text-base-content border border-base-300 bg-base-100">
     Legacy utility text
     <span data-testid="daisy-accent" class="text-primary bg-accent border border-primary">Accent</span>
     <span data-testid="daisy-on-accent" class="text-primary-content">On accent</span>
   </div>
+  <div data-testid="semantic-compatibility" class="absolute text-of-text border border-of-border/50 bg-of-surface" aria-hidden="true"></div>
   <SettingsPreferencesCard availableThemes={$availableThemes} selectedThemeId={$selectedTheme.id}
     onThemeChange={(id) => { void registry.selectTheme(id) }}
     {terminalFont} onTerminalFontChange={(font) => { terminalFont = font }}
