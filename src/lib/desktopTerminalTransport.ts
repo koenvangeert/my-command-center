@@ -1,5 +1,7 @@
 import {
   createLiveModelOutputSubscriptionLifecycle,
+  decodeTerminalBase64,
+  decodeTerminalReplay,
   type TerminalSessionTransportHandlers,
   type TerminalSessionTransportSubscription,
   type TerminalTransport,
@@ -26,19 +28,7 @@ interface DesktopTerminalModelDisabledPayload {
   instance_id: number
 }
 
-interface DesktopTerminalSnapshot {
-  data: string
-  compatibilityData?: string
-  continuationData: string
-  instanceId: number
-  watermark: number
-}
-export interface DesktopPtyBufferState {
-  buffer: string | null
-  isLive: boolean
-  instanceId: number | null
-  snapshot?: DesktopTerminalSnapshot
-}
+export type DesktopPtyBufferState = import('@openforge-app/plugin-sdk').PtyBufferState
 
 export interface DesktopTerminalTransportPort {
   listenEvent(
@@ -57,21 +47,6 @@ export interface DesktopTerminalTransportOptions {
   ): Promise<void> | undefined
 }
 
-type Uint8ArrayBase64Constructor = typeof Uint8Array & {
-  fromBase64?(value: string): Uint8Array
-}
-
-function decodeBase64(value: string): Uint8Array {
-  const constructor = Uint8Array as Uint8ArrayBase64Constructor
-  if (constructor.fromBase64) return constructor.fromBase64(value)
-
-  const binary = atob(value)
-  const bytes = new Uint8Array(binary.length)
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index)
-  }
-  return bytes
-}
 
 export function createDesktopTerminalTransport(
   port: DesktopTerminalTransportPort,
@@ -108,7 +83,7 @@ export function createDesktopTerminalTransport(
       register: () => port.listenEvent(`pty-model-output-${shellSessionKey}`, (event) => {
         const payload = event.payload as DesktopTerminalModelOutputPayload
         handlers.onModelOutput({
-          data: decodeBase64(payload.data),
+          data: decodeTerminalBase64(payload.data),
           ptyInstanceId: payload.instance_id,
           startSequence: payload.start_sequence ?? payload.sequence,
           sequence: payload.sequence,
@@ -178,22 +153,7 @@ export function createDesktopTerminalTransport(
         watermark: replay.snapshot?.watermark ?? null,
       })
       if (checkpoint) await checkpoint
-      return {
-        historicalData: replay.buffer,
-        isLive: replay.isLive,
-        ptyInstanceId: replay.instanceId,
-        snapshot: replay.snapshot
-          ? {
-              data: decodeBase64(replay.snapshot.data),
-              continuationData: decodeBase64(replay.snapshot.continuationData),
-              ptyInstanceId: replay.snapshot.instanceId,
-              watermark: replay.snapshot.watermark,
-              compatibilityData: replay.snapshot.compatibilityData
-                ? decodeBase64(replay.snapshot.compatibilityData)
-                : undefined,
-            }
-          : undefined,
-      }
+      return decodeTerminalReplay(replay)
     },
     async writeUserInput(shellSessionKey, data) {
       ensureActive()

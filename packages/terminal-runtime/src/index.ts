@@ -1,3 +1,4 @@
+export { decodeTerminalBase64, decodeTerminalReplay } from './terminalWire'
 export {
   createIndexedShellSessionKey,
   parsePtySessionKey,
