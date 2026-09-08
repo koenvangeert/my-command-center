@@ -107,6 +107,14 @@ STORYBOOK_URL=http://localhost:6006 pnpm test storybook/stories/pages/FocusBoard
 
 Without `STORYBOOK_URL`, this browser suite is skipped. It covers 1000, 1279, 1280, 1440, and 1920px widths at 800px height.
 
+Self Review uses a 540px minimum diff width and a horizontally scrollable pane row. Persistent Changed files, Code, and Feedback buttons bring each pane into view without collapsing the project sidebar. The browser regression covers the production task workspace at 900, 1280, 1600, and 1920px, including pending-comment text, keyboard navigation, panel reopening, and the send-feedback dialog:
+
+```bash
+STORYBOOK_URL=http://localhost:6006 pnpm test storybook/stories/pages/SelfReview.browser.test.ts
+```
+
+This suite also skips when `STORYBOOK_URL` is unset.
+
 For idle CPU, event-rate, and macOS peak-footprint regression checks, follow [the idle resource check guide](docs/idle-resource-checks.md).
 For isolated headed terminal testing and the full-app terminal performance scenario, follow the [desktop terminal testing guide](docs/desktop-terminal-testing.md).
 For real-development-app terminal races, isolated/reuse ownership rules, reports, and CI prerequisites, follow the [live Electron invariant guide](docs/live-electron-invariants.md).

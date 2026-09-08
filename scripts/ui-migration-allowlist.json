@@ -500,7 +500,9 @@
     {"tag":"p","context":"class=\"max-w-xl text-sm text-error\"","tokens":["max-w-xl"],"count":1,"reason":"Repository preview error is bounded for readable wrapping."}
   ],
   "src/components/task-detail/SelfReviewWorkspace.svelte": [
-    {"tag":"div","context":"class=\"relative flex min-w-0 flex-1 overflow-hidden\"","tokens":["min-w-0"],"count":1,"reason":"Let this flex/grid child shrink and scroll rather than overflow its feature pane."}
+    {"tag":"div","context":"class=\"flex h-full w-full min-w-0 flex-col overflow-hidden\"","tokens":["min-w-0"],"count":1,"reason":"Keep horizontal overflow inside the review workspace rather than widening the task host."},
+    {"tag":"div","context":"class=\"flex min-h-0 flex-1 overflow-x-auto overflow-y-hidden\"","tokens":["min-h-0"],"count":1,"reason":"Fit the scrollable pane row below persistent review navigation without clipping its footer controls."},
+    {"tag":"div","context":"class=\"relative flex min-w-[540px] flex-1 overflow-hidden\"","tokens":["min-w-[540px]"],"count":1,"reason":"Preserve a readable code and pending-comment viewport; horizontal review navigation reaches side panes in constrained task hosts."}
   ],
   "src/components/task-detail/SendToAgentPanel.svelte": [
     {"tag":"div","context":"class=\"{layout === 'sidebar' ? 'flex flex-col gap-3 border-t border-base-300 bg-base-100 p-3' : 'flex min-h-14 items-center justify-between gap-4 border-t border-base-300 bg-base-200 px-6 py-3'}\"","tokens":["min-h-14"],"count":1,"reason":"Feature pane, header, divider or content viewport geometry; not shared control sizing."},
