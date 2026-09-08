@@ -10,32 +10,30 @@ vi.mock('./plugin/InjectionPointSlot.svelte', () => ({
   default: vi.fn(() => ({ update() {}, destroy() {} })),
 }))
 
-vi.mock('../lib/ipc', () => ({
-  createTask: vi.fn().mockResolvedValue({
-    id: 'T-1',
-    initial_prompt: 'Implement GitHub issue #412',
-    status: 'backlog',
-    prompt: null,
-    agent: null,
-    permission_mode: null,
-    worktree_source: null,
-    worktree_branch: null,
-    depends_on: [],
-    project_id: 'test-project-id',
-    created_at: 1000,
-    updated_at: 1000,
-  }),
-  updateTaskInitialPrompt: vi.fn().mockResolvedValue(undefined),
-  getConfig: vi.fn().mockResolvedValue(null),
-  getProjectConfig: vi.fn().mockResolvedValue(null),
-  getResolvedAiProvider: vi.fn().mockResolvedValue('claude-code'),
-  listGitBranches: vi.fn().mockResolvedValue([]),
-  repoHasCommits: vi.fn().mockResolvedValue(true),
-  getProjectTaskLabels: vi.fn().mockResolvedValue([]),
-  listOpenCodeCommands: vi.fn().mockResolvedValue([]),
-  searchOpenCodeFiles: vi.fn().mockResolvedValue([]),
-  listOpenCodeAgents: vi.fn().mockResolvedValue([]),
-}))
+vi.mock('../lib/ipc', async () => {
+  const { createTask: createFixtureTask } = await import('../../storybook/shared/fixtures/appFixtures')
+  return {
+    createTask: vi.fn().mockResolvedValue(createFixtureTask({
+      id: 'T-1',
+      prompt: 'Implement GitHub issue #412',
+      promptPreview: 'Implement GitHub issue #412',
+      status: 'backlog',
+      projectId: 'test-project-id',
+      createdAt: 1000,
+      updatedAt: 1000,
+    })),
+    updateTaskInitialPrompt: vi.fn().mockResolvedValue(undefined),
+    getConfig: vi.fn().mockResolvedValue(null),
+    getProjectConfig: vi.fn().mockResolvedValue(null),
+    getResolvedAiProvider: vi.fn().mockResolvedValue('claude-code'),
+    listGitBranches: vi.fn().mockResolvedValue([]),
+    repoHasCommits: vi.fn().mockResolvedValue(true),
+    getProjectTaskLabels: vi.fn().mockResolvedValue([]),
+    listOpenCodeCommands: vi.fn().mockResolvedValue([]),
+    searchOpenCodeFiles: vi.fn().mockResolvedValue([]),
+    listOpenCodeAgents: vi.fn().mockResolvedValue([]),
+  }
+})
 
 vi.mock('../lib/stores', () => {
   const { writable } = require('svelte/store')
