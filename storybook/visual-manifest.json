@@ -1243,7 +1243,7 @@
     "tolerance": {
       "maxPixels": 7,
       "maxChannelDelta": 1,
-      "reason": "Eight repeated pinned Linux Chromium captures plus the approved baseline differed at most at seven antialiased Save-button corner pixels, by one channel level. All 36 pairwise comparisons stayed within this bound. See docs/storybook-modal-raster-investigation.md."
+      "reason": "Thirty pinned Linux ARM Chromium captures plus the baseline produced 465 pairwise comparisons, differing at most at seven antialiased corner pixels by one channel level. CI run 34166000782 shows the same seven pixels. This agrees with the earlier 36-comparison investigation in docs/storybook-modal-raster-investigation.md. CI fixtures and additional evidence: scripts/storybook-visual/fixtures/modal-raster-noise/README.md."
     }
   },
   {
