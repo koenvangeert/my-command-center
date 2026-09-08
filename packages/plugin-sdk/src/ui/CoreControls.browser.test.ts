@@ -77,11 +77,11 @@ async function fieldPaint(field: Locator) {
   })
 }
 
-async function expectButtonPaint(button: Locator, background: string, color: string) {
+async function expectButtonPaint(button: Locator, background: string, color: string, border = background) {
   expect(await button.evaluate((element) => {
     const style = getComputedStyle(element)
-    return { background: style.backgroundColor, border: style.borderTopColor, color: style.color }
-  })).toEqual({ background, border: background, color })
+    return { background: style.backgroundColor, border: style.borderTopColor, borderWidth: style.borderTopWidth, color: style.color }
+  })).toEqual({ background, border, borderWidth: '1px', color })
 }
 
 describe.each(['light', 'dark', 'custom'])('core control browser styles in %s theme', (theme) => {
@@ -101,22 +101,42 @@ describe.each(['light', 'dark', 'custom'])('core control browser styles in %s th
           expect(await button.isDisabled()).toBe(disabled)
           const expectedForeground = disabled ? 'rgb(102, 102, 102)' : foreground
           const disabledBackground = 'rgb(170, 170, 170)'
-          await expectButtonPaint(button, disabled ? disabledBackground : resting, expectedForeground)
+          const border = variant === 'primary' && !disabled ? 'rgba(0, 0, 0, 0)' : undefined
+          await expectButtonPaint(button, disabled ? disabledBackground : resting, expectedForeground, border)
           await button.hover()
-          await expectButtonPaint(button, disabled ? disabledBackground : hover, expectedForeground)
+          await expectButtonPaint(button, disabled ? disabledBackground : hover, expectedForeground, border)
           await page.mouse.down()
           // Remove hover while retaining the press so hover styling cannot hide a missing active rule.
           await page.mouse.move(0, 0)
           if (!disabled) expect(await button.evaluate((element) => element.matches(':active') && !element.matches(':hover'))).toBe(true)
-          await expectButtonPaint(button, disabled ? disabledBackground : pressed, expectedForeground)
+          await expectButtonPaint(button, disabled ? disabledBackground : pressed, expectedForeground, border)
           await page.mouse.up()
-          await expectButtonPaint(button, disabled ? disabledBackground : resting, expectedForeground)
+          await expectButtonPaint(button, disabled ? disabledBackground : resting, expectedForeground, border)
         }
       }
     } finally {
       await page.close()
     }
   }, 30_000)
+
+  it('keeps primary button edges visible in forced colors', async () => {
+    const page = await browser.newPage({ reducedMotion: 'reduce', forcedColors: 'active' })
+    try {
+      await openFixture(page, theme)
+      for (const component of ['Button', 'IconButton']) {
+        const button = page.getByRole('button', { name: `primary ${component}`, exact: true })
+        const paint = await button.evaluate(element => {
+          const style = getComputedStyle(element)
+          return { border: style.borderTopColor, background: style.backgroundColor, width: style.borderTopWidth }
+        })
+        expect(paint.width).toBe('1px')
+        expect(paint.border).not.toBe('rgba(0, 0, 0, 0)')
+        expect(paint.border).not.toBe(paint.background)
+      }
+    } finally {
+      await page.close()
+    }
+  })
 
   it('shows a visible outline on every keyboard-focused control', async () => {
     const page = await browser.newPage({ reducedMotion: 'reduce' })

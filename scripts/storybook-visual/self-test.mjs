@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict'
 import { join } from 'node:path'
-import { readFile, writeFile, cp, unlink, mkdir } from 'node:fs/promises'
+import { readFile, writeFile, cp, unlink } from 'node:fs/promises'
 import { spawnSync } from 'node:child_process'
 import { capture } from './capture.mjs'
-import { compare, verifyDiagnostics } from './comparison.mjs'
+import { verifyDiagnostics } from './comparison.mjs'
 import { identity } from './manifest.mjs'
+import { checkTerminalReadiness, checkTaskCursorStability } from './terminal-readiness.mjs'
+import { verifyRepeatedCapture } from './repetition.mjs'
 
 export async function selfTest({ browser, url, entries, output }) {
   for (const entry of entries) {
@@ -12,16 +14,10 @@ export async function selfTest({ browser, url, entries, output }) {
     const second = await capture(browser, url, entry)
     verifyDiagnostics(first.diagnostics, entry.expectedErrors)
     verifyDiagnostics(second.diagnostics, entry.expectedErrors)
-    const comparison = compare(first.bytes, second.bytes, entry.tolerance)
-    if (!comparison.matches) {
-      const evidence = join(output, 'self-test', 'repeat', identity(entry))
-      await mkdir(evidence, { recursive: true })
-      await writeFile(join(evidence, 'baseline.png'), first.bytes)
-      await writeFile(join(evidence, 'current.png'), second.bytes)
-      await writeFile(join(evidence, 'difference.png'), comparison.difference)
-    }
-    assert.equal(comparison.matches, true, `${entry.story}: repeated capture must pass; see self-test/repeat/${identity(entry)}`)
+    await verifyRepeatedCapture(entry, first.bytes, second.bytes, output)
   }
+  await checkTerminalReadiness({ browser, url, entries, output })
+  await checkTaskCursorStability({ browser, url, entries, output })
   const entry = entries.find(entry => entry.catalog === 'components')
   assert.ok(entry, 'self-test requires a component smoke case')
   await assert.rejects(capture(browser, url, { ...entry, ready: '#missing-readiness' }, { timeout: 3000 }), /missing readiness/)

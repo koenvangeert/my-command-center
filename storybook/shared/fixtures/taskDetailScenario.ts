@@ -35,7 +35,8 @@ export function taskDetailScenario(kind: TaskDetailScenario = 'active', reviewSt
     output_revision: 1, viewed_output_revision: 1,
   }
   const transcript = session ? [
-    '\x1b[36mOpenForge agent\x1b[0m',
+    // Match local terminal replay: steady block shape and disabled renderer blink.
+    '\x1b[2 q\x1b[?12l\x1b[36mOpenForge agent\x1b[0m',
     '$ pnpm test src/greet.test.ts',
     kind === 'failed' ? '\x1b[31mFAIL: expected a default greeting for an empty name\x1b[0m' : '\x1b[32mPASS: trims whitespace before greeting\x1b[0m',
     kind === 'waiting' ? 'Waiting for your answer.' : kind === 'completed' ? 'Implementation complete. All tests passed.' : 'Updated src/greet.ts. Reviewing the diff.',

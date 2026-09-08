@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/svelte-vite'
 import { expect, userEvent, within, waitFor } from 'storybook/test'
 import TerminalTabs from '../../../plugins/terminal/src/TerminalTabs.svelte'
 import { terminalScenario } from '../../shared/fixtures/terminalScenario'
-import { terminalReady } from '../../shared/fixtures/terminalReadiness'
+import { terminalProgress, terminalReady } from '../../shared/fixtures/terminalReadiness'
 
 const meta = {
   title: 'Components/Terminal Tabs',
@@ -16,9 +16,14 @@ export const Ready: Story = { play: context => terminalReady(context) }
 export const Overflow: Story = {
   play: async context => {
     const canvas = within(context.canvasElement)
+    terminalProgress(context, 'initial-tab')
     await waitFor(() => expect(canvas.getAllByRole('tab')).toHaveLength(1))
-    for (let i = 1; i < 12; i++) await userEvent.click(canvas.getByRole('button', { name: 'Open new shell' }))
+    for (let i = 1; i < 12; i++) {
+      terminalProgress(context, 'open-tab', { tab: i + 1 })
+      await userEvent.click(canvas.getByRole('button', { name: 'Open new shell' }))
+    }
     await expect(canvas.getAllByRole('tab')).toHaveLength(12)
+    terminalProgress(context, 'select-first-tab')
     await userEvent.click(canvas.getAllByRole('tab')[0])
     await expect(canvas.getAllByRole('tab')[0]).toHaveAttribute('aria-selected', 'true')
     await terminalReady(context)

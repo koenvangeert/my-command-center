@@ -28,6 +28,8 @@ pnpm storybook:visual:unit
 
 `test` first checks the selected baselines, then proves repeated capture of every case stays within its declared bounds. It changes a button's color in disposable container build output, requires the real check command to fail, and saves its before/current/difference report at `artifacts/storybook-visual/self-test/intentional-change/index.html`. It also probes update evidence, missing readiness, unexpected console errors with preserved screenshots, exact declared failures, and restoration. `unit` tests manifest validation, missing stories, duplicate identities, missing/obsolete/unexpected baselines, pixel comparison, report escaping, and SVG-mask freezing without Docker.
 
+A failed pixel comparison between repeated captures retains `first.png`, `second.png`, and `difference.png` under `artifacts/storybook-visual/self-test/repeated/<identity>/`. The accompanying `index.html` and `results.json` identify the story, theme, viewport, and changed-pixel count. These are the two repeated samples, not a comparison against the approved baseline.
+
 For native interactive development use `pnpm storybook:pages` or `pnpm storybook:components`. Native screenshots are not canonical baselines.
 
 The visual unit command also exercises native media capture in local Chromium. Install it with `pnpm exec playwright install chromium` after dependency upgrades. These tests compare repeated captures within one environment; they do not approve repository baselines.
@@ -54,6 +56,45 @@ Comparison is exact by default. Per-entry rasterization allowances require measu
 See the [KVG-4816 focused-input investigation](storybook-focused-input-investigation.md) for capture experiments, verification results, and the limits of the existing two-pixel allowance.
 
 Captures use a 30-second default operation/navigation deadline. Failure probes can still request shorter deadlines. Full-manifest child probes have at least two minutes and scale by 30 seconds per selected case, so adopting more stories does not exhaust the original two-case timeout.
+
+## Terminal readiness evidence
+
+Terminal stories record a bounded `data-terminal-progress` history on the canvas. It identifies the tab being opened, font wait, replay state, presentation drain, text assertion, scrollbar hover, and paint boundary. Text checks include the drain's parse/render evidence and a short buffer tail. Timestamps use `performance.now()`, not the frozen application date.
+
+Readiness failures append that history, the selected tab, tab count, font status, and document visibility to the error in `results.json`. Evidence collection has its own one-second limit so an unresponsive page cannot prevent context teardown. A missing evidence response is reported explicitly, without replacing the original timeout.
+
+`pnpm storybook:visual:test` also repeats both terminal overflow captures three times at normal and 4× Chromium CPU throttling, compares the approved images without new allowances, and checks that all 12 tabs were opened. A withheld-paint probe must fail at `drain` and close its browser context. Its report is `artifacts/storybook-visual/self-test/terminal-readiness/results.json`. Story switching, cursor/scrollbar stability, and same-document teardown remain covered by `pnpm storybook:terminal:check`.
+
+### KVG-4819 investigation
+
+The historical failure used a 15-second capture deadline. Commit `d1106014` had already raised the default to 30 seconds before this investigation; this change leaves that deadline and the story's 10-second replay wait unchanged.
+
+Using the pinned Linux image and the historical 15-second deadline:
+
+- 48 captures passed with normal, 4×, and 12× Chromium CPU throttling.
+- 24 captures passed with the whole container limited to 0.5 CPU.
+- At an extreme 0.1 CPU quota, tab-overflow timed out in five of six captures. Available evidence showed the tab interaction still advancing or presentation drain starting near the deadline. One page could not respond within the evidence-collection limit.
+- Runtime-overflow passed all six 0.1-CPU captures. No persistent presentation-drain deadlock or runtime-overflow timeout was reproduced.
+
+With the existing 30-second per-operation deadline, all 12 captures passed at the same 0.1-CPU quota. The deadline is not a 30-second limit for the whole capture. The investigation reports are under `artifacts/storybook-visual/self-test/terminal-readiness/investigation/`.
+
+The native Terminal lifecycle check passed all 12 page and 14 component stories twice. The extra Linux run failed at the existing selection/copy assertion with an empty clipboard, after page-story teardown checks passed. Task KVG-4830 covers that platform-specific test gap; the copy assertion was not removed.
+
+These observations establish load sensitivity, not a runtime deadlock. Hidden tabs also remained marked visible by the runtime and incurred extra drain work; follow-up Task KVG-4825 covers that separate visibility/ownership issue. No runtime behavior, screenshot tolerance, or readiness check has been relaxed.
+
+### Modal CI follow-up
+
+After rebasing, visual CI passed all 148 initial comparisons but failed the repeated `sdk-overlays--modal` capture. Local Linux probes reproduced seven Save-button corner pixels changing by one RGB level. Geometry, computed styles, and input focus were identical between the two outcomes. The control failed 28 of 78 adjacent comparisons across 80 captures at normal and 4× CPU throttling. Extra paint frames, warm-up screenshots, forced focus, single-thread rasterization, and disabled Skia runtime optimizations did not remove the variation.
+
+The primary button painted its rounded edge twice: an opaque accent border over the same accent background, at a fractional vertical position. Keeping the existing transparent border geometry and letting the background paint the edge produced 24 identical trial captures. The approved fix retains button dimensions, theme colors, hover/pressed feedback, and keyboard focus treatment. Browser tests also check that forced-colors mode still draws visible button edges.
+
+Affected baselines are regenerated for the intentional change in primary-button edge painting. Both SDK modal cases now use exact comparison instead of their previous raster allowances. The button fix introduces no capture delay, raster flag, or wider tolerance.
+
+### Task Detail cursor and SDK tab follow-up
+
+The next full check exposed two separate failures. Task Detail Active differed by one 8×23 cursor cell in Workshop light and dark. Its desktop replay omitted the steady-cursor ANSI commands already used by local terminal stories. The replay now supplies those commands, without changing production cursor defaults. Parser tests cover seven replay scenarios. A rendered regression failed by 184 pixels before the fix and passed in all four active-story themes afterward. The self-test samples the terminal screen across two 650ms intervals, strictly comparing pixels to expose xterm's 600ms blink cycle; these waits test ongoing stability, not readiness.
+
+The SDK horizontal tab-list failure was eleven one-level pixels on its outer rounded edge, against the existing four-pixel allowance. After rebasing onto main's settled-screenshot and full-raster capture fixes, 48 captures matched the unchanged baseline exactly: 24 each with and without partial raster, split between normal and 4× CPU throttling. No Tabs styling, baseline, or allowance change was needed. KVG-4850 and KVG-4851 were folded into this PR at the owner's request.
 
 ## Canonical environment
 

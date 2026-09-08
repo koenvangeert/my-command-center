@@ -52,7 +52,39 @@ async function settledScreenshot(page, timeout) {
   throw new Error(`Screenshot did not settle within ${timeout}ms`, { cause: timedOut })
 }
 
-export async function capture(browser, url, entry, { mutate, timeout = 30000 } = {}) {
+// Runs in the page. Keep failure evidence bounded and independent of Storybook internals.
+function readinessEvidence() {
+  const storyError = document.querySelector('.sb-errordisplay')
+  return {
+    visibility: document.visibilityState,
+    fonts: document.fonts.status,
+    terminals: [...document.querySelectorAll('[data-terminal-progress]')].slice(0, 16).map(element => ({
+      progress: element.getAttribute('data-terminal-progress'),
+      observedAtMs: Math.round(performance.now()),
+    })),
+    tabs: {
+      count: document.querySelectorAll('[role=tab]').length,
+      selected: document.querySelector('[role=tab][aria-selected=true]')?.textContent?.slice(0, 160),
+    },
+    storyError: storyError?.checkVisibility() ? storyError.textContent?.slice(0, 2000) : undefined,
+  }
+}
+
+async function collectReadinessEvidence(page) {
+  let timer
+  try {
+    return await Promise.race([
+      page.evaluate(readinessEvidence),
+      new Promise(resolve => { timer = setTimeout(() => resolve({ unavailable: 'page did not respond within 1000ms' }), 1000) }),
+    ])
+  } catch (error) {
+    return { unavailable: error.message }
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+export async function capture(browser, url, entry, { prepare, mutate, timeout = 30000 } = {}) {
   const context = await browser.newContext({ viewport: entry.viewport, deviceScaleFactor: 1, locale: 'en-US', timezoneId: 'UTC', colorScheme: captureAppearance(entry.theme), reducedMotion: 'reduce', serviceWorkers: 'block' })
   try {
     // Stories may only fetch their local catalog. Fonts ship with production CSS.
@@ -63,6 +95,7 @@ export async function capture(browser, url, entry, { mutate, timeout = 30000 } =
     page.on('console', message => { if (message.type() === 'error') errors.push(message.text()) })
     page.on('pageerror', error => errors.push(error.message))
     await page.clock.setFixedTime(new Date('2026-01-02T09:30:00.000Z'))
+    if (prepare) await prepare(page)
     await page.goto(`${url}/${entry.catalog}/iframe.html?id=${entry.story}&viewMode=story&globals=openforgeTheme:${entry.theme}`, { waitUntil: 'networkidle', timeout })
     try {
       // A ready selector can match the initial state before the play function edits it.
@@ -72,7 +105,8 @@ export async function capture(browser, url, entry, { mutate, timeout = 30000 } =
       await page.evaluate(() => document.fonts.ready)
       await page.waitForFunction(() => document.fonts.check('14px Inter'))
     } catch (error) {
-      throw new Error(`missing readiness for ${entry.story}: ${entry.ready}\n${errors.join('\n')}\n${error.message}`)
+      const evidence = await collectReadinessEvidence(page)
+      throw new Error(`missing readiness for ${entry.story}: ${entry.ready}\n${errors.join('\n')}\n${error.message}\nReadiness evidence: ${JSON.stringify(evidence)}`)
     }
     await page.addStyleTag({ content: freezeMotionCss })
     if (mutate) await mutate(page)

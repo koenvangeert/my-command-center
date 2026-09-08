@@ -12,5 +12,5 @@ export function capture(
     viewport: { width: number; height: number }
     ready: string
   },
-  options?: { mutate?: (page: Page) => void | Promise<void>; timeout?: number },
+  options?: { prepare?: (page: Page) => void | Promise<void>; mutate?: (page: Page) => void | Promise<void>; timeout?: number },
 ): Promise<{ bytes: Buffer; diagnostics: string[] }>

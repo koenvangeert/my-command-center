@@ -9,8 +9,9 @@ const manifest = JSON.parse(readFileSync(new URL('../../storybook/visual-manifes
 const modal = manifest.find(entry => entry.catalog === 'components' && entry.story === 'sdk-overlays--modal' && entry.theme === 'openforge-light')
 
 describe('modal raster policy', () => {
-  it('accepts the seven one-level corner pixels observed in CI', () => {
-    expect(compare(baseline, current, modal.tolerance)).toMatchObject({ pixels: 7, matches: true })
+  it('keeps the fixed modal exact and rejects the archived pre-fix noise', () => {
+    expect(modal.tolerance).toBeUndefined()
+    expect(compare(baseline, current, modal.tolerance)).toMatchObject({ pixels: 7, matches: false })
   })
 
   it('rejects an eighth changed pixel', () => {
