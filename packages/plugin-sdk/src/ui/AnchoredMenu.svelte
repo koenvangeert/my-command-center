@@ -58,17 +58,22 @@
     ))
   }
 
-  async function focusFirstEnabledItem() {
-    await tick()
+  function handleOpenAutoFocus(event: Event) {
+    // Own opening focus here, after mount, instead of racing Bits UI from tick callbacks.
+    event.preventDefault()
     if (!open || !menuElement) return
-    getEnabledMenuItems(menuElement)[0]?.focus()
+    if (menuElement.contains(document.activeElement)) return
+    ;(getEnabledMenuItems(menuElement)[0] ?? menuElement).focus()
+  }
+
+  function handleCloseAutoFocus(event: Event) {
+    // Bits UI may remount its focus scope without closing the logical menu.
+    if (open) event.preventDefault()
   }
 
   function handleOpenChange(nextOpen: boolean) {
     onOpenChange?.(nextOpen)
-    if (nextOpen) {
-      void focusFirstEnabledItem()
-    } else {
+    if (!nextOpen) {
       void tick().then(() => triggerElement?.focus())
     }
   }
@@ -82,7 +87,6 @@
   $effect(() => {
     if (!open || !menuElement) return
     const observedMenu = menuElement
-    void focusFirstEnabledItem()
 
     const observer = new MutationObserver(() => {
       const activeElement = document.activeElement
@@ -115,6 +119,8 @@
     <DropdownMenu.Portal>
       <DropdownMenu.Content
         bind:ref={menuElement}
+        onOpenAutoFocus={handleOpenAutoFocus}
+        onCloseAutoFocus={handleCloseAutoFocus}
         onfocusin={handleFocusIn}
         class="of-menu-content"
         aria-label={label}
