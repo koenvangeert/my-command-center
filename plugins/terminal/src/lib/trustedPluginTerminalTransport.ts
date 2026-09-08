@@ -1,5 +1,7 @@
 import {
   createLiveModelOutputSubscriptionLifecycle,
+  decodeTerminalBase64,
+  decodeTerminalReplay,
   parsePtySessionKey,
   type TerminalSessionTransportHandlers,
   type TerminalSessionTransportSubscription,
@@ -27,19 +29,7 @@ interface TrustedPluginTerminalModelDisabledPayload {
   instance_id: number
 }
 
-interface TrustedPluginTerminalSnapshot {
-  data: string
-  compatibilityData?: string
-  continuationData: string
-  instanceId: number
-  watermark: number
-}
-interface TrustedPluginPtyBufferState {
-  buffer: string | null
-  isLive: boolean
-  instanceId: number | null
-  snapshot?: TrustedPluginTerminalSnapshot | null
-}
+type TrustedPluginPtyBufferState = import('@openforge-app/plugin-sdk').PtyBufferState
 
 interface IndexedShellRequest {
   taskId: string
@@ -65,10 +55,6 @@ function parseIndexedShellSessionKey(shellSessionKey: string): IndexedShellReque
   return { taskId: parsed.taskId, terminalIndex: parsed.terminalIndex }
 }
 
-function decodeBase64(value: string): Uint8Array {
-  const binary = atob(value)
-  return Uint8Array.from(binary, character => character.charCodeAt(0))
-}
 
 export function createTrustedPluginTerminalTransport(
   getPort: () => TrustedPluginTerminalPort,
@@ -114,7 +100,7 @@ export function createTrustedPluginTerminalTransport(
       register: () => events.onGlobal<TrustedPluginTerminalModelOutputPayload>(
         `openforge.pty-model-output-${shellSessionKey}`,
         payload => handlers.onModelOutput({
-          data: decodeBase64(payload.data),
+          data: decodeTerminalBase64(payload.data),
           ptyInstanceId: payload.instance_id,
           startSequence: payload.start_sequence ?? payload.sequence,
           sequence: payload.sequence,
@@ -179,22 +165,7 @@ export function createTrustedPluginTerminalTransport(
   async function readReplay(shellSessionKey: string) {
     ensureActive()
     const replay = await getPort().shell.getBuffer(parseIndexedShellSessionKey(shellSessionKey))
-    return {
-      historicalData: replay.buffer,
-      isLive: replay.isLive,
-      ptyInstanceId: replay.instanceId,
-      snapshot: replay.snapshot
-        ? {
-            data: decodeBase64(replay.snapshot.data),
-            continuationData: decodeBase64(replay.snapshot.continuationData),
-            ptyInstanceId: replay.snapshot.instanceId,
-            watermark: replay.snapshot.watermark,
-            compatibilityData: replay.snapshot.compatibilityData
-              ? decodeBase64(replay.snapshot.compatibilityData)
-              : undefined,
-          }
-        : undefined,
-    }
+    return decodeTerminalReplay(replay)
   }
 
   async function writeUserInput(shellSessionKey: string, data: string): Promise<void> {

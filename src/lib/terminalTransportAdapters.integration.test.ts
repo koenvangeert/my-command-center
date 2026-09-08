@@ -13,15 +13,11 @@ import {
 } from '@openforge-app/terminal-runtime/testUtils'
 
 
-interface AdapterReplay {
-  buffer: string | null
-  isLive: boolean
-  instanceId: number | null
-  snapshot?: { instanceId: number; watermark: number; data: string; compatibilityData?: string; continuationData: string }
-}
+type AdapterReplay = import('@openforge-app/plugin-sdk').PtyBufferState
 
 interface AdapterHarness {
   transport: TerminalTransport
+  setReplay(replay: AdapterReplay): void
   emitModelOutput(shellSessionKey: string, data: string, ptyInstanceId: number, sequence: number): void
   emitExit(shellSessionKey: string, ptyInstanceId: number): void
   emitConnectionRestored(): void
@@ -57,6 +53,7 @@ function createDesktopHarness(): AdapterHarness {
   }
   return {
     transport: createDesktopTerminalTransport(port),
+    setReplay(value) { replay = value },
     emitModelOutput(shellSessionKey, data, ptyInstanceId, sequence) {
       listeners.get(`pty-model-output-${shellSessionKey}`)?.({
         payload: { data: btoa(data), instance_id: ptyInstanceId, sequence },
@@ -128,6 +125,7 @@ function createTrustedPluginHarness(): AdapterHarness {
   }
   return {
     transport: createTrustedPluginTerminalTransport(() => port),
+    setReplay(value) { replay = value },
     emitModelOutput(shellSessionKey, data, ptyInstanceId, sequence) {
       listeners.get(`openforge.pty-model-output-${shellSessionKey}`)?.({
         data: btoa(data),
@@ -334,6 +332,42 @@ describe.each([
     vi.unstubAllGlobals()
   })
 
+
+  it.each([undefined, null])('preserves replay metadata without a snapshot: %s', async (snapshot) => {
+    const harness = createHarness()
+    harness.setReplay({ buffer: 'history', isLive: false, instanceId: null, snapshot })
+    expect(await harness.transport.readReplay('T-1-shell-2')).toEqual({
+      historicalData: 'history', isLive: false, ptyInstanceId: null, snapshot: undefined,
+    })
+    harness.transport.dispose()
+  })
+
+  it.each([undefined, '', 'AP+A'])('decodes snapshot bytes and optional compatibility data: %s', async (compatibilityData) => {
+    const harness = createHarness()
+    harness.setReplay({
+      buffer: 'history', isLive: true, instanceId: 7,
+      snapshot: { instanceId: 9, watermark: 0, data: 'AP+A', continuationData: '', compatibilityData },
+    })
+    expect(await harness.transport.readReplay('T-1-shell-2')).toEqual({
+      historicalData: 'history', isLive: true, ptyInstanceId: 7,
+      snapshot: {
+        ptyInstanceId: 9, watermark: 0, data: new Uint8Array([0, 255, 128]),
+        continuationData: new Uint8Array(),
+        compatibilityData: compatibilityData ? new Uint8Array([0, 255, 128]) : undefined,
+      },
+    })
+    harness.transport.dispose()
+  })
+
+  it('rejects malformed snapshot base64', async () => {
+    const harness = createHarness()
+    harness.setReplay({
+      buffer: null, isLive: true, instanceId: 7,
+      snapshot: { instanceId: 7, watermark: 1, data: '!', continuationData: '' },
+    })
+    await expect(harness.transport.readReplay('T-1-shell-2')).rejects.toThrow()
+    harness.transport.dispose()
+  })
 
   it('normalizes Ghostty snapshots and sequenced model output at the Terminal Runtime seam', async () => {
     stubAttachmentObservers()
