@@ -9,7 +9,7 @@ import { verifyRepeatedCapture } from './repetition.mjs'
 const overflowStories = ['components-terminal-tabs--overflow', 'components-terminal-runtime--overflow']
 
 /** Exercise production replay, presentation drain and the 12-click play path in Chromium. */
-export async function checkTerminalReadiness({ browser, url, entries, output, baselineRoot = '/baselines' }) {
+export async function checkTerminalReadiness({ browser, url, entries, output, baselineRoot = '/baselines', timings }) {
   const selected = overflowStories.map(story => {
     const entry = entries.find(entry => entry.story === story)
     assert.ok(entry, `Terminal readiness regression requires ${story}`)
@@ -28,6 +28,7 @@ export async function checkTerminalReadiness({ browser, url, entries, output, ba
           results.push(result)
           try {
             const current = await capture(browser, url, entry, {
+              timings, phase: 'terminal-readiness',
               async prepare(page) {
                 const session = await page.context().newCDPSession(page)
                 await session.send('Emulation.setCPUThrottlingRate', { rate })
@@ -68,6 +69,7 @@ export async function checkTerminalReadiness({ browser, url, entries, output, ba
     // A real missing paint callback must fail, not publish readiness. The page
     // context owns this fault injection and is closed even while drain is pending.
     await assert.rejects(capture(browser, url, selected[1], {
+      timings, phase: 'withheld-paint',
       timeout: 3000,
       prepare: page => page.addInitScript(() => {
         const requestFrame = window.requestAnimationFrame.bind(window)
@@ -92,11 +94,12 @@ export async function checkTerminalReadiness({ browser, url, entries, output, ba
 }
 
 /** Observe replay through multiple cursor-blink phases; this is not a readiness delay. */
-export async function checkTaskCursorStability({ browser, url, entries, output }) {
+export async function checkTaskCursorStability({ browser, url, entries, output, timings }) {
   const selected = entries.filter(entry => entry.story === 'pages-task-detail--active')
   assert.ok(selected.length, 'Cursor regression requires the active Task Detail story')
   for (const entry of selected) {
     const current = await capture(browser, url, entry, {
+      timings, phase: 'cursor-stability',
       async mutate(page) {
         const screen = page.locator('.xterm-screen').first()
         const options = { animations: 'disabled', caret: 'hide', scale: 'css' }

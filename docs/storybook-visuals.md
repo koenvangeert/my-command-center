@@ -26,7 +26,15 @@ pnpm storybook:visual:unit
 
 `update` uses the same capture path but writes only the images selected by `storybook/visual-manifest.json`. It validates all selected captures before writing any of them. It lists obsolete PNGs without deleting them. Review and remove obsolete images explicitly, then run `check`. Never update screenshots just to silence a failure.
 
-`test` first checks the baselines, then proves repeated capture of every manifest case is unchanged. It also checks inline and image-mask SVG animations at different capture times. Command-contract probes use one case per catalog so their cost stays bounded as the matrix grows. The test changes a button's color in disposable container build output, requires the real check command to fail, and saves its before/current/difference report at `artifacts/storybook-visual/self-test/intentional-change/index.html`. It also probes update evidence, missing readiness, unexpected console errors with preserved screenshots, exact declared failures, and restoration. `unit` tests manifest validation, missing stories, duplicate identities, missing/obsolete/unexpected baselines, pixel comparison, and report escaping without Docker.
+`test` checks every declared baseline, then compares each initial `current.png` with one fresh capture in a new browser context. This is two full-matrix passes, not three. Missing initial artifacts fail rather than triggering replacement captures.
+
+Runner regression probes use exactly two identities: `pages/application-shell--expanded--openforge-light--1280x800` and `components/components-button--primary--openforge-light--480x240`. Missing or duplicate representatives fail explicitly. The probes run the real command against a disposable manifest and matching baseline inventory. They test button-color failure, update evidence, unexpected diagnostics, missing/obsolete/unexpected baselines, duplicate identities, and restoration. Adding unrelated stories does not grow these probes or narrow the normal full-matrix check.
+
+The deliberate button-color failure saves its before/current/difference report at `artifacts/storybook-visual/self-test/intentional-change/index.html`. Only disposable container build output and probe baselines are changed. Internal probe overrides require the complete restricted input set; they are not a public story filter.
+
+Targeted regressions run separately from the two full-matrix passes. They preserve eight fresh, exact raster samples for each modal, Task Detail Backlog, and Task Detail Narrow case, plus timer freezing, inline and image-mask SVG motion, delayed terminal focus, feedback visibility, terminal readiness, cursor stability, and exact diagnostics. These additional samples appear under the `capture-stability` timing phase.
+
+`unit` tests manifest validation, missing stories, duplicate identities, missing/obsolete/unexpected baselines, pixel comparison, report escaping, SVG-mask freezing, repeatability evidence, probe inputs and restoration, and timing output without Docker.
 
 A failed pixel comparison between repeated captures retains `first.png`, `second.png`, and `difference.png` under `artifacts/storybook-visual/self-test/repeated/<identity>/`. The accompanying `index.html` and `results.json` identify the story, theme, viewport, and changed-pixel count. These are the two repeated samples, not a comparison against the approved baseline.
 
@@ -43,6 +51,16 @@ The visual unit command also exercises native media capture in local Chromium. I
 
 CI runs the same Linux command on affected UI pull requests and main-branch pushes. Download `storybook-visual-review` from the workflow run, extract it, and open `index.html`. The artifact includes the deliberate regression probe report even on success and is retained for 14 days.
 
+## Timing evidence
+
+Each command writes `timings.json` beside `results.json`. Child probes write their own timing files in `self-test/<probe>/`. Phase-start and phase-completion logs show progress; the final summary lists at most five slowest captures.
+
+The JSON contains `status`, total wall-clock `elapsedMs`, `captures` with attempted/completed/failed counts, and `records`. Each record has `phase`, `status`, and `elapsedMs`; capture records also have `id` and `capture: true`, and child-probe records have the probe `id`. Elapsed time uses a monotonic clock, not the frozen story date.
+
+Parent totals include child invocation time, but parent capture counts exclude child captures. Phase durations include their nested work; do not add them together to calculate total duration. A passed run can contain failed capture records from expected missing-readiness and withheld-paint tests. The enclosing regression phase must pass its rejection assertion.
+
+Handled failures retain timing evidence for work already attempted. Invalid environment/input overrides are rejected before filesystem writes, and hard process termination cannot guarantee a final timing file. Rendering, tolerances, and existing report formats are unchanged.
+
 ## Manifest contract
 
 Each entry declares `catalog`, stable Storybook `story` ID, `theme`, integer `viewport.width` and `viewport.height`, a visible Playwright `ready` selector, and `expectedErrors`. Catalogs are limited to `pages` and `components`. Accepted theme IDs are `openforge-light`, `openforge-dark`, `workshop-light`, and `workshop-dark`. Unknown fields and theme IDs fail rather than being ignored.
@@ -55,7 +73,7 @@ Comparison is exact by default. Per-entry rasterization allowances require measu
 
 See the [KVG-4816 focused-input investigation](storybook-focused-input-investigation.md) for capture experiments, verification results, and the limits of the existing two-pixel allowance.
 
-Captures use a 30-second default operation/navigation deadline. Failure probes can still request shorter deadlines. Command-contract child probes use one case per catalog; their finite timeout scales with that selected subset.
+Captures use a 30-second default operation/navigation deadline. Failure probes can still request shorter deadlines. Each bounded child probe has a two-minute deadline independent of catalog growth.
 
 ## Terminal readiness evidence
 
