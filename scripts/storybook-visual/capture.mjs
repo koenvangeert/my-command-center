@@ -2,7 +2,7 @@ import { createServer } from 'node:http'
 import { readFile } from 'node:fs/promises'
 import { resolve, extname, sep } from 'node:path'
 import { freezeSvgMasks } from './svg-motion.mjs'
-import { captureAppearance } from './manifest.mjs'
+import { captureAppearance, identity } from './manifest.mjs'
 import { PNG } from 'pngjs'
 import { freezeMotionCss, freezeNativeMedia } from './native-media.mjs'
 
@@ -86,7 +86,13 @@ async function collectReadinessEvidence(page) {
   }
 }
 
-export async function capture(browser, url, entry, { prepare, mutate, timeout = 30000 } = {}) {
+export function capture(browser, url, entry, options = {}) {
+  const { timings, phase = 'capture' } = options
+  const work = () => captureStory(browser, url, entry, options)
+  return timings ? timings.measure(phase, work, { id: identity(entry), capture: true }) : work()
+}
+
+async function captureStory(browser, url, entry, { prepare, mutate, timeout = 30000 } = {}) {
   const context = await browser.newContext({ viewport: entry.viewport, deviceScaleFactor: 1, locale: 'en-US', timezoneId: 'UTC', colorScheme: captureAppearance(entry.theme), reducedMotion: 'reduce', serviceWorkers: 'block' })
   try {
     // Stories may only fetch their local catalog. Fonts ship with production CSS.

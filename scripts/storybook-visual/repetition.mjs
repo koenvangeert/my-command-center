@@ -1,6 +1,6 @@
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { compare, report } from './comparison.mjs'
+import { compare, report, verifyDiagnostics } from './comparison.mjs'
 import { identity } from './manifest.mjs'
 
 export async function verifyRepeatedCapture(entry, first, second, output) {
@@ -18,4 +18,11 @@ export async function verifyRepeatedCapture(entry, first, second, output) {
   await writeFile(join(root, 'results.json'), JSON.stringify(results, null, 2))
   await writeFile(join(root, 'index.html'), report(results))
   throw new Error(`${id}: repeated capture must pass (${comparison.pixels} changed pixels). Review ${root}/index.html`)
+}
+
+export async function verifyRepeatFromInitial(entry, output, captureNext) {
+  const first = await readFile(join(output, identity(entry), 'current.png'))
+  const second = await captureNext()
+  verifyDiagnostics(second.diagnostics, entry.expectedErrors)
+  await verifyRepeatedCapture(entry, first, second.bytes, output)
 }
