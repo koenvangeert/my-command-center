@@ -33,12 +33,14 @@ async function settledScreenshot(page, timeout) {
   let previous, timedOut
   try {
     while (performance.now() < deadline) {
-      if (previous) {
-        // Cross a paint boundary so duplicate reads of one frame cannot count as stability.
-        const paint = await page.waitForFunction(() => new Promise(resolve => {
-          requestAnimationFrame(() => requestAnimationFrame(() => resolve(true)))
-        }), null, { timeout: remaining() })
-        await paint.dispose()
+      // Blur before advancing two paint frames; reject deferred refocus.
+      await page.evaluate(() => {
+        for (const input of document.querySelectorAll('.xterm-helper-textarea')) input.blur()
+      })
+      await page.clock.runFor(32)
+      if (await page.evaluate(() => document.activeElement?.matches('.xterm-helper-textarea') ?? false)) {
+        previous = undefined
+        continue
       }
       const bytes = await page.screenshot({ animations: 'disabled', caret: 'hide', scale: 'css', timeout: remaining() })
       const frame = PNG.sync.read(bytes)
@@ -96,22 +98,37 @@ export async function capture(browser, url, entry, { prepare, mutate, timeout = 
     page.on('pageerror', error => errors.push(error.message))
     await page.clock.setFixedTime(new Date('2026-01-02T09:30:00.000Z'))
     if (prepare) await prepare(page)
-    await page.goto(`${url}/${entry.catalog}/iframe.html?id=${entry.story}&viewMode=story&globals=openforgeTheme:${entry.theme}`, { waitUntil: 'networkidle', timeout })
+    await page.goto(`${url}/${entry.catalog}/iframe.html?id=${entry.story}&viewMode=story&globals=openforgeTheme:${entry.theme}`, { waitUntil: 'domcontentloaded', timeout })
     try {
-      // A ready selector can match the initial state before the play function edits it.
-      // Storybook 10's pinned preview exposes the terminal render phase here.
-      await page.waitForFunction(() => window.__STORYBOOK_PREVIEW__?.currentRender?.phase === 'finished')
+      await page.waitForFunction(() => ['finished', 'errored'].includes(window.__STORYBOOK_PREVIEW__?.currentRender?.phase))
+      if (await page.evaluate(() => window.__STORYBOOK_PREVIEW__.currentRender.phase === 'errored')) {
+        throw new Error('story interaction failed')
+      }
       await page.locator(entry.ready).first().waitFor({ state: 'visible' })
+      // Native buffering must settle while its runtime timers remain live.
+      await freezeNativeMedia(page, timeout)
+      // With fixed wall time this pauses immediately, without fast-forwarding.
+      // Keep timers live through play, then preserve transient results during capture.
+      await page.clock.pauseAt(new Date('2026-01-02T09:30:00.000Z'))
       await page.evaluate(() => document.fonts.ready)
       await page.waitForFunction(() => document.fonts.check('14px Inter'))
     } catch (error) {
       const evidence = await collectReadinessEvidence(page)
       throw new Error(`missing readiness for ${entry.story}: ${entry.ready}\n${errors.join('\n')}\n${error.message}\nReadiness evidence: ${JSON.stringify(evidence)}`)
     }
-    await page.addStyleTag({ content: freezeMotionCss })
-    if (mutate) await mutate(page)
-    await page.evaluate(freezeSvgMasks)
-    await freezeNativeMedia(page, timeout)
+    await page.addStyleTag({ content: `${freezeMotionCss}\n*,*::before,*::after{will-change:auto!important}` })
+    if (mutate) {
+      await mutate(page)
+      await freezeNativeMedia(page, timeout)
+    }
+    await page.evaluate(() => {
+      // CSS animation controls do not stop SMIL, including SVGs embedded in masks.
+      for (const svg of document.querySelectorAll('svg')) {
+        svg.pauseAnimations()
+        svg.setCurrentTime(1)
+      }
+    })
+    await page.evaluate(freezeSvgMasks, 'middle')
     const bytes = await settledScreenshot(page, timeout)
     return { bytes, diagnostics: errors }
   } finally {

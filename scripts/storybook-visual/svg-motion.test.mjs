@@ -25,3 +25,15 @@ it('freezes production-style SVG masks at their terminal frame without changing 
   freezeSvgMasks()
   expect(decodeURIComponent(spinner.style.maskImage)).toBe(frozen)
 })
+
+it('keeps a loading mask visible when its terminal keyframe is empty', () => {
+  dom = new JSDOM('<div id="spinner"></div>')
+  for (const name of ['document', 'DOMParser', 'XMLSerializer']) vi.stubGlobal(name, dom.window[name])
+  vi.stubGlobal('getComputedStyle', dom.window.getComputedStyle.bind(dom.window))
+  const spinner = document.querySelector('#spinner')
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg"><circle><animate attributeName="stroke-dasharray" values="0,150;42,150;0,150"/></circle></svg>'
+  spinner.style.maskImage = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`
+  freezeSvgMasks('middle')
+  expect(decodeURIComponent(spinner.style.maskImage)).toContain('stroke-dasharray="42,150"')
+  expect(decodeURIComponent(spinner.style.maskImage)).not.toContain('<animate')
+})

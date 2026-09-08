@@ -12,7 +12,7 @@ it('reports the stalled terminal phase and preserves the readiness error while c
     setDefaultTimeout: vi.fn(), on: vi.fn(),
     clock: { setFixedTime: vi.fn() }, goto: vi.fn(), waitForFunction: vi.fn(),
     locator: vi.fn(() => ({ first: () => ({ waitFor: vi.fn().mockRejectedValue(new Error('selector timed out')) }) })),
-    evaluate: vi.fn().mockResolvedValue(evidence),
+    evaluate: vi.fn().mockResolvedValueOnce(false).mockResolvedValue(evidence),
   }
   const context = { route: vi.fn(), newPage: vi.fn().mockResolvedValue(page), close: vi.fn() }
   const browser = { newContext: vi.fn().mockResolvedValue(context) }
@@ -33,7 +33,7 @@ it.each(['available', 'closed', 'unresponsive'])('collects %s page evidence with
     setDefaultTimeout: vi.fn(), on: vi.fn(),
     clock: { setFixedTime: vi.fn() }, goto: vi.fn(), waitForFunction: vi.fn(),
     locator: () => ({ first: () => ({ waitFor: () => Promise.reject(new Error('readiness deadline')) }) }),
-    evaluate: fn => mode === 'available' ? Promise.resolve(fn()) : mode === 'closed' ? Promise.reject(new Error('page closed')) : new Promise(() => {}),
+    evaluate: vi.fn(fn => mode === 'available' ? Promise.resolve(fn()) : mode === 'closed' ? Promise.reject(new Error('page closed')) : new Promise(() => {})).mockResolvedValueOnce(false),
   }
   const context = { route: vi.fn(), newPage: async () => page, close: vi.fn() }
   const entry = { catalog: 'components', story: 'overflow', theme: 'openforge-light', viewport: { width: 640, height: 400 }, ready: '[data-terminal-ready=true]' }

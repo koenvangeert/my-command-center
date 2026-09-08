@@ -3,6 +3,7 @@ import { selfReviewStateByTask, emptySelfReviewTaskState } from '../../../src/li
 import { agentTerminalSessions } from '../../../src/lib/terminalSessionService'
 import { clearTaskReviewPaneState } from '../../../src/lib/taskReviewPaneState'
 import type { AgentSession, GitStatusSummary } from '../../../src/lib/types'
+import type { DesktopPtyBufferState } from '../../../src/lib/desktopTerminalTransport'
 import { INITIAL_TASK_RUN_APP_STATE } from '../../../src/components/task-detail/taskRunAppController'
 import type { StoryScenarioDefinition } from '../storyEnvironmentPreview'
 import { createStoryStoreAdapter as seed } from '../environment/storyStoreAdapter'
@@ -57,17 +58,22 @@ export function taskDetailScenario(kind: TaskDetailScenario = 'active', reviewSt
   const environment: StoryScenarioDefinition = {
     desktop: {
       deferred: reviewState === 'loading' ? ['get_task_diff'] : [],
-      failures: reviewState === 'failure' ? { get_task_diff: 'Story fixture: review workspace unavailable' } : {},
       responses: {
         get_latest_session: session,
         get_pty_buffer: {
           buffer: transcript, isLive: session?.status === 'running' || session?.status === 'paused', instanceId: session ? 42 : null,
           ...(session ? { snapshot: { data: btoa(transcript ?? ''), continuationData: '', instanceId: 42, watermark: 0 } } : {}),
-        },
+        } satisfies DesktopPtyBufferState,
         pty_resize: undefined, pty_write: undefined, mark_agent_output_viewed: true,
         has_vscode_protocol_handler: false,
         get_task_git_status: gitStatus,
-        get_task_diff: diffs, get_commit_diff: diffs,
+        get_task_diff: reviewState === 'failure' ? () => {
+          const error = new Error('Story fixture: review workspace unavailable')
+          // Keep the complete diagnostic stable across static-build hashes and server ports.
+          error.stack = error.toString()
+          throw error
+        } : diffs,
+        get_commit_diff: diffs,
         get_task_commits: reviewState === 'empty' ? [] : [createReviewCommit()],
         get_task_file_contents: reviewFileContents, get_commit_file_contents: reviewFileContents,
         get_task_batch_file_contents: batchContents, get_commit_batch_file_contents: batchContents,

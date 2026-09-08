@@ -1,6 +1,6 @@
 # Review screenshot changes
 
-The manifest includes foundation, host chrome, Plugin SDK, terminal, and navigation/search cases. See [host chrome and feedback](storybook-host-chrome.md), [SDK composite layouts](storybook-sdk-composites.md), and [navigation workflows](storybook-navigation.md) for their adopted states and interaction checks. It does not enforce coverage of the remaining Storybook catalog.
+The manifest includes foundation, task workspace, host chrome, Plugin SDK, terminal, and navigation/search cases. See [task workspaces](storybook-task-workspaces.md), [host chrome and feedback](storybook-host-chrome.md), [SDK composite layouts](storybook-sdk-composites.md), and [navigation workflows](storybook-navigation.md) for their adopted states and interaction checks. It does not enforce coverage of the remaining Storybook catalog.
 
 ## Built-in themes
 
@@ -26,7 +26,7 @@ pnpm storybook:visual:unit
 
 `update` uses the same capture path but writes only the images selected by `storybook/visual-manifest.json`. It validates all selected captures before writing any of them. It lists obsolete PNGs without deleting them. Review and remove obsolete images explicitly, then run `check`. Never update screenshots just to silence a failure.
 
-`test` first checks the selected baselines, then proves repeated capture of every case stays within its declared bounds. It changes a button's color in disposable container build output, requires the real check command to fail, and saves its before/current/difference report at `artifacts/storybook-visual/self-test/intentional-change/index.html`. It also probes update evidence, missing readiness, unexpected console errors with preserved screenshots, exact declared failures, and restoration. `unit` tests manifest validation, missing stories, duplicate identities, missing/obsolete/unexpected baselines, pixel comparison, report escaping, and SVG-mask freezing without Docker.
+`test` first checks the baselines, then proves repeated capture of every manifest case is unchanged. It also checks inline and image-mask SVG animations at different capture times. Command-contract probes use one case per catalog so their cost stays bounded as the matrix grows. The test changes a button's color in disposable container build output, requires the real check command to fail, and saves its before/current/difference report at `artifacts/storybook-visual/self-test/intentional-change/index.html`. It also probes update evidence, missing readiness, unexpected console errors with preserved screenshots, exact declared failures, and restoration. `unit` tests manifest validation, missing stories, duplicate identities, missing/obsolete/unexpected baselines, pixel comparison, and report escaping without Docker.
 
 A failed pixel comparison between repeated captures retains `first.png`, `second.png`, and `difference.png` under `artifacts/storybook-visual/self-test/repeated/<identity>/`. The accompanying `index.html` and `results.json` identify the story, theme, viewport, and changed-pixel count. These are the two repeated samples, not a comparison against the approved baseline.
 
@@ -55,7 +55,7 @@ Comparison is exact by default. Per-entry rasterization allowances require measu
 
 See the [KVG-4816 focused-input investigation](storybook-focused-input-investigation.md) for capture experiments, verification results, and the limits of the existing two-pixel allowance.
 
-Captures use a 30-second default operation/navigation deadline. Failure probes can still request shorter deadlines. Full-manifest child probes have at least two minutes and scale by 30 seconds per selected case, so adopting more stories does not exhaust the original two-case timeout.
+Captures use a 30-second default operation/navigation deadline. Failure probes can still request shorter deadlines. Command-contract child probes use one case per catalog; their finite timeout scales with that selected subset.
 
 ## Terminal readiness evidence
 
@@ -100,12 +100,16 @@ The SDK horizontal tab-list failure was eleven one-level pixels on its outer rou
 
 `scripts/storybook-visual/container.mjs` pins the Playwright 1.62.1 Ubuntu Noble image by its Linux arm64 digest. Local Docker and CI's `ubuntu-24.04-arm` runner use that same architecture. Apple Silicon runs it natively; Intel developers need Docker ARM emulation or an ARM Docker host. We do not maintain separate architecture baselines. The frozen workspace lockfile selects Playwright and bundled production fonts. Both catalog builds and browser captures happen inside that container; host `node_modules` is excluded.
 
-Capture fixes Chromium, device scale 1, en-US locale, UTC timezone, application time at `2026-01-02T09:30:00.000Z`, theme/color scheme, reduced motion, disabled CSS animations/transitions, hidden caret, and loaded fonts. Animated SVG masks are derived from the production SVG at their terminal values because CSS reduced motion does not stop embedded SMIL. External browser requests are blocked. Each case gets a fresh browser context. Comparison includes antialiasing pixels with zero threshold.
+Capture fixes Chromium, device scale 1, en-US locale, UTC timezone, application time at `2026-01-02T09:30:00.000Z`, theme/color scheme, reduced motion, disabled CSS animations/transitions, hidden caret, and loaded fonts. Animation-only `will-change` layer hints are disabled to avoid compositing noise. Inline SVG timelines are paused at one second; SVG image masks are flattened at their production animation's middle keyframe so loaders remain visible. External browser requests are blocked. Each case gets a fresh browser context. Comparison includes antialiasing pixels with zero threshold.
 
 Chromium partial raster is disabled. Reusing partially repainted tiles can produce different rounded-border pixels across otherwise identical contexts, even after each capture has settled. Full raster preserves the UI; resulting raster differences require baseline review, not broader comparison tolerances.
+
+The runner waits for the pinned Storybook preview's interaction phase to finish and the declared readiness selector, then pauses runtime timers before waiting for fonts and paint. Timers remain live during interactions; afterward, controlled 32-millisecond steps let canvas writes settle without letting transient success messages expire during slow captures. Terminal input is blurred, then its deferred repaint is flushed before comparing images. A terminal that regains focus is not accepted; other controls retain focus. Consecutive identical frames are required. Interaction errors and unsettled output fail rather than producing a baseline.
 
 After readiness and motion suppression, capture requires two consecutive screenshots with identical decoded pixels, separated by a browser paint boundary. This avoids transient raster paints and duplicate reads of the same frame even when the DOM is ready. Capture fails if pixels do not settle within the capture timeout. This check does not consult the baseline or apply a tolerance; persistent visual changes still fail baseline comparison.
 
 For native video controls, capture waits for a decoded frame or a real media error and requires the story to leave playback paused. In both cases, the native buffering panel must finish before capture freezes animations in Chromium's nested control shadow roots through CDP. It does not replace players, remove controls, synthesize errors, or broaden pixel tolerances. Those changes live only in the disposable capture context.
 
 When upgrading Playwright, update the lockfile and image digest together, regenerate the selected baselines in the container, and review them. `environment.json` in each report records the image and actual Chromium version. The first run downloads the container and installs dependencies, so it needs network access and may take several minutes.
+
+Chromium runs with `--disable-partial-raster`. In pinned Linux probes, partial rasterization varied 5–17 rounded-corner pixels by up to three channel levels across unchanged Task Detail Backlog/Narrow captures, and seven SDK Modal pixels by one level. Disabling partial rasterization made all eight captures of each case identical; single-raster-thread and compositor-scheduling variants did not remove the drift. The self-test repeats these story families eight times with exact comparison, ignoring their existing allowances. No comparison tolerance was widened.

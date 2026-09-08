@@ -1,7 +1,7 @@
 /** Runs in the browser. CSS reduced motion does not stop SMIL inside SVG masks.
  * Derive a static terminal frame from the production image, not a fixture icon.
  */
-export function freezeSvgMasks() {
+export function freezeSvgMasks(frame = 'terminal') {
   for (const element of document.querySelectorAll('*')) {
     const image = getComputedStyle(element).maskImage
     const match = /^url\("data:image\/svg\+xml,([^"]+)"\)$/.exec(image)
@@ -11,7 +11,10 @@ export function freezeSvgMasks() {
     if (!animations.length) continue
     for (const animation of animations) {
       const attribute = animation.getAttribute('attributeName')
-      const value = animation.getAttribute('to') ?? animation.getAttribute('values')?.split(';').at(-1)?.trim()
+      const values = animation.getAttribute('values')?.split(';')
+      const value = frame === 'middle'
+        ? values?.[Math.floor(values.length / 2)]?.trim() ?? animation.getAttribute('to')
+        : animation.getAttribute('to') ?? values?.at(-1)?.trim()
       if (!attribute || !value || !['animate', 'animateTransform'].includes(animation.localName)
         || animation.getAttribute('additive') === 'sum' || animation.hasAttribute('href')) {
         throw new Error('Unsupported SVG mask animation in visual capture')
