@@ -10,13 +10,17 @@ import {
   type TestingOpenForgeRegistryFake,
 } from '@openforge-app/plugin-sdk/testing'
 import type { StoryEnvironmentAdapter } from './storyEnvironment'
+import { createStoryFileSystem, type StoryFileSystemDefinition } from './storyFileSystem'
 
-export type StoryPluginDefinition = Omit<TestingOpenForgeApiOptions, 'storage'>
+export type StoryPluginDefinition = Omit<TestingOpenForgeApiOptions, 'storage'> & {
+  filesystem?: StoryFileSystemDefinition
+}
 
 export interface StoryPluginAdapter extends StoryEnvironmentAdapter {
   readonly api: MockFrontendOpenForgeAPI
   readonly context: OpenForgeContextSnapshot
   readonly calls: TestingOpenForgeApiCalls
+  releaseFilesystem(key: string): void
   setBrowserSurfaceState(
     taskId: string,
     id: string,
@@ -27,7 +31,15 @@ export interface StoryPluginAdapter extends StoryEnvironmentAdapter {
 export function createStoryPluginAdapter(
   definition: StoryPluginDefinition = {},
 ): StoryPluginAdapter {
-  let registry: TestingOpenForgeRegistryFake = createOpenForgeRegistryFake(structuredClone(definition))
+  let filesystem: ReturnType<typeof createStoryFileSystem> | undefined
+  function createRegistry(): TestingOpenForgeRegistryFake {
+    const { filesystem: definitionFs, ...options } = structuredClone(definition)
+    const result = createOpenForgeRegistryFake(options)
+    filesystem = definitionFs ? createStoryFileSystem(definitionFs, result.frontendApi.fs) : undefined
+    if (filesystem) result.frontendApi.fs = filesystem.fs
+    return result
+  }
+  let registry = createRegistry()
   let installed = false
   let disposed = false
 
@@ -38,8 +50,9 @@ export function createStoryPluginAdapter(
 
   async function reset(): Promise<void> {
     if (!installed || disposed) throw new Error('Story plugin adapter must be installed before reset')
+    filesystem?.dispose()
     await registry.disposeAll()
-    registry = createOpenForgeRegistryFake(structuredClone(definition))
+    registry = createRegistry()
   }
 
   function setBrowserSurfaceState(
@@ -53,6 +66,7 @@ export function createStoryPluginAdapter(
   async function dispose(): Promise<void> {
     if (disposed) return
     disposed = true
+    filesystem?.dispose()
     if (installed) await registry.disposeAll()
     installed = false
   }
@@ -69,6 +83,7 @@ export function createStoryPluginAdapter(
     },
     install,
     reset,
+    releaseFilesystem(key: string) { filesystem?.release(key) },
     setBrowserSurfaceState,
     dispose,
   })
