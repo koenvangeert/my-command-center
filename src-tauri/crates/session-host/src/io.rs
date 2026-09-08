@@ -4,28 +4,64 @@ use super::*;
 /// Subscribe before taking recovery state. Events at/below the snapshot watermark
 /// are discarded; gaps or batches straddling it require another full recovery.
 /// The legacy event stream cannot split a batched authority frame by watermark.
-pub(crate) struct HostAttachment {
-    pub(crate) snapshot: crate::pty_manager::TerminalViewSnapshot,
-    pub(crate) position: OutputPosition,
+pub struct HostAttachment {
+    pub snapshot: crate::TerminalViewSnapshot,
+    pub position: OutputPosition,
     output: Box<dyn BackendOutputStream>,
     // Keep a dequeued event across cancellation while waiting for controller validation.
     pending: Option<BackendOutput>,
-    state: Arc<Mutex<HostState>>,
-    controller: Controller,
+    fence: Box<dyn ControllerFence>,
     recovery_required: bool,
 }
 
+/// Checks ownership at both sides of an asynchronous output dequeue.
+pub trait ControllerFence: Send {
+    fn validate(
+        &self,
+    ) -> std::pin::Pin<Box<dyn Future<Output = Result<(), HostError>> + Send + '_>>;
+}
+struct LocalFence {
+    state: Arc<Mutex<HostState>>,
+    controller: Controller,
+}
+impl ControllerFence for LocalFence {
+    fn validate(
+        &self,
+    ) -> std::pin::Pin<Box<dyn Future<Output = Result<(), HostError>> + Send + '_>> {
+        Box::pin(async { self.state.lock().await.validate(&self.controller) })
+    }
+}
+
 impl HostAttachment {
-    pub(crate) async fn recv(&mut self) -> Result<HostOutput, HostError> {
+    pub fn from_stream(
+        snapshot: TerminalViewSnapshot,
+        pty: PtyIdentity,
+        output: Box<dyn BackendOutputStream>,
+        fence: Box<dyn ControllerFence>,
+    ) -> Self {
+        let position = OutputPosition {
+            pty,
+            sequence: snapshot.watermark,
+        };
+        Self {
+            snapshot,
+            position,
+            output,
+            pending: None,
+            fence,
+            recovery_required: false,
+        }
+    }
+    pub async fn recv(&mut self) -> Result<HostOutput, HostError> {
         loop {
-            self.state.lock().await.validate(&self.controller)?;
+            self.fence.validate().await?;
             if self.recovery_required {
                 return Ok(HostOutput::RecoveryRequired);
             }
             if self.pending.is_none() {
                 self.pending = Some(self.output.recv().await);
             }
-            self.state.lock().await.validate(&self.controller)?;
+            self.fence.validate().await?;
             let event = self
                 .pending
                 .take()
@@ -92,18 +128,15 @@ impl<B: HostBackend> InProcessHost<B> {
         if after.is_some_and(|position| position.sequence > sequence) {
             return Err(HostError::StaleOutput);
         }
-        Ok(HostAttachment {
-            snapshot: attachment.snapshot,
-            position: OutputPosition {
-                pty: pty.clone(),
-                sequence,
-            },
-            output: attachment.output,
-            pending: None,
-            state: Arc::clone(&self.state),
-            controller: controller.clone(),
-            recovery_required: false,
-        })
+        Ok(HostAttachment::from_stream(
+            attachment.snapshot,
+            pty.clone(),
+            attachment.output,
+            Box::new(LocalFence {
+                state: Arc::clone(&self.state),
+                controller: controller.clone(),
+            }),
+        ))
     }
 
     pub(super) async fn ordered_io(

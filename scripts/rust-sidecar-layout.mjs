@@ -72,6 +72,14 @@ export function resolveRustSidecarLayout({
       iconPath,
       electronBundleRoot,
     },
+    sessionCrates: Object.fromEntries(['host', 'protocol', 'client', 'daemon'].map(kind => {
+      const root = join(backendCrateRootPath, 'crates', `session-${kind}`)
+      return [kind, {
+        root,
+        manifestPath: join(root, 'Cargo.toml'),
+        ...(kind === 'daemon' ? { binaryPath: join(root, 'target', 'debug', platformBinaryName('openforge-session-daemon', platform)) } : {}),
+      }]
+    })),
     backendCrateRoot,
     backendCrateRootPath,
     manifestPath: pathFromRepoRoot(normalizedRepoRoot, manifestPath),
@@ -95,6 +103,11 @@ function printCliValue(field) {
     'backend-crate-root': layout.backendCrateRoot,
     'backend-crate-root-path': layout.backendCrateRootPath,
     'manifest-path': layout.manifestPath,
+    'session-daemon-manifest-path': layout.sessionCrates.daemon.manifestPath,
+    'session-client-manifest-path': layout.sessionCrates.client.manifestPath,
+    'session-protocol-manifest-path': layout.sessionCrates.protocol.manifestPath,
+    'session-host-manifest-path': layout.sessionCrates.host.manifestPath,
+    'session-daemon-binary-path': layout.sessionCrates.daemon.binaryPath,
     'icon-path': layout.iconPath,
     'electron-bundle-root': layout.electronBundleRootPath,
     'electron-app-path': layout.electronAppPath,

@@ -2,15 +2,9 @@ mod attachment;
 #[cfg(test)]
 mod attachment_tests;
 mod commands;
+pub(crate) mod daemon_shells;
 pub(crate) use commands::PiSessionTarget;
 mod events;
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "KVG-4716 defines the opt-in host contract; caller migration is a later slice"
-    )
-)]
 pub(crate) mod host;
 mod managed_process;
 mod ordered_writer;
@@ -25,7 +19,7 @@ use attachment::PtyAttachmentHub;
 #[cfg(test)]
 use attachment::PtyAttachmentHubs;
 pub(crate) use attachment::{AgentTerminalAttachmentError, AgentTerminalEvent};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::fmt;
 use std::path::PathBuf;
 #[cfg(test)]
@@ -130,6 +124,7 @@ impl From<std::io::Error> for PtyError {
 #[derive(Clone)]
 pub struct PtyManager {
     terminal_sessions: TerminalSessions,
+    pub(crate) daemon_shells: Option<daemon_shells::DaemonShells>,
     host_state: std::sync::Arc<tokio::sync::Mutex<host::HostState>>,
     #[cfg(test)]
     sessions: PtySessions,
@@ -169,15 +164,7 @@ pub struct PtyBufferState {
     pub instance_id: Option<u64>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct TerminalViewSnapshot {
-    pub instance_id: u64,
-    pub watermark: u64,
-    pub data: String,
-    pub compatibility_data: String,
-    pub continuation_data: String,
-}
+pub use openforge_session_host::{TerminalImageProtocol, TerminalViewSnapshot};
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum TerminalSessionLifecycleState {
@@ -204,12 +191,6 @@ pub(crate) struct PtySpawnContext<'a> {
     pub cols: u16,
     pub rows: u16,
     pub event_publisher: crate::app_events::RuntimeEventPublisher,
-}
-
-#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-pub enum TerminalImageProtocol {
-    Iterm2,
 }
 
 pub(crate) fn terminal_environment(
@@ -247,6 +228,7 @@ impl PtyManager {
             #[cfg(test)]
             pending_shell_spawns: test_handles.pending_shell_spawns,
             terminal_sessions,
+            daemon_shells: daemon_shells::DaemonShells::from_environment(),
             host_state: std::sync::Arc::new(tokio::sync::Mutex::new(host::HostState::new())),
             pid_dir_override: None,
             #[cfg(test)]

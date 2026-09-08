@@ -4,7 +4,7 @@ use super::*;
 
 /// Private adapter boundary. Implementations own no domain policy; they launch prepared
 /// commands and preserve the existing terminal authority and process cleanup behavior.
-pub(crate) trait HostBackend: Send + Sync + Clone + 'static {
+pub trait HostBackend: Send + Sync + Clone + 'static {
     fn inventory(&self) -> impl Future<Output = Result<Vec<BackendSession>, HostError>> + Send;
     fn spawn_prepared(
         &self,
@@ -25,19 +25,19 @@ pub(crate) trait HostBackend: Send + Sync + Clone + 'static {
     ) -> impl Future<Output = Result<(), HostError>> + Send;
 }
 
-pub(crate) struct BackendSession {
-    pub(crate) instance: PtyInstanceId,
-    pub(crate) session_key: String,
-    pub(crate) state: HostedSessionState,
+pub struct BackendSession {
+    pub instance: PtyInstanceId,
+    pub session_key: String,
+    pub state: HostedSessionState,
 }
 
-pub(crate) struct BackendAttachment {
-    pub(crate) snapshot: crate::pty_manager::TerminalViewSnapshot,
-    pub(crate) output: Box<dyn BackendOutputStream>,
+pub struct BackendAttachment {
+    pub snapshot: crate::TerminalViewSnapshot,
+    pub output: Box<dyn BackendOutputStream>,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) enum BackendOutput {
+pub enum BackendOutput {
     Output {
         start_sequence: u64,
         sequence: u64,
@@ -47,6 +47,6 @@ pub(crate) enum BackendOutput {
     RecoveryRequired,
 }
 
-pub(crate) trait BackendOutputStream: Send {
+pub trait BackendOutputStream: Send {
     fn recv(&mut self) -> std::pin::Pin<Box<dyn Future<Output = BackendOutput> + Send + '_>>;
 }

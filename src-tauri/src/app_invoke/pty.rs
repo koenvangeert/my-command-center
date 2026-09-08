@@ -120,6 +120,10 @@ pub(super) async fn handle_app_pty_command(
         ));
     };
 
+    if let Some(value) = super::daemon_shell::handle(state, request).await? {
+        return Ok(Some(value));
+    }
+
     let value = match request.command.as_str() {
         "pty_spawn_shell" => {
             let app = state.app.clone();

@@ -21,7 +21,7 @@ struct RecordedOperation {
     result: Result<Receipt, HostError>,
 }
 
-pub(crate) struct HostState {
+pub struct HostState {
     installation: Option<InstallationId>,
     lifetime: DaemonLifetimeId,
     generation: u64,
@@ -29,10 +29,17 @@ pub(crate) struct HostState {
     pub(super) input_sequences: HashMap<PtyInstanceId, u64>,
     operations: HashMap<OperationId, RecordedOperation>,
     retained_bytes: usize,
+    limits: HostLimits,
+}
+
+impl Default for HostState {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl HostState {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             installation: None,
             lifetime: DaemonLifetimeId::fresh(),
@@ -41,7 +48,38 @@ impl HostState {
             input_sequences: HashMap::new(),
             operations: HashMap::new(),
             retained_bytes: 0,
+            limits: HostLimits::default(),
         }
+    }
+
+    pub fn with_limits(limits: HostLimits) -> Self {
+        Self {
+            limits,
+            ..Self::new()
+        }
+    }
+    pub fn lifetime(&self) -> &DaemonLifetimeId {
+        &self.lifetime
+    }
+    pub fn capacity(&self) -> HostCapacity {
+        HostCapacity {
+            operations: self.operations.len(),
+            retained_request_bytes: self.retained_bytes,
+            limits: self.limits,
+        }
+    }
+    pub(super) fn admit_spawn(&self) -> Result<(), HostError> {
+        if self.sessions.len() >= self.limits.retained_sessions
+            || self
+                .sessions
+                .values()
+                .filter(|s| s.state != HostedSessionState::Exited)
+                .count()
+                >= self.limits.live_sessions
+        {
+            return Err(HostError::Capacity);
+        }
+        Ok(())
     }
 
     pub(super) fn check_installation(
@@ -140,7 +178,7 @@ impl HostState {
             .filter(|session| session.state == HostedSessionState::Exited)
             .map(|session| session.pty.instance)
             .collect();
-        let excess = exited.len().saturating_sub(MAX_EXIT_HISTORY);
+        let excess = exited.len().saturating_sub(self.limits.exit_history);
         exited.sort_by_key(|instance| instance.value());
         for instance in exited.into_iter().take(excess) {
             self.sessions.remove(&instance);
@@ -171,12 +209,12 @@ impl HostState {
     ) -> Result<(), HostError> {
         // Ordinary traffic cannot consume the reserved allowance for scoped cleanup.
         let reserve = if matches!(request, Mutation::Terminate(_)) {
-            MAX_SESSIONS
+            self.limits.cleanup_reserve
         } else {
             0
         };
-        if self.operations.len() >= MAX_OPERATIONS + reserve
-            || self.retained_bytes + bytes > MAX_RETAINED_REQUEST_BYTES + reserve * 512
+        if self.operations.len() >= self.limits.operations + reserve
+            || self.retained_bytes + bytes > self.limits.retained_request_bytes + reserve * 512
         {
             return Err(HostError::Capacity);
         }

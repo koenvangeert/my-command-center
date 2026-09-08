@@ -2,6 +2,8 @@
 
 KVG-4715 extends the KVG-4714 experiment. The release gate remains **incomplete**. No production daemon extraction or renderer migration is authorized.
 
+KVG-4717 subsequently received an explicit owner exception for one controlled daemon-hosted indexed shell and Sidecar-only replacement. See [the slice contract](../../../docs/session-daemon-shell.md). The daemon itself is not replaced; the broader feasibility and production enablement gates below remain open.
+
 ## KVG-4760 owner-approved recovery contract
 
 The owner confirmed this focused production fix. Ghostty captures portable VT, bounded compatibility/image replay, explicit parser continuation and the output watermark in one actor command. Continuation comes from Ghostty's replay-safe continuation API, not from a guessed retained-output suffix. Unavailable continuation still defers the snapshot without disabling the authority.

@@ -1,0 +1,14 @@
+[package]
+name = "openforge-session-host"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+test-contracts = ["dep:base64"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+tokio = { version = "1", features = ["rt", "sync", "time"] }
+uuid = { version = "1", features = ["v4"] }
+base64 = { version = "0.22", optional = true }

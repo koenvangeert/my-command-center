@@ -1719,6 +1719,9 @@ dependencies = [
  "log",
  "mdns-sd",
  "once_cell",
+ "openforge-session-client",
+ "openforge-session-host",
+ "openforge-session-protocol",
  "portable-pty",
  "rand 0.8.7",
  "rcgen",
@@ -1741,6 +1744,40 @@ dependencies = [
  "uuid",
  "which",
  "whisper-rs",
+]
+
+[[package]]
+name = "openforge-session-client"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "libc",
+ "openforge-session-host",
+ "openforge-session-protocol",
+ "serde_json",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
+name = "openforge-session-host"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "serde",
+ "thiserror 2.0.20",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
+name = "openforge-session-protocol"
+version = "0.1.0"
+dependencies = [
+ "openforge-session-host",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.20",
 ]
 
 [[package]]

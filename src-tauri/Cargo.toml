@@ -10,6 +10,9 @@ rust-version = "1.95"
 serde_json = "1.0"
 
 [dependencies]
+openforge-session-host = { path = "crates/session-host" }
+openforge-session-client = { path = "crates/session-client" }
+openforge-session-protocol = { path = "crates/session-protocol" }
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
@@ -51,6 +54,7 @@ tempfile = "3"
 thiserror = "2"
 
 [dev-dependencies]
+openforge-session-host = { path = "crates/session-host", features = ["test-contracts"] }
 rusqlite = { version = "0.40", features = ["trace"] }
 tower = { version = "0.5", features = ["util"] }
 jsonschema = { version = "0.33", default-features = false }

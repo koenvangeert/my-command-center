@@ -309,7 +309,6 @@ pub(crate) fn shell_session_key(task_id: &str, terminal_index: Option<u32>) -> S
     PtySessionKey::indexed_shell(task_id, terminal_index.unwrap_or_default()).to_string()
 }
 
-#[cfg(test)]
 pub(super) fn is_shell_session_key_for_task(session_key: &str, task_id: &str) -> bool {
     matches!(
         PtySessionKey::parse(session_key),

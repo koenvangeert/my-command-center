@@ -1,6 +1,6 @@
 # PTY host interface
 
-KVG-4716 introduces an opt-in Rust contract over the existing Rust Sidecar PTY owner. Existing provider, renderer, Companion and plugin entry points are unchanged. No caller migration, daemon process, executable replacement, persistent discovery or restart behavior is enabled.
+KVG-4716 introduced an opt-in Rust contract over the existing Rust Sidecar PTY owner. KVG-4717 extracts that contract into the shared `session-host` crate and adds the separately approved [controlled daemon-hosted shell](session-daemon-shell.md). Other provider, renderer, Companion and plugin entry points retain the existing adapter; live daemon replacement and packaged restart remain disabled.
 
 The owner explicitly approved this prefactor before the broader replacement proof gate passes. The gaps recorded in `scripts/experiments/pty-reexec/RECOVERY.md`, including macOS x64 evidence, remain open. This interface is not evidence that replacement works.
 
@@ -8,7 +8,7 @@ The owner explicitly approved this prefactor before the broader replacement proo
 
 `PtyManager::host(installation, events)` returns a `PtyHost` client. Supply the installation's stable app-data namespace identity and the same `AppEventBus` used by the runtime. All manager clones share one control ledger and owner lifetime. The client clones a reference to the existing manager; it never allocates another PTY manager.
 
-`pty_manager/host` defines the contract and coordinates validated requests. `pty_manager/session/host_adapter` delegates to existing spawn arbitration, registration, terminal snapshots, ordered writes and verified process cleanup. The deterministic adapter exists only in tests.
+`crates/session-host` defines the contract and coordinates validated requests; `pty_manager/host` re-exports it for existing callers. `pty_manager/session/host_adapter` delegates to existing spawn arbitration, registration, terminal snapshots, ordered writes and verified process cleanup. The daemon supplies another resource adapter to the same ledger, and its remote client implements `PtyHost`. The deterministic adapter exists only in tests.
 
 The interface groups operations by purpose:
 
@@ -25,8 +25,8 @@ Provider hook installation, command selection, Task/database updates and plugin 
 
 | Identity | Meaning |
 | --- | --- |
-| `InstallationId` | Stable identifier for one app-data namespace, supplied by composition code. Not a PID, path credential or executable version. Persistence and authentication are later slices. |
-| `DaemonLifetimeId` | Unique lifetime of this PTY owner. The name matches the future protocol, but this slice's owner is the existing manager. A future compatible reexec must retain it; a new manager gets a new value. |
+| `InstallationId` | Stable identifier for one app-data namespace, supplied by composition code. Not a PID, path credential or executable version. The controlled daemon authenticates discovery separately. |
+| `DaemonLifetimeId` | Unique lifetime of this PTY owner: an existing manager or a daemon process. A new owner gets a new value. Compatible reexec would need to retain it; live daemon replacement is not enabled. |
 | `ControllerGeneration` | Nonzero control generation. A successful connect advances it and fences older host clients and attachments. |
 | `PtyIdentity` | Installation, owner lifetime and nonzero existing `instance_id`. A surviving PTY keeps its identity through controller changes. |
 | `OperationId` | Retry-stable identity within one owner lifetime. Reusing a recorded identity with another request is an error. |
@@ -38,7 +38,7 @@ Legacy calls do not acquire these generations. Their behavior remains unchanged,
 
 ## Recovery and failure behavior
 
-Recovery returns the existing Ghostty portable state, compatibility replay and parser continuation material. A client installs that snapshot before consuming later output. Frames at or below its watermark are discarded. A gap, malformed frame or legacy batch overlapping the watermark returns `RecoveryRequired`; discard the attachment and request another full recovery. The interface does not substitute a raw output suffix for parser state. No durable completed-terminal recovery is added here.
+Recovery returns the existing Ghostty portable state, compatibility replay and parser continuation material. A client installs that snapshot before consuming later output. Frames at or below its watermark are discarded. A gap, malformed frame or legacy batch overlapping the watermark returns `RecoveryRequired`; discard the attachment and request another full recovery. The interface does not substitute a raw output suffix for parser state. The controlled daemon additionally retains bounded final recovery records for exited sessions; the existing adapter's recovery lifetime is unchanged.
 
 Attachments retain a dequeued event while waiting to revalidate the controller. Cancelling `recv` during that wait does not consume output or an exit; the next receive can deliver the same pending event without waiting for another frame.
 
@@ -47,6 +47,8 @@ Accepted mutations keep an owned asynchronous operation and the control gate unt
 Inventory includes every currently observed PTY plus at most 1,024 historical exits. The oldest exited allocations expire independently of operation receipts. Expiry cannot make a spawn retry launch another process. This does not introduce an exit-status journal, persisted operation receipts or a global event-cursor transaction with legacy callers. Cleaning and managed-recovery states remain visible. Existing public cleanup operations remain available for managed recovery.
 
 The initial in-process ledger admits at most 1,024 ordinary operation receipts and 4 MiB of retained request payload. Another 1,024 receipts and 512 KiB are reserved for scoped cleanup. Requests and input frames are limited to 64 KiB. Host spawn admission refuses when 1,024 active PTYs are already observed, but never hides additional PTYs created by legacy callers. Current inventory is proportional to the existing owner's live population; only historical exit retention is capped. Receipt or history capacity cannot disable reconciliation or controller handoff. These are local contract limits, not proven daemon memory or replacement budgets.
+
+`HostLimits` configures that same ledger for the controlled daemon's smaller budgets. There is no separate daemon implementation of controller generations, receipts or input ordering. The wire format uses the shared validated identity types, including validation during deserialization.
 
 ## Verification
 
