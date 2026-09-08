@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ArrowLeft, ChevronDown, PanelRightClose, PanelRightOpen, Pencil, Play } from '@lucide/svelte'
+  import { ArrowLeft, ChevronDown, Eye, EyeOff, PanelRightClose, PanelRightOpen, Pencil, Play } from '@lucide/svelte'
   import Button from '@openforge-app/plugin-sdk/ui/Button.svelte'
   import IconButton from '@openforge-app/plugin-sdk/ui/IconButton.svelte'
   import TextField from '@openforge-app/plugin-sdk/ui/TextField.svelte'
@@ -242,7 +242,7 @@
       </Button>
     {:else if task.status === 'doing'}
       <div class="toolbar-complete-actions">
-        <Button type="button" size="md" variant="outline" disabled={isCompleting} onclick={handleComplete}>
+        <Button type="button" size="md" variant="outline" class="toolbar-complete-button" disabled={isCompleting} onclick={handleComplete}>
           {#if isCompleting}
             <span class="toolbar-spinner" aria-hidden="true"></span>
             Completing…
@@ -261,6 +261,16 @@
         >
           {#snippet trigger()}
             <ChevronDown size={14} class="toolbar-disclosure-icon {moreActionsOpen ? 'rotate-180' : ''}" aria-hidden="true" />
+          {/snippet}
+          {#snippet item(menuItem)}
+            <span class="toolbar-more-item">
+              {#if menuItem.value === 'return-to-board'}
+                <Eye size={16} aria-hidden="true" />
+              {:else}
+                <EyeOff size={16} aria-hidden="true" />
+              {/if}
+              <span>{menuItem.label}</span>
+            </span>
           {/snippet}
         </AnchoredMenu>
       </div>
@@ -382,7 +392,50 @@
     position: relative;
     display: flex;
     align-items: stretch;
-    gap: var(--of-space1);
+    gap: 0;
+  }
+
+  .toolbar-complete-actions :global(.toolbar-complete-button) {
+    border-radius: var(--of-radius-control) 0 0 var(--of-radius-control);
+  }
+
+  .toolbar-complete-actions :global(.of-menu-trigger) {
+    min-width: var(--of-control-height);
+    padding-inline: var(--of-space2);
+    margin-left: calc(-1 * var(--of-border-width));
+    border-radius: 0 var(--of-radius-control) var(--of-radius-control) 0;
+  }
+
+  .toolbar-complete-actions :global(button:focus-visible) {
+    position: relative;
+    z-index: 1;
+  }
+
+  .toolbar-complete-actions :global(.of-menu-trigger[data-state='open']) {
+    background: var(--of-control-hover);
+  }
+
+  /* The menu is portalled, so scope its styling through this toolbar's item. */
+  :global(.of-menu-content:has(.toolbar-more-item)) {
+    min-width: calc(var(--of-space6) * 7);
+    border-color: var(--of-border);
+    border-radius: var(--of-radius-control);
+  }
+
+  :global(.of-menu-item:has(.toolbar-more-item)) {
+    padding: var(--of-space2) var(--of-space3);
+    border-radius: calc(var(--of-radius-control) / 2);
+  }
+
+  .toolbar-more-item {
+    display: flex;
+    align-items: center;
+    gap: var(--of-space2);
+  }
+
+  .toolbar-more-item :global(svg) {
+    flex-shrink: 0;
+    color: var(--of-text-secondary);
   }
 
   :global(.toolbar-details-button[aria-pressed='true']) {
