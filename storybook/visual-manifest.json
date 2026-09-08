@@ -1241,9 +1241,9 @@
     "ready": "[role='dialog'] input",
     "expectedErrors": [],
     "tolerance": {
-      "maxPixels": 5,
+      "maxPixels": 7,
       "maxChannelDelta": 1,
-      "reason": "Six identical pinned Linux Chromium captures differed at most at five antialiased Save-button corner pixels, by one channel level. All 15 pairwise comparisons stayed within this bound."
+      "reason": "Eight repeated pinned Linux Chromium captures plus the approved baseline differed at most at seven antialiased Save-button corner pixels, by one channel level. All 36 pairwise comparisons stayed within this bound. See docs/storybook-modal-raster-investigation.md."
     }
   },
   {
