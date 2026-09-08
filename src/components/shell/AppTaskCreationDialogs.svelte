@@ -1,7 +1,7 @@
 <script lang="ts">
   import AddTaskDialog from '../AddTaskDialog.svelte'
   import { activeProjectId } from '../../lib/stores'
-  import { pendingComposeRequest, type PendingComposeRequest } from '../../lib/taskCompose'
+  import { pendingComposeRequest, settleTaskCompose } from '../../lib/taskCompose'
   import type { AppTaskCreationController } from '../../lib/appTaskCreationController.svelte'
 
   interface Props {
@@ -11,15 +11,6 @@
   }
 
   let { controller, projectPath, projectName }: Props = $props()
-  // Reporting a composed task settles its caller before starting. Keep the
-  // dialog mounted until its workflow closes, so a start failure is recoverable.
-  let savedComposeRequest = $state.raw<PendingComposeRequest | null>(null)
-  const composeRequest = $derived($pendingComposeRequest ?? savedComposeRequest)
-  $effect(() => {
-    if ($pendingComposeRequest && $pendingComposeRequest !== savedComposeRequest) {
-      savedComposeRequest = null
-    }
-  })
 </script>
 
 {#if controller.dialog && $activeProjectId}
@@ -30,30 +21,29 @@
     {projectName}
     onClose={controller.closeTaskDialog}
     onTaskSaved={controller.taskSaved}
-    onRunAction={controller.runTask}
+    onTaskCreated={controller.taskCreated}
   />
 {/if}
 
-{#if composeRequest}
-  {@const request = composeRequest}
+{#if $pendingComposeRequest}
+  {@const request = $pendingComposeRequest}
   {#key request}
     <AddTaskDialog
       mode="create"
       {projectPath}
+      {projectName}
       promptSeed={request.request.initialPrompt}
       sourceTicketUrlSeed={request.request.sourceTicketUrl ?? null}
       titleSeed={request.request.title ?? null}
       worktreeSourceSeed={request.request.worktreeSource ?? null}
       worktreeBranchSeed={request.request.worktreeBranch ?? null}
       onClose={() => {
-        if (savedComposeRequest === request) savedComposeRequest = null
-        if (!$pendingComposeRequest || $pendingComposeRequest === request) controller.cancelCompose()
+        if ($pendingComposeRequest === request) settleTaskCompose(null)
       }}
-      onTaskSaved={async (task, options) => {
-        savedComposeRequest = request
-        await controller.saveComposedTask(task, options)
+      onTaskCreated={(task, intent) => {
+        if ($pendingComposeRequest === request) settleTaskCompose({ task, started: intent === 'start' })
+        controller.taskCreated(task, intent)
       }}
-      onRunAction={controller.runComposedTask}
     />
   {/key}
 {/if}

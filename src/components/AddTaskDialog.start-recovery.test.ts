@@ -1,11 +1,13 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AppTaskCreationDialogs from './shell/AppTaskCreationDialogs.svelte'
+import TaskStartFeedback from './task-detail/TaskStartFeedback.svelte'
+import { get } from 'svelte/store'
 import { createTaskActionRunner } from '../lib/taskActionRunner'
 import { useAppTaskCreationController } from '../lib/appTaskCreationController.svelte'
 import { createTask, startImplementation } from '../lib/ipc'
-import { activeProjectId, activeSessions, startingTasks, taskRuntimeInfo, error } from '../lib/stores'
-import { refreshActiveTasks } from '../lib/tasksState'
+import { activeProjectId, activeSessions, startingTasks, taskRuntimeInfo, taskStartErrors, error } from '../lib/stores'
+import { refreshActiveTasks, cacheTaskRead } from '../lib/tasksState'
 import { requestTaskCompose, settleTaskCompose } from '../lib/taskCompose'
 import { LocalTaskCreationAdapter } from './create-task/testing/localTaskCreationAdapter'
 
@@ -50,6 +52,7 @@ beforeEach(async () => {
   startingTasks.set(new Set())
   taskRuntimeInfo.set(new Map())
   error.set(null)
+  taskStartErrors.set(new Map())
   await refreshActiveTasks(project.id, async () => ({ tasks: [], related: [] }))
   const adapter = new LocalTaskCreationAdapter()
   vi.mocked(createTask).mockResolvedValue(await adapter.createTask('Build', 'backlog', project.id, 'default'))
@@ -63,7 +66,9 @@ describe('production task creation start recovery', () => {
     const controller = useAppTaskCreationController({
       getTasks: () => [], loadTasks,
       resetToBoard: () => {}, navigateToTask: () => {},
-      runAction: actions.runActionOrThrow,
+      runAction: actions.handleRunAction,
+      publishTask: task => cacheTaskRead(task.projectId, { task, related: [] }),
+      reportError: vi.fn(),
     })
     const pending = requestTaskCompose({ projectId: project.id, initialPrompt: 'Build' })
     const { unmount } = render(AppTaskCreationDialogs, { props: { controller, projectPath: project.path, projectName: project.name } })
@@ -73,6 +78,8 @@ describe('production task creation start recovery', () => {
       await fireEvent.click(start)
       await expect(pending).resolves.toMatchObject({ task: { id: 'T-1' }, started: true })
       await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+      await waitFor(() => expect(get(startingTasks).size).toBe(0))
+      expect(get(taskStartErrors).has('T-1')).toBe(false)
       expect(startImplementation).toHaveBeenCalledOnce()
       expect(createTask).toHaveBeenCalledOnce()
     } finally {
@@ -88,7 +95,9 @@ describe('production task creation start recovery', () => {
     const controller = useAppTaskCreationController({
       getTasks: () => [], loadTasks,
       resetToBoard: () => {}, navigateToTask: () => {},
-      runAction: actions.runActionOrThrow,
+      runAction: actions.handleRunAction,
+      publishTask: task => cacheTaskRead(task.projectId, { task, related: [] }),
+      reportError: vi.fn(),
     })
     const pending = mode === 'compose' ? requestTaskCompose({ projectId: project.id, initialPrompt: 'Build' }) : null
     if (mode === 'normal') controller.openNewTask()
@@ -100,12 +109,16 @@ describe('production task creation start recovery', () => {
       const start = await screen.findByRole('button', { name: /start task/i })
       await waitFor(() => expect(start.hasAttribute('disabled')).toBe(false))
       await fireEvent.click(start)
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+      render(TaskStartFeedback, { taskId: 'T-1', onRunAction: actions.handleRunAction })
       expect((await screen.findByRole('alert')).textContent).toContain('provider unavailable')
-      expect(screen.getByRole('dialog')).toBeTruthy()
-      await fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+      expect(screen.queryByRole('dialog')).toBeNull()
+      await fireEvent.click(screen.getByRole('button', { name: 'Retry start' }))
       await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
       expect(createTask).toHaveBeenCalledOnce()
-      expect(startImplementation).toHaveBeenCalledTimes(2)
+      await waitFor(() => expect(startImplementation).toHaveBeenCalledTimes(2))
+      await waitFor(() => expect(get(startingTasks).size).toBe(0))
+      expect(get(taskStartErrors).has('T-1')).toBe(false)
       expect(vi.mocked(startImplementation).mock.calls.map(([id]) => id)).toEqual(['T-1', 'T-1'])
       if (pending) await expect(pending).resolves.toMatchObject({ task: { id: 'T-1' }, started: true })
     } finally {

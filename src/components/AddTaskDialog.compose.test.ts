@@ -60,58 +60,39 @@ beforeEach(() => {
   ])
 })
 
-describe('AddTaskDialog recovery', () => {
-  it('keeps the composed dialog available after reporting the saved task and a start failure', async () => {
-    const events: string[] = []
-    const runAction = vi.fn().mockImplementationOnce(async () => {
-      events.push('start')
-      throw new Error('provider offline')
-    }).mockResolvedValue(undefined)
+describe('AddTaskDialog handoff', () => {
+  it.each(['start', 'backlog'] as const)('settles a composed %s before pending work and preserves newer requests', async (intent) => {
+    let finish!: () => void
+    const runAction = vi.fn(() => new Promise<void>(resolve => { finish = resolve }))
+    const navigateToTask = vi.fn()
     const controller = useAppTaskCreationController({
-      getTasks: () => [], loadTasks: async () => {},
-      resetToBoard: () => {}, navigateToTask: () => {}, runAction,
+      getTasks: () => [], loadTasks: () => new Promise(() => {}),
+      publishTask: vi.fn(), reportError: vi.fn(),
+      resetToBoard: vi.fn(), navigateToTask, runAction,
     })
     const pending = requestTaskCompose({ projectId: 'test-project-id', initialPrompt: SEED })
-    void pending.then(() => { events.push('compose settled') })
+    const settled = vi.fn()
+    void pending.then(settled)
     const { unmount } = render(AppTaskCreationDialogs, { props: { controller, projectPath: null, projectName: null } })
     try {
-      const start = await screen.findByRole('button', { name: /start task/i })
-      await waitFor(() => expect(start.hasAttribute('disabled')).toBe(false))
-      await fireEvent.click(start)
-      expect((await screen.findByRole('alert')).textContent).toContain('provider offline')
-      await expect(pending).resolves.toMatchObject({ task: { id: 'T-1' }, started: true })
-      expect(events).toEqual(['compose settled', 'start'])
-      await fireEvent.click(screen.getByRole('button', { name: /retry/i }))
+      const button = await screen.findByRole('button', { name: intent === 'start' ? /start task/i : /add to backlog/i })
+      await waitFor(() => expect(button.hasAttribute('disabled')).toBe(false))
+      await fireEvent.click(button)
+      await expect(pending).resolves.toMatchObject({ task: { id: 'T-1' }, started: intent === 'start' })
       await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+      expect(settled).toHaveBeenCalledOnce()
       expect(createTask).toHaveBeenCalledOnce()
-      expect(runAction).toHaveBeenCalledTimes(2)
+      expect(navigateToTask).toHaveBeenCalledTimes(intent === 'start' ? 1 : 0)
+      const next = requestTaskCompose({ projectId: 'test-project-id', initialPrompt: 'Next request' })
+      const nextSettled = vi.fn()
+      void next.then(nextSettled)
+      if (intent === 'start') finish()
+      await waitFor(() => expect(promptTextarea()?.value).toBe('Next request'))
+      expect(nextSettled).not.toHaveBeenCalled()
     } finally {
       unmount()
       settleTaskCompose(null)
     }
-  })
-
-  it.each(['notification', 'start'] as const)('keeps a %s error visible and retries the saved task', async (failure) => {
-    const onTaskSaved = vi.fn().mockResolvedValue(undefined)
-    const onRunAction = vi.fn().mockResolvedValue(undefined)
-    const onClose = vi.fn()
-    const failingCallback = failure === 'notification' ? onTaskSaved : onRunAction
-    failingCallback.mockRejectedValueOnce(new Error('offline'))
-    render(AddTaskDialog, { props: { promptSeed: SEED, onTaskSaved, onRunAction, onClose } })
-    const start = await screen.findByRole('button', { name: /start task/i })
-    await waitFor(() => expect(start.hasAttribute('disabled')).toBe(false))
-    await fireEvent.click(start)
-    expect((await screen.findByRole('alert')).textContent).toContain('Task T-1 was saved')
-    expect(screen.getByRole('alert').textContent).toContain('offline')
-    expect(onClose).not.toHaveBeenCalled()
-    expect(screen.queryByRole('button', { name: /add to backlog/i })).toBeNull()
-    expect(screen.queryByRole('textbox', { name: 'What should the agent do?' })).toBeNull()
-    await fireEvent.click(screen.getByRole('button', { name: /retry/i }))
-    await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
-    expect(createTask).toHaveBeenCalledOnce()
-    expect(onTaskSaved).toHaveBeenCalledTimes(failure === 'notification' ? 2 : 1)
-    expect(onRunAction).toHaveBeenLastCalledWith('T-1', '')
-    expect(screen.queryByRole('alert')).toBeNull()
   })
 })
 
@@ -135,7 +116,7 @@ describe('AddTaskDialog seeding', () => {
         mode: 'create',
         promptSeed: SEED,
         sourceTicketUrlSeed: 'https://github.com/me/app/issues/412',
-        onTaskSaved: vi.fn(),
+        onTaskCreated: vi.fn(),
       },
     })
 
@@ -150,7 +131,7 @@ describe('AddTaskDialog seeding', () => {
 
   it('passes the seeded title through to createTask', async () => {
     render(AddTaskDialog, {
-      props: { mode: 'create', promptSeed: SEED, titleSeed: 'Login redirect', onTaskSaved: vi.fn() },
+      props: { mode: 'create', promptSeed: SEED, titleSeed: 'Login redirect', onTaskCreated: vi.fn() },
     })
 
     await waitFor(() => expect(promptTextarea()?.value).toBe(SEED))
@@ -160,34 +141,17 @@ describe('AddTaskDialog seeding', () => {
     expect(vi.mocked(createTask).mock.calls[0][4]).toMatchObject({ title: 'Login redirect' })
   })
 
-  it('reports started false when the task is only created', async () => {
-    const onTaskSaved = vi.fn()
-    render(AddTaskDialog, { props: { mode: 'create', promptSeed: SEED, onTaskSaved } })
-
-    await waitFor(() => expect(promptTextarea()?.value).toBe(SEED))
-    await clickAddToBacklog()
-
-    await waitFor(() => expect(onTaskSaved).toHaveBeenCalled())
-    expect(onTaskSaved.mock.calls[0][0]).toMatchObject({ id: 'T-1' })
-    expect(onTaskSaved.mock.calls[0][1]).toEqual({ started: false })
-  })
-
-  it('reports started true when the task is created and started', async () => {
-    const onTaskSaved = vi.fn()
-    const onRunAction = vi.fn().mockResolvedValue(undefined)
-    render(AddTaskDialog, {
-      props: { mode: 'create', promptSeed: SEED, onTaskSaved, onRunAction },
-    })
-
-    await waitFor(() => expect(promptTextarea()?.value).toBe(SEED))
-    await fireEvent.click(await screen.findByRole('button', { name: /start task/i }))
-
-    await waitFor(() => expect(onRunAction).toHaveBeenCalled())
-    expect(onTaskSaved.mock.calls[0][1]).toEqual({ started: true })
+  it.each(['start', 'backlog'] as const)('reports the saved task with %s intent', async (intent) => {
+    const onTaskCreated = vi.fn()
+    render(AddTaskDialog, { props: { mode: 'create', promptSeed: SEED, onTaskCreated } })
+    const button = await screen.findByRole('button', { name: intent === 'start' ? /start task/i : /add to backlog/i })
+    await waitFor(() => expect(button.hasAttribute('disabled')).toBe(false))
+    await fireEvent.click(button)
+    await waitFor(() => expect(onTaskCreated).toHaveBeenCalledWith(expect.objectContaining({ id: 'T-1' }), intent))
   })
 
   it('selects an existing local branch when worktree seeds name it', async () => {
-    const onTaskSaved = vi.fn()
+    const onTaskCreated = vi.fn()
     render(AddTaskDialog, {
       props: {
         mode: 'create',
@@ -195,7 +159,7 @@ describe('AddTaskDialog seeding', () => {
         promptSeed: SEED,
         worktreeSourceSeed: 'existingBranch',
         worktreeBranchSeed: 'feature/open-pr',
-        onTaskSaved,
+        onTaskCreated,
       },
     })
 
@@ -220,7 +184,7 @@ describe('AddTaskDialog seeding', () => {
       { name: 'fix/auth', is_current: false, is_remote: false },
       { name: 'origin/fix/auth', is_current: false, is_remote: true },
     ])
-    const onTaskSaved = vi.fn()
+    const onTaskCreated = vi.fn()
     render(AddTaskDialog, {
       props: {
         mode: 'create',
@@ -228,7 +192,7 @@ describe('AddTaskDialog seeding', () => {
         promptSeed: SEED,
         worktreeSourceSeed: 'existingBranch',
         worktreeBranchSeed: 'fix/auth',
-        onTaskSaved,
+        onTaskCreated,
       },
     })
 

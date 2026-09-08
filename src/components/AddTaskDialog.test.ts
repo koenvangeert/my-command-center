@@ -134,32 +134,45 @@ describe('AddTaskDialog', () => {
   })
 
 
-  it('closes only after the async start flow succeeds', async () => {
-    let resolveRunAction = () => {}
+  it('preserves the draft and pasted image after persistence fails', async () => {
+    vi.mocked(createTask).mockRejectedValueOnce(new Error('disk full'))
     const onClose = vi.fn()
-    const onRunAction = vi.fn(() => new Promise<void>((resolve) => {
-      resolveRunAction = resolve
-    }))
+    render(AddTaskDialog, { props: { mode: 'create', onClose } })
+    const textbox = await findPromptTextbox()
+    await fireEvent.input(textbox, { target: { value: 'Inspect screenshot' } })
+    textbox.setSelectionRange(7, 7)
+    await fireEvent.paste(textbox, { clipboardData: { items: [{
+      kind: 'file', type: 'image/png',
+      getAsFile: () => new File(['image'], 'shot.png', { type: 'image/png' }),
+    }] } })
+    await waitFor(() => expect(textbox.value).toContain('[image#1]'))
+    const draft = textbox.value
+    await clickAddToBacklogFromMore()
+    await screen.findByText('Error: disk full')
+    expect(onClose).not.toHaveBeenCalled()
+    expect(textbox.value).toBe(draft)
+    expect(screen.getByRole('button', { name: 'Preview [image#1]' })).toBeTruthy()
+    await clickAddToBacklogFromMore()
+    await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
+    expect(vi.mocked(createTask).mock.calls[1][0]).toContain('[image#1]: data:image/png;base64,')
+  })
 
-    render(AddTaskDialog, { props: { mode: 'create', onClose, onRunAction } })
-
+  it('closes after saving without showing a saved-task retry screen', async () => {
+    const onClose = vi.fn()
+    const onTaskCreated = vi.fn()
+    render(AddTaskDialog, { props: { mode: 'create', onClose, onTaskCreated } })
     const textbox = await findPromptTextbox()
     await fireEvent.input(textbox, { target: { value: '  Start me  ' } })
     await fireEvent.click(await screen.findByRole('button', { name: /Start Task/ }))
-
-    await waitFor(() => {
-      expect(createTask).toHaveBeenCalledWith('Start me', 'backlog', 'test-project-id', 'default', DEFAULT_WORKTREE_OPTIONS)
-      expect(onClose).not.toHaveBeenCalled()
-      expect(onRunAction).toHaveBeenCalledWith('T-1', '')
-    })
-
-    resolveRunAction()
     await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
+    expect(onTaskCreated).toHaveBeenCalledWith(expect.objectContaining({ id: 'T-1' }), 'start')
+    expect(screen.queryByText(/Retrying will continue/)).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
   })
 
   it('calls createTask with correct arguments on submit via PromptInput', async () => {
-    const onTaskSaved = vi.fn()
-    render(AddTaskDialog, { props: { mode: 'create', onTaskSaved } })
+    const onTaskCreated = vi.fn()
+    render(AddTaskDialog, { props: { mode: 'create', onTaskCreated } })
     
     const textbox = await findPromptTextbox()
     // Svelte bind:value needs the value to be updated, or we fire `input` event
@@ -170,7 +183,7 @@ describe('AddTaskDialog', () => {
     
     await waitFor(() => {
       expect(createTask).toHaveBeenCalledWith('My new task', 'backlog', 'test-project-id', 'default', DEFAULT_WORKTREE_OPTIONS)
-      expect(onTaskSaved).toHaveBeenCalled()
+      expect(onTaskCreated).toHaveBeenCalled()
     })
   })
 
@@ -370,8 +383,8 @@ describe('AddTaskDialog', () => {
     vi.mocked(getProjectConfig).mockImplementation((_projectId: string, key: string) =>
       Promise.resolve(key === 'use_worktrees' ? 'false' : null),
     )
-    const onTaskSaved = vi.fn()
-    render(AddTaskDialog, { props: { mode: 'create', projectPath: '/repo', onTaskSaved } })
+    const onTaskCreated = vi.fn()
+    render(AddTaskDialog, { props: { mode: 'create', projectPath: '/repo', onTaskCreated } })
 
     await expandEnvironment()
     const worktreeToggle = await screen.findByLabelText('Worktree') as HTMLInputElement
@@ -390,14 +403,14 @@ describe('AddTaskDialog', () => {
         'default',
         PROJECT_DIRECTORY_OPTIONS,
       )
-      expect(onTaskSaved).toHaveBeenCalled()
+      expect(onTaskCreated).toHaveBeenCalled()
     })
   })
 
   it('disables the worktree toggle and runs in the project directory when the repo has no commits', async () => {
     vi.mocked(repoHasCommits).mockResolvedValue(false)
-    const onTaskSaved = vi.fn()
-    render(AddTaskDialog, { props: { mode: 'create', projectPath: '/repo', onTaskSaved } })
+    const onTaskCreated = vi.fn()
+    render(AddTaskDialog, { props: { mode: 'create', projectPath: '/repo', onTaskCreated } })
 
     await expandEnvironment()
     const worktreeToggle = await screen.findByLabelText('Worktree') as HTMLInputElement
@@ -416,17 +429,17 @@ describe('AddTaskDialog', () => {
         'default',
         PROJECT_DIRECTORY_OPTIONS,
       )
-      expect(onTaskSaved).toHaveBeenCalled()
+      expect(onTaskCreated).toHaveBeenCalled()
     })
   })
 
   it('passes the selected existing branch when creating a worktree-backed task', async () => {
-    const onTaskSaved = vi.fn()
+    const onTaskCreated = vi.fn()
     render(AddTaskDialog, {
       props: {
         mode: 'create',
         projectPath: '/repo',
-        onTaskSaved,
+        onTaskCreated,
       },
     })
 
@@ -455,13 +468,13 @@ describe('AddTaskDialog', () => {
           aiProvider: 'claude-code',
         },
       )
-      expect(onTaskSaved).toHaveBeenCalled()
+      expect(onTaskCreated).toHaveBeenCalled()
     })
   })
 
   it('creates a project-directory task when the worktree toggle is off', async () => {
-    const onTaskSaved = vi.fn()
-    render(AddTaskDialog, { props: { mode: 'create', projectPath: '/repo', onTaskSaved } })
+    const onTaskCreated = vi.fn()
+    render(AddTaskDialog, { props: { mode: 'create', projectPath: '/repo', onTaskCreated } })
 
     await expandEnvironment()
     await fireEvent.click(await screen.findByLabelText('Worktree'))
@@ -481,7 +494,7 @@ describe('AddTaskDialog', () => {
         'default',
         PROJECT_DIRECTORY_OPTIONS,
       )
-      expect(onTaskSaved).toHaveBeenCalled()
+      expect(onTaskCreated).toHaveBeenCalled()
     })
   })
 
@@ -988,9 +1001,9 @@ describe('AddTaskDialog', () => {
   })
 
   it('uses direct task creation defaults when starting a task for opencode', async () => {
-    const onRunAction = vi.fn()
+    const onTaskCreated = vi.fn()
     vi.mocked(getResolvedAiProvider).mockResolvedValue('opencode')
-    render(AddTaskDialog, { props: { mode: 'create', onRunAction } })
+    render(AddTaskDialog, { props: { mode: 'create', onTaskCreated } })
 
     const textbox = await findPromptTextbox()
 
@@ -1004,13 +1017,13 @@ describe('AddTaskDialog', () => {
 
     await waitFor(() => {
       expect(createTask).toHaveBeenCalledWith('Task for default agent', 'backlog', 'test-project-id', 'default', { ...DEFAULT_WORKTREE_OPTIONS, aiProvider: 'opencode' })
-      expect(onRunAction).toHaveBeenCalledWith('T-1', '')
+      expect(onTaskCreated).toHaveBeenCalledWith(expect.objectContaining({ id: 'T-1' }), 'start')
     })
   })
 
-  it('calls onRunAction when PromptInput triggers start task', async () => {
-    const onRunAction = vi.fn()
-    render(AddTaskDialog, { props: { mode: 'create', onRunAction } })
+  it('calls onTaskCreated when PromptInput triggers start task', async () => {
+    const onTaskCreated = vi.fn()
+    render(AddTaskDialog, { props: { mode: 'create', onTaskCreated } })
     
     const textbox = await findPromptTextbox()
     await fireEvent.input(textbox, { target: { value: 'Task to start' } })
@@ -1020,7 +1033,7 @@ describe('AddTaskDialog', () => {
     
     await waitFor(() => {
       expect(createTask).toHaveBeenCalledWith('Task to start', 'backlog', 'test-project-id', 'default', DEFAULT_WORKTREE_OPTIONS)
-      expect(onRunAction).toHaveBeenCalledWith('T-1', '')
+      expect(onTaskCreated).toHaveBeenCalledWith(expect.objectContaining({ id: 'T-1' }), 'start')
     })
   })
 })

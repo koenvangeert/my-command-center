@@ -34,6 +34,8 @@ import {
   completingTasks,
   error,
   startingTasks,
+  taskStartErrors,
+  taskDetailsById,
   taskRuntimeInfo,
 } from './stores'
 import { refreshActiveTasks } from './tasksState'
@@ -89,7 +91,7 @@ async function setTasks(items: TaskDetail[]): Promise<void> {
   await refreshActiveTasks(activeProject.id, async () => ({ tasks: items, related: [] }))
 }
 
-function createActions(loadTasks = vi.fn(async () => undefined)) {
+function createActions(loadTasks: () => Promise<void> = vi.fn(async () => undefined)) {
   return createTaskSessionActions({
     getActiveProject: () => activeProject,
     loadTasks,
@@ -123,6 +125,8 @@ describe('createTaskSessionActions', () => {
     completingTasks.set(new Set())
     error.set(null)
     startingTasks.set(new Set())
+    taskStartErrors.set(new Map())
+    taskDetailsById.set(new Map())
     taskRuntimeInfo.set(new Map())
     await setTasks([])
     branchDivergenceRequest.set(null)
@@ -130,6 +134,80 @@ describe('createTaskSessionActions', () => {
     vi.mocked(acquire).mockResolvedValue({ shellSessionKey: 'T-42' } as never)
     vi.mocked(beginPtySpawn).mockReturnValue(createSpawnLease())
     vi.mocked(hasTerminal).mockReturnValue(false)
+  })
+
+  it('delivers input to a live agent while its post-start refresh is still pending', async () => {
+    let finishRefresh!: () => void
+    const loadTasks = () => new Promise<void>(resolve => { finishRefresh = resolve })
+    vi.mocked(startImplementation).mockResolvedValueOnce({ session_id: 's', workspace_path: '/w', task_id: task.id, port: 0 })
+    vi.mocked(getSessionStatus).mockResolvedValueOnce({ ticket_id: task.id, status: 'running' } as never)
+    const actions = createActions(loadTasks)
+    const startup = actions.handleRunAction({ taskId: task.id, actionPrompt: '' })
+    await vi.waitFor(() => expect(finishRefresh).toBeTypeOf('function'))
+    vi.mocked(isPtyActive).mockReturnValue(true)
+    await actions.handleRunAction({ taskId: task.id, actionPrompt: 'Continue with tests' })
+    expect(writePtyWithSubmit).toHaveBeenCalledExactlyOnceWith(task.id, 'Continue with tests')
+    expect(startImplementation).toHaveBeenCalledOnce()
+    finishRefresh()
+    await startup
+  })
+
+  it('guards pending preflight and uses saved detail before the list refresh', async () => {
+    const saved = existingBranchTask()
+    taskDetailsById.set(new Map([[saved.id, saved]]))
+    let finish!: (value: ExistingBranchPlan) => void
+    vi.mocked(inspectExistingBranch).mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
+    vi.mocked(startImplementation).mockRejectedValueOnce(new Error('start failed'))
+    const actions = createActions()
+    const starting = actions.handleRunAction({ taskId: saved.id, actionPrompt: '' })
+    expect(get(startingTasks).has(saved.id)).toBe(true)
+    await actions.handleRunAction({ taskId: saved.id, actionPrompt: '' })
+    expect(inspectExistingBranch).toHaveBeenCalledExactlyOnceWith('/project', 'origin/foo')
+    finish(plan('autoFastForward'))
+    await starting
+    expect(startImplementation).toHaveBeenCalledTimes(1)
+    expect(get(startingTasks).has(saved.id)).toBe(false)
+  })
+
+  it('clears a previous failure when retrying and refuses another pending or active start', async () => {
+    taskStartErrors.set(new Map([[task.id, 'provider offline']]))
+    let finish!: (value: Awaited<ReturnType<typeof startImplementation>>) => void
+    vi.mocked(startImplementation).mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
+    vi.mocked(getSessionStatus).mockResolvedValueOnce({ ticket_id: task.id, status: 'running' } as never)
+    const actions = createActions()
+    const pending = actions.handleRunAction({ taskId: task.id, actionPrompt: '' })
+    expect(get(taskStartErrors).has(task.id)).toBe(false)
+    await vi.waitFor(() => expect(startImplementation).toHaveBeenCalledOnce())
+    await actions.handleRunAction({ taskId: task.id, actionPrompt: '' })
+    expect(startImplementation).toHaveBeenCalledOnce()
+    finish({ session_id: 's', workspace_path: '/w', task_id: task.id, port: 0 })
+    await pending
+    await actions.handleRunAction({ taskId: task.id, actionPrompt: '' })
+    expect(startImplementation).toHaveBeenCalledOnce()
+    expect(get(taskStartErrors).has(task.id)).toBe(false)
+  })
+
+  it.each(['refresh', 'focus'] as const)('does not classify a post-start %s failure as a retryable start failure', async (failure) => {
+    vi.mocked(startImplementation).mockResolvedValueOnce({ session_id: 's', workspace_path: '/w', task_id: task.id, port: 0 })
+    vi.mocked(getSessionStatus).mockResolvedValueOnce({ ticket_id: task.id, status: 'running' } as never)
+    const loadTasks = vi.fn(async () => {})
+    if (failure === 'refresh') loadTasks.mockRejectedValueOnce(new Error('refresh offline'))
+    else vi.mocked(focusTerminal).mockImplementationOnce(() => { throw new Error('focus unavailable') })
+    const actions = createActions(loadTasks)
+    await expect(actions.runActionOrThrow({ taskId: task.id, actionPrompt: '' })).resolves.toBeUndefined()
+    expect(get(taskStartErrors).has(task.id)).toBe(false)
+    expect(get(error)).toContain(failure)
+    expect(release).not.toHaveBeenCalled()
+    await actions.handleRunAction({ taskId: task.id, actionPrompt: '' })
+    expect(startImplementation).toHaveBeenCalledOnce()
+  })
+
+  it('keeps startup failure on the saved task after its dialog is gone', async () => {
+    vi.mocked(startImplementation).mockRejectedValueOnce(new Error('provider unavailable'))
+    const actions = createActions()
+    await actions.handleRunAction({ taskId: task.id, actionPrompt: '' })
+    expect(get(taskStartErrors).get(task.id)).toContain('provider unavailable')
+    expect(get(startingTasks).has(task.id)).toBe(false)
   })
 
   it('starts a task, stores runtime/session state, reloads tasks, and clears starting state', async () => {
@@ -257,6 +335,8 @@ describe('createTaskSessionActions', () => {
     await started
 
     expect(startImplementation).not.toHaveBeenCalled()
+    expect(get(startingTasks).has(task.id)).toBe(false)
+    expect(get(taskStartErrors).get(task.id)).toContain('Task start was canceled.')
   })
 
   it('writes to an active PTY instead of starting a new implementation', async () => {
