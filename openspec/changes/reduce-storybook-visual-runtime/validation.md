@@ -65,3 +65,13 @@ CI phase timings were: baseline 299894ms, repeatability 300103ms, terminal readi
 Downloaded CI artifacts confirm all 218 baseline comparisons passed, with exactly 218 baseline and 218 repeat captures. Parent counts are 455 attempted, 453 completed, and two expected failures. The four capture-producing child probes each attempted two captures; the four input-validation probes attempted zero. All expected exit codes and evidence checks passed. CI also passed all 83 visual unit/browser tests.
 
 The uploaded `storybook-visual-review` artifact contains the machine-readable reports. A local copy is in `/tmp/KVG-4875-ci-artifacts`; job metadata and logs are `/tmp/KVG-4875-ci-job.json` and `/tmp/KVG-4875-ci-job.log`. No implementation acceptance tasks remain open.
+
+## Rebase validation
+
+Rebased onto main `c38aaf0f7bd340967fd963efd7bd5df1dc56a965`. Main now contains 405 visual cases and additional capture-stability regressions, so the 218-case CI measurements above are historical pre-rebase results, not a claim about current CI duration.
+
+Resolved conflicts in the self-test and visual review guide. Main's eight-sample exact raster checks, runtime-timer freezing, inline/mask SVG checks, delayed terminal focus, and feedback-visibility assertions are retained in `capture-stability.mjs`. The complete matrix still reuses initial captures for its repeat pass. Main's capture implementation and approved baselines are preserved.
+
+Rebased validation passed: 89 visual unit/browser tests, 43 coverage tests, both catalog builds, coverage validation and type check, root TypeScript, and lint. A fresh read-only conflict-resolution review found no blocking findings.
+
+The full pinned Linux self-test passed all 405 cases, both matrix passes, targeted regressions, and bounded child-command probes. Runner elapsed time was 940028ms locally. Parent timings show 881 attempts, 879 completed captures, and the two expected readiness-failure captures. The new capture-stability phase passed in 57766ms. Log: `/tmp/KVG-4875-rebase-visual.log`; latest artifacts: `artifacts/storybook-visual/`. These are local results; post-rebase PR CI will run after pushing.
