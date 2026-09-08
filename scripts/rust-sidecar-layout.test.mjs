@@ -63,4 +63,12 @@ describe('Rust sidecar backend layout Module', () => {
     expect(layout.electronAppPath).toBe('/repo/openforge/target/electron/macos/Open Forge Preview.app')
     expect(layout.packagedSidecarPath).toBe('/repo/openforge/target/electron/macos/Open Forge Preview.app/Contents/MacOS/openforge-sidecar')
   })
+  it('resolves the daemon and protocol crates under the configured backend root', () => {
+    const layout = resolveRustSidecarLayout({ repoRoot: '/repo', config: { ...currentLayoutConfig, backendCrateRoot: 'backend' } })
+    expect(layout.sessionCrates.daemon.manifestPath).toBe('/repo/backend/crates/session-daemon/Cargo.toml')
+    expect(layout.sessionCrates.client.manifestPath).toBe('/repo/backend/crates/session-client/Cargo.toml')
+    expect(layout.sessionCrates.protocol.manifestPath).toBe('/repo/backend/crates/session-protocol/Cargo.toml')
+    expect(layout.sessionCrates.host.manifestPath).toBe('/repo/backend/crates/session-host/Cargo.toml')
+    expect(layout.sessionCrates.daemon.binaryPath).toBe('/repo/backend/crates/session-daemon/target/debug/openforge-session-daemon')
+  })
 })

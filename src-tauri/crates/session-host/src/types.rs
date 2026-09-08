@@ -1,17 +1,44 @@
+use super::*;
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-use super::*;
-use crate::pty_manager::TerminalImageProtocol;
+pub const MAX_REQUEST_BYTES: usize = 64 * 1024;
+pub const MAX_OPERATIONS: usize = 1024;
+pub const MAX_RETAINED_REQUEST_BYTES: usize = 4 * 1024 * 1024;
+pub const MAX_SESSIONS: usize = 1024;
+pub const MAX_EXIT_HISTORY: usize = 1024;
 
-pub(crate) const MAX_REQUEST_BYTES: usize = 64 * 1024;
-pub(crate) const MAX_OPERATIONS: usize = 1024;
-pub(crate) const MAX_RETAINED_REQUEST_BYTES: usize = 4 * 1024 * 1024;
-pub(crate) const MAX_SESSIONS: usize = 1024;
-pub(crate) const MAX_EXIT_HISTORY: usize = 1024;
+#[derive(Debug, Clone, Copy)]
+pub struct HostLimits {
+    pub live_sessions: usize,
+    pub retained_sessions: usize,
+    pub exit_history: usize,
+    pub operations: usize,
+    pub cleanup_reserve: usize,
+    pub retained_request_bytes: usize,
+}
+impl Default for HostLimits {
+    fn default() -> Self {
+        Self {
+            live_sessions: MAX_SESSIONS,
+            retained_sessions: usize::MAX,
+            exit_history: MAX_EXIT_HISTORY,
+            operations: MAX_OPERATIONS,
+            cleanup_reserve: MAX_SESSIONS,
+            retained_request_bytes: MAX_RETAINED_REQUEST_BYTES,
+        }
+    }
+}
+#[derive(Debug, Clone, Copy)]
+pub struct HostCapacity {
+    pub operations: usize,
+    pub retained_request_bytes: usize,
+    pub limits: HostLimits,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-pub(crate) enum HostError {
+pub enum HostError {
     #[error("invalid host request: {0}")]
     InvalidRequest(&'static str),
     #[error(transparent)]
@@ -40,57 +67,54 @@ pub(crate) enum HostError {
     Backend(String),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum TerminalOwner {
+// Owner labels are supplied by the caller. The host only derives their stable session key;
+// it performs no Task lookup, provider preparation, or plugin operation.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TerminalOwner {
     Agent { task_id: String },
     Shell { task_id: String, index: Option<u32> },
 }
-
 impl TerminalOwner {
-    pub(crate) fn task_id(&self) -> &str {
+    pub fn task_id(&self) -> &str {
         match self {
             Self::Agent { task_id } | Self::Shell { task_id, .. } => task_id,
         }
     }
-
-    pub(crate) fn session_key(&self) -> String {
+    pub fn session_key(&self) -> String {
         match self {
             Self::Agent { task_id } => task_id.clone(),
             Self::Shell { task_id, index } => {
-                crate::pty_manager::shell_session_key(task_id, *index)
+                format!("{task_id}-shell-{}", index.unwrap_or_default())
             }
         }
     }
 }
 
-/// Provider preparation has already finished. No hook installation or domain operations
-/// are allowed here. The existing adapter still supplies its normal terminal environment.
-#[derive(Clone, PartialEq, Eq)]
-pub(crate) struct PreparedCommand {
-    pub(crate) program: String,
-    pub(crate) args: Vec<String>,
-    pub(crate) env: BTreeMap<String, String>,
-    pub(crate) cwd: PathBuf,
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PreparedCommand {
+    pub program: String,
+    pub args: Vec<String>,
+    pub env: BTreeMap<String, String>,
+    pub cwd: PathBuf,
 }
-
 impl std::fmt::Debug for PreparedCommand {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // Arguments and environment can contain prompts, credentials and user data.
         f.debug_struct("PreparedCommand").finish_non_exhaustive()
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct SpawnRequest {
-    pub(crate) owner: TerminalOwner,
-    pub(crate) command: PreparedCommand,
-    pub(crate) columns: u16,
-    pub(crate) rows: u16,
-    pub(crate) image_protocol: Option<TerminalImageProtocol>,
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct SpawnRequest {
+    pub owner: TerminalOwner,
+    pub command: PreparedCommand,
+    pub columns: u16,
+    pub rows: u16,
+    pub image_protocol: Option<TerminalImageProtocol>,
 }
-
 impl SpawnRequest {
-    pub(crate) fn validate(&self) -> Result<usize, HostError> {
+    pub fn validate(&self) -> Result<usize, HostError> {
         InstallationId::parse(self.owner.task_id())?;
         let command = &self.command;
         if command.program.is_empty() || command.program.contains('\0') {
@@ -109,7 +133,6 @@ impl SpawnRequest {
             return Err(HostError::InvalidRequest("invalid argument or environment"));
         }
         validate_geometry(self.columns, self.rows)?;
-        // Include separators so many empty arguments cannot bypass the retention budget.
         let size = command.program.len()
             + command.cwd.as_os_str().len()
             + self.owner.task_id().len()
@@ -126,69 +149,69 @@ impl SpawnRequest {
         Ok(size)
     }
 }
-
-pub(crate) fn validate_geometry(columns: u16, rows: u16) -> Result<(), HostError> {
+pub fn validate_geometry(columns: u16, rows: u16) -> Result<(), HostError> {
     if columns == 0 || rows == 0 {
         return Err(HostError::InvalidRequest("zero terminal geometry"));
     }
     Ok(())
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct Controller {
-    pub(crate) installation: InstallationId,
-    pub(crate) lifetime: DaemonLifetimeId,
-    pub(crate) generation: ControllerGeneration,
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct Controller {
+    pub installation: InstallationId,
+    pub lifetime: DaemonLifetimeId,
+    pub generation: ControllerGeneration,
 }
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum HostedSessionState {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum HostedSessionState {
     Live,
     Cleaning,
     ManagedRecovery,
     Exited,
 }
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct HostedSession {
-    pub(crate) pty: PtyIdentity,
-    pub(crate) session_key: String,
-    pub(crate) state: HostedSessionState,
-    /// Next write/resize sequence, recoverable without the previous controller's state.
-    /// None means the numeric sequence space is exhausted.
-    pub(crate) next_io_sequence: Option<u64>,
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HostedSession {
+    pub pty: PtyIdentity,
+    pub session_key: String,
+    pub state: HostedSessionState,
+    /// None means the sequence space is exhausted, never permission to restart at one.
+    pub next_io_sequence: Option<u64>,
 }
-
 #[derive(Debug)]
-pub(crate) struct Connection {
-    pub(crate) controller: Controller,
-    pub(crate) inventory: Vec<HostedSession>,
-    pub(crate) supports_replacement: bool,
+pub struct Connection {
+    pub controller: Controller,
+    pub inventory: Vec<HostedSession>,
+    pub supports_replacement: bool,
 }
-
-#[derive(Clone, PartialEq, Eq)]
-pub(crate) enum IoAction {
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", content = "value", rename_all = "camelCase")]
+pub enum IoAction {
     Write(Vec<u8>),
     Resize { columns: u16, rows: u16 },
 }
-
-#[derive(Clone, PartialEq, Eq)]
-pub(crate) struct IoRequest {
-    pub(crate) pty: PtyIdentity,
-    /// Starts at one and continues across controller handoff for this PTY.
-    pub(crate) sequence: u64,
-    pub(crate) action: IoAction,
+impl std::fmt::Debug for IoAction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::Write(_) => "Write(<redacted>)",
+            Self::Resize { .. } => "Resize",
+        })
+    }
 }
-
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct IoRequest {
+    pub pty: PtyIdentity,
+    pub sequence: u64,
+    pub action: IoAction,
+}
 #[derive(Debug, Clone, Copy)]
-pub(crate) enum ReplacementPhase {
+pub enum ReplacementPhase {
     Prepare,
     Commit,
     Abort,
 }
-
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum HostOutput {
+pub enum HostOutput {
     Output {
         start: OutputPosition,
         end: OutputPosition,

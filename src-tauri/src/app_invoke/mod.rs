@@ -4,6 +4,7 @@ mod agent_generate;
 mod companion;
 mod core;
 mod core_unmatched;
+mod daemon_shell;
 mod files_review;
 mod github_review;
 mod jira;

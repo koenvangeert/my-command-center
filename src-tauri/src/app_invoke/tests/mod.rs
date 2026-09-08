@@ -7,6 +7,10 @@ use serde_json::json;
 
 mod companion;
 mod core;
+mod daemon_fixture;
+mod daemon_shell_events;
+mod daemon_shell_recovery;
+mod daemon_shells;
 mod files_review;
 mod github_review;
 mod lifecycle;

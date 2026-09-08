@@ -1,0 +1,27 @@
+[package]
+name = "openforge-session-daemon"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.95"
+
+[dependencies]
+openforge-session-host = { path = "../session-host" }
+base64 = "0.22"
+openforge-session-protocol = { path = "../session-protocol" }
+openforge-session-client = { path = "../session-client" }
+serde_json = "1"
+subtle = "2"
+uuid = { version = "1", features = ["v4"] }
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+log = "0.4"
+libc = "0.2"
+portable-pty = "0.9"
+sysinfo = "0.37.2"
+tokio = { version = "1", features = ["rt", "time"] }
+libghostty-vt = { git = "https://github.com/Uzaaft/libghostty-rs.git", rev = "de9fd9b0fa4ab53faebd3d489f4c74fe0ec832ec", version = "=0.2.1" }
+
+[dev-dependencies]
+openforge-session-host = { path = "../session-host", features = ["test-contracts"] }
+tokio = { version = "1", features = ["macros"] }
+tempfile = "3"
