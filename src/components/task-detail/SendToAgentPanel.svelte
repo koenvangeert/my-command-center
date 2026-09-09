@@ -1,35 +1,29 @@
 <script lang="ts">
-  import { CheckCircle2, RefreshCw, Send, Zap } from '@lucide/svelte'
+  import { CheckCircle2, RefreshCw, Send } from '@lucide/svelte'
   import { compileReviewPrompt, type ReviewPromptMode } from '../../lib/reviewPrompt'
   import type { PrComment, ReviewSubmissionComment } from '../../lib/types'
-  import Badge from '@openforge-app/plugin-sdk/ui/Badge.svelte'
   import Button from '@openforge-app/plugin-sdk/ui/Button.svelte'
   import Modal from '@openforge-app/plugin-sdk/ui/Modal.svelte'
   import Textarea from '@openforge-app/plugin-sdk/ui/Textarea.svelte'
 
   interface Props {
-    layout?: 'bar' | 'sidebar'
     agentStatus: string | null
     onSendToAgent: (prompt: string) => void
     onRefresh: () => void
     selectedPrComments?: PrComment[]
     pendingInlineComments?: ReviewSubmissionComment[]
     onPendingInlineCommentsChange?: (comments: ReviewSubmissionComment[]) => void
-    onSendComplete?: () => void
+    onSendComplete?: (sentPrCommentIds: number[]) => void
   }
 
-  let { layout = 'bar', agentStatus, onSendToAgent, onRefresh, selectedPrComments = [], pendingInlineComments = [], onPendingInlineCommentsChange, onSendComplete }: Props = $props()
+  let { agentStatus, onSendToAgent, onRefresh, selectedPrComments = [], pendingInlineComments = [], onPendingInlineCommentsChange, onSendComplete }: Props = $props()
 
   let successMessage = $state<string | null>(null)
   let showPromptDialog = $state(false)
   let promptDraft = $state('')
   let promptMode = $state<ReviewPromptMode>('address')
-  // Captured at dialog-open so toggling the mode can regenerate the prompt after
-  // pending inline comments are cleared.
-  let capturedInline = $state<{ path: string; line: number; body: string }[]>([])
-  let capturedPr = $state<
-    { body: string; author: string; file_path: string | null; line_number: number | null }[]
-  >([])
+  let capturedInline = $state<ReviewSubmissionComment[]>([])
+  let capturedPr = $state<PrComment[]>([])
 
   let inlineCount = $derived(pendingInlineComments.length)
   let prCommentCount = $derived(selectedPrComments.length)
@@ -40,13 +34,8 @@
   function openPromptDialog() {
     if (!canSend) return
 
-    capturedInline = pendingInlineComments.map(c => ({ path: c.path, line: c.line, body: c.body }))
-    capturedPr = selectedPrComments.map(c => ({
-      body: c.body,
-      author: c.author,
-      file_path: c.file_path,
-      line_number: c.line_number
-    }))
+    capturedInline = pendingInlineComments.map(comment => ({ ...comment }))
+    capturedPr = selectedPrComments.map(comment => ({ ...comment }))
     promptMode = 'address'
     promptDraft = compileReviewPrompt(promptMode, capturedInline, capturedPr)
     successMessage = null
@@ -55,14 +44,26 @@
 
   // Dispatches the (possibly edited) prompt the user reviewed in the dialog.
   function confirmSend() {
+    if (isAgentBusy || !promptDraft.trim()) return
     onSendToAgent(promptDraft)
-    onPendingInlineCommentsChange?.([])
+    const unmatchedCapturedInline = [...capturedInline]
+    onPendingInlineCommentsChange?.(pendingInlineComments.filter(comment => {
+      const capturedIndex = unmatchedCapturedInline.findIndex(sent =>
+        sent.path === comment.path && sent.line === comment.line
+        && sent.side === comment.side && sent.body === comment.body)
+      if (capturedIndex < 0) return true
+      unmatchedCapturedInline.splice(capturedIndex, 1)
+      return false
+    }))
     showPromptDialog = false
     successMessage = 'Feedback sent to agent!'
     setTimeout(() => {
       successMessage = null
     }, 3000)
-    onSendComplete?.()
+    onSendComplete?.(selectedPrComments.filter(comment => capturedPr.some(sent =>
+      sent.id === comment.id && sent.body === comment.body && sent.author === comment.author
+      && sent.file_path === comment.file_path && sent.line_number === comment.line_number,
+    )).map(comment => comment.id))
   }
 
   function cancelPromptDialog() {
@@ -77,34 +78,8 @@
   }
 </script>
 
-{#if isAgentBusy}
-  <div class="flex items-center gap-2 border-y border-warning/30 bg-warning/10 px-4 py-2 text-[13px] font-medium text-warning">
-    <Zap size={17} strokeWidth={1.8} class="shrink-0" aria-hidden="true" />
-    <span>Agent is working — diff may be stale. Refresh when ready.</span>
-  </div>
-{/if}
-
-<div class="{layout === 'sidebar' ? 'flex flex-col gap-3 border-t border-base-300 bg-base-100 p-3' : 'flex min-h-14 items-center justify-between gap-4 border-t border-base-300 bg-base-200 px-6 py-3'}">
-  <div class="flex items-center gap-2 flex-1 min-w-0">
-    {#if hasComments}
-      <div class="flex items-center gap-2 flex-wrap">
-        {#if inlineCount > 0}
-          <Badge variant="info">
-            {inlineCount} inline {inlineCount === 1 ? 'comment' : 'comments'}
-          </Badge>
-        {/if}
-        {#if prCommentCount > 0}
-          <Badge variant="danger">
-            {prCommentCount} PR {prCommentCount === 1 ? 'comment' : 'comments'}
-          </Badge>
-        {/if}
-      </div>
-    {:else}
-      <span class="text-sm text-base-content/50 italic">No feedback collected yet</span>
-    {/if}
-  </div>
-
-  <div class="flex shrink-0 items-center gap-2.5 {layout === 'sidebar' ? 'w-full' : ''}">
+<div class="flex min-w-0 flex-wrap items-center gap-2">
+  <div class="flex min-w-0 flex-wrap items-center gap-2.5">
     {#if successMessage}
       <span class="inline-flex items-center gap-1.5 whitespace-nowrap text-[13px] text-success" aria-live="polite">
         <CheckCircle2 size={16} strokeWidth={1.8} aria-hidden="true" />
@@ -115,7 +90,6 @@
     <Button
       variant="secondary"
       size="sm"
-      class={layout === 'sidebar' ? 'flex-1' : ''}
       onclick={onRefresh}
       title="Refresh diff"
     >
@@ -125,13 +99,12 @@
 
     <Button
       size="sm"
-      class={layout === 'sidebar' ? 'flex-[1.35]' : ''}
       onclick={openPromptDialog}
       disabled={!canSend}
-      title={!hasComments ? 'Add comments before sending' : isAgentBusy ? 'Agent is currently running' : 'Review and send feedback to agent'}
+      title={!hasComments ? 'Add comments before sending' : isAgentBusy ? `Agent is currently ${agentStatus}` : 'Review and send feedback to agent'}
     >
       <Send size={17} strokeWidth={1.8} aria-hidden="true" />
-      Send to agent
+      {`Send feedback (${inlineCount + prCommentCount})`}
     </Button>
   </div>
 </div>
@@ -179,7 +152,8 @@
           size="sm"
           data-testid="confirm-send-prompt"
           onclick={confirmSend}
-          disabled={!promptDraft.trim()}
+          disabled={isAgentBusy || !promptDraft.trim()}
+          title={isAgentBusy ? `Agent is currently ${agentStatus}` : undefined}
         >
           <Send size={17} strokeWidth={1.8} aria-hidden="true" />
           Send to agent

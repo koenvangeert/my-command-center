@@ -151,6 +151,7 @@ export class InlineDiffWorker {
 }
 
 const defaultWorker = globalThis.Worker;
+const defaultResizeObserver = globalThis.ResizeObserver;
 
 export function setupSelfReviewViewTestSuite(): void {
 	beforeAll(() => {
@@ -158,6 +159,12 @@ export function setupSelfReviewViewTestSuite(): void {
 	});
 
 	beforeEach(() => {
+    // Layout geometry is covered in the production browser suite, not jsdom.
+    globalThis.ResizeObserver ??= class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
 		clearTaskReviewPaneState();
 		selfReviewStateByTask.set(new Map());
 		pendingManualComments.set([]);
@@ -167,5 +174,6 @@ export function setupSelfReviewViewTestSuite(): void {
 
 	afterEach(() => {
 		globalThis.Worker = defaultWorker;
+    globalThis.ResizeObserver = defaultResizeObserver;
 	});
 }

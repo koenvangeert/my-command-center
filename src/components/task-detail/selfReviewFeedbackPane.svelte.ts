@@ -22,7 +22,7 @@ interface SelfReviewPullRequestFeedback {
 interface SelfReviewFeedbackComposer {
   readonly pendingInlineComments: ReviewSubmissionComment[]
   onPendingInlineCommentsChange: (comments: ReviewSubmissionComment[]) => void
-  onSendComplete: () => void
+  onSendComplete: (sentPrCommentIds: number[]) => void
 }
 
 interface SelfReviewFeedbackNavigation {
@@ -44,7 +44,7 @@ interface SelfReviewFeedbackPaneSources {
     | 'pendingInlineComments'
     | 'markdownImageBaseUrl'
     | 'resolveRemoteMedia'
-    | 'handlePendingInlineCommentsChange'
+    | 'replacePendingInlineComments'
   >
   navigation: Pick<
     SelfReviewNavigationController,
@@ -83,8 +83,14 @@ export function createSelfReviewFeedbackPane(
     },
     composer: {
       get pendingInlineComments() { return sources.comments.pendingInlineComments },
-      onPendingInlineCommentsChange: sources.comments.handlePendingInlineCommentsChange,
-      onSendComplete: sources.comments.commentSelection.deselectAll,
+      onPendingInlineCommentsChange: sources.comments.replacePendingInlineComments,
+      onSendComplete: (sentPrCommentIds) => {
+        for (const id of sentPrCommentIds) {
+          if (sources.comments.commentSelection.selectedPrCommentIds.has(id)) {
+            sources.comments.commentSelection.toggleSelected(id)
+          }
+        }
+      },
     },
     navigation: {
       onCollapse: () => sources.navigation.setSidebarVisible(false),

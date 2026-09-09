@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { SelfReviewTaskState } from '../../lib/taskScopedSelfReviewState'
 import type { PullRequestInfo, ReviewSubmissionComment } from '../../lib/types'
 import { createSelfReviewCommentController } from './selfReviewCommentController.svelte'
+import { createSelfReviewFeedbackPane } from './selfReviewFeedbackPane.svelte'
 
 const { resolveGithubAsset } = vi.hoisted(() => ({
   resolveGithubAsset: vi.fn(),
@@ -62,6 +63,36 @@ describe('createSelfReviewCommentController', () => {
     controller.handlePendingInlineCommentsChange([updatedVisibleComment])
 
     expect(controller.pendingInlineComments).toEqual([hiddenComment, updatedVisibleComment])
+  })
+
+  it.each(['unchanged', 'edited', 'added'])('reconciles %s comparison-path feedback through the whole-list composer boundary', (change) => {
+    const retained = change === 'unchanged' ? [] : [{
+      ...hiddenComment,
+      line: change === 'added' ? 8 : hiddenComment.line,
+      body: change === 'added' ? 'New feedback after preview' : 'Edited feedback after preview',
+    }]
+    let state = $state<SelfReviewTaskState>({
+      diffFiles: [], pendingInlineComments: [hiddenComment, visibleComment], inlineCommentDrafts: new Map(),
+    })
+    let controller!: ReturnType<typeof createSelfReviewCommentController>
+    let pane!: ReturnType<typeof createSelfReviewFeedbackPane>
+    rootCleanups.push($effect.root(() => {
+      controller = createSelfReviewCommentController({
+        getTaskId: () => 'task-1', getState: () => state, getPrComments: () => [],
+        getComparisonFilenames: () => new Set([hiddenComment.path]),
+        setPendingComments: (_taskId, comments) => { state = { ...state, pendingInlineComments: comments } },
+      })
+      pane = createSelfReviewFeedbackPane({
+        comments: controller,
+        diff: { linkedPr: null, prComments: [], refresh: vi.fn() },
+        navigation: { showAddressed: false, setSidebarVisible: vi.fn(), setShowAddressed: vi.fn(), openLinkedPr: vi.fn(), scrollToComment: vi.fn() },
+      })
+    }))
+    state = { ...state, pendingInlineComments: change === 'edited'
+      ? [...retained, visibleComment] : [hiddenComment, visibleComment, ...retained] }
+    pane.composer.onPendingInlineCommentsChange(retained)
+    expect(controller.pendingInlineComments).toEqual(retained)
+    expect(controller.visiblePendingInlineComments).toEqual([])
   })
 
   it('exchanges GitHub upload URLs through the sidecar', async () => {

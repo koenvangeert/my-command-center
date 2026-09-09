@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { onMount, tick } from 'svelte'
+  import { tick } from 'svelte'
   import Button from '@openforge-app/plugin-sdk/ui/Button.svelte'
-  import SelfReviewChangedFilesPanel from './SelfReviewChangedFilesPanel.svelte'
+  import SendToAgentPanel from './SendToAgentPanel.svelte'
+  import SelfReviewSidePanel from './SelfReviewSidePanel.svelte'
   import SelfReviewDiffPanel from './SelfReviewDiffPanel.svelte'
   import SelfReviewRepositoryPreview from './SelfReviewRepositoryPreview.svelte'
-  import SelfReviewFeedbackPanel from './SelfReviewFeedbackPanel.svelte'
   import type { SelfReviewWorkspaceController } from './selfReviewWorkspaceController.svelte'
   import type { MarkdownRepositoryLinkTarget } from '@openforge-app/plugin-sdk/markdown'
 
@@ -16,47 +16,42 @@
   }
 
   let { controller, agentStatus, onSendToAgent, onOpenInFiles }: Props = $props()
-  let changedFilesPanel = $state<SelfReviewChangedFilesPanel>()
-  let viewport = $state<HTMLDivElement>()
-  let files = $state<HTMLDivElement>()
-  let code = $state<HTMLDivElement>()
-  let feedback = $state<HTMLDivElement>()
+  let sidePanel = $state<SelfReviewSidePanel>()
+  let workspaceWidth = $state(0)
+  let availablePanelWidth = $derived(workspaceWidth > 0
+    ? workspaceWidth < 540 ? workspaceWidth / 2 : workspaceWidth - 300
+    : undefined)
 
-  async function showPanel(panel: 'files' | 'code' | 'feedback'): Promise<void> {
-    if (panel === 'files') controller.setFileTreeVisible(true)
-    if (panel === 'feedback' && !controller.sidebarVisible) controller.toggleSidebar()
+  async function focusFileTree(): Promise<void> {
+    const taskId = controller.taskId
+    controller.setFileTreeVisible(true)
     await tick()
-    const target = panel === 'files' ? files : panel === 'feedback' ? feedback : code
-    if (!target || !viewport) return
-    viewport.scrollLeft += target.getBoundingClientRect().left - viewport.getBoundingClientRect().left
+    if (controller.taskId === taskId) sidePanel?.focusTree()
   }
-
-  // Start with code in view even when the host also has a project sidebar.
-  onMount(() => { void showPanel('code') })
 </script>
 
 <div class="flex h-full w-full min-w-0 flex-col overflow-hidden" style="background: var(--of-review-canvas)">
-  <div class="flex shrink-0 flex-wrap gap-1 border-b border-base-300 bg-base-100 p-1" role="group" aria-label="Review panels">
-    <Button size="sm" variant="ghost" onclick={() => showPanel('files')}>Changed files</Button>
-    <Button size="sm" variant="ghost" onclick={() => showPanel('code')}>Code</Button>
-    <Button size="sm" variant="ghost" onclick={() => showPanel('feedback')}>
-      Feedback ({controller.feedbackPane.totalCommentCount})
+  <div class="flex shrink-0 flex-wrap items-center gap-1 border-b border-base-300 bg-base-100 p-1" role="group" aria-label="Review bar">
+    <Button size="sm" variant="ghost" aria-expanded={controller.sidePanelVisible} onclick={controller.toggleSidePanel}>
+      {controller.sidePanelVisible ? 'Collapse review panel' : 'Show review panel'}
     </Button>
+    {#key controller.taskId}
+      <SendToAgentPanel
+        {agentStatus}
+        {onSendToAgent}
+        onRefresh={controller.refresh}
+        pendingInlineComments={controller.feedbackPane.composer.pendingInlineComments}
+        selectedPrComments={controller.feedbackPane.pullRequest.selection.selectedPrComments}
+        onPendingInlineCommentsChange={controller.feedbackPane.composer.onPendingInlineCommentsChange}
+        onSendComplete={controller.feedbackPane.composer.onSendComplete}
+      />
+    {/key}
   </div>
-  <!-- svelte-ignore a11y_no_noninteractive_tabindex (Keyboard users can scroll the pane row directly.) -->
-  <div bind:this={viewport} class="flex min-h-0 flex-1 overflow-x-auto overflow-y-hidden" role="region" aria-label="Scrollable review workspace" tabindex="0">
-    {#if controller.fileTreeVisible}
-      <div bind:this={files} class="h-full shrink-0">
-        <SelfReviewChangedFilesPanel
-          bind:this={changedFilesPanel}
-          pane={controller.changedFilesPane}
-        />
-      </div>
-    {/if}
-    <div bind:this={code} class="relative flex min-w-[540px] flex-1 overflow-hidden">
+  <div bind:clientWidth={workspaceWidth} class="flex min-h-0 min-w-0 flex-1 overflow-hidden">
+    <div class="relative flex min-w-0 flex-1 overflow-hidden">
       <SelfReviewDiffPanel
         {controller}
-        onRequestFocusFileTree={() => changedFilesPanel?.focusTree()}
+        onRequestFocusFileTree={focusFileTree}
       />
       {#if controller.repositoryPreview}
         <SelfReviewRepositoryPreview
@@ -70,14 +65,10 @@
         />
       {/if}
     </div>
-    {#if controller.sidebarVisible}
-      <div bind:this={feedback} class="h-full shrink-0">
-        <SelfReviewFeedbackPanel
-          pane={controller.feedbackPane}
-          {agentStatus}
-          {onSendToAgent}
-        />
-      </div>
+    {#if controller.sidePanelVisible}
+      {#key controller.taskId}
+        <SelfReviewSidePanel bind:this={sidePanel} {controller} availableWidth={availablePanelWidth} />
+      {/key}
     {/if}
   </div>
 </div>

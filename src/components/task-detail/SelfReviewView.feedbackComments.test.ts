@@ -1,5 +1,6 @@
 import {
 	baseDiff,
+  baseTask,
 	renderSelfReviewView,
 	setupSelfReviewViewTestSuite,
 } from "./SelfReviewView.testUtils";
@@ -16,6 +17,12 @@ import { ticketPrs } from "../../lib/stores";
 import { setSelfReviewDiffFiles } from "../../lib/taskScopedSelfReviewState";
 
 setupSelfReviewViewTestSuite();
+
+async function renderFeedbackView() {
+  const view = renderSelfReviewView();
+  await fireEvent.click(await screen.findByRole('tab', { name: /^GitHub comments/ }));
+  return view;
+}
 
 describe("SelfReviewView — hide addressed comments", () => {
 	beforeEach(() => {
@@ -69,6 +76,49 @@ describe("SelfReviewView — hide addressed comments", () => {
 		readiness_updated_at: null,
 	};
 
+  it('keeps files selected when GitHub comments load and the diff refreshes', async () => {
+    ticketPrs.set(new Map([['task-1', [mockPr]]]));
+    vi.mocked(getTaskDiff).mockResolvedValue([baseDiff]);
+    vi.mocked(getPrComments).mockResolvedValue([makeComment(1, 0)]);
+    renderSelfReviewView();
+    await screen.findByText('Comment 1');
+    expect(screen.getByRole('tab', { name: 'Changed files' }).getAttribute('aria-selected')).toBe('true');
+    await fireEvent.click(screen.getByTitle('Refresh diff'));
+    await waitFor(() => expect(screen.queryByText('Loading diff...')).toBeNull());
+    expect(screen.getByRole('tab', { name: 'Changed files' }).getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('does not carry selected GitHub feedback into another task linked to the same PR', async () => {
+    ticketPrs.set(new Map([['task-1', [mockPr]], ['task-2', [mockPr]]]));
+    vi.mocked(getTaskDiff).mockResolvedValue([baseDiff]);
+    vi.mocked(getPrComments).mockResolvedValue([makeComment(1, 0)]);
+    const view = await renderFeedbackView();
+    await fireEvent.click(await screen.findByRole('button', { name: 'Select all' }));
+    expect(screen.getByRole('button', { name: 'Send feedback (1)' })).toBeTruthy();
+    await fireEvent.click(screen.getByRole('tab', { name: 'Changed files' }));
+    expect(screen.getByRole('button', { name: 'Send feedback (1)' })).toBeTruthy();
+    await view.rerender({ task: { ...baseTask, id: 'task-2' } });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Send feedback (0)' })).toBeTruthy());
+    expect(screen.getByRole('tab', { name: 'Changed files' }).getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('does not reopen the panel when comments finish loading after collapse', async () => {
+    let resolveComments!: (comments: PrComment[]) => void;
+    const comments = new Promise<PrComment[]>(resolve => { resolveComments = resolve; });
+    ticketPrs.set(new Map([['task-1', [mockPr]]]));
+    vi.mocked(getTaskDiff).mockResolvedValue([baseDiff]);
+    vi.mocked(getPrComments).mockReturnValue(comments);
+    renderSelfReviewView();
+    await fireEvent.click(screen.getByRole('button', { name: 'Collapse review panel' }));
+    resolveComments([makeComment(1, 0)]);
+    await screen.findByRole('region', { name: 'Diff scroll area' });
+    expect(screen.getByRole('button', { name: 'Show review panel' })).toBeTruthy();
+    await fireEvent.click(screen.getByRole('button', { name: 'Show review panel' }));
+    expect(screen.getByRole('tab', { name: 'Changed files' }).getAttribute('aria-selected')).toBe('true');
+    await fireEvent.click(screen.getByRole('tab', { name: /^GitHub comments/ }));
+    expect(await screen.findByText('Comment 1')).toBeTruthy();
+  });
+
 	it("resolves GitHub upload URLs in PR comments through the sidecar", async () => {
 		const uploadUrl = "https://github.com/user-attachments/assets/971f5efc-5e71-4d11-a2b5-daecad5323f3";
 		const signedUrl = "https://private-user-images.githubusercontent.com/signed.png";
@@ -79,7 +129,7 @@ describe("SelfReviewView — hide addressed comments", () => {
 		ticketPrs.set(new Map([["task-1", [mockPr]]]));
 		vi.mocked(getTaskDiff).mockResolvedValue([baseDiff]);
 
-		const { container } = renderSelfReviewView();
+		const { container } = await renderFeedbackView();
 
 		await waitFor(() => {
 			expect(resolveGithubAsset).toHaveBeenCalledWith("acme", "repo", uploadUrl);
@@ -94,7 +144,7 @@ describe("SelfReviewView — hide addressed comments", () => {
 		ticketPrs.set(new Map([["task-1", [mockPr]]]));
 		vi.mocked(getTaskDiff).mockResolvedValue([baseDiff]);
 
-		const { container } = renderSelfReviewView();
+		const { container } = await renderFeedbackView();
 
 		await waitFor(() => {
 			expect(container.querySelector("img")?.getAttribute("src")).toBe("https://raw.githubusercontent.com/acme/repo/abc/docs/review.png");
@@ -110,7 +160,7 @@ describe("SelfReviewView — hide addressed comments", () => {
 		ticketPrs.set(new Map([["task-1", [mockPr]]]));
 		vi.mocked(getTaskDiff).mockResolvedValue([baseDiff]);
 
-		renderSelfReviewView();
+		await renderFeedbackView();
 
 		await waitFor(() => {
 			// Unaddressed comment should be visible
@@ -129,7 +179,7 @@ describe("SelfReviewView — hide addressed comments", () => {
 		ticketPrs.set(new Map([["task-1", [mockPr]]]));
 		vi.mocked(getTaskDiff).mockResolvedValue([baseDiff]);
 
-		renderSelfReviewView();
+		await renderFeedbackView();
 
 		await fireEvent.click(await screen.findByRole("button", { name: /mark addressed/i }));
 
@@ -145,6 +195,7 @@ describe("SelfReviewView — hide addressed comments", () => {
 			expect(markCommentAddressed).toHaveBeenCalledTimes(2);
 			expect(screen.queryByText("Review retry comment")).toBeNull();
 			expect(screen.queryByRole("alert")).toBeNull();
+      expect(screen.getByRole('tab', { name: /^GitHub comments/ }).getAttribute('aria-selected')).toBe('true');
 		});
 	});
 
@@ -157,7 +208,7 @@ describe("SelfReviewView — hide addressed comments", () => {
 		ticketPrs.set(new Map([["task-1", [mockPr]]]));
 		vi.mocked(getTaskDiff).mockResolvedValue([baseDiff]);
 
-		renderSelfReviewView();
+		await renderFeedbackView();
 
 		await waitFor(() => {
 			expect(screen.getByText("Comment 1")).toBeTruthy();
@@ -184,7 +235,7 @@ describe("SelfReviewView — hide addressed comments", () => {
 		ticketPrs.set(new Map([["task-1", [mockPr]]]));
 		vi.mocked(getTaskDiff).mockResolvedValue([baseDiff]);
 
-		renderSelfReviewView();
+		await renderFeedbackView();
 
 		await waitFor(() => {
 			expect(screen.getByText("Comment 1")).toBeTruthy();
@@ -202,7 +253,7 @@ describe("SelfReviewView — hide addressed comments", () => {
 		ticketPrs.set(new Map([["task-1", [mockPr]]]));
 		vi.mocked(getTaskDiff).mockResolvedValue([baseDiff]);
 
-		renderSelfReviewView();
+		await renderFeedbackView();
 
 		// Feedback stays visible in the normal review flow even when every comment is addressed.
 		await waitFor(() => {
@@ -219,20 +270,19 @@ describe("SelfReviewView — hide addressed comments", () => {
 
 	it("feedback panel supports keyboard resizing", async () => {
 		const comments = [
-			makeComment(1, 0), // unaddressed — triggers auto-open
+			makeComment(1, 0),
 		];
 		vi.mocked(getPrComments).mockResolvedValue(comments);
 		ticketPrs.set(new Map([["task-1", [mockPr]]]));
 		vi.mocked(getTaskDiff).mockResolvedValue([baseDiff]);
 
-		renderSelfReviewView();
+		await renderFeedbackView();
 
 		await waitFor(() => {
-			// Sidebar should auto-open due to unaddressed comment
 			expect(screen.getByText("Comment 1")).toBeTruthy();
 		});
 
-		const resizeHandle = screen.getByRole("separator", { name: "Resize Feedback panel" });
+		const resizeHandle = screen.getByRole("separator", { name: "Resize Review panel" });
 		const initialWidth = Number(resizeHandle.getAttribute("aria-valuenow"));
 
 		await fireEvent.keyDown(resizeHandle, { key: "ArrowLeft" });

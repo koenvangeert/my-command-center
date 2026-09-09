@@ -1,6 +1,5 @@
 <script lang="ts">
   import { AlertTriangle, FolderOpen } from '@lucide/svelte'
-  import Badge from '@openforge-app/plugin-sdk/ui/Badge.svelte'
   import Button from '@openforge-app/plugin-sdk/ui/Button.svelte'
   import type DiffViewer from '../review/shared/diff-viewer/DiffViewer.svelte'
   import DiffViewerComponent from '../review/shared/diff-viewer/DiffViewer.svelte'
@@ -117,22 +116,6 @@
             {comparisonActive ? 'Current diff' : 'Since reviewed'}
           </Button>
         {/if}
-      {/snippet}
-      {#snippet toolbarExtra()}
-        <div class="w-px h-5 bg-base-300 mx-1 self-center"></div>
-        <Button
-          variant={controller.sidebarVisible ? 'outline' : 'ghost'}
-          size="sm"
-          aria-label="Toggle Feedback panel"
-          aria-expanded={controller.sidebarVisible}
-          onclick={controller.toggleSidebar}
-          title={controller.sidebarVisible ? 'Collapse Feedback panel' : 'Show Feedback panel'}
-        >
-          Feedback
-          {#if controller.commentSelection.unaddressedCount > 0 && !controller.sidebarVisible}
-            <Badge variant="danger">{controller.commentSelection.unaddressedCount}</Badge>
-          {/if}
-        </Button>
       {/snippet}
     </DiffViewerComponent>
   {/if}

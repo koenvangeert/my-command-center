@@ -25,7 +25,7 @@ The Self Review failure fixture preserves the error name and message but fixes i
 
 The visual manifest selects the page states in both themes, including 900-pixel constrained layouts. Component cases cover distinct states at smaller viewports. Task-card states run in both themes because their semantic colors differ. Other component families use representative dark-theme cases rather than repeating every interaction in every theme. Interaction-only cases that end at an existing baseline state are not duplicate screenshots.
 
-The completed feedback-send page uses a 1920×1080 viewport so the diff and feedback panes are readable together. At 1280 pixels the squeezed diff's fractional sticky-gutter edge paints inconsistently after comments disappear. This is not a reason to loosen comparison thresholds: the populated and narrow cases still expose the constrained-layout problem, tracked separately in KVG-4777.
+Self Review keeps Changed files and GitHub comments in one right-hand panel, initially showing files. Linked-PR and selected-GitHub-tab stories cover both themes, including a 900-pixel host. The review bar owns Send feedback even while the panel is collapsed. Production browser checks cover the unchanged project sidebar, diff controls, and keyboard navigation at 900, 1280, 1600, and 1920 pixels, plus panel resizing and combined feedback submission at 900 pixels. The completed-send capture retains its 1920×1080 viewport; narrow layout coverage does not depend on it.
 
 Run the commands in [the visual review guide](storybook-visuals.md) and [the inventory guide](storybook-coverage.md). For the local environment and reset checks:
 

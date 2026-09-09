@@ -2,7 +2,6 @@
   import Button from '@openforge-app/plugin-sdk/ui/Button.svelte'
   import Checkbox from '@openforge-app/plugin-sdk/ui/Checkbox.svelte'
   import Tooltip from '@openforge-app/plugin-sdk/ui/Tooltip.svelte'
-  import ResizablePanel from '@openforge-app/plugin-sdk/ui/ResizablePanel.svelte'
   import type { SelfReviewChangedFilesPane } from './selfReviewChangedFilesPane.svelte'
   import ResizableBottomPanel from '../shared/ui/ResizableBottomPanel.svelte'
   import FileTree from '../review/shared/FileTree.svelte'
@@ -30,7 +29,6 @@
   }
 </script>
 
-<ResizablePanel storageKey="self-review-file-tree" defaultWidth={320} minWidth={240} maxWidth={520} side="left" label="Changed files">
   <section class="flex h-full flex-col border-r border-base-300 bg-base-100" aria-label="Changed files panel">
     <div class="flex-1 overflow-hidden">
       <FileTree
@@ -130,4 +128,3 @@
       </div>
     </ResizableBottomPanel>
   </section>
-</ResizablePanel>

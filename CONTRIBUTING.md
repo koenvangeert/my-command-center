@@ -107,7 +107,7 @@ STORYBOOK_URL=http://localhost:6006 pnpm test storybook/stories/pages/FocusBoard
 
 Without `STORYBOOK_URL`, this browser suite is skipped. It covers 1000, 1279, 1280, 1440, and 1920px widths at 800px height.
 
-Self Review uses a 540px minimum diff width and a horizontally scrollable pane row. Persistent Changed files, Code, and Feedback buttons bring each pane into view without collapsing the project sidebar. The browser regression covers the production task workspace at 900, 1280, 1600, and 1920px, including pending-comment text, keyboard navigation, panel reopening, and the send-feedback dialog:
+Self Review shares one right-hand panel between Changed files and GitHub comments. The review bar keeps Send feedback accessible when the panel is collapsed. The browser regression checks the production task workspace at 900, 1280, 1600, and 1920px with the project sidebar open. It verifies control bounds before interaction, Unified-mode comment readability, keyboard tab navigation, preview focus return, and saved panel widths across host resizing without workspace-level horizontal scrolling. Start the pages Storybook before running:
 
 ```bash
 STORYBOOK_URL=http://localhost:6006 pnpm test storybook/stories/pages/SelfReview.browser.test.ts

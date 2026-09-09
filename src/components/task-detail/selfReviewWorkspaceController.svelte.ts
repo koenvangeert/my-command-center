@@ -62,7 +62,6 @@ export function createSelfReviewWorkspaceController(
     getPrComments: () => diffController.prComments,
     getLinkedPr: () => diffController.linkedPr,
     getComparisonFilenames: () => fileStateController.comparisonFilenames,
-    onCommentsNeedAttention: () => navigationController.setSidebarVisible(true),
   })
 
   const feedbackPane = createSelfReviewFeedbackPane({
@@ -100,6 +99,10 @@ export function createSelfReviewWorkspaceController(
     changedFilesPane,
     feedbackPane,
     get fileTreeVisible() { return navigationController.fileTreeVisible },
+    get sidePanelVisible() { return navigationController.sidePanelVisible },
+    get sidePanelTab() { return navigationController.sidePanelTab },
+    selectSidePanelTab: navigationController.selectSidePanelTab,
+    toggleSidePanel: navigationController.toggleSidePanel,
     get includeCommitted() { return diffController.includeCommitted },
     get includeUncommitted() { return diffController.includeUncommitted },
     get includeNonApplicationFiles() { return fileStateController.includeNonApplicationFiles },
