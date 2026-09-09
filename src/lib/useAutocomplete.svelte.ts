@@ -16,6 +16,7 @@ export interface AutocompleteState {
   handleSlashTrigger: (query: string) => Promise<void>
   handleAtTrigger: (query: string) => Promise<void>
   closePopover: () => void
+  dispose: () => void
   setSelectedIndex: (index: number) => void
 }
 
@@ -63,7 +64,22 @@ export function useAutocomplete(projectId: string, getCommandTrigger: () => Comm
 
   let fileSearchTimer: ReturnType<typeof setTimeout> | null = null
 
+  let generation = 0
+  let disposed = false
+
+  function isCurrent(request: number): boolean {
+    return !disposed && request === generation
+  }
+
+  function invalidateRequest(): number {
+    if (fileSearchTimer !== null) {
+      clearTimeout(fileSearchTimer)
+      fileSearchTimer = null
+    }
+    return ++generation
+  }
   async function handleTriggerDetection(text: string, cursorPos: number): Promise<void> {
+    if (disposed) return
     const { trigger, query } = detectTrigger(text, cursorPos, getCommandTrigger())
     activeTrigger = trigger
 
@@ -77,9 +93,13 @@ export function useAutocomplete(projectId: string, getCommandTrigger: () => Comm
   }
 
   async function handleSlashTrigger(query: string): Promise<void> {
+    if (disposed) return
+    const request = invalidateRequest()
     try {
       if (!cachedCommands) {
-        cachedCommands = await listOpenCodeCommands(projectId)
+        const commands = await listOpenCodeCommands(projectId)
+        if (!isCurrent(request)) return
+        cachedCommands = commands
       }
 
       const lower = query.toLowerCase()
@@ -97,18 +117,24 @@ export function useAutocomplete(projectId: string, getCommandTrigger: () => Comm
       popoverVisible = autocompleteItems.length > 0
       selectedIndex = 0
     } catch (e) {
+      if (!isCurrent(request)) return
       console.error('[useAutocomplete] Failed to fetch commands:', e)
       closePopover()
     }
   }
 
   async function handleAtTrigger(query: string): Promise<void> {
+    if (disposed) return
+    const request = invalidateRequest()
     // Fetch agents once, filter client-side
     try {
       if (!cachedAgents) {
-        cachedAgents = await listOpenCodeAgents(projectId)
+        const agents = await listOpenCodeAgents(projectId)
+        if (!isCurrent(request)) return
+        cachedAgents = agents
       }
     } catch (e) {
+      if (!isCurrent(request)) return
       console.error('[useAutocomplete] Failed to fetch agents:', e)
       cachedAgents = []
     }
@@ -130,6 +156,7 @@ export function useAutocomplete(projectId: string, getCommandTrigger: () => Comm
       fileSearchTimer = null
       try {
         const filePaths = query ? await searchOpenCodeFiles(projectId, query) : []
+        if (!isCurrent(request)) return
         const fileItems: AutocompleteItem[] = filePaths.map(path => ({
           label: path,
           description: null,
@@ -147,6 +174,7 @@ export function useAutocomplete(projectId: string, getCommandTrigger: () => Comm
         popoverVisible = autocompleteItems.length > 0
         if (selectedIndex >= autocompleteItems.length) selectedIndex = 0
       } catch (e) {
+        if (!isCurrent(request)) return
         console.error('[useAutocomplete] Failed to search files:', e)
         // Keep agent-only results visible
         popoverVisible = agentItems.length > 0
@@ -155,10 +183,7 @@ export function useAutocomplete(projectId: string, getCommandTrigger: () => Comm
   }
 
   function closePopover(): void {
-    if (fileSearchTimer) {
-      clearTimeout(fileSearchTimer)
-      fileSearchTimer = null
-    }
+    invalidateRequest()
     popoverVisible = false
     autocompleteItems = []
     selectedIndex = 0
@@ -179,6 +204,12 @@ export function useAutocomplete(projectId: string, getCommandTrigger: () => Comm
     handleSlashTrigger,
     handleAtTrigger,
     closePopover,
+    dispose() {
+      disposed = true
+      closePopover()
+      cachedAgents = null
+      cachedCommands = null
+    },
     setSelectedIndex,
   }
 }
