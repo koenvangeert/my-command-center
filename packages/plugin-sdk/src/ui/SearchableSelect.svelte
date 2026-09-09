@@ -7,6 +7,8 @@
   interface Option {
     value: string
     label: string
+    /** Additional searchable text, such as project IDs. Never displayed. */
+    keywords?: string[]
     badge?: string
     badgeVariant?: BadgeVariant
   }
@@ -17,26 +19,35 @@
     placeholder?: string
     size?: 'xs' | 'sm' | 'md'
     ariaLabel?: string
+    /** Maximum rendered matches. Omit for unlimited results. */
+    maxResults?: number
+    disabled?: boolean
     onSelect: (value: string) => void
   }
 
-  let { options, value, placeholder = 'Search...', size = 'sm', ariaLabel, onSelect }: Props = $props()
+  let { options, value, placeholder = 'Search...', size = 'sm', ariaLabel, maxResults, disabled = false, onSelect }: Props = $props()
 
   let query = $state('')
   let open = $state(false)
   let highlightedIndex = $state(0)
   let inputEl = $state<HTMLInputElement | null>(null)
+  let triggerEl = $state<HTMLDivElement | null>(null)
   let listEl = $state<HTMLUListElement | null>(null)
   const listboxId = `searchable-select-listbox-${Math.random().toString(36).slice(2)}`
 
   let selectedOption = $derived(options.find(o => o.value === value) ?? null)
   let selectedLabel = $derived(selectedOption?.label ?? '')
 
-  let filtered = $derived.by(() => {
+  let matches = $derived.by(() => {
     const q = query.toLowerCase().trim()
     if (!q) return options
-    return options.filter(o => o.label.toLowerCase().includes(q))
+    return options.filter(o => o.label.toLowerCase().includes(q)
+      || o.keywords?.some(keyword => keyword.toLowerCase().includes(q)))
   })
+  let resultLimit = $derived(maxResults === undefined
+    ? Infinity
+    : Number.isFinite(maxResults) ? Math.max(1, Math.floor(maxResults)) : 1)
+  let filtered = $derived(matches.slice(0, resultLimit))
 
   $effect(() => {
     filtered
@@ -52,31 +63,37 @@
     }
   })
 
+  $effect(() => {
+    if (disabled) closeDropdown()
+  })
+
   function openDropdown() {
+    if (disabled) return
     query = ''
     open = true
     highlightedIndex = 0
     tick().then(() => inputEl?.focus())
   }
 
-  function closeDropdown() {
+  function closeDropdown(restoreFocus = false) {
     open = false
     query = ''
+    if (restoreFocus && !disabled) triggerEl?.focus()
   }
 
   function selectOption(option: Option) {
+    if (disabled) return
     onSelect(option.value)
-    closeDropdown()
+    closeDropdown(true)
   }
 
   function handleKeydown(event: KeyboardEvent) {
-    if (!open) return
-    if (filtered.length === 0 && event.key !== 'Escape') return
+    if (disabled || !open) return
 
     if (event.key === 'ArrowDown' || (event.ctrlKey && (event.key === 'j' || event.key === 'n'))) {
       event.preventDefault()
       event.stopPropagation()
-      highlightedIndex = Math.min(highlightedIndex + 1, filtered.length - 1)
+      highlightedIndex = Math.max(0, Math.min(highlightedIndex + 1, filtered.length - 1))
       return
     }
 
@@ -98,14 +115,20 @@
     if (event.key === 'Escape') {
       event.preventDefault()
       event.stopPropagation()
-      closeDropdown()
+      closeDropdown(true)
     }
   }
 </script>
 
-<div class="searchable-select">
+<div
+  class="searchable-select"
+  onfocusout={(event) => {
+    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) closeDropdown()
+  }}
+>
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
+    bind:this={triggerEl}
     class="searchable-select-trigger"
     data-size={size}
     onclick={openDropdown}
@@ -120,7 +143,8 @@
     aria-label={ariaLabel}
     aria-controls={listboxId}
     aria-expanded={open}
-    tabindex="0"
+    aria-disabled={disabled}
+    tabindex={disabled ? -1 : 0}
   >
     <span class="flex min-w-0 items-center gap-2">
       <span class="truncate">{selectedLabel || placeholder}</span>
@@ -132,7 +156,7 @@
 
   {#if open}
     <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <div role="presentation" class="fixed inset-0 z-40" onclick={closeDropdown}></div>
+    <div role="presentation" class="fixed inset-0 z-40" onclick={() => closeDropdown()}></div>
     <div class="searchable-select-popover">
       <div class="searchable-select-search">
         <input
@@ -140,6 +164,10 @@
           type="text"
           class="searchable-select-input"
           aria-label="Search options"
+          aria-controls={listboxId}
+          aria-describedby={`${listboxId}-count`}
+          aria-autocomplete="list"
+          aria-activedescendant={filtered[highlightedIndex] ? `${listboxId}-option-${highlightedIndex}` : undefined}
           placeholder="Search..."
           bind:value={query}
           onkeydown={handleKeydown}
@@ -150,11 +178,13 @@
         bind:this={listEl}
         class="max-h-[200px] overflow-y-auto py-1"
         role="listbox"
+        aria-label={ariaLabel ?? 'Options'}
       >
         {#each filtered as option, index (option.value)}
           <li
             role="option"
-            aria-selected={index === highlightedIndex}
+            id={`${listboxId}-option-${index}`}
+            aria-selected={option.value === value}
             data-highlighted={index === highlightedIndex ? '' : undefined}
             data-current={option.value === value && index !== highlightedIndex ? '' : undefined}
             tabindex="-1"
@@ -179,6 +209,13 @@
           <li class="px-3 py-2 text-xs text-[var(--of-text-muted)]">No matches</li>
         {/each}
       </ul>
+      <div id={`${listboxId}-count`} role="status" aria-live="polite" aria-atomic="true" class="searchable-select-count">
+        {#if filtered.length < matches.length}
+          Showing {filtered.length} of {matches.length} results. Refine your search.
+        {:else}
+          {matches.length} {matches.length === 1 ? 'result' : 'results'}
+        {/if}
+      </div>
     </div>
   {/if}
 </div>
@@ -208,13 +245,19 @@
     cursor: pointer;
   }
 
+  .searchable-select-trigger[aria-disabled='true'] {
+    color: var(--of-control-text-disabled);
+    cursor: not-allowed;
+    background: var(--of-control-disabled);
+  }
+
   .searchable-select-trigger[data-size='xs'],
   .searchable-select-trigger[data-size='sm'] {
     min-height: var(--of-control-height-compact);
     font-size: var(--of-text-xs);
   }
 
-  .searchable-select-trigger:hover,
+  .searchable-select-trigger:hover:not([aria-disabled='true']),
   .searchable-select-input:hover {
     background: var(--of-field-hover);
   }
@@ -247,6 +290,12 @@
   .searchable-select-input {
     min-height: var(--of-control-height-compact);
     padding-inline: var(--of-space3);
+  }
+
+  .searchable-select-count {
+    padding: var(--of-space2) var(--of-space3);
+    color: var(--of-text-muted);
+    font-size: var(--of-text-xs);
   }
 
   .searchable-select-option {

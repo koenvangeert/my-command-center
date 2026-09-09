@@ -232,6 +232,8 @@ Shared Svelte components use explicit imports. The package exports:
 - `@openforge-app/plugin-sdk/ui/ResizablePanel.svelte`
 Use only documented package exports. Do not import OpenForge renderer stores, Electron or preload APIs, Rust internals, app IPC wrappers, or files under this package's `src/` directory.
 
+For large option lists, import `SearchableSelect` from `@openforge-app/plugin-sdk/ui/SearchableSelect.svelte`. Set `maxResults={40}` to bound rendered matches, add per-option `keywords: [project.id]` for ID search, and use `disabled={!inOpenForge}` for unavailable filters. Omit `maxResults` to keep unlimited results. The picker announces result counts and keeps the selected label even when it is outside the visible results. See the [SearchableSelect contract and example](https://github.com/koenvg/openforge/blob/main/docs/plugins/sdk-reference.md#searchableselect).
+
 ## Compact toolbar field
 
 Use `labelHidden` to keep a required `label` available to assistive technology without displaying it. `size="sm"` uses the host's compact control height; the default `size="md"` and visible label suit forms. Optional `leading` and `trailing` Svelte snippets sit beside the input inside the field border.

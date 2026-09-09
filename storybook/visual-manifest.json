@@ -616,6 +616,39 @@
   },
   {
     "catalog": "components",
+    "story": "components-plugin-sdk-selectors--bounded-results",
+    "theme": "openforge-light",
+    "viewport": {
+      "width": 800,
+      "height": 700
+    },
+    "ready": "[data-sdk-ready=bounded-results]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-selectors--bounded-results",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 360,
+      "height": 900
+    },
+    "ready": "[data-sdk-ready=bounded-results]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
+    "story": "components-plugin-sdk-selectors--keyword-search",
+    "theme": "openforge-dark",
+    "viewport": {
+      "width": 800,
+      "height": 600
+    },
+    "ready": "[data-sdk-ready=keyword-search]",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "components",
     "story": "components-plugin-sdk-presentation--default",
     "theme": "openforge-light",
     "viewport": {

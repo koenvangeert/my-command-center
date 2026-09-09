@@ -18,6 +18,12 @@ export const Disabled: Story = {
     await expect(provider).toBeDisabled()
     await userEvent.click(provider)
     await expect(args.onOpen).not.toHaveBeenCalled()
+    for (const project of within(canvasElement).getAllByRole('combobox')) {
+      await expect(project).toHaveAttribute('aria-disabled', 'true')
+      await userEvent.click(project)
+    }
+    await expect(within(canvasElement).queryByRole('listbox')).not.toBeInTheDocument()
+    await expect(args.onValue).not.toHaveBeenCalled()
   },
 }
 export const Validation: Story = { args: { state: 'error' } }
@@ -51,6 +57,37 @@ export const NoMatches: Story = {
     canvasElement.dataset.sdkReady = 'no-matches'
   },
 }
+export const BoundedResults: Story = {
+  args: { state: 'large' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const project = canvas.getByRole('combobox', { name: 'Project' })
+    await expect(project).toHaveTextContent('Workspace 5000')
+    await userEvent.click(project)
+    await expect(canvas.getAllByRole('option')).toHaveLength(40)
+    await expect(canvas.getByRole('status')).toHaveTextContent('Showing 40 of 5000 results. Refine your search.')
+    canvasElement.dataset.sdkReady = 'bounded-results'
+  },
+}
+export const KeywordSearch: Story = {
+  args: { state: 'large' },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement)
+    const project = canvas.getByRole('combobox', { name: 'Project' })
+    await userEvent.click(project)
+    await userEvent.type(canvas.getByRole('textbox', { name: 'Search options' }), 'p-4999')
+    await expect(canvas.getByRole('option')).toHaveTextContent('Workspace 4999')
+    await expect(canvas.getByRole('status')).toHaveTextContent('1 result')
+    await userEvent.keyboard('{Enter}')
+    await expect(args.onValue).toHaveBeenLastCalledWith('project', 'project-4999')
+    await expect(project).toHaveTextContent('Workspace 4999')
+    await expect(project).toHaveFocus()
+    await userEvent.click(project)
+    await userEvent.type(canvas.getByRole('textbox', { name: 'Search options' }), 'p-4999')
+    await expect(canvas.getByRole('option')).toHaveAttribute('aria-selected', 'true')
+    canvasElement.dataset.sdkReady = 'keyword-search'
+  },
+}
 export const Keyboard: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
@@ -68,9 +105,11 @@ export const Keyboard: Story = {
     await userEvent.keyboard('{Enter}')
     await expect(args.onValue).toHaveBeenLastCalledWith('project', 'website')
     await expect(project).toHaveTextContent('Website')
+    await expect(project).toHaveFocus()
     await userEvent.click(project)
     await expect(canvas.getByRole('textbox', { name: 'Search options' })).toHaveValue('')
     await userEvent.keyboard('{Escape}')
     await expect(project).toHaveAttribute('aria-expanded', 'false')
+    await expect(project).toHaveFocus()
   },
 }

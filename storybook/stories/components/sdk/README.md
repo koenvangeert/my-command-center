@@ -6,13 +6,13 @@ KVG-4691 owns these production controls in the component catalog. The shared `Se
 | --- | --- | --- |
 | Actions | Button, IconButton, internal ButtonControl | Variants, sizes, disabled, caller-composed busy action, narrow overflow, keyboard activation |
 | Fields | TextField, Textarea, Checkbox, Switch | Empty, selected, disabled, validation, mixed checkboxes, input adornments, narrow overflow, keyboard edits |
-| Selectors | Select, SearchableSelect | Placeholder, selected, disabled Select/options, validation, open popup, empty results, filtering, overflow, keyboard selection/dismissal |
+| Selectors | Select, SearchableSelect | Placeholder, selected, disabled controls/options, validation, open popup, empty results, filtering, overflow, 5,000 options with 40 visible results, keyword-only search, keyboard selection/dismissal |
 | Presentation | Badge, Panel, FileTypeIcon | All badge/panel variants, panel slots/padding, representative file types and fallback, open/closed folders, narrow overflow |
 | Navigation | PluginSidebarLink | Inactive, current page, collapsed, long label, keyboard activation |
 
 KVG-4692 owns the composite exports: Modal, AnchoredMenu, Tabs, Tooltip, MarkdownContent, ProjectFileTree, ResizablePanel, PluginPageHeader, PluginPageShell, PluginViewState, and CollapsibleSection. No new page contribution belongs to this slice. The original Button primary story and baseline remain valid.
 
-Only supported states are shown. Button has no loading prop, so its busy example uses caller content with native `disabled` and `aria-busy`. SearchableSelect has no disabled/loading/error props. Badges, file icons, and panels have no selection or loading behavior. Do not simulate unsupported props in fixtures.
+Only supported states are shown. Button has no loading prop, so its busy example uses caller content with native `disabled` and `aria-busy`. SearchableSelect supports disabled state but has no loading/error props. Badges, file icons, and panels have no selection or loading behavior. Do not simulate unsupported props in fixtures.
 
 ## Checks
 
@@ -32,6 +32,6 @@ The visual manifest covers design-significant states without multiplying every v
 
 The keyboard-focus action snapshot permits at most eight changed pixels, each differing by one channel level. This bound comes from consecutive pinned Linux captures of antialiased button borders. Every other new SDK snapshot uses exact comparison. The browser check also verifies that the searchable popup and the final folder examples are not clipped.
 
-## Known production issue
+## SearchableSelect behavior
 
-KVG-4770 tracks SearchableSelect losing keyboard focus to the document body on dismissal or selection. The catalog exercises its current supported behavior without patching production code or claiming focus restoration works.
+KVG-4885 adds disabled state, bounded results, caller keywords, and accessible result counts. The keyboard stories verify trigger focus after selection and Escape. `BoundedResults` keeps the selected label outside the first 40 of 5,000 options; `KeywordSearch` finds a project by its ID, selects it, and reopens the filtered list.

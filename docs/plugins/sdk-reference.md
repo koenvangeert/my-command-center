@@ -446,6 +446,7 @@ Core controls use scoped component CSS and semantic `--of-*` properties supplied
 | `Badge` | `@openforge-app/plugin-sdk/ui/Badge.svelte` | A presentation-only status badge with semantic variants. |
 | `Panel` | `@openforge-app/plugin-sdk/ui/Panel.svelte` | A presentation-only panel with optional caller-owned header and footer. |
 | `Select` | `@openforge-app/plugin-sdk/ui/Select.svelte` | A named single-value select with a portalled listbox. |
+| `SearchableSelect` | `@openforge-app/plugin-sdk/ui/SearchableSelect.svelte` | A searchable single-value picker with optional bounded results and caller keywords. |
 | `Tabs` | `@openforge-app/plugin-sdk/ui/Tabs.svelte` | Keyboard-operated tabs with caller-owned panels. |
 | `AnchoredMenu` | `@openforge-app/plugin-sdk/ui/AnchoredMenu.svelte` | A button-triggered action menu. |
 | `SplitButton` | `@openforge-app/plugin-sdk/ui/SplitButton.svelte` | A primary action joined to a secondary-action menu. |
@@ -479,6 +480,60 @@ Import `Select` from `@openforge-app/plugin-sdk/ui/Select.svelte`. Supply a requ
 ```
 
 The named button opens a portalled listbox. Arrow keys, Home/End, Enter, and Escape operate it; disabled options cannot be selected. Test the button name, listbox options and selected state, callback values, and retained trigger focus. Token-driven fields, focus, and overlay styling update without resetting `value`; reduced motion removes nonessential transitions.
+
+### `SearchableSelect`
+
+Import `SearchableSelect` from `@openforge-app/plugin-sdk/ui/SearchableSelect.svelte`. The caller supplies `options`, `value`, and `onSelect(value)` and owns the selected value. Each option has a unique `value: string`, a `label: string`, optional `keywords: string[]`, and optional `badge: string` and `badgeVariant`. Badge variants are `neutral`, `info`, `success`, `warning`, and `danger`. An empty string is a valid option value.
+
+| Prop | Default | Behavior |
+| --- | --- | --- |
+| `maxResults?: number` | Unlimited | Renders the first matching options in caller order, up to this limit. Finite numbers are rounded down and clamped to at least 1; non-finite numbers use 1. Omit the prop for unlimited results. |
+| `disabled?: boolean` | `false` | Prevents opening and selection, removes the trigger from the tab order, and closes an open search without changing `value` or calling `onSelect`. |
+| `ariaLabel?: string` | None | Names the trigger and listbox. Supply a meaningful name such as `Project` or `Task filter`. |
+| `placeholder?: string` | `Search...` | Trigger text when `value` has no matching option. |
+| `size?: 'xs' \| 'sm' \| 'md'` | `sm` | Control size. |
+
+Search trims the query and matches a case-insensitive substring in the label or any individual keyword. Keywords are not displayed and never replace the value passed to `onSelect`. Search runs across all options before the rendering limit is applied, so an option beyond the first 40 can still be found. This limits rendered rows, not search work or data loading; it is not pagination or virtualization.
+
+```svelte
+<script lang="ts">
+  import SearchableSelect from '@openforge-app/plugin-sdk/ui/SearchableSelect.svelte'
+
+  interface Props {
+    projects: { id: string; name: string }[]
+    tasks: { id: string; title: string }[]
+    inOpenForge: boolean
+  }
+  let { projects, tasks, inOpenForge }: Props = $props()
+  let projectId = $state('')
+  let taskId = $state('')
+</script>
+
+<SearchableSelect
+  ariaLabel="Project"
+  options={projects.map(project => ({
+    value: project.id, label: project.name, keywords: [project.id],
+  }))}
+  value={projectId}
+  maxResults={40}
+  onSelect={value => projectId = value}
+/>
+<SearchableSelect
+  ariaLabel="Task filter"
+  options={tasks.map(task => ({ value: task.id, label: task.title }))}
+  value={taskId}
+  maxResults={40}
+  disabled={!inOpenForge}
+  onSelect={value => taskId = value}
+/>
+```
+
+Keep the full option list when the selected value must remain visible. The trigger resolves its label and badge from all options, independently of the query and limit. Selection calls `onSelect`; update `value` in that callback. Existing callers can omit all three additions to retain unlimited label-only search and enabled interaction.
+
+Click, Enter, or Space opens the search and focuses its input. Arrow keys and Ctrl+J/N/K/P move only through rendered results without wrapping. Enter selects the highlighted option; Escape closes and restores trigger focus. Selection also restores focus. Moving focus outside, including Tab navigation, dismisses without selecting or stealing focus. The search exposes its active option through `aria-activedescendant`; `aria-selected` identifies the caller's current value, not the highlight.
+
+A visible polite status reports the match count and is linked to the input. Truncated lists say, for example, `Showing 40 of 5000 results. Refine your search.` Empty searches show `No matches` and announce `0 results`. Test by role, name, callback value, focus, and linked accessibility attributes. Include thousands of options, keyword-only matches outside the limit, selected labels outside the visible results, and disabling during an open search.
+
 
 ### `Tabs`
 
