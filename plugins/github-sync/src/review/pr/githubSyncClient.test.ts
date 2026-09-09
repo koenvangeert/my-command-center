@@ -23,13 +23,29 @@ describe('GitHub Sync PR review client contracts', () => {
     await client.listPullRequestFileDiffs({ owner: 'acme', repo: 'repo', prNumber: 42 })
     await client.markReviewPullRequestViewed({ prId: 7, headSha: 'abc' })
     await client.markReviewPullRequestUnviewed({ prId: 7 })
+    await client.removeReviewPullRequest({ prId: 7 })
 
-    expect(api.backend.whenReady).toHaveBeenCalledTimes(4)
+    expect(api.backend.whenReady).toHaveBeenCalledTimes(5)
     expect(api.backend.invoke).toHaveBeenNthCalledWith(1, 'fetchReviewPrs', undefined)
     expect(api.backend.invoke).toHaveBeenNthCalledWith(2, 'getPrFileDiffs', { owner: 'acme', repo: 'repo', prNumber: 42 })
     expect(api.backend.invoke).toHaveBeenNthCalledWith(3, 'markReviewPrViewed', { prId: 7, headSha: 'abc' })
     expect(api.backend.invoke).toHaveBeenNthCalledWith(4, 'markReviewPrUnviewed', { prId: 7 })
+    expect(api.backend.invoke).toHaveBeenNthCalledWith(5, 'dismissReviewPr', { prId: 7 })
     expect(api.commands.invokeGlobal).not.toHaveBeenCalled()
+  })
+
+  it('never surfaces a non-array PR list when the backend resolves null or undefined', async () => {
+    const api = makeApi()
+    const backend = api.backend as unknown as { invoke: ReturnType<typeof vi.fn> }
+    const client = createGithubSyncPrReviewClient(api)
+
+    for (const empty of [undefined, null]) {
+      backend.invoke.mockResolvedValue(empty)
+      await expect(client.listReviewPullRequests()).resolves.toEqual([])
+      await expect(client.refreshReviewPullRequests()).resolves.toEqual([])
+      await expect(client.listAuthoredPullRequests()).resolves.toEqual([])
+      await expect(client.refreshAuthoredPullRequests()).resolves.toEqual([])
+    }
   })
 
   it('wraps host PR update events as GitHub Sync-owned subscriptions', () => {

@@ -37,7 +37,7 @@ async function setup(scope: 'global' | 'repo' = 'global') {
   const responses = new Map<string, unknown>(Object.entries({
     getReviewPrs: [pr], fetchReviewPrs: [{ ...pr, title: 'Updated login' }],
     getAuthoredPrs: [], fetchAuthoredPrs: [], getPrWalkthrough: null,
-    markReviewPrViewed: null, markReviewPrUnviewed: null, getPrFileDiffs: [file], getReviewComments: [],
+    markReviewPrViewed: null, markReviewPrUnviewed: null, dismissReviewPr: null, getPrFileDiffs: [file], getReviewComments: [],
     getPrAiReviewComments: [], getAiThreads: [], saveAiThread: null, askAgentQuestions: null,
     getPrTicket: { snapshot: null, jiraConfigured: false },
     startAgentWalkthrough: { walkthrough_session_key: 'session-1' },
@@ -306,6 +306,50 @@ describe('review workspace', () => {
     expect(workspace.detail!.pendingReplies).toEqual([])
     expect(workspace.detail!.replyPostingError).toBeNull()
     expect(calls.get('replyToReviewComment')!.at(-1)).toMatchObject({ prNumber: 43, body: 'Current PR' })
+  })
+
+  it('removes a PR from the list and persists the removal', async () => {
+    const { workspace, calls } = await setup()
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    workspace.list.onRemove(pr)
+
+    expect(workspace.list.filteredReviewPrs).toEqual([])
+    await waitFor(() => expect(calls.get('dismissReviewPr')).toContainEqual({ prId: 1 }))
+  })
+
+  it('offers keep/remove after an in-app review, keeping the PR on keep', async () => {
+    const { workspace, calls } = await setup()
+    await workspace.list.onSelectPr(pr)
+
+    await workspace.detail!.onSubmitReview({
+      repoOwner: 'acme', repoName: 'app', prNumber: 42, commitId: 'head',
+      event: 'APPROVE', body: 'LGTM', comments: [],
+    })
+
+    expect(workspace.postReview?.pr.id).toBe(1)
+    workspace.postReview!.onKeep()
+    expect(workspace.postReview).toBeNull()
+    expect(workspace.detail).toBeNull()
+    expect(workspace.list.filteredReviewPrs).toHaveLength(1)
+    expect(calls.get('dismissReviewPr')).toBeUndefined()
+  })
+
+  it('removes the PR when the post-review prompt is answered with remove', async () => {
+    const { workspace, calls } = await setup()
+    await workspace.list.onSelectPr(pr)
+
+    await workspace.detail!.onSubmitReview({
+      repoOwner: 'acme', repoName: 'app', prNumber: 42, commitId: 'head',
+      event: 'REQUEST_CHANGES', body: 'Please fix', comments: [],
+    })
+
+    expect(workspace.postReview?.pr.id).toBe(1)
+    workspace.postReview!.onRemove()
+    expect(workspace.postReview).toBeNull()
+    expect(workspace.detail).toBeNull()
+    expect(workspace.list.filteredReviewPrs).toEqual([])
+    await waitFor(() => expect(calls.get('dismissReviewPr')).toContainEqual({ prId: 1 }))
   })
 
   it('keeps AI questions local and exposes replies through the selected review', async () => {

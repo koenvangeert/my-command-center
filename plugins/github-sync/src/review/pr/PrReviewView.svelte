@@ -3,6 +3,7 @@
   import type { FrontendOpenForgeAPI, OpenForgeContextSnapshot } from '@openforge-app/plugin-sdk/frontend'
   import PrReviewDetailSection from './PrReviewDetailSection.svelte'
   import PrReviewListSection from './PrReviewListSection.svelte'
+  import PostReviewDialog from './PostReviewDialog.svelte'
   import { createReviewWorkspace } from './reviewWorkspace.svelte'
 
   let { api, projectName, projectId = null }: {
@@ -24,3 +25,8 @@
     <PrReviewListSection {...workspace.list} />
   {/if}
 </div>
+
+{#if workspace.postReview}
+  {@const prompt = workspace.postReview}
+  <PostReviewDialog pr={prompt.pr} onKeep={prompt.onKeep} onRemove={prompt.onRemove} />
+{/if}

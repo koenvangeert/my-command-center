@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/svelte'
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import ReviewPrCard from './ReviewPrCard.svelte'
 import type { ReviewPullRequest } from '@openforge-app/plugin-sdk/domain'
 
@@ -179,6 +179,25 @@ describe('ReviewPrCard', () => {
     await fireEvent.click(screen.getByRole('button', { name: 'Mark as unread' }))
     expect(marked).toBe(true)
     expect(selected).toBe(false)
+  })
+
+  it('renders a Remove from list control when onRemove is provided', () => {
+    render(ReviewPrCard, { props: { pr: basePr, selected: false, onClick: () => {}, onRemove: () => {} } })
+    expect(screen.getByRole('button', { name: 'Remove from list' })).toBeTruthy()
+  })
+
+  it('does not render the Remove from list control when onRemove is omitted', () => {
+    render(ReviewPrCard, { props: { pr: basePr, selected: false, onClick: () => {} } })
+    expect(screen.queryByRole('button', { name: 'Remove from list' })).toBeNull()
+  })
+
+  it('calls onRemove but not onClick when the Remove from list control is clicked', async () => {
+    const onClick = vi.fn()
+    const onRemove = vi.fn()
+    render(ReviewPrCard, { props: { pr: basePr, selected: false, onClick, onRemove } })
+    await fireEvent.click(screen.getByRole('button', { name: 'Remove from list' }))
+    expect(onRemove).toHaveBeenCalledTimes(1)
+    expect(onClick).not.toHaveBeenCalled()
   })
 
 })

@@ -12,7 +12,7 @@ pub use comments::{
     SubmitPrReviewRequest,
 };
 pub use polling::{
-    fetch_authored_prs, fetch_review_prs, get_authored_prs, get_review_prs,
+    dismiss_review_pr, fetch_authored_prs, fetch_review_prs, get_authored_prs, get_review_prs,
     mark_review_pr_unviewed, mark_review_pr_viewed,
 };
 pub use pr_actions::{

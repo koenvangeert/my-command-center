@@ -62,9 +62,6 @@
     {"tag":"div","context":"class=\"w-7 h-7 rounded-[var(--of-radius-round)] bg-base-300 flex items-center justify-center text-xs font-bold text-base-content/70 shrink-0\"","tokens":["w-7","h-7"],"count":1,"reason":"Domain status dot or author-avatar dimensions; roundness follows the theme token."},
     {"tag":"div","context":"class=\"flex items-center gap-2 text-sm flex-wrap flex-1 min-w-0\"","tokens":["min-w-0"],"count":1,"reason":"Let this flex/grid child shrink and scroll rather than overflow its feature pane."}
   ],
-  "packages/pr-review-ui/src/ReviewPrCard.svelte": [
-    {"tag":"svg","context":"class=\"w-3.5 h-3.5\"","tokens":["w-3.5","h-3.5"],"count":1,"reason":"Icon or illustration artwork dimensions, not the surrounding control hit area."}
-  ],
   "packages/pr-review-ui/src/ReviewVideoPreview.svelte": [
     {"tag":"video","context":"class=\"max-h-96 max-w-full rounded-[var(--of-radius-container)] bg-black object-contain\"","tokens":["max-h-96"],"count":1,"reason":"Bound the media preview to its available viewport while preserving aspect ratio."}
   ],

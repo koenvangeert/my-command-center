@@ -116,6 +116,10 @@ export default defineBackendPlugin({
       handler: (request) => invokeHostCommand<void>(openforge, 'markReviewPrUnviewed', request),
     }))
 
+    context.subscriptions.add(openforge.backend.registerMethod<{ prId: number }, void>('dismissReviewPr', {
+      handler: (request) => invokeHostCommand<void>(openforge, 'dismissReviewPr', request),
+    }))
+
     context.subscriptions.add(openforge.backend.registerMethod<PullRequestRepositoryRequest, PrFileDiff[]>('getPrFileDiffs', {
       handler: (request) => invokeHostCommand<PrFileDiff[]>(openforge, 'getPrFileDiffs', request),
     }))
