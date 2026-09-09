@@ -1,5 +1,60 @@
 use super::*;
 use base64::Engine;
+use futures::FutureExt;
+use std::panic::AssertUnwindSafe;
+
+async fn with_pty_cleanup<E: std::fmt::Display>(
+    behavior: impl std::future::Future<Output = ()>,
+    cleanup: impl std::future::Future<Output = Result<(), E>>,
+) {
+    let result = AssertUnwindSafe(behavior).catch_unwind().await;
+    let cleanup_result = cleanup.await;
+    if let Err(error) = &cleanup_result {
+        eprintln!("PTY cleanup failed: {error}");
+    }
+    if let Err(primary) = result {
+        std::panic::resume_unwind(primary);
+    }
+    if let Err(error) = cleanup_result {
+        panic!("PTY cleanup failed: {error}");
+    }
+}
+
+#[tokio::test]
+async fn pty_cleanup_outcomes_preserve_behavioral_failures() {
+    for behavior_fails in [false, true] {
+        for cleanup_fails in [false, true] {
+            let mut cleaned_up = false;
+            let result = AssertUnwindSafe(with_pty_cleanup(
+                async {
+                    if behavior_fails {
+                        std::panic::panic_any(42_u32);
+                    }
+                },
+                async {
+                    cleaned_up = true;
+                    if cleanup_fails {
+                        Err("injected cleanup failure")
+                    } else {
+                        Ok(())
+                    }
+                },
+            ))
+            .catch_unwind()
+            .await;
+            assert!(cleaned_up, "cleanup must run even after behavioral failure");
+            if behavior_fails {
+                assert_eq!(*result.unwrap_err().downcast::<u32>().unwrap(), 42);
+            } else if cleanup_fails {
+                let panic = result.expect_err("cleanup failure must fail the test");
+                let message = panic.downcast::<String>().expect("cleanup panic message");
+                assert!(message.contains("injected cleanup failure"));
+            } else {
+                assert!(result.is_ok());
+            }
+        }
+    }
+}
 
 fn shell_single_quote(value: &str) -> String {
     format!("'{}'", value.replace('\'', "'\\''"))
@@ -348,44 +403,51 @@ async fn spawns_shell_in_workspace_path_with_spaces() {
         }),
     )
     .await;
-    assert!(instance_id.as_u64().expect("instance id") > 0);
+    with_pty_cleanup(
+        async {
+            assert!(instance_id.as_u64().expect("instance id") > 0);
 
-    let output_path = temp_dir.path().join("shell cwd.txt");
-    let command = format!(
-        "pwd -P > {}\n",
-        shell_single_quote(&output_path.to_string_lossy())
-    );
-    state
-        .pty_manager
-        .as_ref()
-        .expect("pty manager")
-        .write_pty("T-space-shell-0", command.as_bytes())
-        .await
-        .expect("write shell command");
+            let output_path = temp_dir.path().join("shell cwd.txt");
+            let command = format!(
+                "pwd -P > {}\n",
+                shell_single_quote(&output_path.to_string_lossy())
+            );
+            state
+                .pty_manager
+                .as_ref()
+                .expect("pty manager")
+                .write_pty("T-space-shell-0", command.as_bytes())
+                .await
+                .expect("write shell command");
 
-    let mut observed_cwd = None;
-    for _ in 0..200 {
-        if let Ok(contents) = std::fs::read_to_string(&output_path) {
-            let trimmed = contents.trim_end_matches(&['\r', '\n'][..]).to_string();
-            if !trimmed.is_empty() {
-                observed_cwd = Some(trimmed);
-                break;
+            let mut observed_cwd = None;
+            for _ in 0..200 {
+                if let Ok(contents) = std::fs::read_to_string(&output_path) {
+                    let trimmed = contents.trim_end_matches(&['\r', '\n'][..]).to_string();
+                    if !trimmed.is_empty() {
+                        observed_cwd = Some(trimmed);
+                        break;
+                    }
+                }
+                tokio::time::sleep(std::time::Duration::from_millis(50)).await;
             }
-        }
-        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
-    }
 
-    let _ = state
-        .pty_manager
-        .as_ref()
-        .expect("pty manager")
-        .kill_shells_for_task("T-space")
-        .await;
-    assert_eq!(
-        observed_cwd.as_deref(),
-        Some(expected_cwd.as_str()),
-        "shell PTY should start with actual cwd at workspace containing spaces"
-    );
+            assert_eq!(
+                observed_cwd.as_deref(),
+                Some(expected_cwd.as_str()),
+                "shell PTY should start with actual cwd at workspace containing spaces"
+            );
+        },
+        async {
+            state
+                .pty_manager
+                .as_ref()
+                .expect("pty manager")
+                .kill_shells_for_task("T-space")
+                .await
+        },
+    )
+    .await;
 }
 
 #[tokio::test]
@@ -476,25 +538,31 @@ async fn sends_idle_agent_follow_up_immediately_and_queues_busy_or_paused_sessio
             .await
             .expect("spawn test Agent PTY");
 
-        let receipt = invoke_ok(
+        with_pty_cleanup(
+            async {
+                let receipt = invoke_ok(
             &state,
             "send_agent_follow_up",
             json!({ "taskId": task_id, "message": "# Visual feedback\n\nMarker 1: Fix alignment" }),
         )
         .await;
 
-        assert_eq!(receipt["taskId"], task_id);
-        assert_eq!(receipt["sessionId"], session_id);
-        assert_eq!(receipt["disposition"], expected_disposition);
-        let delivered = wait_for_file(&output_path).await;
-        assert!(delivered.contains("Marker 1: Fix alignment"));
-
-        let _ = state
-            .pty_manager
-            .as_ref()
-            .expect("pty manager")
-            .kill_pty(&task_id)
-            .await;
+                assert_eq!(receipt["taskId"], task_id);
+                assert_eq!(receipt["sessionId"], session_id);
+                assert_eq!(receipt["disposition"], expected_disposition);
+                let delivered = wait_for_file(&output_path).await;
+                assert!(delivered.contains("Marker 1: Fix alignment"));
+            },
+            async {
+                state
+                    .pty_manager
+                    .as_ref()
+                    .expect("pty manager")
+                    .kill_pty(&task_id)
+                    .await
+            },
+        )
+        .await;
     }
 }
 
