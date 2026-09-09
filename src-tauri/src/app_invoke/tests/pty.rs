@@ -56,6 +56,62 @@ async fn pty_cleanup_outcomes_preserve_behavioral_failures() {
     }
 }
 
+#[tokio::test]
+async fn pty_cleanup_stops_shell_after_assertion_or_timeout_failure() {
+    for timeout in [false, true] {
+        let (state, _temp_dir) = test_state("app_invoke_pty_cleanup_failure");
+        invoke_ok(
+            &state,
+            "pty_spawn_shell",
+            json!({ "taskId": "T-cleanup", "cwd": "/tmp", "cols": 80, "rows": 24, "terminalIndex": 0 }),
+        )
+        .await;
+        let result = AssertUnwindSafe(with_pty_cleanup(
+            async {
+                if timeout {
+                    tokio::time::timeout(
+                        std::time::Duration::from_millis(1),
+                        std::future::pending::<()>(),
+                    )
+                    .await
+                    .expect("injected behavioral timeout");
+                } else {
+                    assert_eq!(1, 2, "injected behavioral assertion");
+                }
+            },
+            async {
+                state
+                    .pty_manager
+                    .as_ref()
+                    .expect("pty manager")
+                    .kill_shells_for_task("T-cleanup")
+                    .await
+            },
+        ))
+        .catch_unwind()
+        .await;
+        let panic = result.expect_err("behavioral failure must survive cleanup");
+        let message = panic
+            .downcast::<String>()
+            .expect("behavioral panic message");
+        assert!(message.contains(if timeout {
+            "injected behavioral timeout"
+        } else {
+            "injected behavioral assertion"
+        }));
+        let buffer = invoke_ok(
+            &state,
+            "get_pty_buffer",
+            json!({ "shellSessionKey": "T-cleanup-shell-0" }),
+        )
+        .await;
+        assert_eq!(
+            buffer["isLive"], false,
+            "failed behavior must not leave a live shell"
+        );
+    }
+}
+
 fn shell_single_quote(value: &str) -> String {
     format!("'{}'", value.replace('\'', "'\\''"))
 }
@@ -158,20 +214,26 @@ async fn e2e_fixture_output_is_gated_bounded_and_fixed() {
     )
     .await;
 
-    let receipt = invoke(&state, "e2e_emit_terminal_fixture", request)
-        .await
-        .expect("fixed fixture output invocation should succeed");
-    assert_eq!(receipt["shellSessionKey"], "T-e2e-shell-0");
-    assert_eq!(receipt["marker"], "fixture-complete");
-    assert_eq!(receipt["byteCount"], 32);
-    assert!(receipt["ptyInstanceId"].as_u64().is_some());
-    state
-        .pty_manager
-        .as_ref()
-        .expect("PTY manager")
-        .kill_shells_for_task("T-e2e")
-        .await
-        .expect("fixture terminal cleanup");
+    with_pty_cleanup(
+        async {
+            let receipt = invoke(&state, "e2e_emit_terminal_fixture", request)
+                .await
+                .expect("fixed fixture output invocation should succeed");
+            assert_eq!(receipt["shellSessionKey"], "T-e2e-shell-0");
+            assert_eq!(receipt["marker"], "fixture-complete");
+            assert_eq!(receipt["byteCount"], 32);
+            assert!(receipt["ptyInstanceId"].as_u64().is_some());
+        },
+        async {
+            state
+                .pty_manager
+                .as_ref()
+                .expect("PTY manager")
+                .kill_shells_for_task("T-e2e")
+                .await
+        },
+    )
+    .await;
 
     drop(environment);
 }
@@ -285,98 +347,104 @@ async fn returns_canonical_terminal_snapshot_for_xterm_rendering() {
     )
     .await;
 
-    let state_view = invoke_ok(
-        &state,
-        "get_pty_buffer",
-        json!({ "shellSessionKey": "T-ghostty-shell-0" }),
-    )
-    .await;
-
-    assert!(state_view["buffer"].is_null());
-    assert_eq!(state_view["instanceId"], instance_id);
-    assert_eq!(state_view["snapshot"]["instanceId"], instance_id);
-    assert!(state_view["snapshot"]["data"].as_str().is_some());
-
-    let mut events = state
-        .app_event_tx
-        .as_ref()
-        .expect("event sender")
-        .subscribe();
-    // Exceed the shared fixture's 16-event capacity to reproduce the former CI failure.
-    for sequence in 0..32 {
-        crate::app_events::publish_app_event(
-            &state.app_event_tx,
-            "unrelated-test-event",
-            &json!({ "sequence": sequence }),
-        );
-    }
-    const IMAGE_SEQUENCE: &str =
-        "\u{1b}]1337;File=size=34;inline=1:R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==\u{7}";
-    let print_image =
-        "printf '\\033]1337;File=size=34;inline=1:R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==\\007ghostty-model-output\\n'\n";
-    state
-        .pty_manager
-        .as_ref()
-        .expect("pty manager")
-        .write_pty("T-ghostty-shell-0", print_image.as_bytes())
-        .await
-        .expect("shell input should write");
-    let model_event = loop {
-        let event = tokio::time::timeout(std::time::Duration::from_secs(10), events.recv())
-            .await
-            .expect("model output event deadline")
-            .expect("model output event");
-        if event.event_name == "pty-model-output-T-ghostty-shell-0" {
-            break event;
-        }
-    };
-    assert_eq!(model_event.payload["instance_id"], instance_id);
-    assert!(model_event.payload["sequence"].as_u64().is_some());
-    assert!(model_event.payload["data"]
-        .as_str()
-        .is_some_and(|data| !data.is_empty()));
-
-    let compatibility_replay = tokio::time::timeout(std::time::Duration::from_secs(10), async {
-        loop {
-            let replay = invoke_ok(
+    with_pty_cleanup(
+        async {
+            let state_view = invoke_ok(
                 &state,
                 "get_pty_buffer",
                 json!({ "shellSessionKey": "T-ghostty-shell-0" }),
             )
             .await;
-            if let Some(encoded) = replay["snapshot"]["compatibilityData"].as_str() {
-                let decoded = base64::engine::general_purpose::STANDARD
-                    .decode(encoded)
-                    .expect("compatibility replay should be base64");
-                let has_image = decoded
-                    .windows(IMAGE_SEQUENCE.len())
-                    .any(|window| window == IMAGE_SEQUENCE.as_bytes());
-                let has_output = decoded
-                    .windows(b"ghostty-model-output".len())
-                    .any(|window| window == b"ghostty-model-output");
-                if has_image && has_output {
-                    break decoded;
-                }
-            }
-            tokio::time::sleep(std::time::Duration::from_millis(20)).await;
-        }
-    })
-    .await
-    .expect("bounded compatibility replay should include accepted raw output");
-    assert!(compatibility_replay
-        .windows(IMAGE_SEQUENCE.len())
-        .any(|window| window == IMAGE_SEQUENCE.as_bytes()));
-    assert!(compatibility_replay
-        .windows(b"ghostty-model-output".len())
-        .any(|window| window == b"ghostty-model-output"));
 
-    state
-        .pty_manager
-        .as_ref()
-        .expect("pty manager")
-        .kill_shells_for_task("T-ghostty")
-        .await
-        .expect("Ghostty shell should stop");
+            assert!(state_view["buffer"].is_null());
+            assert_eq!(state_view["instanceId"], instance_id);
+            assert_eq!(state_view["snapshot"]["instanceId"], instance_id);
+            assert!(state_view["snapshot"]["data"].as_str().is_some());
+
+            let mut events = state
+                .app_event_tx
+                .as_ref()
+                .expect("event sender")
+                .subscribe();
+            // Exceed the shared fixture's 16-event capacity to reproduce the former CI failure.
+            for sequence in 0..32 {
+                crate::app_events::publish_app_event(
+                    &state.app_event_tx,
+                    "unrelated-test-event",
+                    &json!({ "sequence": sequence }),
+                );
+            }
+            const IMAGE_SEQUENCE: &str =
+                "\u{1b}]1337;File=size=34;inline=1:R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==\u{7}";
+            let print_image =
+                "printf '\\033]1337;File=size=34;inline=1:R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==\\007ghostty-model-output\\n'\n";
+            state
+                .pty_manager
+                .as_ref()
+                .expect("pty manager")
+                .write_pty("T-ghostty-shell-0", print_image.as_bytes())
+                .await
+                .expect("shell input should write");
+            let model_event = loop {
+                let event = tokio::time::timeout(std::time::Duration::from_secs(10), events.recv())
+                    .await
+                    .expect("model output event deadline")
+                    .expect("model output event");
+                if event.event_name == "pty-model-output-T-ghostty-shell-0" {
+                    break event;
+                }
+            };
+            assert_eq!(model_event.payload["instance_id"], instance_id);
+            assert!(model_event.payload["sequence"].as_u64().is_some());
+            assert!(model_event.payload["data"]
+                .as_str()
+                .is_some_and(|data| !data.is_empty()));
+
+            let compatibility_replay = tokio::time::timeout(std::time::Duration::from_secs(10), async {
+                loop {
+                    let replay = invoke_ok(
+                        &state,
+                        "get_pty_buffer",
+                        json!({ "shellSessionKey": "T-ghostty-shell-0" }),
+                    )
+                    .await;
+                    if let Some(encoded) = replay["snapshot"]["compatibilityData"].as_str() {
+                        let decoded = base64::engine::general_purpose::STANDARD
+                            .decode(encoded)
+                            .expect("compatibility replay should be base64");
+                        let has_image = decoded
+                            .windows(IMAGE_SEQUENCE.len())
+                            .any(|window| window == IMAGE_SEQUENCE.as_bytes());
+                        let has_output = decoded
+                            .windows(b"ghostty-model-output".len())
+                            .any(|window| window == b"ghostty-model-output");
+                        if has_image && has_output {
+                            break decoded;
+                        }
+                    }
+                    tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+                }
+            })
+            .await
+            .expect("bounded compatibility replay should include accepted raw output");
+            assert!(compatibility_replay
+                .windows(IMAGE_SEQUENCE.len())
+                .any(|window| window == IMAGE_SEQUENCE.as_bytes()));
+            assert!(compatibility_replay
+                .windows(b"ghostty-model-output".len())
+                .any(|window| window == b"ghostty-model-output"));
+
+        },
+        async {
+            state
+                .pty_manager
+                .as_ref()
+                .expect("pty manager")
+                .kill_shells_for_task("T-ghostty")
+                .await
+        },
+    )
+    .await;
 }
 
 #[tokio::test]
