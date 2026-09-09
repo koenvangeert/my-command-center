@@ -25,18 +25,11 @@ pub fn install_cli_launcher(
     fs::create_dir_all(&bin_dir)?;
 
     let launcher = bin_dir.join("openforge");
-    fs::write(
+    super::payload::atomic_write(
         &launcher,
-        build_cli_launcher(&openforge_cli_path(config_dir)),
+        build_cli_launcher(&openforge_cli_path(config_dir)).as_bytes(),
+        true,
     )?;
-
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let mut permissions = fs::metadata(&launcher)?.permissions();
-        permissions.set_mode(0o755);
-        fs::set_permissions(&launcher, permissions)?;
-    }
 
     info!("[cli_installer] OpenForge CLI launcher installed");
     Ok(launcher)

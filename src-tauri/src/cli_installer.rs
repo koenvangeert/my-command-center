@@ -3,6 +3,9 @@ mod legacy_mcp;
 mod payload;
 mod provider_skills;
 
+#[cfg(test)]
+mod payload_tests;
+
 use launcher_profile::openforge_bin_dir;
 use legacy_mcp::cleanup_legacy_mcp;
 use log::warn;
