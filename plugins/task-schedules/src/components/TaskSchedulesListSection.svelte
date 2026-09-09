@@ -142,13 +142,13 @@
               <td class="text-sm">
                 <span class="inline-flex items-center gap-1.5 font-medium">
                   {#if !outcome}
-                    <Clock3 class="size-4 status-muted" aria-hidden="true" />
+                    <Clock3 class="size-4 schedule-status-icon-muted" aria-hidden="true" />
                   {:else if outcome.status === 'started' || outcome.status === 'created'}
-                    <CheckCircle2 class="size-4 status-success" aria-hidden="true" />
+                    <CheckCircle2 class="size-4 schedule-status-icon-success" aria-hidden="true" />
                   {:else if outcome.status === 'skipped'}
-                    <TriangleAlert class="size-4 status-warning" aria-hidden="true" />
+                    <TriangleAlert class="size-4 schedule-status-icon-warning" aria-hidden="true" />
                   {:else}
-                    <CircleX class="size-4 status-danger" aria-hidden="true" />
+                    <CircleX class="size-4 schedule-status-icon-danger" aria-hidden="true" />
                   {/if}
                   {resultLabel(schedule)}
                 </span>
@@ -159,13 +159,13 @@
               <td class="text-sm">
                 <span class="inline-flex items-center gap-1.5 font-medium">
                   {#if status === 'Enabled'}
-                    <CheckCircle2 class="size-4 status-success" aria-hidden="true" /> Enabled
+                    <CheckCircle2 class="size-4 schedule-status-icon-success" aria-hidden="true" /> Enabled
                   {:else if status === 'Completed'}
-                    <CheckCircle2 class="size-4 status-success" aria-hidden="true" /> Completed
+                    <CheckCircle2 class="size-4 schedule-status-icon-success" aria-hidden="true" /> Completed
                   {:else if status === 'Cancelled'}
-                    <CircleX class="size-4 status-danger" aria-hidden="true" /> Cancelled
+                    <CircleX class="size-4 schedule-status-icon-danger" aria-hidden="true" /> Cancelled
                   {:else}
-                    <CirclePause class="size-4 status-warning" aria-hidden="true" /> Paused
+                    <CirclePause class="size-4 schedule-status-icon-warning" aria-hidden="true" /> Paused
                   {/if}
                 </span>
               </td>
@@ -298,8 +298,8 @@
   }
 
 
-  .schedule-table :global(.status-muted) { color: var(--of-icon-muted); }
-  .schedule-table :global(.status-success) { color: var(--of-status-success); }
-  .schedule-table :global(.status-warning) { color: var(--of-status-warning); }
-  .schedule-table :global(.status-danger) { color: var(--of-status-danger); }
+  .schedule-table :global(.schedule-status-icon-muted) { color: var(--of-icon-muted); }
+  .schedule-table :global(.schedule-status-icon-success) { color: var(--of-status-success); }
+  .schedule-table :global(.schedule-status-icon-warning) { color: var(--of-status-warning); }
+  .schedule-table :global(.schedule-status-icon-danger) { color: var(--of-status-danger); }
 </style>
