@@ -132,4 +132,43 @@ describe('TaskDetailToolbar — more actions menu', () => {
     expect(screen.queryByRole('menu')).toBeNull()
     confirmSpy.mockRestore()
   })
+
+  it('does not complete when confirmation is cancelled', async () => {
+    const { deleteTask } = await import('../../lib/ipc')
+    vi.mocked(deleteTask).mockClear()
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    try {
+      await renderToolbar(doingTask)
+      await fireEvent.click(screen.getByRole('button', { name: 'Complete' }))
+      expect(deleteTask).not.toHaveBeenCalled()
+    } finally {
+      confirmSpy.mockRestore()
+    }
+  })
+
+  it('keeps secondary actions available while completion is in progress', async () => {
+    const { completingTasks } = await import('../../lib/stores')
+    completingTasks.set(new Set([doingTask.id]))
+    try {
+      await renderToolbar(doingTask)
+      expect((screen.getByRole('button', { name: /Completing/ }) as HTMLButtonElement).disabled).toBe(true)
+      await openMoreActions()
+      expect(screen.getByRole('menuitem', { name: 'Set aside' })).toBeTruthy()
+    } finally {
+      completingTasks.set(new Set())
+    }
+  })
+
+  it('closes an open menu when the displayed task changes', async () => {
+    const view = await renderToolbar(doingTask)
+    await openMoreActions()
+    await view.rerender({ task: { ...doingTask, id: 'T-43' } })
+    expect(screen.queryByRole('menu')).toBeNull()
+    await openMoreActions()
+    const { setProjectConfig } = await import('../../lib/ipc')
+    await fireEvent.click(screen.getByRole('menuitem', { name: 'Set aside' }))
+    await waitFor(() => expect(setProjectConfig).toHaveBeenCalledWith(
+      'project-1', OUT_OF_FOCUS_CONFIG_KEY, JSON.stringify(['T-43']),
+    ))
+  })
 })

@@ -111,6 +111,7 @@ describe('plugin-sdk public UI exports', () => {
       'SearchableSelect',
       'Tabs',
       'AnchoredMenu',
+      'SplitButton',
       'Tooltip',
       'PluginPageHeader',
       'PluginPageShell',

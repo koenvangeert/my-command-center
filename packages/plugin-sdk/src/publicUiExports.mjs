@@ -18,6 +18,7 @@ const PUBLIC_UI_COMPONENT_NAMES = Object.freeze([
   'SearchableSelect',
   'Tabs',
   'AnchoredMenu',
+  'SplitButton',
   'Tooltip',
   'PluginPageHeader',
   'PluginPageShell',

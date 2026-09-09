@@ -1,6 +1,8 @@
 <script lang="ts">
   import { DropdownMenu } from 'bits-ui'
   import { tick, type Snippet } from 'svelte'
+  import type { ComponentProps } from 'svelte'
+  import Button from './Button.svelte'
 
   export type AnchoredMenuItem = Readonly<{
     value: string
@@ -28,6 +30,8 @@
     onOpenChange?: (open: boolean) => void
     onSelect?: (value: string) => void
     item?: Snippet<[AnchoredMenuItem]>
+    /** Use SDK button styling when composing a split control. */
+    triggerButton?: Pick<ComponentProps<typeof Button>, 'size' | 'variant'>
     trigger: Snippet
   }
 
@@ -45,6 +49,7 @@
     onOpenChange,
     onSelect,
     item: renderItem,
+    triggerButton,
     trigger,
   }: Props = $props()
 
@@ -113,8 +118,16 @@
 
 <div class="of-anchored-menu {className ?? ''}" data-testid={testId}>
   <DropdownMenu.Root bind:open onOpenChange={handleOpenChange}>
-    <DropdownMenu.Trigger bind:ref={triggerElement} class="of-menu-trigger" aria-label={label} aria-describedby={ariaDescribedby} {disabled}>
-      {@render trigger()}
+    <DropdownMenu.Trigger bind:ref={triggerElement} aria-label={label} aria-describedby={ariaDescribedby} {disabled}>
+      {#snippet child({ props })}
+        {#if triggerButton}
+          <Button {...props} {...triggerButton} class="of-menu-button-trigger">
+            {@render trigger()}
+          </Button>
+        {:else}
+          <button {...props} class="of-menu-trigger">{@render trigger()}</button>
+        {/if}
+      {/snippet}
     </DropdownMenu.Trigger>
     <DropdownMenu.Portal>
       <DropdownMenu.Content
@@ -202,10 +215,14 @@
   :global(.of-menu-content) {
     z-index: 1100;
     box-sizing: border-box;
-    min-width: 10rem;
+    min-width: min(calc(var(--of-space6) * 7), var(--bits-dropdown-menu-content-available-width));
+    max-width: var(--bits-dropdown-menu-content-available-width);
+    max-height: var(--bits-dropdown-menu-content-available-height);
+    overflow-y: auto;
+    overflow-wrap: anywhere;
     padding: var(--of-space1);
-    border: var(--of-border-width) solid var(--of-border-strong);
-    border-radius: var(--of-radius-overlay);
+    border: var(--of-border-width) solid var(--of-border);
+    border-radius: var(--of-radius-control);
     background: var(--of-surface-raised);
     color: var(--of-text);
     box-shadow: var(--of-shadow-raised);
@@ -217,12 +234,17 @@
     display: flex;
     align-items: center;
     min-height: var(--of-control-height);
-    padding: 0 var(--of-space3);
-    border-radius: var(--of-radius-control);
+    gap: var(--of-space2);
+    padding: var(--of-space2) var(--of-space3);
+    border-radius: calc(var(--of-radius-control) / 2);
     outline: none;
     font-size: var(--of-text-sm);
     line-height: var(--of-line-height-sm);
     cursor: pointer;
+  }
+
+  :global(.of-menu-item > svg) {
+    flex-shrink: 0;
   }
 
   :global(.of-menu-item[data-highlighted]) {
