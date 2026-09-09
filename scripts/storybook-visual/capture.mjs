@@ -10,16 +10,31 @@ export async function serve(root) {
   const base = resolve(root)
   const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.png': 'image/png' }
   const server = createServer(async (request, response) => {
+    let path
     try {
-      const path = resolve(base, '.' + decodeURIComponent(new URL(request.url, 'http://localhost').pathname))
-      if (!path.startsWith(base + sep)) throw new Error('outside static root')
-      const bytes = await readFile(path)
-      response.writeHead(200, { 'Content-Type': types[extname(path)] ?? 'application/octet-stream' })
-      response.end(bytes)
+      path = resolve(base, '.' + decodeURIComponent(new URL(request.url, 'http://localhost').pathname))
+      if (!path.startsWith(base + sep) || path.includes('\0')) throw new Error('invalid static path')
     } catch {
       response.writeHead(404)
       response.end('Not found')
+      return
     }
+    let bytes
+    try {
+      bytes = await readFile(path)
+    } catch (error) {
+      if (error.code === 'ENOENT' || error.code === 'ENOTDIR') {
+        response.writeHead(404)
+        response.end('Not found')
+      } else {
+        console.error(`Static server failed to read ${JSON.stringify(path)} for ${JSON.stringify(request.url)}`, error)
+        response.writeHead(500)
+        response.end('Internal server error')
+      }
+      return
+    }
+    response.writeHead(200, { 'Content-Type': types[extname(path)] ?? 'application/octet-stream' })
+    response.end(bytes)
   })
   await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve) })
   return { url: `http://127.0.0.1:${server.address().port}`, close: () => new Promise(resolve => server.close(resolve)) }
