@@ -56,6 +56,19 @@ function parseIndexedShellSessionKey(shellSessionKey: string): IndexedShellReque
 }
 
 
+// The transport's disposal contract is synchronous. Observe async cleanup without
+// delaying other disposals, and report sync failures through the same channel.
+function disposeSubscription(subscription: TrustedPluginDisposable): void {
+  const report = (error: unknown) => {
+    console.error('[terminal plugin] Failed to dispose terminal subscription', error)
+  }
+  try {
+    void Promise.resolve(subscription.dispose()).catch(report)
+  } catch (error) {
+    report(error)
+  }
+}
+
 export function createTrustedPluginTerminalTransport(
   getPort: () => TrustedPluginTerminalPort,
 ): TerminalTransport {
@@ -73,15 +86,9 @@ export function createTrustedPluginTerminalTransport(
         if (!active) return
         active = false
         activeSubscriptions.delete(subscription)
-        let disposalError: unknown = null
         for (const disposable of disposables) {
-          try {
-            void disposable.dispose()
-          } catch (error) {
-            disposalError ??= error
-          }
+          disposeSubscription(disposable)
         }
-        if (disposalError) throw disposalError
       },
     }
     activeSubscriptions.add(subscription)
@@ -106,9 +113,7 @@ export function createTrustedPluginTerminalTransport(
           sequence: payload.sequence,
         }),
       ),
-      dispose: subscription => {
-        void subscription.dispose()
-      },
+      dispose: disposeSubscription,
       disposedErrorMessage: 'Trusted Plugin terminal session subscription is disposed',
     })
     let active = true
@@ -133,7 +138,7 @@ export function createTrustedPluginTerminalTransport(
           activeSubscriptions.delete(subscription)
           modelOutputLifecycle.dispose()
           for (const lifecycleSubscription of lifecycleSubscriptions) {
-            void lifecycleSubscription.dispose()
+            disposeSubscription(lifecycleSubscription)
           }
         },
       }
@@ -141,7 +146,7 @@ export function createTrustedPluginTerminalTransport(
       return subscription
     } catch (error) {
       for (const lifecycleSubscription of lifecycleSubscriptions) {
-        void lifecycleSubscription.dispose()
+        disposeSubscription(lifecycleSubscription)
       }
       throw error
     }
@@ -156,7 +161,7 @@ export function createTrustedPluginTerminalTransport(
       () => handler(),
     )
     if (disposed) {
-      void subscription.dispose()
+      disposeSubscription(subscription)
       throw new Error('Trusted Plugin TerminalTransport is disposed')
     }
     return track([subscription])
@@ -192,15 +197,9 @@ export function createTrustedPluginTerminalTransport(
     dispose() {
       if (disposed) return
       disposed = true
-      let disposalError: unknown = null
       for (const subscription of [...activeSubscriptions]) {
-        try {
-          subscription.dispose()
-        } catch (error) {
-          disposalError ??= error
-        }
+        disposeSubscription(subscription)
       }
-      if (disposalError) throw disposalError
     },
   }
 }
