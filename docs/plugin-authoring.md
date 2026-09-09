@@ -115,6 +115,8 @@ The complete UI component reference, including props, accessibility behavior, ex
 
 For compact toolbar inputs, use `TextField` with `labelHidden`, `size="sm"`, and optional `leading`/`trailing` snippets. Keep the required accessible `label`, and use a caller-owned wrapper for layout instead of targeting `.of-text-field` or internal labels. See the [toolbar example](../packages/plugin-sdk/README.md#compact-toolbar-field) and [TextField props](./plugins/sdk-reference.md#textfield).
 
+For large project or Task filters, use `SearchableSelect` with `maxResults={40}`, per-option `keywords` for identifiers, and `disabled` when filtering is unavailable. The component announces visible and total matches while keeping the selected label independent of the result limit. See the [SearchableSelect API and example](./plugins/sdk-reference.md#searchableselect).
+
 ### Modal accessible names
 
 Import `Modal` from `@openforge-app/plugin-sdk/ui/Modal.svelte`. Every modal requires exactly one non-empty accessible-name prop:
