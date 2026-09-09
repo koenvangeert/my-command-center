@@ -5,6 +5,9 @@ edition = "2021"
 rust-version = "1.95"
 
 [dependencies]
+axum = "0.7"
+hyper = { version = "1", features = ["client", "server", "http1"] }
+hyper-util = { version = "0.1", features = ["tokio", "service"] }
 openforge-session-host = { path = "../session-host" }
 base64 = "0.22"
 openforge-session-protocol = { path = "../session-protocol" }
@@ -18,7 +21,7 @@ log = "0.4"
 libc = "0.2"
 portable-pty = "0.9"
 sysinfo = "0.37.2"
-tokio = { version = "1", features = ["rt", "time"] }
+tokio = { version = "1", features = ["rt", "time", "net", "sync", "macros", "io-util"] }
 libghostty-vt = { git = "https://github.com/Uzaaft/libghostty-rs.git", rev = "de9fd9b0fa4ab53faebd3d489f4c74fe0ec832ec", version = "=0.2.1" }
 
 [dev-dependencies]

@@ -214,6 +214,47 @@ impl DaemonShells {
         .await
     }
 
+    pub(crate) async fn register_agent_endpoint(
+        &self,
+        publisher: RuntimeEventPublisher,
+        endpoint: Option<openforge_session_protocol::SidecarEndpoint>,
+    ) -> Result<(), String> {
+        self.run(publisher, move |connection, _| {
+            connection.client.register_sidecar(endpoint)
+        })
+        .await
+    }
+
+    pub(crate) async fn validate_agent_owner(
+        &self,
+        publisher: RuntimeEventPublisher,
+        task: String,
+        session: String,
+        installation: String,
+        instance: u64,
+    ) -> Result<(), String> {
+        self.run(publisher, move |connection, _| {
+            let inventory = connection.client.inventory()?;
+            if inventory.controller.installation.as_str() != installation {
+                return Err(Error::ForeignInstallation);
+            }
+            let owned_key =
+                session == task || super::pids::is_shell_session_key_for_task(&session, &task);
+            if owned_key
+                && inventory.sessions.iter().any(|live| {
+                    live.session_key == session
+                        && live.pty.instance.value() == instance
+                        && live.exit_code.is_none()
+                })
+            {
+                Ok(())
+            } else {
+                Err(Error::StalePty)
+            }
+        })
+        .await
+    }
+
     async fn run<T: Send + 'static>(
         &self,
         publisher: RuntimeEventPublisher,

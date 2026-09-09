@@ -52,6 +52,10 @@ pub struct Request {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
 pub enum Command {
+    RegisterSidecar {
+        controller: Controller,
+        endpoint: Option<crate::SidecarEndpoint>,
+    },
     Connect {
         installation: InstallationId,
     },

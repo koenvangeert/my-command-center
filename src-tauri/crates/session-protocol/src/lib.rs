@@ -2,6 +2,10 @@
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::io::{Read, Write};
 
+mod agent;
+mod agent_routes;
+pub use agent::*;
+pub use agent_routes::agent_route_allowed;
 mod host_error;
 mod messages;
 pub use messages::*;

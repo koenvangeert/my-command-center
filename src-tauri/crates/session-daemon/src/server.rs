@@ -17,7 +17,14 @@ pub fn run() -> Result<(), Error> {
     let listener = UnixListener::bind(&socket).map_err(io_error)?;
     std::fs::set_permissions(&socket, std::fs::Permissions::from_mode(0o600)).map_err(io_error)?;
     listener.set_nonblocking(true).map_err(io_error)?;
-    let mut host = Host::new(runtime.credentials().installation.clone())?;
+    let agent_listener =
+        std::net::TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, 0)).map_err(io_error)?;
+    let agent_runtime = crate::agent_config::AgentRuntime {
+        directory: runtime.path().to_path_buf(),
+        port: agent_listener.local_addr().map_err(io_error)?.port(),
+    };
+    let mut host = Host::new(runtime.credentials().installation.clone(), agent_runtime)?;
+    crate::agent_gateway::start(agent_listener, host.backend.clone(), host.sidecar.clone())?;
     eprintln!("session daemon ready");
     loop {
         host.poll()?;

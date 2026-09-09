@@ -41,7 +41,7 @@ Root exits are observed independently of reader EOF. Output drains separately fo
 - PTY descriptors are nonblocking. User input and authority replies share a serialized writer with a 250 ms write deadline. Partial/failed writes return an unknown outcome rather than being retried as fresh input.
 - Logs contain startup and failure messages, not terminal output. A log over 1 MiB is truncated when reopened. This is not a continuously rotating production log implementation.
 
-The daemon remains the same executable throughout the proof. Descriptor checkpointing, daemon reexec, release trust, stable agent ingress, full-app workspace restoration and final Quit/Restart semantics remain outside this slice. The broader macOS x64 and live-daemon-replacement evidence gates remain open.
+The daemon remains the same executable throughout the proof. Descriptor checkpointing, daemon reexec, release trust, full-app workspace restoration and final Quit/Restart semantics remain outside this slice. KVG-4718 adds the [stable agent command gateway](session-daemon-agent-gateway.md) on this controlled path. The broader macOS x64 and live-daemon-replacement evidence gates remain open.
 
 ## Verification
 

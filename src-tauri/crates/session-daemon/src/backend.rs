@@ -14,6 +14,7 @@ use std::{
 pub(crate) struct Record {
     metadata: Session,
     process: Option<Process>,
+    agent: Option<crate::agent_config::AgentCredential>,
     final_recovery: Option<Result<Recovery, Error>>,
 }
 impl Record {
@@ -26,6 +27,7 @@ impl Record {
         };
         // Inventory exposes the root outcome immediately, before bounded output drain.
         self.metadata.exit_code = Some(code);
+        self.agent.take();
         if process.output_drained() {
             let cursor = lock(journal).cursor;
             let recovery = process.recover(cursor);
@@ -60,10 +62,15 @@ struct Table {
 #[derive(Clone)]
 pub(crate) struct Backend {
     table: Arc<Mutex<Table>>,
+    agent_runtime: crate::agent_config::AgentRuntime,
     pub journal: SharedJournal,
 }
 impl Backend {
-    pub fn new(installation: InstallationId, lifetime: DaemonLifetimeId) -> Self {
+    pub fn new(
+        installation: InstallationId,
+        lifetime: DaemonLifetimeId,
+        agent_runtime: crate::agent_config::AgentRuntime,
+    ) -> Self {
         Self {
             table: Arc::new(Mutex::new(Table {
                 installation,
@@ -71,6 +78,7 @@ impl Backend {
                 next_instance: (uuid::Uuid::new_v4().as_u128() as u64 & ((1 << 48) - 1)) | 1,
                 records: BTreeMap::new(),
             })),
+            agent_runtime,
             journal: Default::default(),
         }
     }
@@ -100,6 +108,22 @@ impl Backend {
             .records
             .values()
             .all(|record| record.process.is_none()))
+    }
+    pub fn authenticate_agent(
+        &self,
+        token: &str,
+    ) -> Result<openforge_session_protocol::AgentConfig, Error> {
+        use subtle::ConstantTimeEq;
+        let mut table = self.table()?;
+        for record in table.records.values_mut() {
+            record.poll(&self.journal)?;
+            if let Some(agent) = &record.agent {
+                if bool::from(agent.config.token.as_bytes().ct_eq(token.as_bytes())) {
+                    return Ok(agent.config.clone());
+                }
+            }
+        }
+        Err(Error::Unauthorized)
     }
     pub fn recover(&self, pty: &PtyIdentity, cursor: u64) -> Result<Recovery, Error> {
         let table = self.table()?;
@@ -161,7 +185,12 @@ impl HostBackend for Backend {
             lifetime: table.lifetime.clone(),
             instance,
         };
-        let process = Process::spawn(request, pty.clone(), Arc::clone(&self.journal))
+        let mut prepared = request.clone();
+        let agent = self
+            .agent_runtime
+            .prepare(&mut prepared, pty.clone())
+            .map_err(HostError::from)?;
+        let process = Process::spawn(&prepared, pty.clone(), Arc::clone(&self.journal))
             .map_err(HostError::from)?;
         let metadata = Session {
             pty,
@@ -175,6 +204,7 @@ impl HostBackend for Backend {
             Record {
                 metadata,
                 process: Some(process),
+                agent: Some(agent),
                 final_recovery: None,
             },
         );

@@ -18,6 +18,7 @@ use std::sync::{Arc, Mutex};
 #[cfg(test)]
 use std::time::Duration;
 
+mod agent_ingress;
 mod authentication;
 pub(crate) mod deferred_completion;
 mod internal_transport;
