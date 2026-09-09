@@ -18,7 +18,7 @@ export const Keyboard: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
     const body = within(canvasElement.ownerDocument.body)
-    const primary = canvas.getByRole('button', { name: 'Complete', exact: true })
+    const primary = canvas.getByRole('button', { name: /^Complete$/ })
     primary.focus()
     await userEvent.keyboard('{Enter}')
     await expect(args.onAction).toHaveBeenCalledWith('complete')
