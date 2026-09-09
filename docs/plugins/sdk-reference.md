@@ -448,6 +448,7 @@ Core controls use scoped component CSS and semantic `--of-*` properties supplied
 | `Select` | `@openforge-app/plugin-sdk/ui/Select.svelte` | A named single-value select with a portalled listbox. |
 | `Tabs` | `@openforge-app/plugin-sdk/ui/Tabs.svelte` | Keyboard-operated tabs with caller-owned panels. |
 | `AnchoredMenu` | `@openforge-app/plugin-sdk/ui/AnchoredMenu.svelte` | A button-triggered action menu. |
+| `SplitButton` | `@openforge-app/plugin-sdk/ui/SplitButton.svelte` | A primary action joined to a secondary-action menu. |
 | `Tooltip` | `@openforge-app/plugin-sdk/ui/Tooltip.svelte` | A named button with a portalled text description. |
 | `CollapsibleSection` | `@openforge-app/plugin-sdk/ui/CollapsibleSection.svelte` | A disclosure section with shared, persisted collapse state. |
 | `FileTypeIcon` | `@openforge-app/plugin-sdk/ui/FileTypeIcon.svelte` | A decorative file or folder icon selected from a filename. |
@@ -515,6 +516,41 @@ Bind `open` or use `onOpenChange(open)`. Positioning props are `side`, one of `t
 ```
 
 The component renders the trigger button, so put text or an icon in `trigger`, not another button or link. Keep custom item content noninteractive and preserve its meaningful label. The menu owns keyboard navigation, disabled behavior, outside/Escape dismissal, and trigger focus restoration. Test actions by role and name, callback values, checkbox state, and focus after dismissal. Portalled styling uses theme surface, semantic danger, and focus tokens with reduced-motion behavior.
+
+### `SplitButton`
+
+Import `SplitButton` from `@openforge-app/plugin-sdk/ui/SplitButton.svelte` for a primary action with an attached secondary-action menu. Required props are `children`, `menuLabel`, and `items`. The menu uses the same item shape and optional `item(menuItem)` snippet as `AnchoredMenu`. No local styling is needed.
+
+`onClick(event)` runs the primary action; `onSelect(value)` handles secondary actions. Selecting an item never changes the primary label or action. `variant` and `size` match Button and default to `primary` and `md`. `disabled` disables both buttons; `primaryDisabled` and `menuDisabled` disable just one segment. Callers own async work and busy state. Bind `open` and optionally observe `onOpenChange(open)`. Positioning defaults to `side="bottom"`, `align="end"`, and `sideOffset={4}`; `class` applies to the joined wrapper.
+
+```svelte
+<script lang="ts">
+  import SplitButton from '@openforge-app/plugin-sdk/ui/SplitButton.svelte'
+  import { EyeOff } from '@lucide/svelte'
+
+  let open = $state(false)
+  let { busy = false, onRun, onSetAside } = $props()
+</script>
+
+<SplitButton
+  menuLabel="More run actions"
+  items={[{ value: 'aside', label: 'Set aside' }]}
+  primaryDisabled={busy}
+  bind:open
+  onClick={onRun}
+  onSelect={(value) => { if (value === 'aside') onSetAside() }}
+>
+  {#snippet children()}{busy ? 'Running...' : 'Run'}{/snippet}
+  {#snippet item(action)}
+    <EyeOff size={16} aria-hidden="true" />
+    <span>{action.label}</span>
+  {/snippet}
+</SplitButton>
+```
+
+Both segments are native buttons with separate keyboard focus. The disclosure owns its accessible name, expanded state, and menu navigation. Keep custom children and item snippets free of nested interactive controls. Tests should cover independent callbacks, disabled-state precedence, controlled opening, and Escape focus restoration. Browser tests also check outside dismissal after opening completes and long labels in constrained space.
+
+Standalone `AnchoredMenu` receives the same compact theme-derived menu styling. Its optional `triggerButton={{ size, variant }}` composition prop uses SDK Button styling; prefer SplitButton when joining a primary action to that trigger.
 
 ### `Tooltip`
 

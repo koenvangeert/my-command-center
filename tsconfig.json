@@ -46,6 +46,7 @@
       "@openforge-app/plugin-sdk/ui/SearchableSelect.svelte": ["./packages/plugin-sdk/src/ui/SearchableSelect.svelte"],
       "@openforge-app/plugin-sdk/ui/Tabs.svelte": ["./packages/plugin-sdk/src/ui/Tabs.svelte"],
       "@openforge-app/plugin-sdk/ui/AnchoredMenu.svelte": ["./packages/plugin-sdk/src/ui/AnchoredMenu.svelte"],
+      "@openforge-app/plugin-sdk/ui/SplitButton.svelte": ["./packages/plugin-sdk/src/ui/SplitButton.svelte"],
       "@openforge-app/plugin-sdk/ui/Tooltip.svelte": ["./packages/plugin-sdk/src/ui/Tooltip.svelte"],
       "@openforge-app/plugin-sdk/ui/PluginPageHeader.svelte": ["./packages/plugin-sdk/src/ui/PluginPageHeader.svelte"],
       "@openforge-app/plugin-sdk/ui/PluginPageShell.svelte": ["./packages/plugin-sdk/src/ui/PluginPageShell.svelte"],

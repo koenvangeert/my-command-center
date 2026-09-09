@@ -123,6 +123,7 @@ mount(App, { target: document.body })
   import Select from '@openforge-app/plugin-sdk/ui/Select.svelte'
   import Tabs from '@openforge-app/plugin-sdk/ui/Tabs.svelte'
   import AnchoredMenu from '@openforge-app/plugin-sdk/ui/AnchoredMenu.svelte'
+  import SplitButton from '@openforge-app/plugin-sdk/ui/SplitButton.svelte'
   import Tooltip from '@openforge-app/plugin-sdk/ui/Tooltip.svelte'
 
   let showModal = $state(true)
@@ -141,6 +142,7 @@ mount(App, { target: document.body })
 <AnchoredMenu label="Plugin actions" items={menuItems}>
   {#snippet trigger()}Actions{/snippet}
 </AnchoredMenu>
+<SplitButton menuLabel="More packed plugin actions" items={menuItems}>Run plugin action</SplitButton>
 <Tooltip label="Plugin help" content="Shared host runtime tooltip">
   {#snippet trigger()}Help{/snippet}
 </Tooltip>

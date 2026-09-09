@@ -256,6 +256,7 @@ const inventory = {
     { source: 'plugins/terminal/src/TaskTerminal.svelte', stories: ['components-terminal-tabs--ready'] },
     { source: 'packages/plugin-sdk/src/ui/Modal.svelte', stories: ['sdk-overlays--modal', 'sdk-overlays--locked-modal', 'sdk-overlays--edit-and-reopen'] },
     { source: 'packages/plugin-sdk/src/ui/AnchoredMenu.svelte', stories: ['sdk-overlays--menu', 'sdk-overlays--empty-menu', 'sdk-overlays--menu-keyboard'] },
+    { source: 'packages/plugin-sdk/src/ui/SplitButton.svelte', stories: ['sdk-split-button--default', 'sdk-split-button--menu', 'sdk-split-button--long-label', 'sdk-split-button--sizes-variants-and-disabled', 'sdk-split-button--keyboard'] },
     { source: 'packages/plugin-sdk/src/ui/Tooltip.svelte', stories: ['sdk-overlays--tooltip', 'sdk-overlays--tooltip-keyboard'] },
     { source: 'packages/plugin-sdk/src/ui/Tabs.svelte', stories: ['sdk-tabs--horizontal', 'sdk-tabs--vertical', 'sdk-tabs--disabled', 'sdk-tabs--automatic-keyboard', 'sdk-tabs--manual-vertical'] },
     { source: 'packages/plugin-sdk/src/ui/MarkdownContent.svelte', stories: ['sdk-markdown--rich-text', 'sdk-markdown--empty', 'sdk-markdown--long-code', 'sdk-markdown--diagram', 'sdk-markdown--links'] },

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ArrowLeft, ChevronDown, PanelRightClose, PanelRightOpen, Pencil, Play } from '@lucide/svelte'
+  import { ArrowLeft, Eye, EyeOff, PanelRightClose, PanelRightOpen, Pencil, Play } from '@lucide/svelte'
   import Button from '@openforge-app/plugin-sdk/ui/Button.svelte'
   import IconButton from '@openforge-app/plugin-sdk/ui/IconButton.svelte'
   import TextField from '@openforge-app/plugin-sdk/ui/TextField.svelte'
@@ -14,7 +14,7 @@
   import type { ResolvedTab } from '../../lib/plugin/contributionResolver'
   import type { TaskDetail } from '../../lib/types'
   import type { TaskRunAppState } from './taskRunAppController'
-  import AnchoredMenu from '@openforge-app/plugin-sdk/ui/AnchoredMenu.svelte'
+  import SplitButton from '@openforge-app/plugin-sdk/ui/SplitButton.svelte'
   import TaskPaneNavigation from './TaskPaneNavigation.svelte'
   import AgentStatusPill from './AgentStatusPill.svelte'
 
@@ -241,29 +241,33 @@
         {/if}
       </Button>
     {:else if task.status === 'doing'}
-      <div class="toolbar-complete-actions">
-        <Button type="button" size="md" variant="outline" disabled={isCompleting} onclick={handleComplete}>
+      <SplitButton
+        size="md"
+        variant="outline"
+        primaryDisabled={isCompleting}
+        onClick={handleComplete}
+        menuLabel="More task actions"
+        items={moreActionItems}
+        bind:open={moreActionsOpen}
+        onSelect={(value) => { void handleMoreAction(value) }}
+      >
+        {#snippet children()}
           {#if isCompleting}
             <span class="toolbar-spinner" aria-hidden="true"></span>
             Completing…
           {:else}
             Complete
           {/if}
-        </Button>
-        <AnchoredMenu
-          label="More task actions"
-          items={moreActionItems}
-          bind:open={moreActionsOpen}
-          side="bottom"
-          align="end"
-          class="toolbar-more-menu"
-          onSelect={(value) => { void handleMoreAction(value) }}
-        >
-          {#snippet trigger()}
-            <ChevronDown size={14} class="toolbar-disclosure-icon {moreActionsOpen ? 'rotate-180' : ''}" aria-hidden="true" />
-          {/snippet}
-        </AnchoredMenu>
-      </div>
+        {/snippet}
+        {#snippet item(menuItem)}
+          {#if menuItem.value === 'return-to-board'}
+            <Eye size={16} aria-hidden="true" />
+          {:else}
+            <EyeOff size={16} aria-hidden="true" />
+          {/if}
+          <span>{menuItem.label}</span>
+        {/snippet}
+      </SplitButton>
     {/if}
 
     {#if activeView === 'agent' && workspacePath !== null}
@@ -373,16 +377,8 @@
     height: var(--of-space4);
   }
 
-  :global(.toolbar-primary-action),
-  .toolbar-complete-actions {
+  :global(.toolbar-primary-action) {
     flex-shrink: 0;
-  }
-
-  .toolbar-complete-actions {
-    position: relative;
-    display: flex;
-    align-items: stretch;
-    gap: var(--of-space1);
   }
 
   :global(.toolbar-details-button[aria-pressed='true']) {
@@ -391,9 +387,6 @@
     color: var(--of-on-accent-subtle);
   }
 
-  .of-task-workbench-toolbar :global(.toolbar-disclosure-icon) {
-    transition: transform var(--of-duration-standard) var(--of-ease-standard);
-  }
 
   .toolbar-spinner {
     display: inline-block;
@@ -422,10 +415,6 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .of-task-workbench-toolbar :global(.toolbar-disclosure-icon) {
-      transition: none;
-    }
-
     .toolbar-spinner {
       animation-duration: 1ms;
     }

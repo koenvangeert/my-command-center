@@ -95,6 +95,7 @@
     "./ui/SearchableSelect.svelte": "./dist/ui/SearchableSelect.svelte",
     "./ui/Tabs.svelte": "./dist/ui/Tabs.svelte",
     "./ui/AnchoredMenu.svelte": "./dist/ui/AnchoredMenu.svelte",
+    "./ui/SplitButton.svelte": "./dist/ui/SplitButton.svelte",
     "./ui/Tooltip.svelte": "./dist/ui/Tooltip.svelte",
     "./ui/PluginPageHeader.svelte": "./dist/ui/PluginPageHeader.svelte",
     "./ui/PluginPageShell.svelte": "./dist/ui/PluginPageShell.svelte",

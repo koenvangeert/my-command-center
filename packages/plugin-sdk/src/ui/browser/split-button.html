@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Split button browser tests</title>
+    <style>
+      :root {
+        --of-space1: 4px; --of-space2: 8px; --of-space3: 12px; --of-space4: 16px; --of-space6: 24px;
+        --of-border-width: 1px; --of-border: #ddd; --of-border-interactive: #888;
+        --of-radius-control: 6px; --of-control-height: 36px; --of-control-height-compact: 28px;
+        --of-control-height-touch: 44px; --of-font-sans: system-ui; --of-text-sm: 14px;
+        --of-line-height-sm: 1.4; --of-weight-medium: 500; --of-control: #fff;
+        --of-control-text: #222; --of-text: #222; --of-control-hover: #eee;
+        --of-surface-raised: #fff; --of-focus-width: 2px; --of-focus-ring: #245bce;
+        --of-control-text-disabled: #888; --of-shadow-raised: 0 3px 12px #0002;
+      }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      import { mount } from 'svelte'
+      import Fixture from '../SplitButtonBrowserFixture.svelte'
+      mount(Fixture, { target: document.body })
+    </script>
+  </body>
+</html>

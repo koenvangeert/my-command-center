@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { execFileSync } from 'node:child_process'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
@@ -11,16 +12,18 @@ import { createOpenForgePluginSdkSourceAliasRecord } from '../vite'
 let server: ViteDevServer
 let browser: Browser
 let origin: string
-let cacheDir: string | undefined
+let cacheRoot: string
 
 beforeAll(async () => {
   // Parallel fixture servers must not invalidate each other's optimized dependencies.
-  cacheDir = await mkdtemp(resolve(tmpdir(), 'openforge-anchored-menu-'))
+  cacheRoot = await mkdtemp(resolve(tmpdir(), 'openforge-action-controls-'))
+  // Build the public-entrypoint fixture during setup, outside interaction deadlines.
+  execFileSync('pnpm', ['run', 'build'], { cwd: resolve(import.meta.dirname, '../..'), stdio: 'pipe' })
   server = await createServer({
     configFile: false,
     root: resolve(import.meta.dirname, '../../../..'),
+    cacheDir: resolve(cacheRoot, 'source'),
     plugins: [svelte()],
-    cacheDir,
     optimizeDeps: { entries: ['packages/plugin-sdk/src/ui/browser/anchored-menu.html'] },
     resolve: { alias: createOpenForgePluginSdkSourceAliasRecord(new URL('../../../../', import.meta.url)) },
     logLevel: 'error',
@@ -38,7 +41,7 @@ afterAll(async () => {
     try {
       await server?.close()
     } finally {
-      if (cacheDir) await rm(cacheDir, { recursive: true, force: true })
+      if (cacheRoot) await rm(cacheRoot, { recursive: true, force: true })
     }
   }
 })
@@ -118,3 +121,84 @@ it('keeps a persistent checkbox menu usable when the focused item is removed, in
     await page.close()
   }
 })
+
+it('operates both split segments by keyboard and preserves menu focus and accessible names', async () => {
+  const page = await browser.newPage()
+  try {
+    await page.goto(`${origin}packages/plugin-sdk/src/ui/browser/split-button.html`)
+    const primary = page.getByRole('button', { name: 'Complete', exact: true })
+    const trigger = page.getByRole('button', { name: 'More actions', exact: true })
+    await primary.waitFor()
+    await page.keyboard.press('Tab')
+    expect(await primary.evaluate((node) => node === document.activeElement)).toBe(true)
+    await page.keyboard.press('Enter')
+    expect(await page.getByRole('status', { name: 'Primary count' }).textContent()).toBe('1')
+    await page.keyboard.press('Tab')
+    expect(await trigger.evaluate((node) => node === document.activeElement)).toBe(true)
+    expect(await trigger.evaluate((node) => getComputedStyle(node).outlineStyle)).not.toBe('none')
+    await page.keyboard.press('Enter')
+    await page.getByRole('menuitem', { name: 'Set aside', exact: true }).waitFor()
+    await page.keyboard.press('ArrowDown')
+    await page.keyboard.press('Enter')
+    expect(await page.getByRole('status', { name: 'Selected action' }).textContent()).toBe('long')
+    expect(await trigger.evaluate((node) => node === document.activeElement)).toBe(true)
+    expect(await primary.textContent()).toContain('Complete')
+    await trigger.click()
+    await page.keyboard.press('Escape')
+    expect(await trigger.evaluate((node) => node === document.activeElement)).toBe(true)
+    await trigger.click()
+    await page.getByRole('menuitem', { name: 'Set aside', exact: true }).waitFor()
+    await page.locator('[role="menu"]:not([data-starting-style])').waitFor()
+    // Modal menus suppress pointer events on underlying controls. Click the document
+    // instead, letting Playwright wait for a stable target before dispatching.
+    await page.locator('html').click({ position: { x: 900, y: 10 } })
+    await page.getByRole('menu').waitFor({ state: 'hidden' })
+    expect(await page.getByRole('status', { name: 'Primary count' }).textContent()).toBe('1')
+  } finally {
+    await page.close()
+  }
+}, 30_000)
+
+it('keeps standalone and split menus within a narrow viewport with readable long labels', async () => {
+  const page = await browser.newPage({ viewport: { width: 320, height: 300 } })
+  try {
+    await page.goto(`${origin}packages/plugin-sdk/src/ui/browser/split-button.html`)
+    for (const name of ['More actions', 'Standalone actions']) {
+      await page.getByRole('button', { name, exact: true }).click()
+      const menu = page.getByRole('menu')
+      const bounds = await menu.boundingBox()
+      expect(bounds).not.toBeNull()
+      expect(bounds!.x).toBeGreaterThanOrEqual(0)
+      expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(320)
+      expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(300)
+      expect(await menu.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true)
+      await page.keyboard.press('Escape')
+    }
+  } finally {
+    await page.close()
+  }
+})
+
+it('renders the built public SplitButton export without source aliases or app imports', async () => {
+  const packageServer = await createServer({
+    configFile: false,
+    root: resolve(import.meta.dirname, '../../../..'),
+    cacheDir: resolve(cacheRoot, 'built'),
+    plugins: [svelte()],
+    logLevel: 'error',
+    server: { host: '127.0.0.1', port: 0 },
+  })
+  const page = await browser.newPage()
+  try {
+    await packageServer.listen()
+    await page.goto(`${packageServer.resolvedUrls!.local[0]}packages/plugin-sdk/src/ui/browser/split-button.html`)
+    await page.getByRole('button', { name: 'Complete', exact: true }).click()
+    expect(await page.getByRole('status', { name: 'Primary count' }).textContent()).toBe('1')
+    await page.getByRole('button', { name: 'More actions', exact: true }).click()
+    await page.getByRole('menuitem', { name: 'Set aside', exact: true }).click()
+    expect(await page.getByRole('status', { name: 'Selected action' }).textContent()).toBe('aside')
+  } finally {
+    await page.close()
+    await packageServer.close()
+  }
+}, 30_000)
