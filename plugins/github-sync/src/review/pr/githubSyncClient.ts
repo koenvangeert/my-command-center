@@ -75,6 +75,8 @@ export interface GithubSyncPrReviewClient {
   refreshAuthoredPullRequests(): Promise<AuthoredPullRequest[]>
   markReviewPullRequestViewed(request: { prId: number; headSha: string }): Promise<void>
   markReviewPullRequestUnviewed(request: { prId: number }): Promise<void>
+  /** Remove a PR from the review list (manual "Remove from list" action). */
+  removeReviewPullRequest(request: { prId: number }): Promise<void>
   listPullRequestFileDiffs(request: PullRequestRepositoryRequest): Promise<PrFileDiff[]>
   getFileContent(request: FileContentRequest): Promise<string>
   getFileContentBase64(request: FileContentRequest): Promise<Base64FileContentResult>
@@ -141,15 +143,27 @@ async function invokeBackend<TOutput>(api: Pick<FrontendOpenForgeAPI, 'backend'>
   return api.backend.invoke<TOutput>(method, payload)
 }
 
+/**
+ * Like `invokeBackend` but guarantees an array. The PR-list stores are typed
+ * `T[]`, and callers filter them on every render, so a backend result of
+ * `null`/`undefined` (e.g. a transient during navigation) must never reach the
+ * store as a non-array — that would crash the list view on the next `.filter`.
+ */
+async function invokeBackendList<TItem>(api: Pick<FrontendOpenForgeAPI, 'backend'>, method: string): Promise<TItem[]> {
+  const result = await invokeBackend<TItem[] | null | undefined>(api, method)
+  return Array.isArray(result) ? result : []
+}
+
 export function createGithubSyncPrReviewClient(api: Pick<FrontendOpenForgeAPI, 'backend' | 'events'>): GithubSyncPrReviewClient {
   return {
     syncPullRequests: () => invokeBackend<PollResult>(api, 'forceGithubSync'),
-    listReviewPullRequests: () => invokeBackend<ReviewPullRequest[]>(api, 'getReviewPrs'),
-    refreshReviewPullRequests: () => invokeBackend<ReviewPullRequest[]>(api, 'fetchReviewPrs'),
-    listAuthoredPullRequests: () => invokeBackend<AuthoredPullRequest[]>(api, 'getAuthoredPrs'),
-    refreshAuthoredPullRequests: () => invokeBackend<AuthoredPullRequest[]>(api, 'fetchAuthoredPrs'),
+    listReviewPullRequests: () => invokeBackendList<ReviewPullRequest>(api, 'getReviewPrs'),
+    refreshReviewPullRequests: () => invokeBackendList<ReviewPullRequest>(api, 'fetchReviewPrs'),
+    listAuthoredPullRequests: () => invokeBackendList<AuthoredPullRequest>(api, 'getAuthoredPrs'),
+    refreshAuthoredPullRequests: () => invokeBackendList<AuthoredPullRequest>(api, 'fetchAuthoredPrs'),
     markReviewPullRequestViewed: ({ prId, headSha }) => invokeBackend<void>(api, 'markReviewPrViewed', { prId, headSha }),
     markReviewPullRequestUnviewed: ({ prId }) => invokeBackend<void>(api, 'markReviewPrUnviewed', { prId }),
+    removeReviewPullRequest: ({ prId }) => invokeBackend<void>(api, 'dismissReviewPr', { prId }),
     listPullRequestFileDiffs: ({ owner, repo, prNumber }) => invokeBackend<PrFileDiff[]>(api, 'getPrFileDiffs', { owner, repo, prNumber }),
     getFileContent: ({ owner, repo, sha }) => invokeBackend<string>(api, 'getFileContent', { owner, repo, sha }),
     getFileContentBase64: (request) => invokeBackend<Base64FileContentResult>(api, 'getFileContentBase64', request),

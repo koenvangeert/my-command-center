@@ -80,6 +80,7 @@ fn resolve_openforge_global_command(qualified_id: &str) -> Result<ResolvedGlobal
         "markReviewPrUnviewed" => Ok(ResolvedGlobalCommand::github_review(
             "mark_review_pr_unviewed",
         )),
+        "dismissReviewPr" => Ok(ResolvedGlobalCommand::github_review("dismiss_review_pr")),
         "getPrFileDiffs" => Ok(ResolvedGlobalCommand::github_review("get_pr_file_diffs")),
         "getFileContent" => Ok(ResolvedGlobalCommand::github_review("get_file_content")),
         "getFileContentBase64" => Ok(ResolvedGlobalCommand::github_review(

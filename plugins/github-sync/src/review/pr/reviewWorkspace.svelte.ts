@@ -95,6 +95,7 @@ export function createReviewWorkspace(api: FrontendOpenForgeAPI, getContext: () 
     onOpenRepositoryFilters: () => list.setShowFilterDropdown(true),
     onSelectPr: selection.select,
     onMarkUnread: selection.markUnread,
+    onRemove: selection.removeReviewPr,
     onOpenAuthoredPr: openUrl,
     onStartTaskFromAuthoredPr: getContext().projectId ? list.startTaskFromAuthoredPr : undefined,
     pluralize: list.pluralize,
@@ -119,6 +120,7 @@ export function createReviewWorkspace(api: FrontendOpenForgeAPI, getContext: () 
     includeNonApplicationFiles: selection.includeNonApplicationFiles,
     onToggleNonApplicationFiles: selection.setIncludeNonApplicationFiles,
     onBackToList: selection.backToList,
+    onRemove: selection.removeFromDetail,
     onOpenPrOnGitHub: selection.openOnGitHub,
     onActiveTabChange: selection.setActiveTab,
     onOverviewCommentsChange: setOverviewComments,
@@ -155,9 +157,16 @@ export function createReviewWorkspace(api: FrontendOpenForgeAPI, getContext: () 
     onOpenUrl: openUrl,
   } : null)
 
+  let postReviewModel = $derived(selection.postReviewPr ? {
+    pr: selection.postReviewPr,
+    onKeep: selection.keepAfterReview,
+    onRemove: selection.removeAfterReview,
+  } : null)
+
   return {
     get list() { return listModel },
     get detail() { return detailModel },
+    get postReview() { return postReviewModel },
     handleKeydown(event: KeyboardEvent) {
       if (list.handleFilterKeydown(event)) return
       if (selectedPr.current) selection.handleKeydown(event)

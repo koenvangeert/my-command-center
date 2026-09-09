@@ -15,11 +15,13 @@
     selected?: boolean
     onClick: () => void
     onMarkUnread?: () => void
+    /** Remove this PR from the review list. Optional; the button only renders when wired. */
+    onRemove?: () => void
     /** Optional content rendered inside the card, below the labels (e.g. walkthrough controls). */
     footer?: Snippet
   }
 
-  let { pr, selected = false, onClick, onMarkUnread, footer }: Props = $props()
+  let { pr, selected = false, onClick, onMarkUnread, onRemove, footer }: Props = $props()
 
   const MAX_VISIBLE_LABELS = 4
   let visibleLabels = $derived((pr.labels ?? []).slice(0, MAX_VISIBLE_LABELS))
@@ -29,11 +31,25 @@
 </script>
 
 <div class="relative group">
+{#if onRemove}
+  <IconButton
+    label="Remove from list"
+    size="xs"
+    class="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+    type="button"
+    title="Remove from list"
+    onclick={(e) => { e.stopPropagation(); onRemove?.() }}
+  >
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5" aria-hidden="true">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+    </svg>
+  </IconButton>
+{/if}
 {#if pr.viewed_at && onMarkUnread}
   <IconButton
     label="Mark as unread"
     size="xs"
-    class="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+    class="absolute top-2 {onRemove ? 'right-9' : 'right-2'} z-10 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
     type="button"
     title="Mark as unread"
     onclick={(e) => { e.stopPropagation(); onMarkUnread?.() }}

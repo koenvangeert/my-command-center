@@ -40,6 +40,14 @@ pub fn mark_review_pr_unviewed(db: &Arc<Mutex<db::Database>>, pr_id: i64) -> Res
         .map_err(|e| format!("Failed to mark review PR unviewed: {e}"))
 }
 
+/// Remove a review PR from the sticky list (manual "Remove from list" action).
+pub fn dismiss_review_pr(db: &Arc<Mutex<db::Database>>, pr_id: i64) -> Result<(), String> {
+    let db_lock = crate::db::acquire_db(db);
+    db_lock
+        .dismiss_review_pr(pr_id)
+        .map_err(|e| format!("Failed to remove review PR from list: {e}"))
+}
+
 pub fn get_authored_prs(db: &Arc<Mutex<db::Database>>) -> Result<Vec<db::AuthoredPrRow>, String> {
     let db_lock = crate::db::acquire_db(db);
     db_lock
@@ -99,9 +107,11 @@ pub async fn fetch_review_prs(
         }
 
         if !all_search_ids.is_empty() || prs.is_empty() {
+            // Sticky list: a PR that left the search is kept, only flagged as no
+            // longer requested (so a later re-request can re-surface a removed PR).
             db_lock
-                .delete_stale_review_prs(&all_search_ids)
-                .map_err(|e| format!("Failed to delete stale review PRs: {e}"))?;
+                .mark_review_prs_not_requested(&all_search_ids)
+                .map_err(|e| format!("Failed to update review PR request state: {e}"))?;
         }
     }
 

@@ -28,6 +28,9 @@ import type { GithubSyncPrReviewClient } from '../githubSyncClient'
 
 export type PrDetailTab = 'overview' | 'files' | 'walkthrough'
 
+const PR_REVIEW_VIEW = 'plugin:com.openforge.github-sync:pr_review'
+const PR_REVIEW_GLOBAL_VIEW = 'plugin:com.openforge.github-sync:pr_review_global'
+
 type AiThreadState = {
   load(pr: ReviewPullRequest): Promise<void>
   clear(): void
@@ -60,6 +63,9 @@ export function useSelectedPrReview(
   let error = $state<string | null>(null)
   let replyPostingError = $state<string | null>(null)
   let isPostingReplies = $state(false)
+  // The PR a "You reviewed this PR" prompt is currently offered for, or null when
+  // no prompt is showing. Set right after a successful in-app review submission.
+  let postReviewPr = $state<ReviewPullRequest | null>(null)
   let loadSequence = 0
   let viewInvokedSubscription: { dispose(): void | Promise<void> } | null = null
 
@@ -145,6 +151,68 @@ export function useSelectedPrReview(
     if (selectedPr.current?.id === pr.id) selectedPr.current = updatedPr
     githubSync.markReviewPullRequestUnviewed({ prId: pr.id })
       .catch(cause => console.error('Failed to mark unread:', cause))
+  }
+
+  /**
+   * Remove a PR from the review list ("Remove from list"). Optimistically drops it
+   * from the store so it disappears at once, then persists the removal. The row is
+   * kept server-side so a new commit or a fresh review request can bring it back.
+   */
+  function removeReviewPr(pr: ReviewPullRequest): void {
+    pullRequests.current = pullRequests.current.filter(candidate => candidate.id !== pr.id)
+    githubSync.removeReviewPullRequest({ prId: pr.id })
+      .catch(cause => console.error('Failed to remove PR from list:', cause))
+  }
+
+  /** The local project whose git remote is this repo, or null when none is linked. */
+  async function resolveProjectIdForRepo(repoOwner: string, repoName: string): Promise<string | null> {
+    const repoKey = `${repoOwner}/${repoName}`
+    try {
+      const projects = await api.projects.list()
+      for (const project of projects) {
+        const resolved = await api.projectConfig.get<string>('resolved_repo', project.id)
+        if (resolved === repoKey) return project.id
+      }
+    } catch (cause) {
+      console.error('Failed to resolve project for repo:', cause)
+    }
+    return null
+  }
+
+  /**
+   * Close the detail view and return to the list this PR belongs to: its project's
+   * Pull Requests tab when a local project owns the repo, otherwise the all-repos
+   * "All Pull Requests" view.
+   */
+  async function returnToReviewList(pr: ReviewPullRequest): Promise<void> {
+    backToList()
+    const projectId = await resolveProjectIdForRepo(pr.repo_owner, pr.repo_name)
+    const viewId = projectId ? PR_REVIEW_VIEW : PR_REVIEW_GLOBAL_VIEW
+    await api.navigation.navigate({ viewId, projectId: projectId ?? undefined })
+  }
+
+  /** Detail-page "Remove from list": remove the open PR, then return to its list. */
+  function removeFromDetail(): void {
+    const pr = selectedPr.current
+    if (!pr) return
+    removeReviewPr(pr)
+    void returnToReviewList(pr)
+  }
+
+  /** Post-review prompt "Keep in my list": dismiss the prompt and return to the list. */
+  function keepAfterReview(): void {
+    const pr = postReviewPr
+    postReviewPr = null
+    if (pr) void returnToReviewList(pr)
+  }
+
+  /** Post-review prompt "Remove from my list": remove the PR, then return to the list. */
+  function removeAfterReview(): void {
+    const pr = postReviewPr
+    postReviewPr = null
+    if (!pr) return
+    removeReviewPr(pr)
+    void returnToReviewList(pr)
   }
 
   function handleKeydown(event: KeyboardEvent): void {
@@ -282,11 +350,22 @@ export function useSelectedPrReview(
     } catch (cause) {
       if (await recoverAlreadySubmittedInlineComments({ ...request, previousComments })) {
         await postPendingReplies(request)
+        promptRemovalAfterReview()
         return
       }
       throw cause
     }
     await postPendingReplies(request)
+    promptRemovalAfterReview()
+  }
+
+  /**
+   * After the reviewer submits a review in-app, offer to keep or remove the PR.
+   * Removal never happens automatically, so this prompt is how a review clears the
+   * clutter. Only meaningful with a PR open, which is always the case on submit.
+   */
+  function promptRemovalAfterReview(): void {
+    if (selectedPr.current) postReviewPr = selectedPr.current
   }
 
   async function postPendingReplies(request: {
@@ -492,7 +571,12 @@ export function useSelectedPrReview(
     get error() { return error },
     get replyPostingError() { return replyPostingError },
     get isPostingReplies() { return isPostingReplies },
+    get postReviewPr() { return postReviewPr },
     retryReplies,
+    removeReviewPr,
+    removeFromDetail,
+    keepAfterReview,
+    removeAfterReview,
     setActiveTab: (tab: PrDetailTab) => { activeTab = tab },
     setIncludeNonApplicationFiles: (value: boolean) => { includeNonApplicationFiles = value },
     toggleFileTree: () => { fileTreeVisible = !fileTreeVisible },

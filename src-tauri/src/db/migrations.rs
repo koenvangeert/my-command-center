@@ -1782,6 +1782,59 @@ INSERT OR IGNORE INTO config (key, value)
         }
         Ok(())
     }),
+    // AVIV-364: the "Pull Requests to review" list is now sticky. Once a PR is
+    // surfaced it stays until the user removes it, so the poller no longer deletes
+    // PRs that drop out of GitHub's review-requested search. Three columns back this:
+    //   - dismissed_at: manual removal timestamp (soft delete; hidden from the list).
+    //   - dismissed_head_sha: the PR head at removal, so a later commit re-surfaces it.
+    //   - review_requested: whether the PR was in the previous sync's search results,
+    //     so a not-requested -> requested transition (a fresh review request)
+    //     re-surfaces a removed PR. Existing rows default to 1 because the old prune
+    //     logic only kept currently-requested PRs. Guarded/idempotent to match the
+    //     sibling column-add migrations and heal partially migrated databases.
+    M::up_with_hook("", |tx| {
+        let table_exists: bool = tx
+            .query_row(
+                "SELECT COUNT(*) > 0 FROM sqlite_master WHERE type='table' AND name='review_prs'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap_or(false);
+        if !table_exists {
+            return Ok(());
+        }
+
+        for (column, sql) in [
+            (
+                "dismissed_at",
+                "ALTER TABLE review_prs ADD COLUMN dismissed_at INTEGER",
+            ),
+            (
+                "dismissed_head_sha",
+                "ALTER TABLE review_prs ADD COLUMN dismissed_head_sha TEXT",
+            ),
+            (
+                "review_requested",
+                "ALTER TABLE review_prs ADD COLUMN review_requested INTEGER NOT NULL DEFAULT 1",
+            ),
+        ] {
+            let exists: bool = tx
+                .query_row(
+                    &format!(
+                        "SELECT COUNT(*) > 0 FROM pragma_table_info('review_prs') WHERE name = '{}'",
+                        column
+                    ),
+                    [],
+                    |row| row.get(0),
+                )
+                .unwrap_or(false);
+            if !exists {
+                tx.execute(sql, [])
+                    .map_err(rusqlite_migration::HookError::RusqliteError)?;
+            }
+        }
+        Ok(())
+    }),
 );
 
 /// Detects existing databases (created before the migration system) and sets

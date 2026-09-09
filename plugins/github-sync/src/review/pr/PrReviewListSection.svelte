@@ -47,6 +47,7 @@
     onOpenRepositoryFilters: () => void
     onSelectPr: (pr: ReviewPullRequest) => void
     onMarkUnread: (pr: ReviewPullRequest) => void
+    onRemove: (pr: ReviewPullRequest) => void
     onOpenAuthoredPr: (url: string) => void
     onStartTaskFromAuthoredPr?: (pr: AuthoredPullRequest) => void
     pluralize: (count: number, singular: string, plural?: string) => string
@@ -95,6 +96,7 @@
     onOpenRepositoryFilters,
     onSelectPr,
     onMarkUnread,
+    onRemove,
     onOpenAuthoredPr,
     onStartTaskFromAuthoredPr,
     pluralize,
@@ -211,6 +213,7 @@
                         selected={false}
                         onClick={() => onSelectPr(pr)}
                         onMarkUnread={() => onMarkUnread(pr)}
+                        onRemove={() => onRemove(pr)}
                       >
                         {#snippet footer()}
                           <div class="pt-1">

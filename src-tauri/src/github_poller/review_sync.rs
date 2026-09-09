@@ -443,10 +443,12 @@ pub(super) async fn poll_review_prs(
         }
 
         if !all_search_ids.is_empty() || prs.is_empty() {
+            // Sticky list: a PR that left the search is kept, only flagged as no
+            // longer requested (so a later re-request can re-surface a removed PR).
             db_lock
-                .delete_stale_review_prs(&all_search_ids)
+                .mark_review_prs_not_requested(&all_search_ids)
                 .map_err(|e| {
-                    PollPhaseError::Db(format!("Failed to delete stale review PRs: {e}"))
+                    PollPhaseError::Db(format!("Failed to update review PR request state: {e}"))
                 })?;
         }
         let count = db_lock

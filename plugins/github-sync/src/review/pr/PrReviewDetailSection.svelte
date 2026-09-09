@@ -39,6 +39,7 @@
     includeNonApplicationFiles: boolean
     onToggleNonApplicationFiles: (include: boolean) => void
     onBackToList: () => void
+    onRemove: () => void
     onOpenPrOnGitHub: () => void
     onActiveTabChange: (tab: PrDetailTab) => void
     onOverviewCommentsChange: (comments: PrOverviewComment[]) => void
@@ -117,6 +118,7 @@
     onAgentCommentsChange,
     onUpdateAgentCommentStatus,
     onToggleFileReviewed,
+    onRemove,
     walkthroughReady = false,
     aiThreads = [],
     aiThreadsPendingCount = 0,
@@ -270,6 +272,13 @@
         role="link"
         onclick={onOpenPrOnGitHub}
       >GitHub ↗</Button>
+      <Button
+        variant="ghost"
+        size="xs"
+        class="shrink-0 text-base-content/50"
+        title="Remove this pull request from your review list"
+        onclick={onRemove}
+      >Remove from list</Button>
     </div>
     <div class="flex items-center gap-2 text-xs text-base-content/50">
       <span class="font-semibold text-base-content">#{pr.number}</span>

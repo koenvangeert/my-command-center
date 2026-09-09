@@ -83,8 +83,11 @@ impl super::Database {
                   labels = excluded.labels,
                   created_at = excluded.created_at,
                   updated_at = excluded.updated_at,
-                  viewed_at = CASE WHEN review_prs.viewed_head_sha IS NOT NULL AND review_prs.viewed_head_sha != excluded.head_sha THEN NULL ELSE review_prs.viewed_at END,
-                  viewed_head_sha = CASE WHEN review_prs.viewed_head_sha IS NOT NULL AND review_prs.viewed_head_sha != excluded.head_sha THEN NULL ELSE review_prs.viewed_head_sha END",
+                  viewed_at = CASE WHEN review_prs.review_requested = 0 OR (review_prs.viewed_head_sha IS NOT NULL AND review_prs.viewed_head_sha != excluded.head_sha) THEN NULL ELSE review_prs.viewed_at END,
+                  viewed_head_sha = CASE WHEN review_prs.review_requested = 0 OR (review_prs.viewed_head_sha IS NOT NULL AND review_prs.viewed_head_sha != excluded.head_sha) THEN NULL ELSE review_prs.viewed_head_sha END,
+                  dismissed_at = CASE WHEN review_prs.review_requested = 0 OR (review_prs.dismissed_head_sha IS NOT NULL AND review_prs.dismissed_head_sha != excluded.head_sha) THEN NULL ELSE review_prs.dismissed_at END,
+                  dismissed_head_sha = CASE WHEN review_prs.review_requested = 0 OR (review_prs.dismissed_head_sha IS NOT NULL AND review_prs.dismissed_head_sha != excluded.head_sha) THEN NULL ELSE review_prs.dismissed_head_sha END,
+                  review_requested = 1",
             rusqlite::params![
                 id, number, title, body, state, draft as i32, html_url, user_login, user_avatar_url,
                 repo_owner, repo_name, head_ref, base_ref, head_sha, additions, deletions, changed_files,
@@ -115,6 +118,7 @@ impl super::Database {
                     repo_owner, repo_name, head_ref, base_ref, head_sha, additions, deletions,
                     changed_files, mergeable, mergeable_state, created_at, updated_at, viewed_at, viewed_head_sha, labels
              FROM review_prs
+             WHERE dismissed_at IS NULL
              ORDER BY CASE WHEN viewed_at IS NULL THEN 0 ELSE 1 END, updated_at DESC",
         )?;
         let rows = stmt.query_map([], |row| {
@@ -176,10 +180,32 @@ impl super::Database {
         Ok(())
     }
 
-    pub fn delete_stale_review_prs(&self, current_ids: &[i64]) -> Result<()> {
+    /// Remove a review PR from the list (manual "Remove from list" action).
+    /// Soft delete: sets `dismissed_at` and pins `dismissed_head_sha` to the PR's
+    /// current head. The row stays so a later sync can re-surface it when a new
+    /// commit lands (head SHA differs) or the user is (re-)requested as a reviewer;
+    /// see the transition logic in `upsert_review_pr`. Preserved across syncs the
+    /// same way `viewed_at` is, so a still-requested PR does not reappear next poll.
+    pub fn dismiss_review_pr(&self, pr_id: i64) -> Result<()> {
+        let conn = self.lock_conn()?;
+        let now = super::current_unix_timestamp()?;
+        conn.execute(
+            "UPDATE review_prs SET dismissed_at = ?1, dismissed_head_sha = head_sha WHERE id = ?2",
+            rusqlite::params![now, pr_id],
+        )?;
+        Ok(())
+    }
+
+    /// Mark every review PR that is no longer in GitHub's review-requested search as
+    /// not currently requested, without deleting it. Replaces the old prune step:
+    /// the list is sticky, so rows that leave the search are kept (they only leave
+    /// the list via a manual removal). The `review_requested` flag lets the next
+    /// `upsert_review_pr` detect a not-requested -> requested transition and
+    /// re-surface a removed PR. `current_ids` are the PR ids in the latest search.
+    pub fn mark_review_prs_not_requested(&self, current_ids: &[i64]) -> Result<()> {
         let conn = self.lock_conn()?;
         if current_ids.is_empty() {
-            conn.execute("DELETE FROM review_prs", [])?;
+            conn.execute("UPDATE review_prs SET review_requested = 0", [])?;
         } else {
             let placeholders: Vec<String> = current_ids
                 .iter()
@@ -187,7 +213,7 @@ impl super::Database {
                 .map(|(i, _)| format!("?{}", i + 1))
                 .collect();
             let sql = format!(
-                "DELETE FROM review_prs WHERE id NOT IN ({})",
+                "UPDATE review_prs SET review_requested = 0 WHERE id NOT IN ({})",
                 placeholders.join(", ")
             );
             let mut stmt = conn.prepare(&sql)?;
@@ -200,6 +226,29 @@ impl super::Database {
             stmt.execute(param_refs.as_slice())?;
         }
         Ok(())
+    }
+
+    /// Test-only raw read of the sticky-list bookkeeping columns for a single PR,
+    /// including dismissed rows (which `get_all_review_prs` hides). Returns
+    /// `(dismissed, dismissed_head_sha, review_requested)`.
+    #[cfg(test)]
+    pub fn review_pr_dismissal_state(
+        &self,
+        pr_id: i64,
+    ) -> Result<Option<(bool, Option<String>, bool)>> {
+        use rusqlite::OptionalExtension;
+        let conn = self.lock_conn()?;
+        conn.query_row(
+            "SELECT dismissed_at, dismissed_head_sha, review_requested FROM review_prs WHERE id = ?1",
+            rusqlite::params![pr_id],
+            |row| {
+                let dismissed_at: Option<i64> = row.get(0)?;
+                let dismissed_head_sha: Option<String> = row.get(1)?;
+                let review_requested: i32 = row.get(2)?;
+                Ok((dismissed_at.is_some(), dismissed_head_sha, review_requested != 0))
+            },
+        )
+        .optional()
     }
 }
 
@@ -350,93 +399,173 @@ mod tests {
         drop(db);
     }
 
-    #[test]
-    fn test_review_pr_delete_stale() {
-        let (db, _temp_dir) = make_test_db("review_pr_stale");
-
+    /// Minimal review-PR upsert for the sticky-list tests: only id, head SHA, and
+    /// updated_at vary; everything else is boilerplate the assertions don't touch.
+    fn upsert_review_pr_with_head(
+        db: &crate::db::Database,
+        id: i64,
+        head_sha: &str,
+        updated_at: i64,
+    ) {
         db.upsert_review_pr(
-            100,
-            1,
-            "PR 1",
+            id,
+            id,
+            "PR",
             None,
             "open",
             false,
-            "https://github.com/owner/repo/pull/1",
-            "user1",
+            &format!("https://github.com/owner/repo/pull/{id}"),
+            "user",
             None,
             "owner",
             "repo",
-            "branch1",
+            "branch",
             "main",
-            "sha1",
+            head_sha,
             10,
             5,
             2,
             &[],
             1000,
-            1000,
+            updated_at,
         )
-        .expect("insert 1 failed");
-        db.upsert_review_pr(
-            200,
-            2,
-            "PR 2",
-            None,
-            "open",
-            false,
-            "https://github.com/owner/repo/pull/2",
-            "user2",
-            None,
-            "owner",
-            "repo",
-            "branch2",
-            "main",
-            "sha2",
-            20,
-            10,
-            3,
-            &[],
-            2000,
-            2000,
-        )
-        .expect("insert 2 failed");
-        db.upsert_review_pr(
-            300,
-            3,
-            "PR 3",
-            None,
-            "open",
-            false,
-            "https://github.com/owner/repo/pull/3",
-            "user3",
-            None,
-            "owner",
-            "repo",
-            "branch3",
-            "main",
-            "sha3",
-            30,
-            15,
-            4,
-            &[],
-            3000,
-            3000,
-        )
-        .expect("insert 3 failed");
+        .expect("upsert failed");
+    }
 
-        db.delete_stale_review_prs(&[100, 300])
-            .expect("delete stale failed");
+    #[test]
+    fn test_mark_not_requested_keeps_rows_and_flags() {
+        let (db, _temp_dir) = make_test_db("review_pr_not_requested");
+        upsert_review_pr_with_head(&db, 100, "sha1", 1000);
+        upsert_review_pr_with_head(&db, 200, "sha2", 2000);
+        upsert_review_pr_with_head(&db, 300, "sha3", 3000);
+
+        // PR 200 dropped out of the review-requested search. The sticky list keeps
+        // it; it is only flagged as no longer requested.
+        db.mark_review_prs_not_requested(&[100, 300])
+            .expect("mark not requested failed");
 
         let prs = db.get_all_review_prs().expect("get_all failed");
-        assert_eq!(prs.len(), 2);
-        assert!(prs.iter().any(|pr| pr.id == 100));
-        assert!(prs.iter().any(|pr| pr.id == 300));
-        assert!(!prs.iter().any(|pr| pr.id == 200));
+        assert_eq!(prs.len(), 3, "sticky list never drops rows");
+        assert!(!db.review_pr_dismissal_state(200).unwrap().unwrap().2);
+        assert!(db.review_pr_dismissal_state(100).unwrap().unwrap().2);
 
-        db.delete_stale_review_prs(&[]).expect("delete all failed");
+        // An empty search means nothing is currently requested; still no deletions.
+        db.mark_review_prs_not_requested(&[])
+            .expect("mark all not requested failed");
+        let prs = db.get_all_review_prs().expect("get_all failed");
+        assert_eq!(prs.len(), 3);
+        for id in [100, 200, 300] {
+            assert!(!db.review_pr_dismissal_state(id).unwrap().unwrap().2);
+        }
+
+        drop(db);
+    }
+
+    #[test]
+    fn test_dismiss_hides_pr_from_list() {
+        let (db, _temp_dir) = make_test_db("review_pr_dismiss");
+        upsert_review_pr_with_head(&db, 1, "abc", 1000);
+
+        db.dismiss_review_pr(1).expect("dismiss failed");
+
+        assert!(
+            db.get_all_review_prs().unwrap().is_empty(),
+            "a removed PR is hidden from the list"
+        );
+        let (dismissed, head, requested) = db.review_pr_dismissal_state(1).unwrap().unwrap();
+        assert!(dismissed);
+        assert_eq!(head, Some("abc".to_string()));
+        assert!(requested, "removal does not change the requested flag");
+
+        drop(db);
+    }
+
+    #[test]
+    fn test_dismissed_pr_stays_hidden_when_still_requested() {
+        let (db, _temp_dir) = make_test_db("review_pr_dismiss_sticky");
+        upsert_review_pr_with_head(&db, 1, "abc", 1000);
+        db.dismiss_review_pr(1).expect("dismiss failed");
+
+        // Next poll finds the same PR still requested at the same head. It must not
+        // reappear just because the poller re-upserts it.
+        upsert_review_pr_with_head(&db, 1, "abc", 2000);
+
+        assert!(
+            db.get_all_review_prs().unwrap().is_empty(),
+            "stays removed while merely still requested"
+        );
+        assert!(db.review_pr_dismissal_state(1).unwrap().unwrap().0);
+
+        drop(db);
+    }
+
+    #[test]
+    fn test_dismissed_pr_resurfaces_on_new_commit() {
+        let (db, _temp_dir) = make_test_db("review_pr_resurface_commit");
+        upsert_review_pr_with_head(&db, 1, "abc", 1000);
+        db.dismiss_review_pr(1).expect("dismiss failed");
+
+        // A new commit lands while still requested: the head SHA differs from the
+        // one pinned at removal.
+        upsert_review_pr_with_head(&db, 1, "def", 2000);
+
+        assert_eq!(
+            db.get_all_review_prs().unwrap().len(),
+            1,
+            "a new commit brings a removed PR back"
+        );
+        assert!(!db.review_pr_dismissal_state(1).unwrap().unwrap().0);
+
+        drop(db);
+    }
+
+    #[test]
+    fn test_dismissed_pr_resurfaces_on_rerequest() {
+        let (db, _temp_dir) = make_test_db("review_pr_resurface_rerequest");
+        upsert_review_pr_with_head(&db, 1, "abc", 1000);
+        db.dismiss_review_pr(1).expect("dismiss failed");
+
+        // The user leaves the reviewers (a poll without this id), then is
+        // re-requested (a later poll with it again), all at the same head.
+        db.mark_review_prs_not_requested(&[])
+            .expect("mark not requested failed");
+        assert!(
+            db.get_all_review_prs().unwrap().is_empty(),
+            "still hidden while merely un-requested"
+        );
+        upsert_review_pr_with_head(&db, 1, "abc", 2000);
+
+        assert_eq!(
+            db.get_all_review_prs().unwrap().len(),
+            1,
+            "a fresh review request brings a removed PR back"
+        );
+        let (dismissed, _head, requested) = db.review_pr_dismissal_state(1).unwrap().unwrap();
+        assert!(!dismissed);
+        assert!(requested);
+
+        drop(db);
+    }
+
+    #[test]
+    fn test_rerequest_marks_pr_unread() {
+        let (db, _temp_dir) = make_test_db("review_pr_rerequest_unread");
+        upsert_review_pr_with_head(&db, 1, "abc", 1000);
+        db.mark_review_pr_viewed(1, "abc")
+            .expect("mark viewed failed");
+
+        // Un-request, then re-request at the same head. A re-request should pull the
+        // PR back to the top as unread, not leave it sorted last as already-seen.
+        db.mark_review_prs_not_requested(&[])
+            .expect("mark not requested failed");
+        upsert_review_pr_with_head(&db, 1, "abc", 2000);
 
         let prs = db.get_all_review_prs().expect("get_all failed");
-        assert_eq!(prs.len(), 0);
+        assert_eq!(prs.len(), 1);
+        assert!(
+            prs[0].viewed_at.is_none(),
+            "a re-requested PR resurfaces as unread"
+        );
 
         drop(db);
     }
