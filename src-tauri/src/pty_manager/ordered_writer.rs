@@ -74,13 +74,13 @@ struct OrderedPtyWriterShared {
 }
 
 impl OrderedPtyWriterShared {
-    fn write(
+    fn enqueue(
         &self,
         session_key: &str,
         instance_id: u64,
         source: PtyWriteSource,
         bytes: &[u8],
-    ) -> Result<(), OrderedPtyWriteError> {
+    ) -> Result<PendingWrite, OrderedPtyWriteError> {
         if session_key != self.session_key.as_ref() || instance_id != self.instance_id {
             return Err(OrderedPtyWriteError::ScopeMismatch {
                 session_key: session_key.to_string(),
@@ -111,12 +111,30 @@ impl OrderedPtyWriterShared {
                 },
                 mpsc::TrySendError::Disconnected(_) => OrderedPtyWriteError::Disposed,
             })?;
-        result
-            .recv_timeout(deadline.saturating_duration_since(Instant::now()))
+        Ok(PendingWrite {
+            result,
+            deadline,
+            pending,
+            source,
+        })
+    }
+}
+
+struct PendingWrite {
+    result: mpsc::Receiver<Result<(), OrderedPtyWriteError>>,
+    deadline: Instant,
+    pending: Arc<AtomicBool>,
+    source: PtyWriteSource,
+}
+
+impl PendingWrite {
+    fn wait(self) -> Result<(), OrderedPtyWriteError> {
+        self.result
+            .recv_timeout(self.deadline.saturating_duration_since(Instant::now()))
             .unwrap_or_else(|error| {
-                if pending.swap(false, Ordering::AcqRel) {
+                if self.pending.swap(false, Ordering::AcqRel) {
                     Err(OrderedPtyWriteError::NotExecuted {
-                        write_source: source,
+                        write_source: self.source,
                         reason: match error {
                             mpsc::RecvTimeoutError::Timeout => {
                                 "deadline expired before execution; request cancelled"
@@ -128,7 +146,7 @@ impl OrderedPtyWriterShared {
                     })
                 } else {
                     Err(OrderedPtyWriteError::OutcomeUnknown {
-                        write_source: source,
+                        write_source: self.source,
                         message: error.to_string(),
                     })
                 }
@@ -197,6 +215,7 @@ impl OrderedPtyWriter {
         })
     }
 
+    #[cfg(test)]
     pub(super) fn write_user_input(
         &self,
         session_key: &str,
@@ -204,7 +223,27 @@ impl OrderedPtyWriter {
         bytes: &[u8],
     ) -> Result<(), OrderedPtyWriteError> {
         self.shared
-            .write(session_key, instance_id, PtyWriteSource::UserInput, bytes)
+            .enqueue(session_key, instance_id, PtyWriteSource::UserInput, bytes)?
+            .wait()
+    }
+
+    pub(super) async fn write_user_input_async(
+        &self,
+        session_key: &str,
+        instance_id: u64,
+        bytes: &[u8],
+    ) -> Result<(), OrderedPtyWriteError> {
+        // Admit before yielding so blocking-pool scheduling cannot reorder input
+        // or extend the deadline. Only completion waiting belongs on that pool.
+        let pending =
+            self.shared
+                .enqueue(session_key, instance_id, PtyWriteSource::UserInput, bytes)?;
+        tokio::task::spawn_blocking(move || pending.wait())
+            .await
+            .map_err(|error| OrderedPtyWriteError::OutcomeUnknown {
+                write_source: PtyWriteSource::UserInput,
+                message: format!("write completion task failed: {error}"),
+            })?
     }
 
     pub(super) fn write_ghostty_query_response(
@@ -213,12 +252,14 @@ impl OrderedPtyWriter {
         instance_id: u64,
         bytes: &[u8],
     ) -> Result<(), OrderedPtyWriteError> {
-        self.shared.write(
-            session_key,
-            instance_id,
-            PtyWriteSource::GhosttyQueryResponse,
-            bytes,
-        )
+        self.shared
+            .enqueue(
+                session_key,
+                instance_id,
+                PtyWriteSource::GhosttyQueryResponse,
+                bytes,
+            )?
+            .wait()
     }
 }
 
