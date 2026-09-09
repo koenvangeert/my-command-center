@@ -11,15 +11,18 @@ import {
 } from '@openforge-app/plugin-sdk/testing'
 import type { StoryEnvironmentAdapter } from './storyEnvironment'
 import { createStoryFileSystem, type StoryFileSystemDefinition } from './storyFileSystem'
+import { createStoryScheduleBackend, type StoryScheduleDefinition } from './storyScheduleBackend'
 
 export type StoryPluginDefinition = Omit<TestingOpenForgeApiOptions, 'storage'> & {
   filesystem?: StoryFileSystemDefinition
+  schedules?: StoryScheduleDefinition
 }
 
 export interface StoryPluginAdapter extends StoryEnvironmentAdapter {
   readonly api: MockFrontendOpenForgeAPI
   readonly context: OpenForgeContextSnapshot
   readonly calls: TestingOpenForgeApiCalls
+  readonly schedules: ReturnType<typeof createStoryScheduleBackend> | undefined
   releaseFilesystem(key: string): void
   setBrowserSurfaceState(
     taskId: string,
@@ -32,11 +35,19 @@ export function createStoryPluginAdapter(
   definition: StoryPluginDefinition = {},
 ): StoryPluginAdapter {
   let filesystem: ReturnType<typeof createStoryFileSystem> | undefined
+  let schedules: ReturnType<typeof createStoryScheduleBackend> | undefined
   function createRegistry(): TestingOpenForgeRegistryFake {
-    const { filesystem: definitionFs, ...options } = structuredClone(definition)
+    const { filesystem: definitionFs, schedules: definitionSchedules, ...options } = structuredClone(definition)
     const result = createOpenForgeRegistryFake(options)
     filesystem = definitionFs ? createStoryFileSystem(definitionFs, result.frontendApi.fs) : undefined
     if (filesystem) result.frontendApi.fs = filesystem.fs
+    schedules = definitionSchedules ? createStoryScheduleBackend(definitionSchedules) : undefined
+    if (schedules) {
+      result.backendSubscriptions.add({ dispose: schedules.dispose })
+      for (const [method, registration] of Object.entries(schedules.methods)) {
+        result.backendSubscriptions.add(result.backendApi.backend.registerMethod(method, registration))
+      }
+    }
     return result
   }
   let registry = createRegistry()
@@ -81,6 +92,7 @@ export function createStoryPluginAdapter(
     get calls() {
       return registry.calls
     },
+    get schedules() { return schedules },
     install,
     reset,
     releaseFilesystem(key: string) { filesystem?.release(key) },
