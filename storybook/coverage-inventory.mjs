@@ -1,7 +1,7 @@
 // Basic SDK controls belong to KVG-4691; composite exports belong to KVG-4692.
 const sdkActions = ['default', 'disabled', 'loading', 'narrow-overflow', 'keyboard'].map(state => `components-plugin-sdk-actions--${state}`)
 const sdkFields = ['default', 'selected', 'disabled', 'validation', 'narrow-overflow', 'keyboard'].map(state => `components-plugin-sdk-fields--${state}`)
-const sdkSelectors = ['default', 'selected', 'disabled', 'validation', 'open', 'narrow-overflow', 'empty', 'no-matches', 'keyboard'].map(state => `components-plugin-sdk-selectors--${state}`)
+const sdkSelectors = ['default', 'selected', 'disabled', 'validation', 'open', 'narrow-overflow', 'empty', 'no-matches', 'bounded-results', 'keyword-search', 'keyboard'].map(state => `components-plugin-sdk-selectors--${state}`)
 const sdkPresentation = ['default', 'narrow-overflow'].map(state => `components-plugin-sdk-presentation--${state}`)
 const sdkNavigation = ['default', 'selected', 'collapsed', 'narrow-overflow', 'keyboard'].map(state => `components-plugin-sdk-navigation--${state}`)
 const fileViewerPages = [
