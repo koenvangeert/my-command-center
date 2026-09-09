@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { parseArgs } from 'node:util'
 import { UI_MIGRATION_ROOTS, isInventorySource, checksPresentation } from './ui-migration-scope.mjs'
 import { dirname, posix, resolve } from 'node:path'
@@ -109,6 +109,169 @@ function classTokens(attribute, bindings) {
 
 function elementName(node) {
   return typeof node.name === 'string' ? node.name : null
+}
+
+// Paint-equivalent roles from theme-adapter.css, not visual redesign choices.
+const LEGACY_COLOR_ROLES = Object.freeze({
+  'base-100': 'surface', 'base-200': 'surface-subtle', 'base-300': 'border',
+  'base-content': 'text', primary: 'accent', 'primary-content': 'on-accent',
+  accent: 'accent', 'accent-content': 'on-accent', secondary: 'control',
+  'secondary-content': 'control-text', neutral: 'text', 'neutral-content': 'text-inverse',
+  info: 'info', 'info-content': 'on-info', success: 'success', 'success-content': 'on-success',
+  warning: 'warning', 'warning-content': 'on-warning', error: 'danger', 'error-content': 'on-danger',
+})
+const LEGACY_COLOR_CLASS = new RegExp(`^((?:bg|text|border(?:-[xytrblse])?|divide|ring(?:-offset)?|outline|decoration|placeholder|caret|accent|fill|stroke|from|via|to|shadow)-)(${Object.keys(LEGACY_COLOR_ROLES).sort((a, b) => b.length - a.length).join('|')})(/.*)?$`)
+const LEGACY_VARIABLES = Object.freeze({
+  ...Object.fromEntries(Object.entries(LEGACY_COLOR_ROLES).map(([legacy, role]) => [`--color-${legacy}`, `--of-${role}`])),
+  '--radius-selector': '--of-radius-round', '--radius-field': '--of-radius-control', '--radius-box': '--of-radius-container',
+  '--size-selector': 'calc(var(--of-control-height-compact) / 8)', '--size-field': 'calc(var(--of-control-height) / 10)',
+  '--border': '--of-border-width', '--depth': '0', '--noise': '0',
+})
+
+function legacyVariables(value) {
+  return [...value.matchAll(/--[\w-]+/g)].filter(match => Object.hasOwn(LEGACY_VARIABLES, match[0]))
+}
+
+function legacyColor(token) {
+  const base = token.split(/:(?![^\[]*\])/).at(-1).replace(/^!|!$/g, '')
+  const match = base.match(LEGACY_COLOR_CLASS)
+  if (!match) return null
+  const replacement = `${match[1]}of-${LEGACY_COLOR_ROLES[match[2]]}${match[3] ?? ''}`
+  return token.replace(base, replacement)
+}
+
+function classifyLegacyToken(token) {
+  const replacement = legacyColor(token)
+  if (replacement) return { kind: 'color', replacement }
+  if (legacyVariables(token).length) {
+    return { kind: 'arbitrary-variable', replacement: token.replace(/--[\w-]+/g, name => LEGACY_VARIABLES[name] ?? name) }
+  }
+  const base = token.split(/:(?![^\[]*\])/).at(-1).replace(/^!|!$/g, '')
+  if (/^(?:loading|alert|progress)(?:-|$)/.test(base) || classRule(token) === 'daisyui') {
+    return { kind: 'component', replacement: 'Use the corresponding SDK control; preserve caller semantics and bounds' }
+  }
+  return null
+}
+
+function unresolvedClass(node, bindings, seen = new Set()) {
+  if (Array.isArray(node)) return node.some(child => unresolvedClass(child, bindings, seen))
+  if (!node || typeof node !== 'object') return false
+  switch (node.type) {
+    case 'Text': case 'Literal': return false
+    case 'Attribute': return unresolvedClass(node.value, bindings, seen)
+    case 'MustacheTag': return unresolvedClass(node.expression, bindings, seen)
+    case 'Identifier':
+      return seen.has(node.name) || !bindings.get(node.name)
+        || unresolvedClass(bindings.get(node.name), bindings, new Set([...seen, node.name]))
+    case 'ConditionalExpression': return unresolvedClass([node.consequent, node.alternate], bindings, seen)
+    case 'LogicalExpression': return unresolvedClass(node.operator === '&&' ? node.right : [node.left, node.right], bindings, seen)
+    case 'ArrayExpression': return unresolvedClass(node.elements, bindings, seen)
+    case 'ObjectExpression': return node.properties.some(property => property.computed || property.type !== 'Property')
+    case 'TemplateLiteral': return node.expressions.length > 0
+    default: return true
+  }
+}
+
+export function inventoryLegacyUiConsumers(sources) {
+  const records = []
+  for (const source of sources) {
+    const isCss = source.path.endsWith('.css')
+    const isMarkup = /\.(?:svelte|html)$/.test(source.path)
+    const subsystem = source.path.startsWith('src/') ? 'host' : source.path.split('/').slice(0, 2).join('/')
+    let ast
+    try {
+      if (source.path.endsWith('package.json')) {
+        const manifest = JSON.parse(source.contents)
+        if (manifest.dependencies?.daisyui || manifest.devDependencies?.daisyui) {
+          records.push({ path: source.path, subsystem, kind: 'build-input', token: 'daisyui', replacement: 'Retain until final removal', line: source.contents.slice(0, source.contents.indexOf('"daisyui"')).split('\n').length })
+        }
+        continue
+      }
+      ast = isCss || isMarkup
+        ? parse(isCss ? `<style>${source.contents}</style>` : source.contents, { filename: source.path })
+        : parseScript(source.contents, { sourceType: 'unambiguous', plugins: [['typescript', { dts: /\.d\.[cm]?ts$/.test(source.path) }], 'jsx'] })
+    } catch (error) {
+      records.push({ path: source.path, subsystem, kind: 'unresolved', token: `Parse error: ${error.message}`, replacement: 'Manual review required', line: error.loc?.line ?? 1 })
+      continue
+    }
+    function record(kind, token, replacement, start) {
+      records.push({ path: source.path, subsystem, kind, token, replacement, line: source.contents.slice(0, start).split('\n').length })
+    }
+    function classConsumer(token, start, candidate = false) {
+      const classification = classifyLegacyToken(token)
+      if (!classification) return
+      const { kind, replacement } = classification
+      record(candidate ? kind === 'color' ? 'script-candidate' : `script-${kind}-candidate` : kind, token, replacement, start)
+    }
+    if (!isMarkup && !isCss) {
+      visit(ast, node => {
+        if (node.type === 'VariableDeclarator' && /class/i.test(node.id?.name ?? '')
+          && node.init && !['StringLiteral', 'Literal'].includes(node.init.type)) {
+          record('unresolved', source.contents.slice(node.start, node.end), 'Review script class producer', node.start)
+        }
+        if (node.type !== 'StringLiteral' && node.type !== 'TemplateElement') return
+        const value = node.type === 'TemplateElement' ? node.value.raw : node.value
+        for (const token of value.split(/\s+/)) {
+          classConsumer(token, node.start, true)
+        }
+        for (const [token] of legacyVariables(value)) record('script-variable-candidate', token, LEGACY_VARIABLES[token], node.start)
+      })
+    }
+    visit(ast.css, node => {
+      const start = node.start - (isCss ? 7 : 0)
+      if (node.type === 'ClassSelector') classConsumer(node.name.replace(/\\(.)/g, '$1'), start)
+      if (node.type === 'Declaration') {
+        if (Object.hasOwn(LEGACY_VARIABLES, node.property)) record('compatibility-definition', node.property, LEGACY_VARIABLES[node.property], start)
+        for (const [token] of legacyVariables(node.value)) {
+          record(token.startsWith('--color-') ? 'color-variable' : 'geometry-variable', token, LEGACY_VARIABLES[token], start)
+        }
+      }
+      if (node.type === 'Atrule' && node.name === 'apply') for (const token of node.prelude.split(/\s+/)) classConsumer(token, start)
+      if (node.type === 'Atrule' && ['plugin', 'import'].includes(node.name)) {
+        const token = node.prelude.replace(/^['"]|['"]$/g, '')
+        if (/daisyui|theme-adapter\.css/.test(token)) record('build-input', token, 'Retain until final removal', start)
+      }
+    })
+    const bindings = new Map()
+    visit([ast.instance, ast.module], node => {
+      if (node.type !== 'VariableDeclaration') return
+      for (const declaration of node.declarations) {
+        if (declaration.id?.type !== 'Identifier') continue
+        // Mutable bindings and name collisions cannot be resolved from an initializer.
+        const name = declaration.id.name
+        bindings.set(name, node.kind === 'const' && !bindings.has(name) ? declaration.init : null)
+      }
+    })
+    visitTemplate(ast.html, bindings, (node, local) => {
+      if (!Array.isArray(node.attributes)) return
+      for (const attribute of node.attributes) {
+        if (attribute.type === 'StyleDirective' || (attribute.type === 'Attribute' && attribute.name === 'style')) {
+          for (const value of stringsIn(attribute.value, local)) {
+            for (const [token] of legacyVariables(value)) record(token.startsWith('--color-') ? 'color-variable' : 'geometry-variable', token, LEGACY_VARIABLES[token], attribute.start)
+          }
+        }
+        if (attribute.type === 'Spread' || (attribute.type === 'Attribute' && /^(?:class|className|\w+Class)$/.test(attribute.name) && unresolvedClass(attribute, local))) {
+          records.push({ path: source.path, subsystem: source.path.startsWith('src/') ? 'host' : source.path.split('/').slice(0, 2).join('/'),
+            kind: 'unresolved', token: source.contents.slice(attribute.start, attribute.end), replacement: 'Manual review required',
+            line: source.contents.slice(0, attribute.start).split('\n').length })
+        }
+        for (const token of classTokens(attribute, local)) {
+          classConsumer(token, attribute.start)
+        }
+      }
+    })
+    if (isMarkup) {
+      const consumed = new Set(records.filter(record => record.path === source.path).map(record => record.token))
+      visit([ast.instance, ast.module], node => {
+        const value = node.type === 'Literal' ? node.value : node.type === 'TemplateElement' ? node.value.raw : null
+        if (typeof value !== 'string') return
+        for (const token of value.split(/\s+/)) {
+          if (!consumed.has(token)) classConsumer(token, node.start, true)
+        }
+      })
+    }
+  }
+  return records
 }
 
 export function findUiMigrationInventoryViolations(sources, allowlist = {}) {
@@ -231,8 +394,35 @@ export function readMigratedUiSources(root = REPO_ROOT) {
   return paths.sort().map((path) => ({ path, contents: readFileSync(resolve(root, path), 'utf8'), presentation: checksPresentation(path) }))
 }
 
+export function readLegacyUiSources(root = REPO_ROOT) {
+  const sources = []
+  const skipped = new Set(['node_modules', 'dist', 'build', 'coverage', '.git', '.svelte-kit', 'target', 'storybook-static'])
+  function collect(directory) {
+    if (!existsSync(resolve(root, directory))) return
+    for (const entry of readdirSync(resolve(root, directory), { withFileTypes: true })) {
+      const path = `${directory}/${entry.name}`
+      if (entry.isDirectory() && !skipped.has(entry.name)) collect(path)
+      else if (entry.isFile() && (/\.(?:svelte|css|html|[cm]?[jt]sx?)$/.test(path) || entry.name === 'package.json')) {
+        sources.push({ path, contents: readFileSync(resolve(root, path), 'utf8') })
+      }
+    }
+  }
+  for (const directory of ['src', 'packages', 'plugins', 'storybook', 'scripts', 'tests']) collect(directory)
+  for (const entry of readdirSync(root, { withFileTypes: true })) {
+    if (entry.isFile() && (entry.name === 'package.json' || /\.(?:[cm]?[jt]s|html)$/.test(entry.name))) {
+      sources.push({ path: entry.name, contents: readFileSync(resolve(root, entry.name), 'utf8') })
+    }
+  }
+  return sources.sort((a, b) => a.path.localeCompare(b.path))
+}
+
 function run() {
-  const { values } = parseArgs({ options: { root: { type: 'string', default: REPO_ROOT } } })
+  const { values } = parseArgs({ options: { root: { type: 'string', default: REPO_ROOT }, 'legacy-inventory': { type: 'boolean' } } })
+  if (values['legacy-inventory']) {
+    const sources = readLegacyUiSources(values.root)
+    console.log(JSON.stringify({ sources: sources.length, records: inventoryLegacyUiConsumers(sources) }, null, 2))
+    return
+  }
   const sources = readMigratedUiSources(values.root)
   const policy = JSON.parse(readFileSync(resolve(values.root, 'scripts/ui-migration-allowlist.json'), 'utf8'))
   const violations = findUiMigrationInventoryViolations(sources, policy)

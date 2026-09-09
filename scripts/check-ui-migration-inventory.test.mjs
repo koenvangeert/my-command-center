@@ -5,9 +5,136 @@ import { spawnSync } from 'node:child_process'
 import { describe, expect, it } from 'vitest'
 import {
   UI_MIGRATION_ALLOWLIST,
+  inventoryLegacyUiConsumers,
   findUiMigrationInventoryViolations,
   readMigratedUiSources,
 } from './check-ui-migration-inventory.mjs'
+
+describe('legacy presentation inventory', () => {
+  it('classifies feedback variants consistently in markup, CSS and script producers', () => {
+    const records = inventoryLegacyUiConsumers([
+      { path: 'src/View.svelte', contents: '<div class="hover:loading-spinner md:alert-error" />' },
+      { path: 'src/theme.css', contents: '.hover\\:loading-spinner { display: inline; }' },
+      { path: 'src/spinner.ts', contents: 'export const spinner = "loading loading-spinner"' },
+      { path: 'src/Script.svelte', contents: '<script>const spinner = () => "md:progress-primary";</script>' },
+    ])
+    expect(records.map(record => [record.kind, record.token])).toEqual([
+      ['component', 'hover:loading-spinner'], ['component', 'md:alert-error'],
+      ['component', 'hover:loading-spinner'], ['script-component-candidate', 'loading'],
+      ['script-component-candidate', 'loading-spinner'], ['script-component-candidate', 'md:progress-primary'],
+    ])
+  })
+  it('keeps uncertain spreads and mutable class bindings visible', () => {
+    const sources = [
+      { path: 'src/Spread.svelte', contents: '<script>const props = external;</script><div {...props}/>' },
+      { path: 'src/Mutable.svelte', contents: '<script>let paint = "text-of-text"; paint = external;</script><div class={paint}/>' },
+    ]
+    expect(inventoryLegacyUiConsumers(sources).map(record => [record.kind, record.token])).toEqual([
+      ['unresolved', '{...props}'], ['unresolved', 'class={paint}'],
+    ])
+  })
+  it('does not hide the dynamic branch of an OR fallback or script template producer', () => {
+    const records = inventoryLegacyUiConsumers([
+      { path: 'src/View.svelte', contents: '<script>let external;</script><div class={external || "text-primary"} />' },
+      { path: 'src/classes.ts', contents: 'export const classes = `bg-${tone}`' },
+    ])
+    expect(records.filter(record => record.kind === 'unresolved').map(record => record.path)).toEqual(['src/View.svelte', 'src/classes.ts'])
+  })
+  it('records compatibility definitions, inline geometry reads, and the dependency build input', () => {
+    const records = inventoryLegacyUiConsumers([
+      { path: 'src/adapter.css', contents: ':root { --color-primary: var(--of-accent); --radius-field: var(--of-radius-control); }' },
+      { path: 'src/Field.svelte', contents: '<div style="border-radius:var(--radius-field)" />' },
+      { path: 'package.json', contents: '{"dependencies":{"daisyui":"^5.7.27"}}' },
+    ])
+    expect(records.map(r => [r.kind, r.token])).toEqual([
+      ['compatibility-definition', '--color-primary'], ['compatibility-definition', '--radius-field'],
+      ['geometry-variable', '--radius-field'], ['build-input', 'daisyui'],
+    ])
+  })
+  it('finds feedback controls and unconsumed Svelte script producers without treating select-none as a control', () => {
+    const records = inventoryLegacyUiConsumers([{ path: 'src/Feedback.svelte', contents: `
+      <script>const colorFor = () => 'text-error/80';</script>
+      <span class="loading loading-spinner select-none" /><div class="alert alert-error" />
+    ` }])
+    expect(records.map(r => [r.kind, r.token])).toEqual([
+      ['component', 'loading'], ['component', 'loading-spinner'],
+      ['component', 'alert'], ['component', 'alert-error'], ['script-candidate', 'text-error/80'],
+    ])
+  })
+  it('supports declarations and reports unparseable sources as unresolved', () => {
+    expect(inventoryLegacyUiConsumers([{ path: 'src/api.d.ts', contents: 'export const name: string;' }])).toEqual([])
+    expect(inventoryLegacyUiConsumers([{ path: 'src/broken.ts', contents: 'const =' }])).toEqual([
+      expect.objectContaining({ path: 'src/broken.ts', kind: 'unresolved', token: expect.stringContaining('Parse error:') }),
+    ])
+  })
+  it('exposes the expanded inventory through the existing command', () => {
+    const root = mkdtempSync(resolve(tmpdir(), 'legacy-ui-inventory-'))
+    try {
+      mkdirSync(resolve(root, 'storybook/fixtures'), { recursive: true })
+      writeFileSync(resolve(root, 'storybook/fixtures/View.svelte'), '<div class="text-error" />')
+      const result = spawnSync(process.execPath, ['scripts/check-ui-migration-inventory.mjs', '--root', root, '--legacy-inventory'], { encoding: 'utf8' })
+      expect(result.status, result.stderr).toBe(0)
+      expect(JSON.parse(result.stdout).records).toEqual([expect.objectContaining({
+        path: 'storybook/fixtures/View.svelte', token: 'text-error', replacement: 'text-of-danger',
+      })])
+    } finally { rmSync(root, { recursive: true, force: true }) }
+  })
+  it('keeps script class candidates visible while excluding comments and text-selection utilities', () => {
+    const records = inventoryLegacyUiConsumers([{ path: 'packages/example/classes.ts', contents: `
+      // text-error is only a comment
+      export const paint = enabled ? 'hover:bg-primary/10' : 'text-base-content'
+      export const ordinary = 'select-none native select'
+    ` }])
+    expect(records.map(r => [r.kind, r.token])).toEqual([
+      ['script-candidate', 'hover:bg-primary/10'], ['script-candidate', 'text-base-content'],
+      // A script string cannot prove whether "select" is a tag name or a class.
+      ['script-component-candidate', 'select'],
+    ])
+  })
+  it('includes CSS selectors, apply, arbitrary variables, geometry aliases and build inputs', () => {
+    const records = inventoryLegacyUiConsumers([
+      { path: 'src/style.css', contents: '/* .text-error */ .bg-primary { @apply ring-offset-primary; color: var(--color-error); border-radius: var(--radius-field); }' },
+      { path: 'src/View.svelte', contents: '<div class="bg-[var(--color-base-100)] text-[var(--of-text)] select-none" />' },
+      { path: 'src/app.css', contents: '@plugin "daisyui"; @import "./styles/theme-adapter.css";' },
+    ])
+    expect(records.map(r => r.token)).toEqual([
+      'bg-primary', 'ring-offset-primary', '--color-error', '--radius-field',
+      'bg-[var(--color-base-100)]', 'daisyui', './styles/theme-adapter.css',
+    ])
+    expect(records.find(r => r.token === 'bg-[var(--color-base-100)]')?.replacement).toBe('bg-[var(--of-surface)]')
+    expect(records.find(r => r.token === '--radius-field')?.kind).toBe('geometry-variable')
+  })
+  it('reports unresolved dynamic construction instead of claiming it is migrated', () => {
+    const records = inventoryLegacyUiConsumers([{ path: 'plugins/example/View.svelte', contents:
+      '<script>let role = "primary"; let external;</script><div class={`bg-${role} ${external}`} />',
+    }])
+    expect(records).toEqual(expect.arrayContaining([expect.objectContaining({
+      kind: 'unresolved', token: 'class={`bg-${role} ${external}`}', subsystem: 'plugins/example',
+    })]))
+  })
+  it('recognizes full directional, ring-offset and gradient colors but excludes ordinary Tailwind classes', () => {
+    const records = inventoryLegacyUiConsumers([{ path: 'src/View.svelte', contents:
+      '<div class="select-none text-current bg-red-500 border-x-base-300/50 focus:ring-offset-primary from-primary/20 via-secondary to-error/0" />',
+    }])
+    expect(records.map(r => r.replacement)).toEqual([
+      'border-x-of-border/50', 'focus:ring-offset-of-accent', 'from-of-accent/20', 'via-of-control', 'to-of-danger/0',
+    ])
+  })
+  it('preserves conditional, directive and script-held classes with complete variants and opacity', () => {
+    const records = inventoryLegacyUiConsumers([{ path: 'src/Example.svelte', contents: `
+      <script>let active = false; const paint = active ? 'md:hover:bg-primary/10' : 'text-base-content/70'</script>
+      <div class={paint} class:border-l-error={active} />
+    ` }])
+    expect(records.filter(r => r.kind === 'color').map(r => [r.token, r.replacement])).toEqual([
+      ['md:hover:bg-primary/10', 'md:hover:bg-of-accent/10'],
+      ['text-base-content/70', 'text-of-text/70'],
+      ['border-l-error', 'border-l-of-danger'],
+    ])
+    expect(records).toEqual(expect.arrayContaining([expect.objectContaining({
+      path: 'src/Example.svelte', subsystem: 'host', line: 3,
+    })]))
+  })
+})
 
 describe('completed UI migration inventory', () => {
   it('detects named sizes and CSS length units and percentages', () => {

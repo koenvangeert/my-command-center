@@ -22,6 +22,7 @@
 @import "@fontsource/space-mono/700.css";
 @import "tailwindcss";
 @import "./styles/theme-adapter.css";
+@import "./styles/semantic-utilities.css";
 @import "./styles/markdown-and-file-previews.css";
 @import "./styles/terminal-presentation.css";
 @import "./styles/task-status-states.css";

@@ -1,0 +1,21 @@
+/* Host-built Tailwind vocabulary. Inline values resolve at the consuming element,
+   including contributed themes and locally scoped token overrides. */
+@theme inline {
+  --color-of-surface: var(--of-surface);
+  --color-of-text: var(--of-text);
+  --color-of-border: var(--of-border);
+  --color-of-accent: var(--of-accent);
+  --color-of-surface-subtle: var(--of-surface-subtle);
+  --color-of-text-inverse: var(--of-text-inverse);
+  --color-of-on-accent: var(--of-on-accent);
+  --color-of-control: var(--of-control);
+  --color-of-control-text: var(--of-control-text);
+  --color-of-info: var(--of-info);
+  --color-of-on-info: var(--of-on-info);
+  --color-of-success: var(--of-success);
+  --color-of-on-success: var(--of-on-success);
+  --color-of-warning: var(--of-warning);
+  --color-of-on-warning: var(--of-on-warning);
+  --color-of-danger: var(--of-danger);
+  --color-of-on-danger: var(--of-on-danger);
+}
