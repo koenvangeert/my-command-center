@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte'
   import type { AutocompleteItem } from '../../lib/types'
   import PaletteListbox from '../shared/ui/PaletteListbox.svelte'
   import { useAutocomplete } from '../../lib/useAutocomplete.svelte'
@@ -72,6 +73,7 @@
 
   // ── Autocomplete composable ───────────────────────────────────────────────────
   const ac = useAutocomplete(getAutocompleteProjectId(), () => commandTrigger)
+  onDestroy(ac.dispose)
   const commandTriggerPrefix = $derived(commandTrigger === 'dollar' ? '$' : '/')
 
   // ── Auto-focus ───────────────────────────────────────────────────────────────
@@ -242,6 +244,7 @@
     if (e.key === 'Escape') {
       e.preventDefault()
       e.stopPropagation()
+      ac.closePopover()
       onCancel()
     }
   }
