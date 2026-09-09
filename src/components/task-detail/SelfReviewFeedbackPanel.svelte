@@ -20,7 +20,7 @@
 
 <section class="flex h-full min-w-0 flex-col overflow-hidden bg-base-100" aria-label="Feedback panel">
   {#if linkedPr}
-    <div class="flex shrink-0 flex-wrap items-center gap-2 border-b border-base-300 bg-base-200/50 px-3 py-2">
+    <div class="flex min-h-[calc(var(--of-control-height-touch)+0.5rem+var(--of-border-width))] shrink-0 flex-wrap items-center gap-2 border-b border-base-300 bg-base-200 px-3 py-1">
       {#if commentSelection.selectedCount > 0}
         <span class="text-[13px] font-semibold text-primary">{commentSelection.selectedCount} selected</span>
         <Button variant="ghost" size="sm" onclick={commentSelection.deselectAll}>Clear</Button>

@@ -48,7 +48,7 @@
   }
 </script>
 
-<div class="sticky top-0 z-20 w-full flex items-center gap-2 px-4 py-1 bg-base-200 border-b border-base-300 rounded-t-[var(--of-radius-container)] shadow-sm">
+<div class="sticky top-0 z-20 w-full flex items-center gap-2 px-4 py-1 bg-base-200 border-b border-base-300 rounded-t-[var(--of-diff-section-radius,var(--of-radius-container))] shadow-sm">
   <button
     class="flex min-h-[var(--of-control-height-touch)] flex-shrink-0 items-center gap-2 text-left hover:text-primary transition-colors"
     aria-label={getToggleLabel()}

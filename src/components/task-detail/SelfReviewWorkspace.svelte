@@ -30,7 +30,9 @@
   }
 </script>
 
-<div class="flex h-full w-full min-w-0 flex-col overflow-hidden" style="background: var(--of-review-canvas)">
+<div class="flex h-full w-full min-w-0 flex-col overflow-hidden"
+  style="background: var(--of-review-canvas); --of-diff-toolbar-height: calc(var(--of-control-height) + 2 * var(--of-space1) + var(--of-border-width)); --of-diff-section-radius: 0px; --of-diff-section-top-border-width: 0px"
+>
   <div class="flex shrink-0 flex-wrap items-center gap-1 border-b border-base-300 bg-base-100 p-1" role="group" aria-label="Review bar">
     <Button size="sm" variant="ghost" aria-expanded={controller.sidePanelVisible} onclick={controller.toggleSidePanel}>
       {controller.sidePanelVisible ? 'Collapse review panel' : 'Show review panel'}

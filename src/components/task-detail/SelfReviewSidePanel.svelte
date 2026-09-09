@@ -30,6 +30,7 @@
       value={controller.sidePanelTab}
       onValueChange={(value) => controller.selectSidePanelTab(value === 'files' ? 'files' : 'github-comments')}
       fill
+      attached
     >
       {#snippet children(value)}
         {#if value === 'files'}

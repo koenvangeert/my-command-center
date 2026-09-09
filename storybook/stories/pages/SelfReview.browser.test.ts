@@ -28,6 +28,29 @@ async function expectReachable(element: Locator) {
 }
 
 describe.skipIf(!storybookUrl)('Self Review in the production task workspace', () => {
+  it.each([900, 1280])('aligns flat attached headers at %spx', async (width) => {
+    const page = await browser.newPage({ viewport: { width, height: 800 }, reducedMotion: 'reduce' })
+    try {
+      await page.goto(`${storybookUrl}/iframe.html?id=pages-self-review--github-comments&viewMode=story`)
+      await page.getByRole('region', { name: 'Feedback panel' }).getByText('Please handle whitespace-only names.', { exact: true }).waitFor()
+      const headers = await page.evaluate(() => {
+        return ['.diff-viewer-toolbar', '[role="tablist"][aria-label="Review navigation"]', '[aria-label="Diff scroll area"] .sticky', '[aria-label="Feedback panel"] > div'].map(selector => {
+          const element = document.querySelector(selector)!
+          const rect = element.getBoundingClientRect()
+          return { top: rect.top, bottom: rect.bottom, radius: getComputedStyle(element).borderTopLeftRadius }
+        })
+      })
+      expect(headers[0].top).toBe(headers[1].top)
+      expect(headers[0].bottom).toBe(headers[1].bottom)
+      expect(headers[2].top).toBe(headers[3].top)
+      expect(headers[2].bottom).toBe(headers[3].bottom)
+      expect(headers.map(header => header.radius)).toEqual(['0px', '0px', '0px', '0px'])
+      const card = page.getByRole('region', { name: 'Feedback panel' }).getByRole('button', { name: 'Comment by alex', exact: true })
+      expect(await card.evaluate(element => getComputedStyle(element).borderTopLeftRadius)).not.toBe('0px')
+      expect(await page.getByRole('tab', { name: 'GitHub comments (1)', exact: true }).evaluate(element => getComputedStyle(element).borderTopLeftRadius)).not.toBe('0px')
+    } finally { await page.close() }
+  }, 60_000)
+
   for (const width of [900, 1280, 1600, 1920]) {
     it(`keeps files, code, and review actions visible without workspace scrolling at ${width}px`, async () => {
       const page = await browser.newPage({ viewport: { width, height: 800 }, reducedMotion: 'reduce' })

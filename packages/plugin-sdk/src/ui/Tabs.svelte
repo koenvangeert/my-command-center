@@ -20,6 +20,8 @@
     loop?: boolean
     disabled?: boolean
     fill?: boolean
+    /** Flat, edge-to-edge tab strip for an attached pane header. */
+    attached?: boolean
     class?: string
     testId?: string
     onValueChange?: (value: string) => void
@@ -35,6 +37,7 @@
     loop = true,
     disabled = false,
     fill = false,
+    attached = false,
     class: className,
     testId,
     onValueChange,
@@ -42,7 +45,7 @@
   }: Props = $props()
 </script>
 
-<div class="of-tabs {className ?? ''}" data-fill={fill ? '' : undefined} data-testid={testId}>
+<div class="of-tabs {className ?? ''}" data-fill={fill ? '' : undefined} data-attached={attached ? '' : undefined} data-testid={testId}>
   <Tabs.Root class="of-tabs-root" bind:value {orientation} {activationMode} {loop} {disabled} {onValueChange}>
     <Tabs.List class="of-tabs-list" aria-label={label}>
       {#each tabs as tab (tab.value)}
@@ -95,6 +98,11 @@
     border: var(--of-border-width) solid var(--of-border);
     border-radius: var(--of-radius-container);
     background: var(--of-surface-subtle);
+  }
+
+  .of-tabs[data-attached] :global(.of-tabs-list) {
+    border-width: 0 0 var(--of-border-width);
+    border-radius: 0;
   }
 
   .of-tabs :global(.of-tabs-list[data-orientation='vertical']) {
