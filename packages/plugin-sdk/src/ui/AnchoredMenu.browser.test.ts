@@ -1,4 +1,6 @@
 // @vitest-environment node
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
 import { svelte } from '@sveltejs/vite-plugin-svelte'
 import { chromium, type Browser } from 'playwright'
@@ -9,12 +11,17 @@ import { createOpenForgePluginSdkSourceAliasRecord } from '../vite'
 let server: ViteDevServer
 let browser: Browser
 let origin: string
+let cacheDir: string | undefined
 
 beforeAll(async () => {
+  // Parallel fixture servers must not invalidate each other's optimized dependencies.
+  cacheDir = await mkdtemp(resolve(tmpdir(), 'openforge-anchored-menu-'))
   server = await createServer({
     configFile: false,
     root: resolve(import.meta.dirname, '../../../..'),
     plugins: [svelte()],
+    cacheDir,
+    optimizeDeps: { entries: ['packages/plugin-sdk/src/ui/browser/anchored-menu.html'] },
     resolve: { alias: createOpenForgePluginSdkSourceAliasRecord(new URL('../../../../', import.meta.url)) },
     logLevel: 'error',
     server: { host: '127.0.0.1', port: 0 },
@@ -25,8 +32,15 @@ beforeAll(async () => {
 }, 60_000)
 
 afterAll(async () => {
-  await browser?.close()
-  await server?.close()
+  try {
+    await browser?.close()
+  } finally {
+    try {
+      await server?.close()
+    } finally {
+      if (cacheDir) await rm(cacheDir, { recursive: true, force: true })
+    }
+  }
 })
 
 it('selects the End-focused item after rapid keyboard reopen without late autofocus stealing it', async () => {
