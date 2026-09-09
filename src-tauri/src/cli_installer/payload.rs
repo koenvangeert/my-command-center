@@ -12,19 +12,79 @@ pub(super) fn cli_install_dir() -> Option<PathBuf> {
 }
 
 pub(super) fn write_cli_files(install_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    fs::create_dir_all(install_dir)?;
+    use sha2::{Digest, Sha256};
+
+    let payloads = install_dir.join("payloads");
+    fs::create_dir_all(&payloads)?;
+    let mut digest = Sha256::new();
     for (filename, contents) in OPENFORGE_CLI_RUNTIME_FILES {
-        fs::write(install_dir.join(filename), contents)?;
+        digest.update((filename.len() as u64).to_le_bytes());
+        digest.update(filename.as_bytes());
+        digest.update((contents.len() as u64).to_le_bytes());
+        digest.update(contents.as_bytes());
     }
-    fs::write(
-        install_dir.join("openforge-skill.md"),
-        build_openforge_skill(),
+    let version = format!("{:x}", digest.finalize());
+    let destination = payloads.join(&version);
+    if !destination.is_dir() {
+        let staging = tempfile::Builder::new()
+            .prefix(".staging-")
+            .tempdir_in(&payloads)?;
+        for (filename, contents) in OPENFORGE_CLI_RUNTIME_FILES {
+            fs::write(staging.path().join(filename), contents)?;
+        }
+        // Another installer may publish this same content while we stage it.
+        if let Err(error) = fs::rename(staging.path(), &destination) {
+            if !destination.is_dir() {
+                return Err(error.into());
+            }
+        }
+    }
+
+    atomic_write(
+        &install_dir.join("openforge-skill.md"),
+        build_openforge_skill().as_bytes(),
+        false,
     )?;
-    fs::write(
-        install_dir.join("openforge-plugin-dev-skill.md"),
-        build_openforge_plugin_dev_skill(),
+    atomic_write(
+        &install_dir.join("openforge-plugin-dev-skill.md"),
+        build_openforge_plugin_dev_skill().as_bytes(),
+        false,
     )?;
-    info!("[cli_installer] OpenForge CLI files written");
+    // Each entry point names one immutable directory, including for lazy imports.
+    // Keep old payloads and legacy root modules: running processes may still need them.
+    let entry = format!(
+        "#!/usr/bin/env node\nimport('./payloads/{version}/cli.js').catch(error => {{ console.error(error); process.exitCode = 1; }});\n"
+    );
+    atomic_write(&install_dir.join("cli.js"), entry.as_bytes(), false)?;
+    info!("[cli_installer] OpenForge CLI payload published: {version}");
+    Ok(())
+}
+
+pub(super) fn atomic_write(path: &Path, contents: &[u8], executable: bool) -> std::io::Result<()> {
+    use std::io::Write;
+
+    let parent = path.parent().ok_or_else(|| {
+        std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "file has no parent directory",
+        )
+    })?;
+    let mut staging = tempfile::NamedTempFile::new_in(parent)?;
+    staging.write_all(contents)?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        staging
+            .as_file()
+            .set_permissions(fs::Permissions::from_mode(if executable {
+                0o755
+            } else {
+                0o644
+            }))?;
+    }
+    #[cfg(not(unix))]
+    let _ = executable;
+    staging.persist(path).map_err(|error| error.error)?;
     Ok(())
 }
 
@@ -47,11 +107,17 @@ mod tests {
         let result = write_cli_files(tmp_dir.path());
         assert!(result.is_ok(), "write CLI files failed: {:?}", result);
 
+        let runtime_dir = fs::read_dir(tmp_dir.path().join("payloads"))
+            .unwrap()
+            .next()
+            .unwrap()
+            .unwrap()
+            .path();
         let skill_md = tmp_dir.path().join("openforge-skill.md");
         let plugin_dev_skill_md = tmp_dir.path().join("openforge-plugin-dev-skill.md");
         for (filename, _) in OPENFORGE_CLI_RUNTIME_FILES.iter().copied() {
             assert!(
-                tmp_dir.path().join(filename).exists(),
+                runtime_dir.join(filename).exists(),
                 "{filename} should be installed"
             );
         }
@@ -71,7 +137,7 @@ mod tests {
 
         let runtime_content = OPENFORGE_CLI_RUNTIME_FILES
             .iter()
-            .map(|(filename, _)| std::fs::read_to_string(tmp_dir.path().join(filename)).unwrap())
+            .map(|(filename, _)| std::fs::read_to_string(runtime_dir.join(filename)).unwrap())
             .collect::<Vec<_>>()
             .join("\n");
         assert!(runtime_content.contains("openforge task create"));
