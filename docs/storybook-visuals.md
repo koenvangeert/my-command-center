@@ -2,6 +2,8 @@
 
 The manifest includes foundation, task workspace, host chrome, Plugin SDK, terminal, and navigation/search cases. See [task workspaces](storybook-task-workspaces.md), [host chrome and feedback](storybook-host-chrome.md), [SDK composite layouts](storybook-sdk-composites.md), and [navigation workflows](storybook-navigation.md) for their adopted states and interaction checks. It does not enforce coverage of the remaining Storybook catalog.
 
+For Task Creation, prompt editing, Project Setup, and branch-divergence dialogs, see [the creation/setup catalog](storybook-creation-setup.md).
+
 ## Built-in themes
 
 OpenForge Light and OpenForge Dark use the Studio design: neutral surfaces, rounded controls, and restrained shadows. They retain their names and `openforge-light` / `openforge-dark` identifiers, so saved selections and legacy light/dark preferences receive the redesign without migration. The default and unavailable-theme fallback remain OpenForge Light.
