@@ -37,6 +37,25 @@ const scheduleComponents = states => states.map(state => `components-task-schedu
 /** @type {import('./coverage-types.ts').CoverageInventory} */
 const inventory = {
   pages: [
+    // KVG-4694 owns creation/setup, not attention or navigation dialogs.
+    { source: 'src/components/AddTaskDialog.svelte', stories: [
+      'pages-task-creation--empty', 'pages-task-creation--inherited-defaults', 'pages-task-creation--project-directory',
+      'pages-task-creation--no-commits', 'pages-task-creation--long-content', 'pages-task-creation--narrow',
+      'pages-task-creation--loading', 'pages-task-creation--defaults-failure', 'pages-task-creation--validation',
+      'pages-task-creation--failure', 'pages-task-creation--saving', 'pages-task-creation--add-to-backlog',
+      'pages-task-creation--start-task', 'pages-task-creation--cancel-and-reopen', 'pages-task-creation--edit-prompt',
+    ] },
+    { source: 'src/components/project/ProjectSetupDialog.svelte', stories: [
+      'pages-project-setup--empty', 'pages-project-setup--new-repository', 'pages-project-setup--clone-repository',
+      'pages-project-setup--local-repository', 'pages-project-setup--validation', 'pages-project-setup--failure',
+      'pages-project-setup--loading', 'pages-project-setup--success', 'pages-project-setup--clone-completion',
+      'pages-project-setup--picker-cancellation', 'pages-project-setup--cancel-and-reopen',
+      'pages-project-setup--long-content', 'pages-project-setup--narrow',
+    ] },
+    { source: 'src/components/BranchDivergenceModal.svelte', stories: [
+      'pages-branch-divergence--diverged', 'pages-branch-divergence--stale-comparison', 'pages-branch-divergence--long-content',
+      'pages-branch-divergence--narrow', 'pages-branch-divergence--keep-local', 'pages-branch-divergence--reset-to-remote', 'pages-branch-divergence--cancel',
+    ] },
     { source: 'plugins/task-schedules/src/components/TaskSchedulesView.svelte', stories: schedulePages },
     { source: 'plugins/task-schedules/src/index.ts', contribution: 'com.openforge.task-schedules:views.register:schedules', stories: schedulePages },
     {"source":"src/components/attention/AttentionOverviewDialog.svelte","stories":["pages-attention-overview--populated","pages-attention-overview--empty","pages-attention-overview--loading","pages-attention-overview--failure","pages-attention-overview--long-content","pages-attention-overview--narrow","pages-attention-overview--open-task","pages-attention-overview--open-review","pages-attention-overview--reviews-hidden","pages-attention-overview--in-flight","pages-attention-overview--finish-loading","pages-attention-overview--retry-failure","pages-attention-overview--collapsed"]},
@@ -195,6 +214,19 @@ const inventory = {
     { source: 'src/components/feedback/toasts/ToastHost.svelte', stories: ['application-shell--error-feedback', 'application-shell--checkpoint', 'application-shell--pipeline-failure', 'application-shell--task-created', 'application-shell--rate-limited', 'application-shell--dismiss-feedback'] },
   ],
   components: [
+    { source: 'src/components/create-task/CreateTaskProperties.svelte', stories: [
+      'components-task-creation-controls--default', 'components-task-creation-controls--custom-title',
+      'components-task-creation-controls--provider-and-mode', 'components-task-creation-controls--existing-branch',
+      'components-task-creation-controls--worktree-disabled',
+    ] },
+    { source: 'src/components/create-task/CreateTaskPromptAttachments.svelte', stories: [
+      'components-task-creation-controls--default', 'components-task-creation-controls--attached-image',
+      'components-task-creation-controls--image-preview', 'components-task-creation-controls--image-too-large',
+    ] },
+    { source: 'src/components/prompt/PromptInput.svelte', stories: [
+      'components-prompt-input--empty', 'components-prompt-input--long-content', 'components-prompt-input--editing',
+      'components-prompt-input--commands', 'components-prompt-input--select-command', 'components-prompt-input--file-mention', 'components-prompt-input--cancel',
+    ] },
     { source: 'plugins/task-schedules/src/components/TaskSchedulesWorkspace.svelte', stories: scheduleComponents(['workspace', 'workspace-failure']) },
     { source: 'plugins/task-schedules/src/components/TaskSchedulesListSection.svelte', stories: scheduleComponents(['list', 'list-empty', 'list-loading', 'list-narrow', 'list-long', 'list-selected']) },
     { source: 'plugins/task-schedules/src/components/TaskScheduleInspector.svelte', stories: scheduleComponents(['inspector', 'inspector-paused', 'inspector-completed', 'inspector-cancelled', 'inspector-history', 'inspector-long', 'inspector-updating', 'inspector-running', 'inspector-success', 'inspector-warning', 'inspector-failure']) },

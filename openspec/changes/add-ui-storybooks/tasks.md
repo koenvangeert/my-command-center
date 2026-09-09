@@ -1,3 +1,7 @@
+## KVG-4694 slice
+
+This ticket covers creation/setup dialogs from 4.3 and the prompt/create-task controls from 5.6, including their inventory, interaction checks, and visual matrix. It extends the existing Project Setup stories. Attention, navigation, settings, and other sibling catalogs retain their owners, so the broader checkboxes stay open. See `docs/storybook-creation-setup.md` for scope and verification commands.
+
 ## KVG-4701 slice
 
 This ticket covers Task Schedules from 4.6 and 5.9, with its inventory entries, local backend, interaction checks, and visual matrix. History and run status remain part of the production inspector. Task Browser, demo plugins, and GitHub Sync remain with sibling tickets, so the broader checkboxes stay open. See `docs/storybook-task-schedules.md` for ownership and verification commands.
