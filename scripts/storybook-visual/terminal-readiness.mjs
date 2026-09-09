@@ -87,6 +87,35 @@ export async function checkTerminalReadiness({ browser, url, entries, output, ba
       results.push({ fault: 'withheld-paint', evidence })
       return true
     })
+
+    const active = entries.find(entry => entry.story === 'pages-task-detail--active')
+    assert.ok(active, 'Task Detail readiness regression requires the active story')
+    await assert.rejects(capture(browser, url, active, {
+      timings, phase: 'task-detail-withheld-paint',
+      timeout: 3000,
+      prepare: page => page.addInitScript(() => {
+        const requestFrame = window.requestAnimationFrame.bind(window)
+        window.requestAnimationFrame = callback => requestFrame(time => {
+          const progress = JSON.parse(document.querySelector('[data-terminal-progress]')?.getAttribute('data-terminal-progress') ?? '[]')
+          if (progress.at(-1)?.phase !== 'drain') callback(time)
+        })
+      }),
+    }), error => {
+      const evidence = JSON.parse(error.message.split('Readiness evidence: ')[1])
+      const progress = JSON.parse(evidence.terminals[0].progress)
+      const last = progress.at(-1)
+      assert.equal(last.phase, 'drain')
+      assert.ok(last.key)
+      assert.equal(last.state.shellSessionKey, last.key)
+      assert.equal(last.state.view.attached, true)
+      assert.equal(last.state.view.authorityReadPending, false)
+      assert.ok(progress.length <= 20)
+      assert.ok(evidence.tabs.count > 0)
+      assert.match(evidence.tabs.selected, /Agent/i)
+      assert.match(error.message, /missing readiness/)
+      results.push({ fault: 'task-detail-withheld-paint', evidence })
+      return true
+    })
   } finally {
     await writeFile(join(directory, 'results.json'), JSON.stringify(results, null, 2))
     assert.equal(browser.contexts().length, contextsBefore, 'Terminal readiness probes must close every context')
