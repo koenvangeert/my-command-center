@@ -79,9 +79,11 @@ try {
 
   const reports = []
   const themes = [
-    { id: 'openforge-light', label: 'OpenForge Light', keys: ['Home'], radius: '3px', text: 'rgb(17, 19, 24)', muted: 'rgb(98, 104, 114)' },
-    { id: 'openforge-dark', label: 'OpenForge Dark', keys: ['Home', 'ArrowDown'], radius: '3px', text: 'rgb(243, 245, 247)', muted: 'rgb(154, 163, 174)' },
-    { id: 'com.example.ink:ink', label: 'Ink', keys: ['End'], radius: '8px', text: 'rgb(243, 245, 247)', muted: 'rgb(154, 163, 174)' },
+    // Studio replaced the built-in designs without changing their persisted IDs.
+    { id: 'openforge-light', label: 'OpenForge Light', keys: ['Home'], radius: '8px', text: 'rgb(32, 32, 32)', muted: 'rgb(98, 98, 98)' },
+    { id: 'openforge-dark', label: 'OpenForge Dark', keys: ['Home', 'ArrowDown'], radius: '8px', text: 'rgb(242, 242, 242)', muted: 'rgb(171, 171, 171)' },
+    // Ink overrides field, accent and radius, but inherits the current dark text palette.
+    { id: 'com.example.ink:ink', label: 'Ink', keys: ['End'], radius: '8px', text: 'rgb(242, 242, 242)', muted: 'rgb(171, 171, 171)' },
   ]
   if (process.argv.includes('--compatibility-only')) {
     themes.push(
