@@ -44,15 +44,17 @@
 </script>
 
 {#if request && plan}
-  <Modal onClose={cancel} maxWidth="560px" ariaLabel="Resolve branch divergence">
+  <Modal onClose={cancel} maxWidth="560px" boxClass="branch-divergence-box" ariaLabel="Resolve branch divergence">
     {#snippet header()}
-      <h2 class="text-[0.95rem] font-semibold text-base-content m-0">
+      <h2 class="divergence-heading text-[0.95rem] font-semibold text-base-content m-0">
         <code class="text-primary">{request.branchName}</code> has diverged from
         <code class="text-primary">origin/{request.branchName}</code>
       </h2>
     {/snippet}
 
-    <div class="p-4 flex flex-col gap-4">
+    <!-- Keyboard users need a tab stop to scroll the commit comparison. -->
+    <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+    <div class="commit-comparison p-4 flex flex-col gap-4" role="region" aria-label="Commit comparison" tabindex="0">
       <p class="m-0 text-sm text-base-content/70">
         {aheadCount} ahead, {behindCount} behind. Choose how to start this task.
       </p>
@@ -99,7 +101,9 @@
         </div>
       {/if}
 
-      <div class="flex justify-end gap-2 pt-1">
+    </div>
+
+    <div class="flex shrink-0 flex-wrap justify-end gap-2 p-4">
         <Button variant="ghost" size="sm" type="button" onclick={cancel}>Cancel</Button>
         <Button variant="danger" size="sm" type="button" onclick={resetToRemote}>
           Reset to remote
@@ -107,7 +111,32 @@
         <Button variant="primary" size="sm" type="button" onclick={keepLocal}>
           Keep local
         </Button>
-      </div>
     </div>
   </Modal>
 {/if}
+
+<style>
+  .divergence-heading {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .commit-comparison {
+    min-height: 0;
+    overflow-y: auto;
+    overflow-wrap: anywhere;
+  }
+
+  :global(.branch-divergence-box) {
+    overflow: hidden;
+  }
+
+  :global(.branch-divergence-box > .of-modal-header) {
+    flex-shrink: 0;
+  }
+
+  .commit-comparison:focus-visible {
+    outline: var(--of-focus-width) solid var(--of-focus-ring);
+    outline-offset: calc(-1 * var(--of-focus-width));
+  }
+</style>
