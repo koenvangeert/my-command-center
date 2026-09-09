@@ -2,6 +2,7 @@
   import type { Snippet } from 'svelte'
   import type { ReviewPullRequest } from '@openforge-app/plugin-sdk/domain'
   import { hasDoNotReviewLabel } from '@openforge-app/plugin-sdk/domain'
+  import { Mail, X } from '@lucide/svelte'
   import Badge from '@openforge-app/plugin-sdk/ui/Badge.svelte'
   import IconButton from '@openforge-app/plugin-sdk/ui/IconButton.svelte'
   import Card from './ui/Card.svelte'
@@ -40,9 +41,7 @@
     title="Remove from list"
     onclick={(e) => { e.stopPropagation(); onRemove?.() }}
   >
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5" aria-hidden="true">
-      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-    </svg>
+    <X size={14} strokeWidth={1.5} aria-hidden="true" />
   </IconButton>
 {/if}
 {#if pr.viewed_at && onMarkUnread}
@@ -54,9 +53,7 @@
     title="Mark as unread"
     onclick={(e) => { e.stopPropagation(); onMarkUnread?.() }}
   >
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5" aria-hidden="true">
-      <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
-    </svg>
+    <Mail size={14} strokeWidth={1.5} aria-hidden="true" />
   </IconButton>
 {/if}
 <Card
