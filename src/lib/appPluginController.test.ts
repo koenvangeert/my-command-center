@@ -28,6 +28,21 @@ function shortcutRegistry() {
 }
 
 describe('App plugin controller', () => {
+  it('exposes the in-flight target project load to destination hydration', async () => {
+    let finish!: () => void
+    const load = vi.fn(() => new Promise<void>(resolve => { finish = resolve }))
+    const controller = createAppPluginController({ navigate: vi.fn(), executePluginCommand: vi.fn(), activatePlugin: vi.fn(), deactivateAllPlugins: vi.fn(), loadEnabledForProject: load })
+    controller.selectProject('target')
+    let ready = false
+    const pending = controller.whenProjectReady('target').then(() => { ready = true })
+    await Promise.resolve()
+    expect(ready).toBe(false)
+    expect(load).toHaveBeenCalledTimes(1)
+    finish()
+    await pending
+    expect(ready).toBe(true)
+  })
+
   it('owns plugin shortcuts and removes stale registrations', () => {
     const navigate = vi.fn()
     const executePluginCommand = vi.fn()

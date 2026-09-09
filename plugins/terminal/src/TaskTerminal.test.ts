@@ -57,6 +57,7 @@ vi.mock('./lib/terminalPool', () => ({
   acquire: terminalPoolMocks.acquire,
   attach: terminalPoolMocks.attach,
   beginPtySpawn: terminalPoolMocks.beginPtySpawn,
+  canAutoStartShell: vi.fn(() => true),
   markPerformancePhase: terminalPoolMocks.markPerformancePhase,
   resetPresentation: terminalPoolMocks.resetPresentation,
   detach: terminalPoolMocks.detach,

@@ -124,6 +124,13 @@ pub(super) async fn handle_app_pty_command(
         return Ok(Some(value));
     }
 
+    if request.payload.get("fence").is_some() {
+        return Err((
+            StatusCode::CONFLICT,
+            "fenced PTY command requires a reconciled daemon shell".into(),
+        ));
+    }
+
     let value = match request.command.as_str() {
         "pty_spawn_shell" => {
             let app = state.app.clone();

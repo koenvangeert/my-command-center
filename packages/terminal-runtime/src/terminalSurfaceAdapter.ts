@@ -15,7 +15,7 @@ export type TerminalSurfaceRuntime = Pick<TerminalRuntime,
   | 'updateTaskTerminalTabsSession'
   | 'releaseAllForTask'
   | 'focusTerminal'
->
+> & Partial<Pick<TerminalRuntime, 'canAutoStartShell'>>
 
 export interface TerminalSurfaceWorkspace {
   workspace_path?: string | null

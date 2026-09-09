@@ -4,7 +4,7 @@ import type { TerminalSession } from './terminalRuntimeTypes'
 
 type SharedTerminalRuntimeOperations = Omit<
   TerminalRuntime,
-  'acquire' | 'release' | 'releaseAll' | 'releaseAllForTask' | 'dispose' | 'diagnostics'
+  'acquire' | 'release' | 'releaseAll' | 'releaseAllForTask' | 'dispose' | 'diagnostics' | 'snapshotWorkspace' | 'restoreWorkspace'
 >
 
 export interface TerminalSessionClient extends SharedTerminalRuntimeOperations {
@@ -15,6 +15,8 @@ export interface TerminalSessionClient extends SharedTerminalRuntimeOperations {
 }
 
 export interface TerminalSessionService {
+  snapshotWorkspace: TerminalRuntime['snapshotWorkspace']
+  restoreWorkspace: TerminalRuntime['restoreWorkspace']
   createClient(ownerId: string): TerminalSessionClient
   releaseAll(): void
   dispose(): void
@@ -66,6 +68,8 @@ export function createTerminalSessionService(runtime: TerminalRuntime): Terminal
       releaseAllForTask: _releaseAllForTask,
       dispose: _dispose,
       diagnostics: _diagnostics,
+      snapshotWorkspace: _snapshotWorkspace,
+      restoreWorkspace: _restoreWorkspace,
       ...sharedOperations
     } = runtime
     void _acquire
@@ -74,6 +78,8 @@ export function createTerminalSessionService(runtime: TerminalRuntime): Terminal
     void _releaseAllForTask
     void _dispose
     void _diagnostics
+    void _snapshotWorkspace
+    void _restoreWorkspace
 
     async function acquire(shellSessionKey: string): Promise<TerminalSession> {
       const ownerAdded = addOwner(ownerId, shellSessionKey)
@@ -120,5 +126,9 @@ export function createTerminalSessionService(runtime: TerminalRuntime): Terminal
     runtime.dispose()
   }
 
-  return { createClient, releaseAll, dispose }
+  return {
+    createClient, releaseAll, dispose,
+    snapshotWorkspace: runtime.snapshotWorkspace,
+    restoreWorkspace: runtime.restoreWorkspace,
+  }
 }

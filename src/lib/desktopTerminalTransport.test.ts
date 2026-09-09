@@ -21,6 +21,21 @@ function createPort(): DesktopTerminalTransportPort {
 }
 
 describe('desktop terminal authority read seam', () => {
+  it('rejects a delayed replay from an earlier connection even when the PTY instance survives', async () => {
+    const port = createPort()
+    let release!: () => void
+    const transport = createDesktopTerminalTransport(port, {
+      afterReadReplay: () => new Promise<void>(resolve => { release = resolve }),
+    })
+    await transport.subscribeConnectionRestored(vi.fn())
+    const reading = transport.readReplay('T-1-shell-0')
+    await vi.waitFor(() => expect(release).toBeDefined())
+    const reconnect = vi.mocked(port.listenEvent).mock.calls.find(call => call[0] === 'openforge-app-events-reconnected')![1]
+    reconnect({ payload: {} })
+    release()
+    await expect(reading).rejects.toThrow(/stale/i)
+    transport.dispose()
+  })
   it('holds a captured Sidecar response before returning it to Terminal Runtime', async () => {
     const port = createPort()
     let releaseCheckpoint!: () => void

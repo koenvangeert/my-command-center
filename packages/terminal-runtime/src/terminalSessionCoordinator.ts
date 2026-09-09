@@ -46,6 +46,9 @@ export interface TerminalSessionCoordinator {
   dispose(): void
 }
 
+// Shared by all Terminal Runtime instances in this renderer document.
+let nextGeometrySessionGeneration = 0
+
 export function createTerminalSessionCoordinator({
   shellSessionKey,
   view,
@@ -54,6 +57,8 @@ export function createTerminalSessionCoordinator({
   notifyLifecycle,
 }: TerminalSessionCoordinatorOptions): TerminalSessionCoordinator {
   const session = createTerminalSessionHandle(shellSessionKey)
+  const geometrySessionId = crypto.randomUUID()
+  const sessionGeneration = ++nextGeometrySessionGeneration
   const viewSubscriptions: TerminalViewDisposable[] = []
   let disposed = false
 
@@ -72,6 +77,10 @@ export function createTerminalSessionCoordinator({
     transport,
     environment,
     notify,
+    attachmentIdentity: () => {
+      const revision = attachment.currentRenderRevision()
+      return revision ? { sessionId: geometrySessionId, sessionGeneration, attachmentGeneration: revision.attachmentGeneration } : undefined
+    },
   })
   const authority = createTerminalAuthorityCoordinator({
     shellSessionKey,

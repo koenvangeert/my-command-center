@@ -756,7 +756,7 @@ describe('TaskTerminal', () => {
     })
   })
 
-  it('restart marks pool entry active immediately', async () => {
+  it('marks the pool entry active once explicit restart completes', async () => {
     render(TaskTerminal, { props: { taskId: 'T-1', workspacePath: '/path/to/worktree', terminalKey: 'T-1-shell-2', terminalIndex: 2, isActive: true } })
 
     await vi.waitFor(() => {
@@ -773,7 +773,7 @@ describe('TaskTerminal', () => {
     const restartButton = screen.getByRole('button', { name: /Restart Shell/ })
     await fireEvent.click(restartButton)
 
-    expect(mockPoolEntry.ptyActive).toBe(true)
+    await vi.waitFor(() => expect(mockPoolEntry.ptyActive).toBe(true))
   })
 
   it('restart clears the previous exited output before starting the fresh shell', async () => {

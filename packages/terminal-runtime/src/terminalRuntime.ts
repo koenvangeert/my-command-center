@@ -28,6 +28,7 @@ export type { TerminalImageProtocol } from './terminalImages'
 export type {
   TerminalExitEvent,
   TerminalGeometry,
+  TerminalResizeAttachment,
   TerminalModelDisabledEvent,
   TerminalModelOutputEvent,
   TerminalReplay,
@@ -235,6 +236,9 @@ export function createTerminalRuntime({
   })
 
   return {
+    snapshotWorkspace: sessionLifecycle.snapshotWorkspace,
+    restoreWorkspace: sessionLifecycle.restoreWorkspace,
+    canAutoStartShell: sessionLifecycle.canAutoStartShell,
     isValidTerminalDimensions,
     acquire: acquisition.acquire,
     attach: (session: TerminalSession, host: HTMLDivElement) => coordinatorFor(session).attach(host),

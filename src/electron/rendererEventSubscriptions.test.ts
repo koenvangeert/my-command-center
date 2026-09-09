@@ -62,4 +62,13 @@ describe('renderer event subscriptions', () => {
     )).toBe(true)
     expect(subscriptions.has(7, 'pty-model-output-T-1')).toBe(true)
   })
+  it('retains subscriptions for every restored app window but rejects guest renderers', () => {
+    let handle!: (event: { sender: { id: number } }, request: unknown) => boolean
+    const subscriptions = new RendererEventSubscriptions()
+    registerRendererEventSubscriptionHandler({ handle: (_channel, callback) => { handle = callback } }, subscriptions, () => [7, 8])
+    const request = { action: 'subscribe', eventName: 'pty-model-output-T-1' }
+    expect(handle({ sender: { id: 7 } }, request)).toBe(true)
+    expect(handle({ sender: { id: 8 } }, request)).toBe(true)
+    expect(handle({ sender: { id: 9 } }, request)).toBe(false)
+  })
 })

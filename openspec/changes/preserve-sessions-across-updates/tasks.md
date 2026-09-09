@@ -45,12 +45,12 @@
 
 ## 6. Workspace restoration and terminal coordination
 
-- [ ] 6.1 Add a versioned atomic restart-workspace record scoped to installation, operation, and stable window identity; write persistence tests first and verify navigation/tab serialization, corrupt or incompatible records, write failure, and exclusion of credentials/output.
-- [ ] 6.2 Add host-owned tab snapshot/hydration operations to the Terminal Runtime integration; verify labels, order, active selection, non-selected Tasks, and next-index state round-trip without direct component-owned lifecycle mutations.
-- [ ] 6.3 Restore validated project/Task/view navigation after domain hydration; verify deleted/hidden/unavailable destinations fall back safely and late restoration cannot overwrite newer user navigation.
-- [ ] 6.4 Reconcile saved tabs with daemon inventory before any default-shell spawn; verify surviving cwd/environment, exited tabs, shells missing from the snapshot, and collision-free creation of subsequent tabs.
-- [ ] 6.5 Add controller-generation guards to terminal attachment/recovery and geometry operations through typed IPC wrappers; verify stale replay/resize rejection, unchanged live PTY identity, bounded queues, output joining, and inactive input during reconciliation.
-- [ ] 6.6 Make restoration retries and multi-window attachment idempotent; verify no duplicate tabs/shells, one current geometry owner, record consumption after success, and no stale restart workspace overriding a later normal launch.
+- [x] 6.1 Add a versioned atomic restart-workspace record scoped to installation, operation, and stable window identity; write persistence tests first and verify navigation/tab serialization, corrupt or incompatible records, write failure, and exclusion of credentials/output.
+- [x] 6.2 Add host-owned tab snapshot/hydration operations to the Terminal Runtime integration; verify labels, order, active selection, non-selected Tasks, and next-index state round-trip without direct component-owned lifecycle mutations.
+- [x] 6.3 Restore validated project/Task/view navigation after domain hydration; verify deleted/hidden/unavailable destinations fall back safely and late restoration cannot overwrite newer user navigation.
+- [x] 6.4 Reconcile saved tabs with daemon inventory before any default-shell spawn; verify surviving cwd/environment, exited tabs, shells missing from the snapshot, and collision-free creation of subsequent tabs.
+- [x] 6.5 Add controller-generation guards to terminal attachment/recovery and geometry operations through typed IPC wrappers; verify stale replay/resize rejection, unchanged live PTY identity, bounded queues, output joining, and inactive input during reconciliation.
+- [x] 6.6 Make restoration retries and multi-window attachment idempotent; verify no duplicate tabs/shells, one current geometry owner, record consumption after success, and no stale restart workspace overriding a later normal launch.
 
 ## 7. Production live daemon replacement
 

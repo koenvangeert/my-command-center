@@ -1,6 +1,11 @@
 import type { DesktopIpcDomain } from './desktopIpcContract.js'
 
 export const desktopIpcFunctionDomains = {
+  getRestartWorkspace: 'app-shell',
+  captureRestartWorkspace: 'app-shell',
+  completeRestartWorkspace: 'app-shell',
+  controlledRestart: 'app-shell',
+  getRestartTerminalInventory: 'agent-session-pty',
   createTask: 'tasks-projects',
   updateTaskInitialPrompt: 'tasks-projects',
   updateTaskTitle: 'tasks-projects',

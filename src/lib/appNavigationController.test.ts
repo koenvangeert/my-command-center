@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { get } from 'svelte/store'
 import type { Project, TaskDetail, TaskRead } from './types'
 import { createAppNavigationController } from './appNavigationController'
-import { activeProjectId, currentView, pendingTask, projects, selectedTaskId } from './stores'
+import { createRestartWorkspaceController } from './restartWorkspaceController'
+import { activeProjectId, currentView, hiddenProjectIds, pendingTask, projects, selectedTaskId, taskActiveView } from './stores'
 import { clearActiveTasks, refreshActiveTasks } from './tasksState'
 
 const routerFns = vi.hoisted(() => ({
@@ -92,9 +93,89 @@ beforeEach(async () => {
   selectedTaskId.set(null)
   pendingTask.set(null)
   projects.set([project1, project2])
+  hiddenProjectIds.set(new Set())
 })
 
 describe('app navigation controller', () => {
+  it('waits for the saved project plugin contributions before validating its destination', async () => {
+    const ready = deferred<void>()
+    let views = new Set(['board'])
+    const { instance, appRouter } = controller({
+      hydrateProjectViews: async projectId => {
+        expect(projectId).toBe(project2.id)
+        await ready.promise
+        views = new Set(['board', 'planning:workspace'])
+      },
+      getAvailableViewKeys: () => views,
+    })
+    const restoring = instance.restoreWorkspaceNavigation(Promise.resolve({ projectId: project2.id, taskId: null, view: 'planning:workspace' }), Promise.resolve())
+    await Promise.resolve()
+    expect(appRouter.navigate).not.toHaveBeenCalled()
+    ready.resolve()
+    await restoring
+    expect(appRouter.navigate).toHaveBeenCalledWith('planning:workspace')
+  })
+
+  it('does not reapply navigation after completion fails or an earlier hydration attempt is cancelled', async () => {
+    const { instance, appRouter } = controller()
+    const saved = { projectId: project1.id, taskId: null, view: 'files' }
+    const recovery = createRestartWorkspaceController({
+      load: async () => ({ operationId: 'op', window: { windowId: 'window', navigation: saved, tasks: [] } }),
+      inventory: async () => ({ controller: { installation: 'i', lifetime: 'l', generation: 1 }, sessions: [] }),
+      reconcileController: vi.fn(), restoreTabs: vi.fn(),
+      restoreNavigation: instance.restoreWorkspaceNavigation,
+      complete: vi.fn().mockRejectedValueOnce(new Error('ack failed')).mockResolvedValue(undefined),
+    })
+    await expect(recovery.start(Promise.resolve())).rejects.toThrow('ack failed')
+    instance.navigate('global_settings')
+    await recovery.start(Promise.resolve())
+    expect(appRouter.navigate).toHaveBeenLastCalledWith('global_settings')
+    const pendingScope = {}
+    await expect(instance.restoreWorkspaceNavigation(Promise.resolve(saved), Promise.reject(new Error('hydration failed')), pendingScope)).rejects.toThrow('hydration failed')
+    instance.navigate('settings')
+    await instance.restoreWorkspaceNavigation(Promise.resolve(saved), Promise.resolve(), pendingScope)
+    expect(appRouter.navigate).toHaveBeenLastCalledWith('settings')
+  })
+
+  it('restores the Task view instead of silently returning to its agent pane', async () => {
+    const task = detail('saved-task', project2.id)
+    const { instance, appRouter } = controller({ loadTaskDetail: vi.fn(async () => ({ task, related: [] })) })
+    appRouter.navigateToTask.mockImplementation(taskId => selectedTaskId.set(taskId))
+    await instance.restoreWorkspaceNavigation(Promise.resolve({ projectId: project2.id, taskId: task.id, view: 'board', taskView: 'terminal:task-terminal' }), Promise.resolve())
+    expect(get(taskActiveView).get(task.id)).toBe('terminal:task-terminal')
+  })
+  it('restores the saved project and Task only after hydration', async () => {
+    const hydrated = deferred<void>()
+    const saved = { projectId: project2.id, taskId: 'saved-task', view: 'board' }
+    const task = detail('saved-task', project2.id)
+    const { instance, appRouter } = controller({ loadTaskDetail: vi.fn(async () => ({ task, related: [] })) })
+    const restored = instance.restoreWorkspaceNavigation(Promise.resolve(saved), hydrated.promise)
+    expect(appRouter.navigateToTask).not.toHaveBeenCalled()
+    hydrated.resolve()
+    await restored
+    expect(get(activeProjectId)).toBe(project2.id)
+    expect(appRouter.navigateToTask).toHaveBeenCalledWith('saved-task')
+  })
+  it('falls back from a hidden project and unavailable view without reopening its Task', async () => {
+    hiddenProjectIds.set(new Set([project2.id]))
+    const loadDetail = vi.fn(async () => null)
+    const { instance, appRouter } = controller({ loadTaskDetail: loadDetail })
+    await instance.restoreWorkspaceNavigation(Promise.resolve({ projectId: project2.id, taskId: 'hidden-task', view: 'plugin:removed:view' }), Promise.resolve())
+    expect(get(activeProjectId)).toBe(project1.id)
+    expect(loadDetail).not.toHaveBeenCalled()
+    expect(appRouter.resetToBoard).toHaveBeenCalledOnce()
+  })
+
+  it('does not overwrite navigation chosen during hydration or Task loading', async () => {
+    const hydrated = deferred<void>()
+    const { instance, appRouter } = controller()
+    const restore = instance.restoreWorkspaceNavigation(Promise.resolve({ projectId: project2.id, taskId: null, view: 'board' }), hydrated.promise)
+    instance.navigate('global_settings')
+    hydrated.resolve()
+    await restore
+    expect(get(activeProjectId)).toBe(project1.id)
+    expect(appRouter.navigate).toHaveBeenCalledExactlyOnceWith('global_settings')
+  })
   it('opens a cached active Task synchronously', async () => {
     const task = detail('task-1')
     await install(project1.id, [task])

@@ -1,4 +1,4 @@
-import { createIndexedShellSessionKey } from './ptySessionKey'
+import { createIndexedShellSessionKey, parsePtySessionKey } from './ptySessionKey'
 import type { TaskTerminalTabsSession } from './terminalRuntimeTypes'
 
 function createDefaultTaskTerminalTabsSession(taskId: string): TaskTerminalTabsSession {
@@ -37,5 +37,49 @@ export function createTaskTerminalTabsSessionStore() {
     sessions.clear()
   }
 
-  return { get, update, clear, clearAll }
+  function snapshot(): Array<TaskTerminalTabsSession & { taskId: string }> {
+    return [...sessions].map(([taskId, session]) => ({
+      taskId,
+      tabs: session.tabs.map(({ index, key, label }) => ({ index, key, label })),
+      activeTabIndex: session.activeTabIndex,
+      nextIndex: session.nextIndex,
+    }))
+  }
+
+  let restoredOperation: string | null = null
+
+  function restore(
+    operationId: string,
+    saved: Array<TaskTerminalTabsSession & { taskId: string }>,
+    inventoryKeys: readonly string[],
+  ): boolean {
+    const firstApplication = restoredOperation !== operationId
+    const reconciled = new Map<string, TaskTerminalTabsSession>()
+    let changed = firstApplication
+    for (const { taskId, tabs, activeTabIndex, nextIndex } of firstApplication ? saved : snapshot()) {
+      reconciled.set(taskId, {
+        tabs: tabs.map(({ index, key, label }) => ({ index, key, label })),
+        activeTabIndex, nextIndex,
+      })
+    }
+    for (const key of inventoryKeys) {
+      const parsed = parsePtySessionKey(key)
+      if (parsed.kind !== 'indexed-shell') continue
+      const { taskId, terminalIndex: index } = parsed
+      const session = reconciled.get(taskId) ?? { tabs: [], activeTabIndex: index, nextIndex: 0 }
+      if (!session.tabs.some(tab => tab.index === index)) {
+        session.tabs.push({ index, key, label: `Shell ${index + 1}` })
+        changed = true
+      }
+      reconciled.set(taskId, session)
+    }
+    for (const [taskId, session] of reconciled) {
+      session.nextIndex = Math.max(session.nextIndex, ...session.tabs.map(tab => tab.index + 1))
+      sessions.set(taskId, session)
+    }
+    restoredOperation = operationId
+    return changed
+  }
+
+  return { get, update, clear, clearAll, snapshot, restore }
 }

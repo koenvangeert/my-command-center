@@ -4,6 +4,7 @@ import { terminalLogMessage } from './terminalLogging'
 import type { ShellLifecycleState, TerminalRuntimeEnvironment } from './terminalRuntimeTypes'
 import type {
   TerminalGeometry,
+  TerminalResizeAttachment,
   TerminalModelDisabledEvent,
   TerminalReplay,
   TerminalTransport,
@@ -16,6 +17,7 @@ interface TerminalPtyCoordinatorOptions {
   transport: TerminalTransport
   environment: TerminalRuntimeEnvironment
   notify(): void
+  attachmentIdentity?(): TerminalResizeAttachment | undefined
 }
 
 export interface TerminalPtySpawnRequest {
@@ -49,6 +51,7 @@ export function createTerminalPtyCoordinator({
   transport,
   environment,
   notify,
+  attachmentIdentity,
 }: TerminalPtyCoordinatorOptions): TerminalPtyCoordinator {
   let ptyActive = false
   let needsClear = false
@@ -116,7 +119,10 @@ export function createTerminalPtyCoordinator({
   function syncSize(viewActive: boolean, dimensions: TerminalGeometry | null = view.geometry): void {
     if (!ptyActive || !viewActive) return
     if (!isValidTerminalDimensions(dimensions)) return
-    transport.resize(shellSessionKey, dimensions)
+    const resize = transport.supportsGeometryLease
+      ? transport.resize(shellSessionKey, dimensions, attachmentIdentity?.())
+      : transport.resize(shellSessionKey, dimensions)
+    resize
       .catch(error => console.error(terminalLogMessage(environment.loggerName, 'resize failed:'), error))
   }
 

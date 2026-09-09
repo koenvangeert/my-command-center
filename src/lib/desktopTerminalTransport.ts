@@ -37,10 +37,11 @@ export interface DesktopTerminalTransportPort {
   ): Promise<() => void>
   getPtyBuffer(shellSessionKey: string): Promise<DesktopPtyBufferState>
   writePty(shellSessionKey: string, data: string): Promise<void>
-  resizePty(shellSessionKey: string, cols: number, rows: number): Promise<void>
+  resizePty(shellSessionKey: string, cols: number, rows: number, attachment?: Parameters<TerminalTransport['resize']>[2]): Promise<void>
 }
 
 export interface DesktopTerminalTransportOptions {
+  beforeConnectionRestored?(): Promise<void>
   afterReadReplay?(
     shellSessionKey: string,
     details: { ptyInstanceId: number | null; watermark: number | null },
@@ -54,6 +55,7 @@ export function createDesktopTerminalTransport(
 ): TerminalTransport {
   const activeSubscriptions = new Set<TerminalTransportDisposable>()
   let disposed = false
+  let connectionGeneration = 0
 
   function ensureActive(): void {
     if (disposed) throw new Error('Desktop TerminalTransport is disposed')
@@ -133,7 +135,16 @@ export function createDesktopTerminalTransport(
     ensureActive()
     const unlisten = await port.listenEvent(
       'openforge-app-events-reconnected',
-      () => handler(),
+      () => {
+        connectionGeneration += 1
+        const reconcile = options.beforeConnectionRestored?.()
+        if (reconcile) {
+          void reconcile.then(() => { if (!disposed) handler() }, error => {
+            console.error('[terminal] Controller reconciliation failed:', error)
+            if (!disposed) handler()
+          })
+        } else handler()
+      },
     )
     if (disposed) {
       unlisten()
@@ -143,25 +154,30 @@ export function createDesktopTerminalTransport(
   }
 
   return {
+    supportsGeometryLease: true,
     subscribeSession,
     subscribeConnectionRestored,
     async readReplay(shellSessionKey) {
       ensureActive()
+      const generation = connectionGeneration
       const replay = await port.getPtyBuffer(shellSessionKey)
       const checkpoint = options.afterReadReplay?.(shellSessionKey, {
         ptyInstanceId: replay.snapshot?.instanceId ?? replay.instanceId,
         watermark: replay.snapshot?.watermark ?? null,
       })
       if (checkpoint) await checkpoint
+      ensureActive()
+      if (generation !== connectionGeneration) throw new Error('Stale terminal replay from a replaced controller')
       return decodeTerminalReplay(replay)
     },
     async writeUserInput(shellSessionKey, data) {
       ensureActive()
       await port.writePty(shellSessionKey, data)
     },
-    async resize(shellSessionKey, geometry) {
+    async resize(shellSessionKey, geometry, attachment) {
       ensureActive()
-      await port.resizePty(shellSessionKey, geometry.cols, geometry.rows)
+      if (attachment) await port.resizePty(shellSessionKey, geometry.cols, geometry.rows, attachment)
+      else await port.resizePty(shellSessionKey, geometry.cols, geometry.rows)
     },
     dispose() {
       if (disposed) return

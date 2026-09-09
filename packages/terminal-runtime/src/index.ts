@@ -17,6 +17,7 @@ export {
   type TaskTerminalTabsSession,
   type TerminalExitEvent,
   type TerminalGeometry,
+  type TerminalResizeAttachment,
   type TerminalModelDisabledEvent,
   type TerminalModelOutputEvent,
   type TerminalOutputObservation,

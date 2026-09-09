@@ -50,7 +50,14 @@ export interface TerminalSessionTransportHandlers {
   onExit(event: TerminalExitEvent): void
 }
 
+export interface TerminalResizeAttachment {
+  sessionId: string
+  sessionGeneration: number
+  attachmentGeneration: number
+}
+
 export interface TerminalTransport {
+  supportsGeometryLease?: boolean
   subscribeSession(
     shellSessionKey: string,
     handlers: TerminalSessionTransportHandlers,
@@ -60,6 +67,6 @@ export interface TerminalTransport {
   ): Promise<TerminalTransportDisposable>
   readReplay(shellSessionKey: string): Promise<TerminalReplay>
   writeUserInput(shellSessionKey: string, data: string): Promise<void>
-  resize(shellSessionKey: string, geometry: TerminalGeometry): Promise<void>
+  resize(shellSessionKey: string, geometry: TerminalGeometry, attachment?: TerminalResizeAttachment): Promise<void>
   dispose(): void
 }

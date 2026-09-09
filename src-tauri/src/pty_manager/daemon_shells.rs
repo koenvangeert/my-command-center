@@ -9,8 +9,15 @@ use openforge_session_protocol::{Error, Event, Session, ShellCommand};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct CommandFence {
+    controller: openforge_session_protocol::Controller,
+    instance_id: u64,
+}
+
 #[derive(Clone)]
-pub(crate) struct DaemonShells(Arc<Shared>);
+pub(crate) struct DaemonShells(Arc<Shared>, Option<String>, Option<CommandFence>);
 struct Shared {
     root: PathBuf,
     executable: PathBuf,
@@ -32,12 +39,16 @@ impl PtyManager {
 
 impl DaemonShells {
     pub(crate) fn new(root: PathBuf, executable: PathBuf, key: String) -> Self {
-        Self(Arc::new(Shared {
-            root,
-            executable,
-            key,
-            connection: Mutex::new(None),
-        }))
+        Self(
+            Arc::new(Shared {
+                root,
+                executable,
+                key,
+                connection: Mutex::new(None),
+            }),
+            None,
+            None,
+        )
     }
 
     pub(super) fn from_environment() -> Option<Self> {
@@ -52,10 +63,39 @@ impl DaemonShells {
     }
 
     pub(crate) fn owns(&self, key: &str) -> bool {
-        self.0.key == key
+        selected_shell(&self.0.key, key)
     }
-    pub(crate) fn belongs_to_task(&self, task_id: &str) -> bool {
-        super::pids::is_shell_session_key_for_task(&self.0.key, task_id)
+    pub(crate) async fn terminate_for_task(
+        &self,
+        task_id: String,
+        publisher: RuntimeEventPublisher,
+    ) -> Result<(), String> {
+        self.run(publisher, move |connection, selection| {
+            for session in connection.client.inventory()?.sessions {
+                if selected_shell(selection, &session.session_key)
+                    && super::pids::is_shell_session_key_for_task(&session.session_key, &task_id)
+                {
+                    connection
+                        .client
+                        .terminate(&format!("stop-{}", session.pty.instance), &session.pty)?;
+                }
+            }
+            Ok(())
+        })
+        .await
+    }
+
+    pub(crate) fn for_key(&self, key: &str) -> Self {
+        Self(Arc::clone(&self.0), Some(key.into()), None)
+    }
+
+    pub(crate) fn fenced(mut self, fence: Option<CommandFence>) -> Self {
+        self.2 = fence;
+        self
+    }
+
+    fn key(&self) -> &str {
+        self.1.as_deref().unwrap_or(&self.0.key)
     }
 
     pub(crate) fn prepare_shell(
@@ -76,8 +116,7 @@ impl DaemonShells {
             env.insert(key.into(), value.into());
         }
         let (task_id, index) = self
-            .0
-            .key
+            .key()
             .rsplit_once("-shell-")
             .ok_or("expected an indexed shell key")?;
         let index = index.parse::<u32>().map_err(|_| "invalid shell index")?;
@@ -96,6 +135,29 @@ impl DaemonShells {
             rows,
             image_protocol: protocol,
         })
+    }
+
+    pub(crate) async fn inventory(
+        &self,
+        publisher: RuntimeEventPublisher,
+    ) -> Result<serde_json::Value, String> {
+        self.run(publisher, |connection, key| {
+            let inventory = connection.client.inventory()?;
+            let sessions: Vec<_> = inventory
+                .sessions
+                .into_iter()
+                .filter(|session| selected_shell(key, &session.session_key))
+                .map(|session| {
+                    serde_json::json!({
+                        "key": session.session_key,
+                        "instanceId": session.pty.instance.value(),
+                        "isLive": session.exit_code.is_none(),
+                    })
+                })
+                .collect();
+            Ok(serde_json::json!({ "controller": inventory.controller, "sessions": sessions }))
+        })
+        .await
     }
 
     pub(crate) async fn spawn(
@@ -220,6 +282,8 @@ impl DaemonShells {
         operation: impl FnOnce(&mut Connection, &str) -> Result<T, Error> + Send + 'static,
     ) -> Result<T, String> {
         let shared = Arc::clone(&self.0);
+        let key = self.key().to_owned();
+        let fence = self.2.clone();
         tokio::task::spawn_blocking(move || {
             let mut slot = shared
                 .connection
@@ -255,12 +319,38 @@ impl DaemonShells {
             }
             let connection = slot.as_mut().ok_or(Error::OutcomeUnknown)?;
             connection.publisher = publisher;
-            operation(connection, &shared.key)
+            if let Some(fence) = fence {
+                let inventory = connection.client.inventory()?;
+                if inventory.controller != fence.controller {
+                    return Err(Error::StaleController);
+                }
+                let current = inventory
+                    .sessions
+                    .into_iter()
+                    .find(|session| session.session_key == key);
+                if current.is_none_or(|session| session.pty.instance.value() != fence.instance_id) {
+                    return Err(Error::StalePty);
+                }
+            }
+            operation(connection, &key)
         })
         .await
         .map_err(|error| error.to_string())?
         .map_err(|error| error.to_string())
     }
+}
+
+fn indexed_shell_key(key: &str) -> bool {
+    key.rsplit_once("-shell-").is_some_and(|(task, index)| {
+        !task.is_empty()
+            && index
+                .parse::<u32>()
+                .is_ok_and(|value| value.to_string() == index)
+    })
+}
+
+fn selected_shell(selection: &str, key: &str) -> bool {
+    selection == key || (selection == "*" && indexed_shell_key(key))
 }
 
 fn find(client: &Client, key: &str) -> Result<Option<Session>, Error> {
@@ -281,16 +371,22 @@ fn pump(shared: &Shared) -> Result<(), Error> {
         return Ok(());
     };
     let batch = connection.client.events(connection.cursor)?;
-    let current = find(&connection.client, &shared.key)?;
+    let current: Vec<_> = connection
+        .client
+        .inventory()?
+        .sessions
+        .into_iter()
+        .filter(|session| selected_shell(&shared.key, &session.session_key))
+        .collect();
     if batch.gap {
         // Existing transport reconciliation requests fresh authority snapshots, not raw replay.
         connection
             .publisher
             .publish("openforge-app-events-reconnected", &serde_json::json!({}));
-        if let Some(session) = &current {
+        for session in &current {
             if batch.events.iter().any(|event| event.is_exit(&session.pty)) {
                 connection.publisher.publish(
-                    &format!("pty-exit-{}", shared.key),
+                    &format!("pty-exit-{}", session.session_key),
                     &serde_json::json!({ "instance_id": session.pty.instance }),
                 );
             }
@@ -300,14 +396,14 @@ fn pump(shared: &Shared) -> Result<(), Error> {
         connection.cursor = batch.cursor;
         return Ok(());
     }
-    if let Some(session) = current {
-        for event in batch.events {
+    for session in current {
+        for event in &batch.events {
             match event {
-                Event::Output { pty, sequence, data } if pty == session.pty => connection.publisher.publish(&format!("pty-model-output-{}", shared.key), &serde_json::json!({
+                Event::Output { pty, sequence, data } if pty == &session.pty => connection.publisher.publish(&format!("pty-model-output-{}", session.session_key), &serde_json::json!({
                     "instance_id": pty.instance, "start_sequence": sequence, "sequence": sequence, "data": base64::engine::general_purpose::STANDARD.encode(data),
                 })),
-                Event::Exited { pty, .. } if pty == session.pty => connection.publisher.publish(&format!("pty-exit-{}", shared.key), &serde_json::json!({ "instance_id": pty.instance })),
-                Event::RecoveryRequired { pty } if pty == session.pty => connection.publisher.publish(&format!("pty-model-disabled-{}", shared.key), &serde_json::json!({ "instance_id": pty.instance })),
+                Event::Exited { pty, .. } if pty == &session.pty => connection.publisher.publish(&format!("pty-exit-{}", session.session_key), &serde_json::json!({ "instance_id": pty.instance })),
+                Event::RecoveryRequired { pty } if pty == &session.pty => connection.publisher.publish(&format!("pty-model-disabled-{}", session.session_key), &serde_json::json!({ "instance_id": pty.instance })),
                 _ => {},
             }
         }

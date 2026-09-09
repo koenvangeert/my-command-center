@@ -2,6 +2,158 @@ use super::*;
 
 #[tokio::test]
 #[ignore = "build the Session Daemon first; run with the session-daemon contract command"]
+async fn controlled_workspace_recovers_multiple_indexed_shells_across_tasks() {
+    let fixture = super::daemon_fixture::DaemonFixture(
+        tempfile::Builder::new()
+            .prefix("of-workspace-")
+            .tempdir_in("/tmp")
+            .unwrap(),
+    );
+    let executable = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("crates/session-daemon/target/debug/openforge-session-daemon");
+    let (mut first, _db1) = test_state("workspace-first");
+    first.pty_manager.as_mut().unwrap().enable_daemon_shell(
+        fixture.0.path().into(),
+        executable.clone(),
+        "*".into(),
+    );
+    let mut instances = Vec::new();
+    for (task, index) in [("T-workspace-a", 2), ("T-workspace-b", 4)] {
+        let instance = invoke_ok(&first, "pty_spawn_shell", json!({
+            "taskId": task, "terminalIndex": index, "cwd": fixture.0.path(), "cols": 80, "rows": 24,
+        })).await;
+        instances.push(instance);
+    }
+    let inventory = invoke_ok(&first, "get_restart_terminal_inventory", json!({})).await;
+    if inventory["sessions"].as_array().unwrap().len() != 2 {
+        for task in ["T-workspace-a", "T-workspace-b"] {
+            invoke_ok(
+                &first,
+                "pty_kill_shells_for_task",
+                json!({ "taskId": task }),
+            )
+            .await;
+        }
+    }
+    assert_eq!(inventory["sessions"].as_array().unwrap().len(), 2);
+    drop(first);
+    let (mut second, _db2) = test_state("workspace-second");
+    second.pty_manager.as_mut().unwrap().enable_daemon_shell(
+        fixture.0.path().into(),
+        executable,
+        "*".into(),
+    );
+    for (i, key) in ["T-workspace-a-shell-2", "T-workspace-b-shell-4"]
+        .into_iter()
+        .enumerate()
+    {
+        let replay = invoke_ok(&second, "get_pty_buffer", json!({ "shellSessionKey": key })).await;
+        assert_eq!(replay["instanceId"], instances[i]);
+        assert_eq!(replay["isLive"], true);
+    }
+    invoke_ok(
+        &second,
+        "pty_kill_shells_for_task",
+        json!({ "taskId": "T-workspace-a" }),
+    )
+    .await;
+    let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(5);
+    loop {
+        let inventory = invoke_ok(&second, "get_restart_terminal_inventory", json!({})).await;
+        let sessions = inventory["sessions"].as_array().unwrap();
+        assert_eq!(
+            sessions
+                .iter()
+                .find(|session| session["key"] == "T-workspace-b-shell-4")
+                .unwrap()["isLive"],
+            true
+        );
+        if sessions
+            .iter()
+            .find(|session| session["key"] == "T-workspace-a-shell-2")
+            .unwrap()["isLive"]
+            == false
+        {
+            break;
+        }
+        assert!(
+            tokio::time::Instant::now() < deadline,
+            "Task-scoped stop did not reach the daemon shell"
+        );
+        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+    }
+    drop(second);
+}
+
+#[tokio::test]
+#[ignore = "build the Session Daemon first; run with the session-daemon contract command"]
+async fn restart_inventory_reports_authoritative_shell_identity_without_spawn_configuration() {
+    let fixture = super::daemon_fixture::DaemonFixture(
+        tempfile::Builder::new()
+            .prefix("of-inventory-")
+            .tempdir_in("/tmp")
+            .unwrap(),
+    );
+    let executable = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("crates/session-daemon/target/debug/openforge-session-daemon");
+    let (mut state, _db) = test_state("restart-inventory");
+    state.pty_manager.as_mut().unwrap().enable_daemon_shell(
+        fixture.0.path().into(),
+        executable,
+        "T-inventory-shell-2".into(),
+    );
+    let instance = invoke_ok(&state, "pty_spawn_shell", json!({
+        "taskId": "T-inventory", "terminalIndex": 2, "cwd": fixture.0.path(), "cols": 80, "rows": 24,
+    })).await;
+    let inventory = invoke_ok(&state, "get_restart_terminal_inventory", json!({})).await;
+    assert!(inventory["controller"].is_object());
+    assert_eq!(inventory["hasLegacySessions"], false);
+    assert_eq!(
+        inventory["sessions"],
+        json!([{
+            "key": "T-inventory-shell-2", "instanceId": instance, "isLive": true,
+        }])
+    );
+    assert!(!inventory.to_string().contains("environment"));
+    let fence = json!({ "controller": inventory["controller"], "instanceId": instance });
+    invoke_ok(
+        &state,
+        "pty_resize",
+        json!({
+            "shellSessionKey": "T-inventory-shell-2", "cols": 90, "rows": 30, "fence": fence,
+        }),
+    )
+    .await;
+    let mut stale = fence.clone();
+    stale["controller"]["generation"] =
+        json!(inventory["controller"]["generation"].as_u64().unwrap() + 1);
+    let error = invoke(
+        &state,
+        "pty_write",
+        json!({
+            "shellSessionKey": "T-inventory-shell-2", "data": "must-not-arrive", "fence": stale,
+        }),
+    )
+    .await
+    .unwrap_err();
+    assert!(error.1.contains("controller"), "{error:?}");
+    stale = fence;
+    stale["instanceId"] = json!(instance.as_u64().unwrap() + 1);
+    let error = invoke(
+        &state,
+        "get_pty_buffer",
+        json!({
+            "shellSessionKey": "T-inventory-shell-2", "fence": stale,
+        }),
+    )
+    .await
+    .unwrap_err();
+    assert!(error.1.to_lowercase().contains("pty"), "{error:?}");
+    drop(state);
+}
+
+#[tokio::test]
+#[ignore = "build the Session Daemon first; run with the session-daemon contract command"]
 async fn indexed_daemon_shell_reattaches_through_existing_ipc_after_sidecar_state_replacement() {
     let root = tempfile::Builder::new()
         .prefix("of-ipc-")

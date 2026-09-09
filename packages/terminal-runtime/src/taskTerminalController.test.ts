@@ -141,6 +141,19 @@ describe('createTaskTerminalController', () => {
     ))
   })
 
+  it('does not replace a restored tab when its daemon shell is absent or exited', async () => {
+    const adapter = createAdapter({ beginPtySpawn: vi.fn(() => createSpawnLease()) })
+    Object.assign(adapter.runtime, { canAutoStartShell: () => false })
+    const controller = createTaskTerminalController({
+      adapter, terminalHost: document.createElement('div'), onLifecycleChange: vi.fn(),
+    })
+    controller.mount(binding('T-1-shell-0'))
+    await vi.waitFor(() => expect(adapter.runtime.attach).toHaveBeenCalled())
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(adapter.spawnShellPty).not.toHaveBeenCalled()
+    controller.destroy()
+  })
+
   it('starts a missing PTY with geometry and image protocol from its spawn lease', async () => {
     const session = createSession('T-1-shell-0')
     const lease = createSpawnLease({ imageProtocol: 'iterm2' })

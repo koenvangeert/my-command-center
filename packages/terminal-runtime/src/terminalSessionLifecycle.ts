@@ -53,7 +53,18 @@ export function createTerminalSessionLifecycle(
     shellLifecycle.clearAll()
   }
 
+  const restoredShells = new Set<string>()
+  function restoreWorkspace(...args: Parameters<typeof taskTabSessions.restore>): void {
+    if (!taskTabSessions.restore(...args)) return
+    for (const task of taskTabSessions.snapshot()) {
+      for (const tab of task.tabs) restoredShells.add(tab.key)
+    }
+  }
+
   return {
+    snapshotWorkspace: taskTabSessions.snapshot,
+    restoreWorkspace,
+    canAutoStartShell: (key: string) => !restoredShells.has(key),
     applyRestoredPtyInstance,
     clearAll,
     clearTaskTerminalTabsSession,

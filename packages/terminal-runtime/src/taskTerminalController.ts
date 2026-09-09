@@ -120,6 +120,7 @@ export function createTaskTerminalController({
   async function ensureShellStarted(session: TerminalSession, binding: TaskTerminalBinding): Promise<void> {
     if (!isCurrentBinding(binding)) return
     if (adapter.runtime.getShellLifecycleState(binding.terminalKey).shellExited) return
+    if (adapter.runtime.canAutoStartShell?.(binding.terminalKey) === false) return
     await spawnShellPty(session, binding, () => isCurrentBinding(binding))
   }
 

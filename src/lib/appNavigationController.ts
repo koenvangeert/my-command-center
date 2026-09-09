@@ -1,9 +1,10 @@
 import { get } from 'svelte/store'
-import { activeProjectId, currentView, pendingTask, projects, selectedTaskId, tasks } from './stores'
+import { activeProjectId, currentView, hiddenProjectIds, pendingTask, projects, selectedTaskId, taskActiveView, tasks } from './stores'
 import { activateCachedTaskDetail, loadTaskDetail } from './tasksState'
 import { isCrossProjectView } from './views'
 import { pushNavState, restoreProjectView, selectFocusBoardTab } from './router.svelte'
 import type { AppView, TaskDetail, TaskRead } from './types'
+import type { RestartWindowWorkspace } from '../electron/restartWorkspace'
 
 type TaskNavigationReference = Pick<TaskDetail, 'id' | 'projectId'>
 
@@ -27,6 +28,8 @@ interface AppNavigationControllerOptions {
   loadTaskDetail?(projectId: string, taskId: string): Promise<TaskRead | null>
   getSelectedTask(): TaskDetail | null
   getSidebarPluginViewKeys(): ReadonlySet<string>
+  getAvailableViewKeys?(): ReadonlySet<string>
+  hydrateProjectViews?(projectId: string): Promise<void>
   closeAttentionOverview(): void
   history?: AppNavigationHistory
 }
@@ -162,7 +165,47 @@ export function createAppNavigationController(options: AppNavigationControllerOp
     await switchToProject(projectList[nextIndex].id)
   }
 
+  // A restore scope survives failed hydration and acknowledgement attempts.
+  const restoreProgress = new WeakMap<object, { generation: number; applied: boolean }>()
+
+  async function restoreWorkspaceNavigation(
+    source: Promise<RestartWindowWorkspace['navigation'] | null>,
+    hydrated: Promise<void>,
+    scope: object = {},
+  ): Promise<void> {
+    const progress = restoreProgress.get(scope) ?? { generation: navigationGeneration, applied: false }
+    restoreProgress.set(scope, progress)
+    const generation = progress.generation
+    const [saved] = await Promise.all([source, hydrated])
+    if (!saved || progress.applied || generation !== navigationGeneration) return
+    const permitted = get(projects).filter(project => !get(hiddenProjectIds).has(project.id))
+    const savedProject = permitted.find(project => project.id === saved.projectId)
+    const projectId = savedProject?.id
+      ?? permitted.find(project => project.id === get(activeProjectId))?.id
+      ?? permitted[0]?.id ?? null
+    activeProjectId.set(projectId)
+    if (projectId) {
+      await Promise.all([options.loadTasks(), options.hydrateProjectViews?.(projectId)])
+      if (generation !== navigationGeneration || get(activeProjectId) !== projectId) return
+    }
+    options.router.resetToBoard()
+    if (savedProject && saved.taskId) {
+      progress.generation = generation + 1
+      await openTaskInProject(saved.taskId, savedProject.id)
+      if (navigationGeneration !== progress.generation) return
+      if (saved.taskView && get(selectedTaskId) === saved.taskId) {
+        taskActiveView.update(views => new Map(views).set(saved.taskId!, saved.taskView!))
+      }
+    }
+    const available = options.getAvailableViewKeys?.() ?? new Set(['board', 'files', 'settings', 'global_settings'])
+    if (savedProject && saved.view !== 'board' && available.has(saved.view)) {
+      options.router.navigate(saved.view as AppView)
+    }
+    progress.applied = true
+  }
+
   return {
+    restoreWorkspaceNavigation,
     navigate,
     openTask,
     openTaskInProject,

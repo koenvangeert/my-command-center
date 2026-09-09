@@ -1,4 +1,10 @@
 import { spawn } from 'node:child_process'
+import { randomUUID } from 'node:crypto'
+import { RestartWorkspaceIpc } from './restartWorkspaceIpc.js'
+import { createControlledRestartHost } from './controlledRestartHost.js'
+import { RestartGeometryLeases } from './restartGeometryLeases.js'
+import type { RestartAttachmentIdentity } from './restartGeometryLeases.js'
+import type { RestartTerminalFence, RestartTerminalInventory } from './restartWorkspace.js'
 import { join } from 'node:path'
 import { BrowserWindow, app, clipboard, dialog, ipcMain, protocol, session, shell } from 'electron'
 import { FRONTEND_HOST_REQUEST_ACKNOWLEDGE_COMMAND } from './frontendHostRequestProtocol.js'
@@ -103,6 +109,29 @@ export function createElectronBootAdapter(options: ElectronBootAdapterOptions): 
   const rendererEventSubscriptions = new RendererEventSubscriptions()
   let backendInvokeContext: BootBackendInvokeContext | null = null
   let mainRendererWindow: BrowserWindow | null = null
+  const appRenderers = new Set<number>()
+  const restartGeometryLeases = new RestartGeometryLeases()
+  let restartWorkspace: Promise<RestartWorkspaceIpc> | null = null
+  function controlledWorkspace(): Promise<RestartWorkspaceIpc | null> {
+    if (app.isPackaged || options.env.OPENFORGE_E2E !== '1' || !options.env.OPENFORGE_ELECTRON_USER_DATA_DIR
+      || !options.env.OPENFORGE_SESSION_DAEMON_ROOT || !options.env.OPENFORGE_SESSION_DAEMON_PATH
+      || options.env.OPENFORGE_SESSION_DAEMON_SHELL_KEY !== '*') return Promise.resolve(null)
+    if (restartWorkspace) return restartWorkspace
+    const operationPrefix = '--openforge-restart-operation='
+    const operationId = process.argv.find(arg => arg.startsWith(operationPrefix))?.slice(operationPrefix.length) ?? null
+    restartWorkspace = createControlledRestartHost({
+      root: app.getPath('userData'), operationId,
+      inventory: async () => {
+        if (!backendInvokeContext) throw new Error('Restart backend is not ready')
+        return await handleElectronInvoke({ command: 'get_restart_terminal_inventory', payload: {} }, createInvokeDeps(backendInvokeContext)) as RestartTerminalInventory
+      },
+      replace: async nextOperation => {
+        app.relaunch({ args: [...process.argv.slice(1).filter(arg => !arg.startsWith(operationPrefix)), `${operationPrefix}${nextOperation}`] })
+        app.quit()
+      },
+    }).catch(error => { restartWorkspace = null; throw error })
+    return restartWorkspace
+  }
 
   function createInvokeDeps(context: BootBackendInvokeContext): ElectronInvokeDeps {
     return {
@@ -212,6 +241,13 @@ export function createElectronBootAdapter(options: ElectronBootAdapterOptions): 
   })
 
   async function createMainWindow(): Promise<BrowserWindow> {
+    const ids = await (await controlledWorkspace())?.launchWindowIds(options.env.OPENFORGE_E2E_RESTART_WINDOWS === '2' ? 2 : 1) ?? [randomUUID()]
+    const windows: BrowserWindow[] = []
+    for (const id of ids) windows.push(await createWorkspaceWindow(id))
+    return windows[0]
+  }
+
+  async function createWorkspaceWindow(stableWindowId: string): Promise<BrowserWindow> {
     if (backendInvokeContext?.getSidecarConfig()) {
       await taskBrowserSessionPurgeCoordinator.drain()
     }
@@ -223,6 +259,10 @@ export function createElectronBootAdapter(options: ElectronBootAdapterOptions): 
     const preloadPath = createPreloadPath(options.currentDir)
     const window = new BrowserWindow(createMainWindowOptions(preloadPath))
     mainRendererWindow = window
+    appRenderers.add(window.webContents.id)
+    const unregisterRestartWindow = (await controlledWorkspace())?.register(window.webContents.id, stableWindowId, operationId => {
+      window.webContents.send('openforge:event', { eventName: 'restart-workspace-capture', payload: { operationId } })
+    })
     const updateTaskBrowserWindowBounds = () => {
       const { width, height } = window.getContentBounds()
       taskBrowserSurfaceManager.updateWindowBounds(window.id, { x: 0, y: 0, width, height })
@@ -231,6 +271,9 @@ export function createElectronBootAdapter(options: ElectronBootAdapterOptions): 
     taskBrowserSurfaceManager.registerWindow(window.id, { x: 0, y: 0, width, height })
     window.on('resize', updateTaskBrowserWindowBounds)
     window.on('closed', () => {
+      appRenderers.delete(mainWebContentsId)
+      restartGeometryLeases.forget(mainWebContentsId)
+      unregisterRestartWindow?.()
       taskBrowserSurfaceManager.unregisterWindow(window.id)
       rendererEventSubscriptions.clear(mainWebContentsId)
       if (mainRendererWindow === window) mainRendererWindow = null
@@ -240,6 +283,12 @@ export function createElectronBootAdapter(options: ElectronBootAdapterOptions): 
     const rendererUrl = rendererTrustAdapter.trustedRendererUrlFromEnv(options.env)
     const trustedOrigins = rendererTrustAdapter.trustedRendererOrigins(rendererUrl)
     const mainWebContentsId = window.webContents.id
+    window.on('focus', () => restartGeometryLeases.focus(mainWebContentsId))
+    window.webContents.on('did-frame-navigate', (_event, _url, _status, _statusText, isMainFrame) => {
+      if (!isMainFrame) return
+      restartGeometryLeases.forget(mainWebContentsId)
+      if (window.isFocused()) restartGeometryLeases.focus(mainWebContentsId)
+    })
     window.webContents.on('render-process-gone', () => {
       rendererEventSubscriptions.clear(mainWebContentsId)
       void frontendHostRequestRelay.rendererLost(mainWebContentsId)
@@ -273,7 +322,7 @@ export function createElectronBootAdapter(options: ElectronBootAdapterOptions): 
       registerRendererEventSubscriptionHandler(
         ipcMain,
         rendererEventSubscriptions,
-        () => mainRendererWindow?.webContents.id ?? null,
+        () => [...appRenderers],
       )
       ipcMain.handle('openforge:invoke', async (event, request: unknown) => {
         const typedRequest = request as { command?: unknown; payload?: unknown }
@@ -285,9 +334,34 @@ export function createElectronBootAdapter(options: ElectronBootAdapterOptions): 
           const windowId = owningWindow && owningWindow.webContents.id === event.sender.id ? owningWindow.id : null
           return taskBrowserSurfaceIpc.handle(typedRequest.command, typedRequest.payload, windowId)
         }
+        if (typedRequest.command === 'pty_resize' && typedRequest.payload && typeof typedRequest.payload === 'object' && 'attachment' in typedRequest.payload) {
+          if (!await controlledWorkspace() || !appRenderers.has(event.sender.id) || event.senderFrame !== event.sender.mainFrame) {
+            throw new Error('Untrusted terminal geometry request')
+          }
+          const { attachment, ...payload } = typedRequest.payload as Record<string, unknown>
+          const fence = payload.fence as RestartTerminalFence | undefined
+          if (!attachment || typeof attachment !== 'object' || typeof payload.shellSessionKey !== 'string'
+            || !fence?.controller || typeof fence.controller.installation !== 'string' || typeof fence.controller.lifetime !== 'string'
+            || !Number.isSafeInteger(fence.controller.generation) || !Number.isSafeInteger(fence.instanceId)) {
+            throw new Error('Invalid terminal geometry identity')
+          }
+          return restartGeometryLeases.resize(event.sender.id, payload.shellSessionKey, fence, attachment as RestartAttachmentIdentity, async () => {
+            if (!appRenderers.has(event.sender.id)) throw new Error('Terminal renderer closed before resize')
+            await handleElectronInvoke({ command: 'pty_resize', payload }, createInvokeDeps(context))
+          })
+        }
         return invokeWithTaskBrowserSessionPurgeDrain(
           typedRequest,
-          () => handleElectronInvoke(typedRequest, createInvokeDeps(context)),
+          () => handleElectronInvoke(typedRequest, {
+            ...createInvokeDeps(context),
+            restartWorkspace: async (command, payload) => {
+              if (!appRenderers.has(event.sender.id) || event.senderFrame !== event.sender.mainFrame) throw new Error('Untrusted restart workspace renderer')
+              const host = await controlledWorkspace()
+              if (!host && command === 'get_restart_workspace') return null
+              if (!host) throw new Error('Controlled restart is disabled')
+              return host.handle(event.sender.id, command, payload)
+            },
+          }),
           () => taskBrowserSessionPurgeCoordinator.drain(),
         )
       })

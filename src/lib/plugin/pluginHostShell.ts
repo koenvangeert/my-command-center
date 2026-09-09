@@ -1,15 +1,12 @@
 import type { ShellSpawnRequest } from '@openforge-app/plugin-sdk'
 import { createIndexedShellSessionKey } from '@openforge-app/terminal-runtime'
-import {
-  getPtyBuffer,
-  killPty,
-  resizePty,
-  spawnShellPty,
-  writePty,
-} from '../ipc'
+import { spawnShellPty } from '../ipc'
+import { desktopRestartTerminalControl } from '../desktopRestartTerminalControl'
 import type { PluginHostCommandEntries, PluginHostCommandPayload } from './pluginHostCommandRegistry'
 import { waitForTerminalEventSubscriptions } from './pluginHostEvents'
 import type { RuntimeHostBridge } from './runtimeContributionTypes'
+
+const { getPtyBuffer, killPty, resizePty, writePty } = desktopRestartTerminalControl
 
 type ShellHostCapabilities = Required<Pick<RuntimeHostBridge,
   'spawnShell' | 'writeShell' | 'resizeShell' | 'killShell' | 'getShellBuffer'

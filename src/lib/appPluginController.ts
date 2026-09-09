@@ -17,6 +17,7 @@ export function createAppPluginController(options: AppPluginControllerOptions) {
   let registeredShortcutKeys = new Set<string>()
   let currentContributions: ResolvedContributions | null = null
   let selectedProjectId: string | null = null
+  let projectLoad: Promise<void> | null = null
   const logError = options.logError ?? ((message: string, error: unknown) => {
     console.error(message, error)
   })
@@ -75,10 +76,18 @@ export function createAppPluginController(options: AppPluginControllerOptions) {
     }
   }
 
+  function whenProjectReady(projectId: string | null): Promise<void> {
+    if (projectId === selectedProjectId && projectLoad) return projectLoad
+    selectedProjectId = projectId
+    const pending = (async () => { await options.loadEnabledForProject(projectId) })()
+    projectLoad = pending
+    void pending.catch(() => { if (projectLoad === pending) projectLoad = null })
+    return pending
+  }
+
   function selectProject(projectId: string | null): void {
     if (projectId === selectedProjectId) return
-    selectedProjectId = projectId
-    void Promise.resolve(options.loadEnabledForProject(projectId)).catch((error) => {
+    void whenProjectReady(projectId).catch((error) => {
       logError(`[plugins] Failed to load enabled plugins for visible project ${projectId ?? 'none'}:`, error)
     })
   }
@@ -95,6 +104,7 @@ export function createAppPluginController(options: AppPluginControllerOptions) {
     setShortcutRegistry,
     syncContributions,
     selectProject,
+    whenProjectReady,
     dispose,
   }
 }

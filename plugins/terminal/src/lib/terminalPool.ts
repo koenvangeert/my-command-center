@@ -52,4 +52,5 @@ export function releaseAllForTask(...args: Parameters<TerminalSessionClient['rel
 export function focusTerminal(...args: Parameters<TerminalSessionClient['focusTerminal']>) { return client().focusTerminal(...args) }
 export function hasTerminal(...args: Parameters<TerminalSessionClient['hasTerminal']>) { return client().hasTerminal(...args) }
 export function isPtyActive(...args: Parameters<TerminalSessionClient['isPtyActive']>) { return client().isPtyActive(...args) }
+export function canAutoStartShell(...args: Parameters<TerminalSessionClient['canAutoStartShell']>) { return client().canAutoStartShell(...args) }
 export function replayPtyBuffersForActiveTerminals(...args: Parameters<TerminalSessionClient['replayPtyBuffersForActiveTerminals']>) { return client().replayPtyBuffersForActiveTerminals(...args) }

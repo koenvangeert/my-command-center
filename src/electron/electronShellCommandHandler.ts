@@ -8,7 +8,16 @@ type ElectronShellCommandHandler = (
   deps: ElectronInvokeDeps,
 ) => unknown | Promise<unknown>
 
+function restartWorkspace(command: string, payload: unknown, deps: ElectronInvokeDeps): Promise<unknown> {
+  if (!deps.restartWorkspace) throw new Error('Controlled restart workspace is unavailable')
+  return deps.restartWorkspace(command, payload)
+}
+
 const electronShellCommandHandlers = {
+  get_restart_workspace: (payload, deps) => deps.restartWorkspace?.('get_restart_workspace', payload) ?? null,
+  capture_restart_workspace: (payload, deps) => restartWorkspace('capture_restart_workspace', payload, deps),
+  complete_restart_workspace: (payload, deps) => restartWorkspace('complete_restart_workspace', payload, deps),
+  controlled_restart: (payload, deps) => restartWorkspace('controlled_restart', payload, deps),
   open_url: (payload, deps) => {
     const url = typeof (payload as { url?: unknown } | null)?.url === 'string'
       ? (payload as { url: string }).url
