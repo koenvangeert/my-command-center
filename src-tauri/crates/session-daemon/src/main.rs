@@ -1,3 +1,6 @@
+mod agent_config;
+mod agent_connection;
+mod agent_gateway;
 mod backend;
 mod host;
 mod journal;

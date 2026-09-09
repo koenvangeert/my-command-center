@@ -27,6 +27,10 @@ pub fn create_router(state: AppState) -> Router {
         .merge(internal_transport::router())
         .merge(legacy_transport::router())
         .merge(plugin_management::router())
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            super::agent_ingress::authorize,
+        ))
         .with_state(state)
 }
 
@@ -340,6 +344,28 @@ async fn start_http_server_with_app_state(
     info!("[http_server] Starting on {}", addr);
 
     let listener = tokio::net::TcpListener::bind(addr).await?;
+    if let Some(daemon) = shutdown_state
+        .pty_manager
+        .as_ref()
+        .and_then(|manager| manager.daemon_shells.as_ref())
+    {
+        let token = shutdown_state
+            .backend_token
+            .clone()
+            .ok_or("agent gateway requires a private Sidecar token")?;
+        daemon
+            .register_agent_endpoint(
+                crate::app_events::RuntimeEventPublisher::new(
+                    shutdown_state.app.clone(),
+                    shutdown_state.app_event_tx.clone(),
+                ),
+                Some(openforge_session_protocol::SidecarEndpoint {
+                    port: listener.local_addr()?.port(),
+                    token,
+                }),
+            )
+            .await?;
+    }
     // Signal that the core loopback bridge is listening before independently
     // restoring the optional Companion Gateway.
     let _ = ready_tx.send(());

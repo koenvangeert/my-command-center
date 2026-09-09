@@ -1,9 +1,15 @@
+import { readAgentConfig } from './agent-config.js';
+import { requestAgent } from './agent-request.js';
+
 const DEFAULT_OPENFORGE_HTTP_PORT = '17422';
 const HTTP_PORT = process.env.OPENFORGE_HTTP_PORT ?? DEFAULT_OPENFORGE_HTTP_PORT;
 const BASE_URL = `http://127.0.0.1:${HTTP_PORT}`;
 
 export async function requestJson(path, options = {}) {
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const agentPath = process.env.OPENFORGE_AGENT_CONFIG;
+  const res = agentPath !== undefined
+    ? await requestAgent(readAgentConfig(agentPath), path, options)
+    : await fetch(`${BASE_URL}${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',

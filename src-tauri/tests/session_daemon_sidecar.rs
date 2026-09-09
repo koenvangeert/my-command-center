@@ -12,6 +12,7 @@ struct Fixture {
     root: tempfile::TempDir,
     child: Option<Child>,
     port: u16,
+    shell_key: String,
     token: String,
     http: reqwest::blocking::Client,
 }
@@ -26,6 +27,7 @@ impl Fixture {
             root,
             child: None,
             port: 0,
+            shell_key: "T-proof-shell-3".into(),
             token: String::new(),
             http: reqwest::blocking::Client::builder()
                 .timeout(Duration::from_secs(10))
@@ -62,7 +64,7 @@ impl Fixture {
             command
                 .env("OPENFORGE_SESSION_DAEMON_ROOT", self.root.path())
                 .env("OPENFORGE_SESSION_DAEMON_PATH", daemon)
-                .env("OPENFORGE_SESSION_DAEMON_SHELL_KEY", "T-proof-shell-3");
+                .env("OPENFORGE_SESSION_DAEMON_SHELL_KEY", &self.shell_key);
         }
         self.child = Some(command.spawn().unwrap());
         let deadline = Instant::now() + Duration::from_secs(30);
@@ -109,7 +111,7 @@ impl Fixture {
         loop {
             let buffer = self.invoke(
                 "get_pty_buffer",
-                json!({ "shellSessionKey": "T-proof-shell-3" }),
+                json!({ "shellSessionKey": self.shell_key }),
             );
             let data = buffer["snapshot"]["compatibilityData"]
                 .as_str()
@@ -130,7 +132,7 @@ impl Fixture {
     fn write(&self, data: &str) {
         self.invoke(
             "pty_write",
-            json!({ "shellSessionKey": "T-proof-shell-3", "data": data }),
+            json!({ "shellSessionKey": self.shell_key, "data": data }),
         );
     }
 }
@@ -223,4 +225,79 @@ fn same_shell_survives_actual_sidecar_process_replacement() {
         "same PID {pid}, PTY {tty}, instance {instance}; Sidecar {old_sidecar} replaced by {}",
         fixture.child.as_ref().unwrap().id()
     );
+}
+
+#[test]
+#[ignore = "requires built Sidecar and Session Daemon"]
+fn running_cli_fixture_uses_refreshed_payload_after_sidecar_replacement() {
+    let mut fixture = Fixture::new();
+    fixture.start("first");
+    let project = fixture.invoke(
+        "create_project",
+        json!({"name":"Gateway fixture", "path":fixture.root.path()}),
+    );
+    let task = fixture.invoke(
+        "create_task",
+        json!({"initialPrompt":"Gateway fixture", "status":"backlog", "projectId":project["id"]}),
+    );
+    let task_id = task["id"].as_str().unwrap();
+    fixture.shell_key = format!("{task_id}-shell-3");
+    fixture.replace();
+    let launcher = fixture.root.path().join("home/.openforge/bin/openforge");
+    assert!(
+        launcher.exists(),
+        "Sidecar must install the CLI payload in the isolated HOME"
+    );
+    let script = fixture.root.path().join("agent.cjs");
+    fs::write(&script, r#"
+const fs = require('node:fs');
+const {spawnSync} = require('node:child_process');
+const readline = require('node:readline');
+const config = process.env.OPENFORGE_AGENT_CONFIG;
+readline.createInterface({input:process.stdin}).on('line', stage => {
+  const result = spawnSync(process.env.HOME + '/.openforge/bin/openforge', ['project','list'], {encoding:'utf8'});
+  fs.writeFileSync(stage + '.json', JSON.stringify({pid:process.pid, configUnchanged:config === process.env.OPENFORGE_AGENT_CONFIG, status:result.status, stdout:result.stdout, stderr:result.stderr}));
+});
+"#).unwrap();
+    let instance = fixture.invoke("pty_spawn_shell", json!({"taskId":task_id, "terminalIndex":3, "cwd":fixture.root.path(), "cols":80, "rows":24}));
+    fixture.write(&format!("stty -echo; node '{}'\n", script.display()));
+    fixture.write("before\n");
+    let read_result = |stage: &str| {
+        let deadline = Instant::now() + Duration::from_secs(10);
+        loop {
+            if let Ok(bytes) = fs::read(fixture.root.path().join(format!("{stage}.json"))) {
+                if let Ok(value) = serde_json::from_slice::<Value>(&bytes) {
+                    return value;
+                }
+            }
+            assert!(Instant::now() < deadline, "CLI fixture did not answer");
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    };
+    let before = read_result("before");
+    assert_eq!(before["status"], 0, "{before}");
+    fixture.replace();
+    fixture.write("after\n");
+    let deadline = Instant::now() + Duration::from_secs(10);
+    let after: Value = loop {
+        if let Ok(bytes) = fs::read(fixture.root.path().join("after.json")) {
+            if let Ok(value) = serde_json::from_slice(&bytes) {
+                break value;
+            }
+        }
+        assert!(Instant::now() < deadline);
+        std::thread::sleep(Duration::from_millis(20));
+    };
+    assert_eq!(after["status"], 0, "{after}");
+    assert_eq!(before["pid"], after["pid"]);
+    assert_eq!(after["configUnchanged"], true);
+    assert!(after["stdout"]
+        .as_str()
+        .unwrap()
+        .contains("Gateway fixture"));
+    let replay = fixture.invoke(
+        "get_pty_buffer",
+        json!({"shellSessionKey":fixture.shell_key}),
+    );
+    assert_eq!(replay["instanceId"], instance);
 }

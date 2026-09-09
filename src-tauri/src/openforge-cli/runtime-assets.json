@@ -1,5 +1,7 @@
 {
   "runtimeFiles": [
+    "agent-config.js",
+    "agent-request.js",
     "cli.js",
     "command-line.js",
     "debug-commands.js",

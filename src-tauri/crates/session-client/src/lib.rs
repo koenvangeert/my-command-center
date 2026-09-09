@@ -130,6 +130,19 @@ impl Client {
         }
     }
 
+    /// Replaces the private domain endpoint for this controller generation.
+    /// # Errors
+    /// Refuses stale controllers or invalid endpoints. Never retries registration.
+    pub fn register_sidecar(&self, endpoint: Option<SidecarEndpoint>) -> Result<(), Error> {
+        match self.request(Command::RegisterSidecar {
+            controller: self.controller.clone(),
+            endpoint,
+        })? {
+            Response::Done => Ok(()),
+            _ => Err(Error::InvalidRequest),
+        }
+    }
+
     fn request(&self, command: Command) -> Result<Response, Error> {
         exchange(&self.socket, &self.credentials, command)
     }

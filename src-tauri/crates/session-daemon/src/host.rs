@@ -8,13 +8,17 @@ use tokio::sync::Mutex;
 
 pub struct Host {
     host: InProcessHost<Backend>,
-    backend: Backend,
+    pub backend: Backend,
     state: Arc<Mutex<HostState>>,
     runtime: tokio::runtime::Runtime,
+    pub sidecar: crate::agent_gateway::Registration,
     pub shutdown: bool,
 }
 impl Host {
-    pub fn new(installation: InstallationId) -> Result<Self, Error> {
+    pub fn new(
+        installation: InstallationId,
+        agent_runtime: crate::agent_config::AgentRuntime,
+    ) -> Result<Self, Error> {
         let state = HostState::with_limits(HostLimits {
             live_sessions: 32,
             retained_sessions: 128,
@@ -22,7 +26,11 @@ impl Host {
             cleanup_reserve: 128,
             ..HostLimits::default()
         });
-        let backend = Backend::new(installation.clone(), state.lifetime().clone());
+        let backend = Backend::new(
+            installation.clone(),
+            state.lifetime().clone(),
+            agent_runtime,
+        );
         let state = Arc::new(Mutex::new(state));
         let host = InProcessHost::new(backend.clone(), installation, Arc::clone(&state));
         let runtime = tokio::runtime::Builder::new_current_thread()
@@ -34,6 +42,7 @@ impl Host {
             backend,
             state,
             runtime,
+            sidecar: Default::default(),
             shutdown: false,
         })
     }
@@ -71,8 +80,20 @@ impl Host {
     }
     pub fn handle(&mut self, command: Command) -> Result<Response, Error> {
         match command {
+            Command::RegisterSidecar {
+                controller,
+                endpoint,
+            } => {
+                self.runtime.block_on(self.host.reconcile(&controller))?;
+                if let Some(endpoint) = &endpoint {
+                    endpoint.validate()?;
+                }
+                *self.sidecar.write().map_err(|_| Error::OutcomeUnknown)? = endpoint.map(Arc::new);
+                Ok(Response::Done)
+            }
             Command::Connect { installation } => {
                 let connection = self.runtime.block_on(self.host.connect(&installation))?;
+                *self.sidecar.write().map_err(|_| Error::OutcomeUnknown)? = None;
                 Ok(Response::Inventory(self.inventory(&connection.controller)?))
             }
             Command::Inventory { controller } => {
