@@ -82,13 +82,13 @@
           <h2>{schedule.title}</h2>
           <span class="schedule-status">
             {#if status === 'Enabled'}
-              <CheckCircle2 class="size-4 status-success" aria-hidden="true" /> Enabled
+              <CheckCircle2 class="size-4 schedule-status-icon-success" aria-hidden="true" /> Enabled
             {:else if status === 'Completed'}
-              <CheckCircle2 class="size-4 status-success" aria-hidden="true" /> Completed
+              <CheckCircle2 class="size-4 schedule-status-icon-success" aria-hidden="true" /> Completed
             {:else if status === 'Cancelled'}
-              <CircleX class="size-4 status-danger" aria-hidden="true" /> Cancelled
+              <CircleX class="size-4 schedule-status-icon-danger" aria-hidden="true" /> Cancelled
             {:else}
-              <CirclePause class="size-4 status-warning" aria-hidden="true" /> Paused
+              <CirclePause class="size-4 schedule-status-icon-warning" aria-hidden="true" /> Paused
             {/if}
           </span>
         </div>
@@ -146,11 +146,11 @@
               <div class="schedule-history-result">
                 <span>
                   {#if outcome.status === 'started' || outcome.status === 'created'}
-                    <CheckCircle2 class="size-3.5 status-success" aria-hidden="true" />
+                    <CheckCircle2 class="size-3.5 schedule-status-icon-success" aria-hidden="true" />
                   {:else if outcome.status === 'skipped'}
-                    <TriangleAlert class="size-3.5 status-warning" aria-hidden="true" />
+                    <TriangleAlert class="size-3.5 schedule-status-icon-warning" aria-hidden="true" />
                   {:else}
-                    <CircleX class="size-3.5 status-danger" aria-hidden="true" />
+                    <CircleX class="size-3.5 schedule-status-icon-danger" aria-hidden="true" />
                   {/if}
                   {resultLabel(outcome.status)}
                 </span>
@@ -494,9 +494,9 @@
     animation: schedule-spin var(--of-duration-deliberate) linear infinite;
   }
 
-  :global(.schedule-inspector .status-success) { color: var(--of-status-success); }
-  :global(.schedule-inspector .status-warning) { color: var(--of-status-warning); }
-  :global(.schedule-inspector .status-danger) { color: var(--of-status-danger); }
+  :global(.schedule-inspector .schedule-status-icon-success) { color: var(--of-status-success); }
+  :global(.schedule-inspector .schedule-status-icon-warning) { color: var(--of-status-warning); }
+  :global(.schedule-inspector .schedule-status-icon-danger) { color: var(--of-status-danger); }
 
   @media (prefers-reduced-motion: reduce) {
     .schedule-spinner { animation-duration: 1ms; }
