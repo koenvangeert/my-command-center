@@ -378,7 +378,8 @@ impl TerminalSessions {
 
         match operation {
             SessionOperation::Write(data) | SessionOperation::WriteAttachment(data) => writer
-                .write_user_input(session_key, instance_id, data)
+                .write_user_input_async(session_key, instance_id, data)
+                .await
                 .map_err(|error| TerminalSessionFailure::Write(error.to_string())),
             SessionOperation::Resize { columns, rows }
             | SessionOperation::ResizeAttachment { columns, rows } => {
@@ -389,16 +390,26 @@ impl TerminalSessions {
                     pixel_height: 0,
                 };
                 #[cfg(test)]
-                self.pause_before_resize();
-                master
-                    .lock()
-                    .unwrap_or_else(|poisoned| poisoned.into_inner())
-                    .resize(size)
-                    .map_err(|error| TerminalSessionFailure::Resize(error.to_string()))?;
-                if let Some(terminal_model) = terminal_model {
-                    terminal_model.resize(columns, rows);
-                }
-                Ok(())
+                let test_sessions = self.clone();
+                // These handles belong to the instance resolved above. Never
+                // look up a successor or hold the sessions map during PTY I/O.
+                tokio::task::spawn_blocking(move || {
+                    #[cfg(test)]
+                    test_sessions.pause_before_resize();
+                    master
+                        .lock()
+                        .unwrap_or_else(|poisoned| poisoned.into_inner())
+                        .resize(size)
+                        .map_err(|error| TerminalSessionFailure::Resize(error.to_string()))?;
+                    if let Some(terminal_model) = terminal_model {
+                        terminal_model.resize(columns, rows);
+                    }
+                    Ok(())
+                })
+                .await
+                .map_err(|error| {
+                    TerminalSessionFailure::Resize(format!("PTY resize task failed: {error}"))
+                })?
             }
         }
     }

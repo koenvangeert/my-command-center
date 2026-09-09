@@ -177,7 +177,7 @@ async fn test_interrupt_claude_propagates_signal_delivery_failure() {
     );
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test(flavor = "current_thread")]
 async fn write_pty_keeps_session_lookup_available_during_io() {
     struct BlockingWriter {
         started: Option<std::sync::mpsc::SyncSender<()>>,
@@ -223,36 +223,39 @@ async fn write_pty_keeps_session_lookup_available_during_io() {
         .await
         .insert(task_id.to_string(), session);
 
-    let write_manager = manager.clone();
-    let write = tokio::spawn(async move { write_manager.write_pty(task_id, b"input").await });
-    tokio::task::spawn_blocking(move || {
+    let (progress_tx, progress_rx) = std::sync::mpsc::channel();
+    let (started_async_tx, started_async_rx) = tokio::sync::oneshot::channel();
+    let watchdog = std::thread::spawn(move || {
         started_rx
             .recv_timeout(std::time::Duration::from_secs(2))
             .expect("PTY write should start");
-    })
-    .await
-    .expect("write-start waiter should finish");
-
-    let keys = tokio::time::timeout(
-        std::time::Duration::from_millis(100),
-        manager.get_session_keys(),
-    )
-    .await;
-
-    release_tx.send(()).expect("blocked write should release");
+        let _ = started_async_tx.send(());
+        let progressed = progress_rx
+            .recv_timeout(std::time::Duration::from_millis(500))
+            .is_ok();
+        // Release even against the blocking implementation, before asserting.
+        let _ = release_tx.send(());
+        progressed
+    });
+    let write_manager = manager.clone();
+    let write = tokio::spawn(async move { write_manager.write_pty(task_id, b"input").await });
+    started_async_rx.await.expect("write should start");
+    let keys = manager.get_session_keys().await;
+    let _ = progress_tx.send(());
     write
         .await
         .expect("write task should join")
         .expect("PTY write should succeed");
     manager.kill_all().await;
 
-    assert_eq!(
-        keys.expect("session lookup must not wait for PTY I/O"),
-        vec![task_id.to_string()]
+    assert!(
+        watchdog.join().expect("watchdog should finish"),
+        "async work must progress before the stalled write is released"
     );
+    assert_eq!(keys, vec![task_id.to_string()]);
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[tokio::test(flavor = "current_thread")]
 async fn resize_pty_keeps_session_lookup_available_during_io() {
     let manager = PtyManager::new();
     let task_id = "nonblocking-resize-lookup";
@@ -271,33 +274,36 @@ async fn resize_pty_keeps_session_lookup_available_during_io() {
             release_rx,
         });
 
-    let resize_manager = manager.clone();
-    let resize = tokio::spawn(async move { resize_manager.resize_pty(task_id, 120, 40).await });
-    tokio::task::spawn_blocking(move || {
+    let (progress_tx, progress_rx) = std::sync::mpsc::channel();
+    let (started_async_tx, started_async_rx) = tokio::sync::oneshot::channel();
+    let watchdog = std::thread::spawn(move || {
         started_rx
             .recv_timeout(std::time::Duration::from_secs(2))
             .expect("PTY resize should start");
-    })
-    .await
-    .expect("resize-start waiter should finish");
-
-    let keys = tokio::time::timeout(
-        std::time::Duration::from_millis(100),
-        manager.get_session_keys(),
-    )
-    .await;
-
-    release_tx.send(()).expect("blocked resize should release");
+        let _ = started_async_tx.send(());
+        let progressed = progress_rx
+            .recv_timeout(std::time::Duration::from_millis(500))
+            .is_ok();
+        // Release even against the blocking implementation, before asserting.
+        let _ = release_tx.send(());
+        progressed
+    });
+    let resize_manager = manager.clone();
+    let resize = tokio::spawn(async move { resize_manager.resize_pty(task_id, 120, 40).await });
+    started_async_rx.await.expect("resize should start");
+    let keys = manager.get_session_keys().await;
+    let _ = progress_tx.send(());
     resize
         .await
         .expect("resize task should join")
         .expect("PTY resize should succeed");
     manager.kill_all().await;
 
-    assert_eq!(
-        keys.expect("session lookup must not wait for PTY resize"),
-        vec![task_id.to_string()]
+    assert!(
+        watchdog.join().expect("watchdog should finish"),
+        "async work must progress before the stalled resize is released"
     );
+    assert_eq!(keys, vec![task_id.to_string()]);
 }
 
 #[tokio::test]
