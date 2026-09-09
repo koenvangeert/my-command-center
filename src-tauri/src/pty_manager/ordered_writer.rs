@@ -1,9 +1,17 @@
+//! Legacy per-instance writer. Admission never waits for queue capacity; each
+//! accepted request has one deadline covering queueing and completion.
+//! A timeout cancels unclaimed work. Claimed work may still finish, so neither
+//! this writer nor its callers may replay an outcome-unknown request.
+//! The single worker preserves ordering even after its caller stops waiting.
+
 use std::io::{self, Write};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Arc};
 use std::thread::JoinHandle;
+use std::time::{Duration, Instant};
 
 const WRITE_QUEUE_CAPACITY: usize = 64;
+const WRITE_TIMEOUT: Duration = Duration::from_secs(1);
 
 #[derive(Clone, Copy, Debug)]
 pub(super) enum PtyWriteSource {
@@ -22,15 +30,20 @@ impl std::fmt::Display for PtyWriteSource {
 
 #[derive(Debug, thiserror::Error)]
 pub(super) enum OrderedPtyWriteError {
-    #[error("pty writer is disposed")]
+    #[error("pty writer is disposed; write not executed")]
     Disposed,
-    #[error("pty writer scope does not match key {session_key} instance {instance_id}")]
+    #[error("pty writer scope does not match key {session_key} instance {instance_id}; write not executed")]
     ScopeMismatch {
         session_key: String,
         instance_id: u64,
     },
-    #[error("{write_source} write failed: {message}")]
-    WriteFailed {
+    #[error("{write_source} write not executed: {reason}")]
+    NotExecuted {
+        write_source: PtyWriteSource,
+        reason: &'static str,
+    },
+    #[error("{write_source} write outcome unknown: {message}; do not retry")]
+    OutcomeUnknown {
         write_source: PtyWriteSource,
         message: String,
     },
@@ -41,6 +54,10 @@ struct WriteRequest {
     instance_id: u64,
     source: PtyWriteSource,
     bytes: Vec<u8>,
+    deadline: Instant,
+    // The worker claims this flag before I/O; the caller claims it to cancel.
+    // Only the winner may execute or promise that execution never occurred.
+    pending: Arc<AtomicBool>,
     completion: mpsc::SyncSender<Result<(), OrderedPtyWriteError>>,
 }
 
@@ -74,17 +91,48 @@ impl OrderedPtyWriterShared {
             return Err(OrderedPtyWriteError::Disposed);
         }
 
+        let deadline = Instant::now() + WRITE_TIMEOUT;
+        let pending = Arc::new(AtomicBool::new(true));
         let (completion, result) = mpsc::sync_channel(1);
         self.tx
-            .send(WriterCommand::Write(WriteRequest {
+            .try_send(WriterCommand::Write(WriteRequest {
                 session_key: session_key.to_string(),
                 instance_id,
                 source,
                 bytes: bytes.to_vec(),
+                deadline,
+                pending: Arc::clone(&pending),
                 completion,
             }))
-            .map_err(|_| OrderedPtyWriteError::Disposed)?;
-        result.recv().unwrap_or(Err(OrderedPtyWriteError::Disposed))
+            .map_err(|error| match error {
+                mpsc::TrySendError::Full(_) => OrderedPtyWriteError::NotExecuted {
+                    write_source: source,
+                    reason: "queue is full",
+                },
+                mpsc::TrySendError::Disconnected(_) => OrderedPtyWriteError::Disposed,
+            })?;
+        result
+            .recv_timeout(deadline.saturating_duration_since(Instant::now()))
+            .unwrap_or_else(|error| {
+                if pending.swap(false, Ordering::AcqRel) {
+                    Err(OrderedPtyWriteError::NotExecuted {
+                        write_source: source,
+                        reason: match error {
+                            mpsc::RecvTimeoutError::Timeout => {
+                                "deadline expired before execution; request cancelled"
+                            }
+                            mpsc::RecvTimeoutError::Disconnected => {
+                                "worker disconnected before execution; request cancelled"
+                            }
+                        },
+                    })
+                } else {
+                    Err(OrderedPtyWriteError::OutcomeUnknown {
+                        write_source: source,
+                        message: error.to_string(),
+                    })
+                }
+            })
     }
 }
 
@@ -111,6 +159,11 @@ impl OrderedPtyWriter {
             .name(format!("pty-writer-{instance_id}"))
             .spawn(move || {
                 while let Ok(command) = rx.recv() {
+                    // Shutdown may not fit in a full queue. Once the current
+                    // I/O returns, discard queued work and release the writer.
+                    if !worker_state.accepting.load(Ordering::Acquire) {
+                        break;
+                    }
                     let WriterCommand::Write(request) = command else {
                         break;
                     };
@@ -119,16 +172,23 @@ impl OrderedPtyWriter {
                         || request.instance_id != worker_state.instance_id
                     {
                         Err(OrderedPtyWriteError::Disposed)
+                    } else if Instant::now() >= request.deadline
+                        || !request.pending.swap(false, Ordering::AcqRel)
+                    {
+                        Err(OrderedPtyWriteError::NotExecuted {
+                            write_source: request.source,
+                            reason: "deadline expired before execution",
+                        })
                     } else {
                         writer
                             .write_all(&request.bytes)
                             .and_then(|()| writer.flush())
-                            .map_err(|error| OrderedPtyWriteError::WriteFailed {
+                            .map_err(|error| OrderedPtyWriteError::OutcomeUnknown {
                                 write_source: request.source,
                                 message: error.to_string(),
                             })
                     };
-                    let _ = request.completion.send(result);
+                    let _ = request.completion.try_send(result);
                 }
             })?;
         Ok(Self {
@@ -165,12 +225,17 @@ impl OrderedPtyWriter {
 impl Drop for OrderedPtyWriter {
     fn drop(&mut self) {
         self.shared.accepting.store(false, Ordering::Release);
-        let _ = self.shared.tx.send(WriterCommand::Shutdown);
-        if let Some(worker) = self.worker.take() {
+        let _ = self.shared.tx.try_send(WriterCommand::Shutdown);
+        // A generic Write cannot be interrupted safely. Detach a blocked worker
+        // rather than making session teardown wait for the child to read.
+        if let Some(worker) = self.worker.take().filter(JoinHandle::is_finished) {
             let _ = worker.join();
         }
     }
 }
+#[cfg(test)]
+#[path = "tests/ordered_writer_deadlines.rs"]
+mod deadline_tests;
 
 #[cfg(test)]
 mod tests {
