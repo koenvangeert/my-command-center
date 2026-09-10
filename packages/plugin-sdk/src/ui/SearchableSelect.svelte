@@ -146,17 +146,17 @@
     aria-disabled={disabled}
     tabindex={disabled ? -1 : 0}
   >
-    <span class="flex min-w-0 items-center gap-2">
-      <span class="truncate">{selectedLabel || placeholder}</span>
+    <span class="searchable-select-value">
+      <span class="searchable-select-label">{selectedLabel || placeholder}</span>
       {#if selectedOption?.badge}
-        <Badge variant={selectedOption.badgeVariant ?? 'neutral'} class="shrink-0">{selectedOption.badge}</Badge>
+        <span class="searchable-select-badge"><Badge variant={selectedOption.badgeVariant ?? 'neutral'}>{selectedOption.badge}</Badge></span>
       {/if}
     </span>
   </div>
 
   {#if open}
     <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <div role="presentation" class="fixed inset-0 z-40" onclick={() => closeDropdown()}></div>
+    <div role="presentation" class="searchable-select-dismiss" onclick={() => closeDropdown()}></div>
     <div class="searchable-select-popover">
       <div class="searchable-select-search">
         <input
@@ -176,7 +176,7 @@
       <ul
         id={listboxId}
         bind:this={listEl}
-        class="max-h-[200px] overflow-y-auto py-1"
+        class="searchable-select-list"
         role="listbox"
         aria-label={ariaLabel ?? 'Options'}
       >
@@ -198,15 +198,15 @@
             }}
             onmouseenter={() => { highlightedIndex = index }}
           >
-            <span class="flex min-w-0 items-center justify-between gap-2">
-              <span class="truncate">{option.label}</span>
+            <span class="searchable-select-value searchable-select-option-value">
+              <span class="searchable-select-label">{option.label}</span>
               {#if option.badge}
-                <Badge variant={option.badgeVariant ?? 'neutral'} class="shrink-0">{option.badge}</Badge>
+                <span class="searchable-select-badge"><Badge variant={option.badgeVariant ?? 'neutral'}>{option.badge}</Badge></span>
               {/if}
             </span>
           </li>
         {:else}
-          <li class="px-3 py-2 text-xs text-[var(--of-text-muted)]">No matches</li>
+          <li class="searchable-select-empty">No matches</li>
         {/each}
       </ul>
       <div id={`${listboxId}-count`} role="status" aria-live="polite" aria-atomic="true" class="searchable-select-count">
@@ -221,6 +221,52 @@
 </div>
 
 <style>
+  .searchable-select-dismiss {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+  }
+
+  .searchable-select-list {
+    box-sizing: border-box;
+    max-height: 200px;
+    overflow-y: auto;
+    margin: 0;
+    padding: var(--of-space2) 0;
+    list-style: none;
+  }
+
+  .searchable-select-value {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: var(--of-space4);
+  }
+
+  .searchable-select-option-value {
+    justify-content: space-between;
+  }
+
+  .searchable-select-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .searchable-select-badge {
+    display: inline-flex;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  .searchable-select-empty {
+    padding: var(--of-space4) var(--of-space5);
+    color: var(--of-text-muted);
+    font-size: var(--of-text-sm);
+    line-height: calc(4 / 3);
+  }
+
   .searchable-select {
     position: relative;
   }
