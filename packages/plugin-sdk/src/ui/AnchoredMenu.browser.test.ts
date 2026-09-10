@@ -4,9 +4,9 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
 import { svelte } from '@sveltejs/vite-plugin-svelte'
-import { chromium, type Browser } from 'playwright'
+import { chromium, type Browser, type Locator, type Page } from 'playwright'
 import { createServer, type ViteDevServer } from 'vite'
-import { afterAll, beforeAll, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { createOpenForgePluginSdkSourceAliasRecord } from '../vite'
 
 let server: ViteDevServer
@@ -44,6 +44,89 @@ afterAll(async () => {
       if (cacheRoot) await rm(cacheRoot, { recursive: true, force: true })
     }
   }
+})
+
+describe.each([
+  { name: 'Standalone actions', fixture: 'split-button' },
+  { name: 'More actions', fixture: 'split-button' },
+  { name: 'Bits actions', fixture: 'bits-menu-opening' },
+])('$name opening dismissal', ({ name, fixture }) => {
+  let page: Page
+  let trigger: Locator
+
+  beforeEach(async () => {
+    page = await browser.newPage()
+    await page.goto(`${origin}packages/plugin-sdk/src/ui/browser/${fixture}.html`)
+    trigger = page.getByRole('button', { name, exact: true })
+    await trigger.waitFor()
+  }, 30_000)
+
+  afterEach(async () => {
+    await page?.close()
+  })
+
+  async function dispatchOutsideClick(duringOpening: boolean) {
+    // The public DOM marker pins the event to opening, independent of runner speed.
+    // Use a complete DOM mouse sequence, not Playwright's actionability wait.
+    await page.evaluate((duringOpening) => {
+      function click() {
+        for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']) {
+          const EventType = type.startsWith('pointer') ? PointerEvent : MouseEvent
+          document.documentElement.dispatchEvent(new EventType(type, {
+            bubbles: true, composed: true, cancelable: true,
+            clientX: 900, clientY: 10, button: 0,
+            buttons: type.endsWith('down') ? 1 : 0,
+            pointerType: 'mouse',
+          }))
+        }
+      }
+      if (!duringOpening) {
+        click()
+        return
+      }
+      const observer = new MutationObserver(() => {
+        if (!document.querySelector('[role="menu"][data-starting-style]')) return
+        observer.disconnect()
+        document.documentElement.dataset.clickedDuringOpening = 'true'
+        click()
+      })
+      observer.observe(document.body, { childList: true, subtree: true, attributes: true })
+    }, duringOpening)
+  }
+
+  async function clickOutsideDuringOpening() {
+    await dispatchOutsideClick(true)
+    await trigger.click()
+    expect(await page.locator('html').getAttribute('data-clicked-during-opening')).toBe('true')
+    expect(await page.getByRole('status', { name: 'Selected action' }).textContent()).toBe('None')
+    if (fixture === 'split-button') {
+      expect(await page.getByRole('status', { name: 'Primary count' }).textContent()).toBe('0')
+    }
+  }
+
+  describe('outside click during opening', () => {
+    // Keep reproduction/setup assertions outside it.fails: missing markers, fixture
+    // errors, or accidental selections must fail the suite, not count as the bug.
+    beforeEach(clickOutsideDuringOpening)
+
+    // https://github.com/huntabyte/bits-ui/issues/2141
+    // An upstream fix must unexpectedly pass, prompting removal of .fails.
+    it.fails('dismisses the menu', async () => {
+      await expect.poll(() => trigger.getAttribute('aria-expanded')).toBe('false')
+    })
+
+    afterEach(async () => {
+      // The early-dismissal assertion has completed. Replay the identical sequence
+      // to prove it is a valid outside interaction, without a sleep or a second
+      // expected failure hiding an unrelated event-dispatch problem.
+      await dispatchOutsideClick(false)
+      await expect.poll(() => trigger.getAttribute('aria-expanded')).toBe('false')
+      expect(await page.getByRole('status', { name: 'Selected action' }).textContent()).toBe('None')
+      if (fixture === 'split-button') {
+        expect(await page.getByRole('status', { name: 'Primary count' }).textContent()).toBe('0')
+      }
+    })
+  })
 })
 
 it('selects the End-focused item after rapid keyboard reopen without late autofocus stealing it', async () => {
