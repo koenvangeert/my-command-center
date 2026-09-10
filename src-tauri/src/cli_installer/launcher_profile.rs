@@ -41,7 +41,11 @@ pub fn ensure_zshrc_path(
 ) -> Result<PathBuf, Box<dyn std::error::Error>> {
     fs::create_dir_all(home_dir)?;
     let zshrc = home_dir.join(".zshrc");
-    let existing = fs::read_to_string(&zshrc).unwrap_or_default();
+    let existing = match fs::read_to_string(&zshrc) {
+        Ok(existing) => existing,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => String::new(),
+        Err(error) => return Err(error.into()),
+    };
     let marker = "# OpenForge CLI";
 
     let has_openforge_path = existing.contains(&bin_dir.to_string_lossy().to_string())
@@ -148,6 +152,45 @@ mod tests {
                 "arguments changed for {directory:?}"
             );
         }
+    }
+
+    #[test]
+    fn ensure_zshrc_path_preserves_invalid_utf8_profile() {
+        let home = tempfile::tempdir().unwrap();
+        let zshrc = home.path().join(".zshrc");
+        let original = b"export CUSTOM=value\n# legacy byte: \xff\n";
+        fs::write(&zshrc, original).unwrap();
+
+        let result = ensure_zshrc_path(home.path(), &openforge_bin_dir(home.path()));
+
+        assert_eq!(fs::read(&zshrc).unwrap(), original);
+        let error = result.expect_err("invalid UTF-8 must not be treated as an empty profile");
+        assert_eq!(
+            error.downcast_ref::<std::io::Error>().unwrap().kind(),
+            std::io::ErrorKind::InvalidData
+        );
+    }
+
+    #[test]
+    fn ensure_zshrc_path_preserves_directory_on_read_error() {
+        let home = tempfile::tempdir().unwrap();
+        let zshrc = home.path().join(".zshrc");
+        fs::create_dir(&zshrc).unwrap();
+        let child = zshrc.join("existing-profile");
+        let original = b"export CUSTOM=value\n";
+        fs::write(&child, original).unwrap();
+        let read_error = fs::read_to_string(&zshrc).unwrap_err();
+
+        let error = ensure_zshrc_path(home.path(), &openforge_bin_dir(home.path()))
+            .expect_err("profile read failure must be propagated");
+
+        assert_eq!(
+            error.downcast_ref::<std::io::Error>().unwrap().kind(),
+            read_error.kind()
+        );
+        assert!(zshrc.is_dir());
+        assert_eq!(fs::read(&child).unwrap(), original);
+        assert_eq!(fs::read_dir(&zshrc).unwrap().count(), 1);
     }
 
     #[test]
