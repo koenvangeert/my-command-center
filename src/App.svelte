@@ -1,6 +1,6 @@
 <script lang="ts">
   import { cacheTaskRead } from './lib/tasksState'
-  import { onMount, onDestroy } from 'svelte'
+  import { onMount, onDestroy, tick } from 'svelte'
   import { get } from 'svelte/store'
   import { tasks, taskDetailsById, dependencyReferenceTasks, pendingTask, selectedTaskId, activeSessions, ticketPrs, taskAttentionRows, taskAttentionLoaded, isLoading, projects, activeProjectId, currentView, reviewRequestCount, activeRepoReviewRequestCount, activeProjectAttentionCount, projectAttention, focusBoardFilters, outOfFocusTaskIdsByProject, sidebarPluginViewKeys, taskActiveView } from './lib/stores'
   import { zenMode, isZenActive, canToggleZenMode } from './lib/zenMode'
@@ -39,13 +39,15 @@
   import { activatePlugin, deactivateAllPlugins, executePluginCommand, loadEnabledForProject } from './lib/plugin/pluginRegistry'
   import { useAppRouter } from './lib/router.svelte'
   import { useCommandHeld } from './lib/useCommandHeld.svelte'
-  import { isCrossProjectView } from './lib/views'
+  import { getViews, isCrossProjectView } from './lib/views'
   import { toggleVoiceInputShortcut } from './lib/voiceInputShortcut'
   import { useAppShortcutHelpController } from './lib/appShortcutHelpController.svelte'
   import { useAppDataOrchestrator } from './lib/appDataOrchestrator.svelte'
   import { createTaskActionRunner } from './lib/taskActionRunner'
   import { useAppTaskCreationController } from './lib/appTaskCreationController.svelte'
   import { createAppNavigationController } from './lib/appNavigationController'
+  import { createAppRestartWorkspace } from './lib/appRestartWorkspace'
+  import Button from '@openforge-app/plugin-sdk/ui/Button.svelte'
   import { createReviewNavigationController } from './lib/reviewNavigationController'
   import { createAppPluginController } from './lib/appPluginController'
   import { resolveAppPluginPresentation } from './lib/appPluginPresentation'
@@ -59,6 +61,8 @@
   let showProjectSetup = $state(false)
   let appMode = $state<string | null>(null)
   let appReady = $state(false)
+  let startupError = $state<string | null>(null)
+  let hydrated: Promise<void> = Promise.resolve()
   let showProjectSwitcher = $state(false)
   let showAttentionOverview = $state(false)
   let appSidebarCollapsed = $state(localStorage.getItem('appSidebarCollapsed') === 'true')
@@ -131,8 +135,24 @@
     loadTasks: appData.loadTasks,
     getSelectedTask: () => selectedTask,
     getSidebarPluginViewKeys: () => get(sidebarPluginViewKeys),
+    getAvailableViewKeys: () => new Set(['board', 'files', ...Object.keys(getViews(enabledPluginContributionSources))]),
+    hydrateProjectViews: async projectId => {
+      await pluginController.whenProjectReady(projectId)
+      await tick()
+    },
     closeAttentionOverview,
   })
+  const restartWorkspace = createAppRestartWorkspace(navigation)
+  let mounted = false
+  async function restoreWorkspace(): Promise<void> {
+    startupError = null
+    try {
+      await restartWorkspace.start(hydrated)
+      if (mounted) appReady = true
+    } catch (error) {
+      if (mounted) startupError = String(error)
+    }
+  }
   const reviewNavigation = createReviewNavigationController({
     closeAttentionOverview,
   })
@@ -304,18 +324,28 @@
   })
 
   onMount(() => {
-    let mounted = true
-    void lifecycle.start().then(() => {
-      if (mounted) appReady = true
-    })
+    mounted = true
+    hydrated = lifecycle.start()
+    void restoreWorkspace()
     return () => { mounted = false }
   })
 
   onDestroy(() => {
+    restartWorkspace.dispose()
     lifecycle.dispose()
   })
 </script>
 
+{#if startupError}
+  <div role="alert" class="p-6">
+    <p>Could not restore your workspace. Your retained shell sessions have not been stopped.</p>
+    <p>{startupError}</p>
+    <Button onClick={() => { void restoreWorkspace() }}>Retry restoration</Button>
+  </div>
+{/if}
+{#if !appReady && !startupError}
+  <div role="status" class="p-6">Loading workspace…</div>
+{/if}
 <ApplicationShell ready={appReady} zen={zenActive}>
   {#snippet sidebar()}
     <AppSidebar
@@ -337,6 +367,7 @@
     {/if}
   {/snippet}
   {#snippet children()}
+    {#if appReady}
     {#if renderedActiveView !== null}
       <renderedActiveView.component {...(renderedActiveView?.props ?? {})} />
     {:else if pluginViewActive}
@@ -377,6 +408,7 @@
       />
     {/if}
 
+    {/if}
   {/snippet}
   {#snippet dialogs()}
     <AppTaskCreationDialogs

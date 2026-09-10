@@ -1,5 +1,23 @@
 import { invokeDesktopCommand as invoke } from '../desktopIpc'
 import type { DeveloperLogEntry, DeveloperLogSnapshot } from '../types'
+import type { RestartWindowWorkspace } from '../../electron/restartWorkspace'
+
+export async function getRestartWorkspace(): Promise<{ operationId: string; window: RestartWindowWorkspace } | null> {
+  return invoke('get_restart_workspace')
+}
+
+export async function captureRestartWorkspace(operationId: string, snapshot: Omit<RestartWindowWorkspace, 'windowId'>): Promise<void> {
+  return invoke('capture_restart_workspace', { operationId, snapshot })
+}
+
+export async function completeRestartWorkspace(operationId: string): Promise<void> {
+  return invoke('complete_restart_workspace', { operationId })
+}
+
+/** Controlled E2E only. The host rejects this in normal and packaged launches. */
+export async function controlledRestart(): Promise<void> {
+  return invoke('controlled_restart')
+}
 
 export async function openInEditor(path: string): Promise<void> {
   return invoke("open_in_editor", { path });

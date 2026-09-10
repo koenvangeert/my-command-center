@@ -40,6 +40,8 @@ vi.mock('./lib/terminalSessionService', () => {
     releaseAllForTask: vi.fn(),
   }
   return {
+    reconcileRestartTerminalInventory: vi.fn(),
+    terminalSessionService: { snapshotWorkspace: vi.fn(() => []), restoreWorkspace: vi.fn() },
     agentTerminalSessions: { ...operations },
     regularTerminalSessions: { ...operations },
   }

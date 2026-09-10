@@ -8,30 +8,31 @@ import {
 import { listenDesktopEvent } from './desktopIpc'
 import type { TerminalDesktopEventName } from './desktopIpcContract'
 import { createDesktopTerminalTransport } from './desktopTerminalTransport'
+import { desktopRestartTerminalControl as restartTerminalControl } from './desktopRestartTerminalControl'
 import {
   checkpointTerminalAcquisition,
   checkpointTerminalAuthorityRead,
 } from './terminalE2eRuntime'
-import {
-  getPtyBuffer,
-  openUrl,
-  resizePty,
-  writePty,
-} from './ipc'
+import { openUrl } from './ipc'
 import { terminalFontFamily } from './terminalFont'
 import { terminalFontSize } from './terminalFontSize'
 import { selectedTheme } from './theme'
 import { createTerminalThemeSnapshot } from './terminalThemePresentation'
+
+export const reconcileRestartTerminalInventory = restartTerminalControl.reconcile
 
 const transport = createDesktopTerminalTransport({
   listenEvent: (eventName, handler) => listenDesktopEvent(
     eventName as TerminalDesktopEventName,
     handler,
   ),
-  getPtyBuffer,
-  writePty,
-  resizePty,
-}, { afterReadReplay: checkpointTerminalAuthorityRead })
+  getPtyBuffer: restartTerminalControl.getPtyBuffer,
+  writePty: restartTerminalControl.writePty,
+  resizePty: restartTerminalControl.resizePty,
+}, {
+  afterReadReplay: checkpointTerminalAuthorityRead,
+  beforeConnectionRestored: restartTerminalControl.reconnect,
+})
 
 const terminalThemePresentation = derived(selectedTheme, createTerminalThemeSnapshot)
 

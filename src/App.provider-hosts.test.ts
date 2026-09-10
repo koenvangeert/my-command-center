@@ -25,6 +25,11 @@ const project = {
 
 const task = createTask({ id: 'task-1', projectId: project.id })
 
+async function renderHydratedApp(): Promise<void> {
+  render(App)
+  await vi.waitFor(() => expect(document.querySelector('[data-app-ready="true"]')).not.toBeNull())
+}
+
 describe('App host-view provider routing', () => {
   installAppTestLifecycle()
 
@@ -33,13 +38,13 @@ describe('App host-view provider routing', () => {
   })
 
   it('routes the stable dashboard destination through the project dashboard provider host', async () => {
+    await renderHydratedApp()
     const stores = await import('./lib/stores')
     stores.projects.set([project])
     stores.activeProjectId.set(project.id)
     stores.currentView.set('board')
     setMockTasks([task])
 
-    render(App)
 
     await vi.waitFor(() => expect(vi.mocked(ProjectDashboardProviderHost)).toHaveBeenCalled())
     expect(vi.mocked(TaskDetailProviderHost)).not.toHaveBeenCalled()
@@ -101,6 +106,7 @@ describe('App host-view provider routing', () => {
   })
 
   it('uses inherited dashboard metadata while keeping task opening on the board route', async () => {
+    await renderHydratedApp()
     const stores = await import('./lib/stores')
     const pluginStore = await import('./lib/plugin/pluginStore')
     const dashboardProviders = await import('./lib/plugin/projectDashboardProviders')
@@ -132,7 +138,6 @@ describe('App host-view provider routing', () => {
     dashboardProviders.globalProjectDashboardProviderLoaded.set(true)
     dashboardProviders.projectDashboardProviderIds.set(new Map([[project.id, 'inherit']]))
 
-    render(App)
 
     await vi.waitFor(() => expect(vi.mocked(IconRail)).toHaveBeenCalled())
     const railProps = getLatestComponentProps<{ dashboardNavItem: { title: string; icon: string } }>(
@@ -179,6 +184,8 @@ describe('App host-view provider routing', () => {
     expect(railProps.dashboardNavItem).toBeNull()
   })
   it('routes a selected task through the task detail provider host before the dashboard provider', async () => {
+    await renderHydratedApp()
+    vi.mocked(ProjectDashboardProviderHost).mockClear()
     const stores = await import('./lib/stores')
     stores.projects.set([project])
     stores.activeProjectId.set(project.id)
@@ -186,7 +193,6 @@ describe('App host-view provider routing', () => {
     setMockTasks([task])
     stores.selectedTaskId.set(task.id)
 
-    render(App)
 
     await vi.waitFor(() => expect(vi.mocked(TaskDetailProviderHost)).toHaveBeenCalled())
     expect(vi.mocked(ProjectDashboardProviderHost)).not.toHaveBeenCalled()

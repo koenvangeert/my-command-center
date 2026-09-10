@@ -85,7 +85,9 @@ function createDesktopHarness(): AdapterHarness {
       expect(port.writePty).toHaveBeenCalledWith(shellSessionKey, data)
     },
     expectResize(shellSessionKey, cols, rows) {
-      expect(port.resizePty).toHaveBeenCalledWith(shellSessionKey, cols, rows)
+      expect(port.resizePty).toHaveBeenCalledWith(shellSessionKey, cols, rows, {
+        sessionId: expect.any(String), sessionGeneration: expect.any(Number), attachmentGeneration: expect.any(Number),
+      })
     },
     sessionListenerCount(shellSessionKey) {
       return Number(listeners.has(`pty-model-output-${shellSessionKey}`))

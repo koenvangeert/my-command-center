@@ -34,6 +34,7 @@ impl PtySpawnShellPayload {
 pub(super) struct PtyWritePayload {
     pub(super) shell_session_key: String,
     pub(super) data: String,
+    pub(super) fence: Option<crate::pty_manager::daemon_shells::CommandFence>,
 }
 
 impl PtyWritePayload {
@@ -83,6 +84,7 @@ pub(super) struct PtyResizePayload {
     pub(super) shell_session_key: String,
     pub(super) cols: u16,
     pub(super) rows: u16,
+    pub(super) fence: Option<crate::pty_manager::daemon_shells::CommandFence>,
 }
 
 impl PtyResizePayload {
@@ -95,6 +97,7 @@ impl PtyResizePayload {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(super) struct PtyShellSessionPayload {
     pub(super) shell_session_key: String,
+    pub(super) fence: Option<crate::pty_manager::daemon_shells::CommandFence>,
 }
 
 impl PtyShellSessionPayload {

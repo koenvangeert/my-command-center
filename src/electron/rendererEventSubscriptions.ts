@@ -51,11 +51,12 @@ interface RendererEventSubscriptionIpc {
 export function registerRendererEventSubscriptionHandler(
   ipc: RendererEventSubscriptionIpc,
   subscriptions: RendererEventSubscriptions,
-  currentRendererId: () => number | null,
+  currentRendererId: () => number | readonly number[] | null,
 ): void {
   ipc.handle(OPENFORGE_EVENT_SUBSCRIPTION_CHANNEL, (event, request) => {
-    const rendererId = currentRendererId()
-    if (rendererId === null || event.sender.id !== rendererId) return false
-    return subscriptions.update(rendererId, request)
+    const current = currentRendererId()
+    const permitted = typeof current === 'number' ? current === event.sender.id : current?.includes(event.sender.id)
+    if (!permitted) return false
+    return subscriptions.update(event.sender.id, request)
   })
 }

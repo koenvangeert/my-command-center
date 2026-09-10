@@ -180,6 +180,7 @@ export interface WhisperDownloadProgressPayload {
 }
 
 export interface AdditionalDesktopEventPayloads {
+  'restart-workspace-capture': { operationId: string }
   'whisper-download-progress': WhisperDownloadProgressPayload
 }
 

@@ -37,6 +37,7 @@ export type GetDeveloperLogs = (limit?: number) => DeveloperLogEntry[]
 export type GetDeveloperLogSnapshot = (limit?: number) => DeveloperLogSnapshot
 
 export interface ElectronInvokeDeps {
+  restartWorkspace?(command: string, payload: unknown): Promise<unknown>
   sidecarConfig: SidecarLaunchConfig | null
   fetch: BridgeFetch
   openExternal: OpenExternal

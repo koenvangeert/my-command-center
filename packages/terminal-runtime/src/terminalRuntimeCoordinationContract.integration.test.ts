@@ -40,6 +40,25 @@ describe('Terminal Runtime coordination contract', () => {
     vi.unstubAllGlobals()
   })
 
+  it('carries the current attachment generation to transports that coordinate cross-window geometry', async () => {
+    installVisibleAttachmentEnvironment()
+    const host = createHost()
+    Object.assign(host.transport, { supportsGeometryLease: true })
+    const runtime = createTerminalRuntime({ ...host, createTerminalView: () => createFakeTerminalView({
+      fit: vi.fn(() => ({ cols: 100, rows: 30 })), isMountedIn: vi.fn(() => false),
+    }) })
+    const session = await runtime.acquire('T-1-shell-0')
+    const attachment = await runtime.attach(session, document.createElement('div'))
+    const spawn = runtime.beginPtySpawn(session)
+    await spawn?.started(7)
+    spawn?.cancel()
+    await attachment.refit()
+    expect(host.transport.resize).toHaveBeenCalledWith('T-1-shell-0', expect.any(Object), {
+      sessionId: expect.any(String), sessionGeneration: expect.any(Number), attachmentGeneration: expect.any(Number),
+    })
+    runtime.dispose()
+  })
+
   it('issues one generation-bound PTY spawn lease at a time', async () => {
     installVisibleAttachmentEnvironment()
     const host = createHost()

@@ -1,6 +1,6 @@
 import { render } from '@testing-library/svelte'
 import { get } from 'svelte/store'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { getLatestComponentProps } from './App.test-fixtures/component-props'
 import { setMockTasks } from './App.test-fixtures/stores'
 import { createTask } from './App.test-fixtures/tasks'
@@ -29,6 +29,10 @@ const task = createTask({
 
 describe('App core host-view characterization', () => {
   installAppTestLifecycle()
+  beforeEach(async () => {
+    render(App)
+    await vi.waitFor(() => expect(document.querySelector('[data-app-ready="true"]')).not.toBeNull())
+  })
 
   it('renders the project dashboard host at the stable board destination with host attention metadata', async () => {
     const stores = await import('./lib/stores')
@@ -44,7 +48,6 @@ describe('App core host-view characterization', () => {
     stores.taskAttentionLoaded.set(true)
     setMockTasks([task])
 
-    render(App)
 
     await vi.waitFor(() => expect(vi.mocked(ProjectDashboardProviderHost)).toHaveBeenCalled())
     const props = getLatestComponentProps<{
@@ -62,6 +65,7 @@ describe('App core host-view characterization', () => {
   })
 
   it('gives the selected task provider host precedence without changing the board destination', async () => {
+    vi.mocked(ProjectDashboardProviderHost).mockClear()
     const stores = await import('./lib/stores')
 
     stores.projects.set([project])
@@ -70,7 +74,6 @@ describe('App core host-view characterization', () => {
     setMockTasks([task])
     stores.selectedTaskId.set(task.id)
 
-    render(App)
 
     await vi.waitFor(() => expect(vi.mocked(TaskDetailProviderHost)).toHaveBeenCalled())
     const props = getLatestComponentProps<{ task: TaskDetail }>(vi.mocked(TaskDetailProviderHost), 'task')

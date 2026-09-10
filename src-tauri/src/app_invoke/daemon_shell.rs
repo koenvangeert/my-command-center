@@ -15,6 +15,16 @@ pub(super) async fn handle(
     };
     let publisher = RuntimeEventPublisher::new(state.app.clone(), state.app_event_tx.clone());
     let value = match request.command.as_str() {
+        "get_restart_terminal_inventory" => {
+            let mut inventory = bridge.inventory(publisher).await.map_err(error)?;
+            let has_legacy_sessions = if let Some(manager) = &state.pty_manager {
+                !manager.process_diagnostic_sessions().await.is_empty()
+            } else {
+                true
+            };
+            inventory["hasLegacySessions"] = serde_json::json!(has_legacy_sessions);
+            inventory
+        }
         "pty_spawn_shell" => {
             let payload = PtySpawnShellPayload::decode(&request.command, &request.payload)?;
             let key =
@@ -22,6 +32,7 @@ pub(super) async fn handle(
             if payload.terminal_index.is_none() || !bridge.owns(&key) {
                 return Ok(None);
             }
+            let bridge = bridge.for_key(&key);
             let command = bridge
                 .prepare_shell(
                     payload.cwd.into(),
@@ -37,6 +48,9 @@ pub(super) async fn handle(
             if !bridge.owns(&payload.shell_session_key) {
                 return Ok(None);
             }
+            let bridge = bridge
+                .for_key(&payload.shell_session_key)
+                .fenced(payload.fence);
             bridge
                 .write(payload.data.into_bytes(), publisher)
                 .await
@@ -48,6 +62,9 @@ pub(super) async fn handle(
             if !bridge.owns(&payload.shell_session_key) {
                 return Ok(None);
             }
+            let bridge = bridge
+                .for_key(&payload.shell_session_key)
+                .fenced(payload.fence);
             bridge
                 .resize(payload.cols, payload.rows, publisher)
                 .await
@@ -59,14 +76,18 @@ pub(super) async fn handle(
             if !bridge.owns(&payload.shell_session_key) {
                 return Ok(None);
             }
+            let bridge = bridge
+                .for_key(&payload.shell_session_key)
+                .fenced(payload.fence);
             bridge.terminate(publisher).await.map_err(error)?;
             serde_json::Value::Null
         }
         "pty_kill_shells_for_task" => {
             let payload = PtyTaskPayload::decode(&request.command, &request.payload)?;
-            if bridge.belongs_to_task(&payload.task_id) {
-                bridge.terminate(publisher).await.map_err(error)?;
-            }
+            bridge
+                .terminate_for_task(payload.task_id, publisher)
+                .await
+                .map_err(error)?;
             // Legacy shells of the same Task still need their existing scoped cleanup.
             return Ok(None);
         }
@@ -75,6 +96,9 @@ pub(super) async fn handle(
             if !bridge.owns(&payload.shell_session_key) {
                 return Ok(None);
             }
+            let bridge = bridge
+                .for_key(&payload.shell_session_key)
+                .fenced(payload.fence);
             json_value(bridge.buffer(publisher).await.map_err(error)?)?
         }
         _ => return Ok(None),

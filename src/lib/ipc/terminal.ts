@@ -1,6 +1,11 @@
-import type { TerminalImageProtocol } from '@openforge-app/terminal-runtime'
+import type { TerminalImageProtocol, TerminalResizeAttachment } from '@openforge-app/terminal-runtime'
 import { invokeDesktopCommand as invoke } from '../desktopIpc'
 import type { DesktopPtyBufferState } from '../desktopTerminalTransport'
+import type { RestartTerminalFence, RestartTerminalInventory } from '../../electron/restartWorkspace'
+
+export async function getRestartTerminalInventory(): Promise<RestartTerminalInventory> {
+  return invoke('get_restart_terminal_inventory')
+}
 
 export async function spawnShellPty(
   taskId: string,
@@ -20,16 +25,20 @@ export async function spawnShellPty(
   });
 }
 
-export async function writePty(shellSessionKey: string, data: string): Promise<void> {
+export async function writePty(shellSessionKey: string, data: string, fence?: RestartTerminalFence): Promise<void> {
+  if (fence) return invoke('pty_write', { shellSessionKey, data, fence })
   return invoke("pty_write", { shellSessionKey, data });
 }
 
 
-export async function resizePty(shellSessionKey: string, cols: number, rows: number): Promise<void> {
+export async function resizePty(shellSessionKey: string, cols: number, rows: number, fence?: RestartTerminalFence, attachment?: TerminalResizeAttachment): Promise<void> {
+  if (fence && attachment) return invoke('pty_resize', { shellSessionKey, cols, rows, fence, attachment })
+  if (fence) return invoke('pty_resize', { shellSessionKey, cols, rows, fence })
   return invoke("pty_resize", { shellSessionKey, cols, rows });
 }
 
-export async function killPty(shellSessionKey: string): Promise<void> {
+export async function killPty(shellSessionKey: string, fence?: RestartTerminalFence): Promise<void> {
+  if (fence) return invoke('pty_kill', { shellSessionKey, fence })
   return invoke("pty_kill", { shellSessionKey });
 }
 
@@ -37,7 +46,8 @@ export async function killShellsForTask(taskId: string): Promise<void> {
   return invoke("pty_kill_shells_for_task", { taskId });
 }
 
-export async function getPtyBuffer(shellSessionKey: string): Promise<DesktopPtyBufferState> {
+export async function getPtyBuffer(shellSessionKey: string, fence?: RestartTerminalFence): Promise<DesktopPtyBufferState> {
+  if (fence) return invoke('get_pty_buffer', { shellSessionKey, fence })
   return invoke<DesktopPtyBufferState>("get_pty_buffer", { shellSessionKey });
 }
 

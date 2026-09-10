@@ -37,6 +37,10 @@ vi.mock('../lib/desktopIpc', () => ({
 }))
 
 vi.mock('../lib/ipc', () => ({
+  getRestartWorkspace: vi.fn(async () => null),
+  getRestartTerminalInventory: vi.fn(),
+  captureRestartWorkspace: vi.fn(async () => undefined),
+  completeRestartWorkspace: vi.fn(async () => undefined),
   registerBuiltinPlugin: vi.fn(async (plugin) => {
     persistInstalledPluginRow(plugin)
   }),
