@@ -18,8 +18,8 @@
   }
 </script>
 
-<ResizablePanel storageKey="self-review-side-panel" defaultWidth={320} minWidth={240} maxWidth={520} {availableWidth} side="right" label="Review">
-  <div class="flex h-full min-w-0 flex-col overflow-hidden border-l border-base-300 bg-base-100">
+<ResizablePanel storageKey="self-review-side-panel" defaultWidth={320} minWidth={240} maxWidth={520} {availableWidth} side="left" label="Review">
+  <div class="flex h-full min-w-0 flex-col overflow-hidden border-r border-base-300 bg-base-100">
     <Tabs
       label="Review navigation"
       tabs={[

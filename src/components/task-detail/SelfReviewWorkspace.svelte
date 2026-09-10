@@ -50,6 +50,11 @@
     {/key}
   </div>
   <div bind:clientWidth={workspaceWidth} class="flex min-h-0 min-w-0 flex-1 overflow-hidden">
+    {#if controller.sidePanelVisible}
+      {#key controller.taskId}
+        <SelfReviewSidePanel bind:this={sidePanel} {controller} availableWidth={availablePanelWidth} />
+      {/key}
+    {/if}
     <div class="relative flex min-w-0 flex-1 overflow-hidden">
       <SelfReviewDiffPanel
         {controller}
@@ -67,10 +72,5 @@
         />
       {/if}
     </div>
-    {#if controller.sidePanelVisible}
-      {#key controller.taskId}
-        <SelfReviewSidePanel bind:this={sidePanel} {controller} availableWidth={availablePanelWidth} />
-      {/key}
-    {/if}
   </div>
 </div>

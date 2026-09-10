@@ -68,7 +68,8 @@ describe.skipIf(!storybookUrl)('Self Review in the production task workspace', (
         await expectReachable(diff)
         const diffBounds = (await diff.boundingBox())!
         expect(diffBounds.width).toBeGreaterThanOrEqual(299)
-        expect((await files.boundingBox())!.x).toBeGreaterThanOrEqual(diffBounds.x + diffBounds.width - 1)
+        const filesBounds = (await files.boundingBox())!
+        expect(filesBounds.x + filesBounds.width).toBeLessThanOrEqual(diffBounds.x + 1)
         const filesTab = page.getByRole('tab', { name: 'Changed files', exact: true })
         const githubTab = page.getByRole('tab', { name: /^GitHub comments/ })
         expect(await filesTab.getAttribute('aria-selected')).toBe('true')
@@ -99,7 +100,10 @@ describe.skipIf(!storybookUrl)('Self Review in the production task workspace', (
         await filesTab.focus()
         await page.keyboard.press('ArrowRight')
         expect(await githubTab.getAttribute('aria-selected')).toBe('true')
-        await expectReachable(page.getByRole('region', { name: 'Feedback panel', exact: true }))
+        const feedback = page.getByRole('region', { name: 'Feedback panel', exact: true })
+        await expectReachable(feedback)
+        const feedbackBounds = (await feedback.boundingBox())!
+        expect(feedbackBounds.x + feedbackBounds.width).toBeLessThanOrEqual((await diff.boundingBox())!.x + 1)
         await bar.getByRole('button', { name: 'Collapse review panel', exact: true }).click()
         expect(await page.getByRole('tablist', { name: 'Review navigation' }).count()).toBe(0)
         const send = bar.getByRole('button', { name: /^Send feedback/ })
@@ -175,13 +179,13 @@ describe.skipIf(!storybookUrl)('Self Review in the production task workspace', (
       await page.waitForFunction(() => document.querySelector('[aria-label="Resize Review panel"]')?.getAttribute('aria-valuenow') === '500')
       await handle.focus()
       await page.keyboard.press('ArrowRight')
-      expect(await handle.getAttribute('aria-valuenow')).toBe('490')
+      expect(await handle.getAttribute('aria-valuenow')).toBe('510')
       const bounds = (await handle.boundingBox())!
       await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + 20)
       await page.mouse.down()
-      await page.mouse.move(bounds.x + 30, bounds.y + 20)
+      await page.mouse.move(bounds.x - 30, bounds.y + 20)
       await page.mouse.up()
-      expect(Number(await handle.getAttribute('aria-valuenow'))).toBeLessThan(490)
+      expect(Number(await handle.getAttribute('aria-valuenow'))).toBeLessThan(510)
     } finally { await page.close() }
   }, 60_000)
 })

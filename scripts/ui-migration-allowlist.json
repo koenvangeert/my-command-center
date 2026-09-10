@@ -502,7 +502,7 @@
     {"tag":"p","context":"class=\"max-w-xl text-sm text-error\"","tokens":["max-w-xl"],"count":1,"reason":"Repository preview error is bounded for readable wrapping."}
   ],
   "src/components/task-detail/SelfReviewSidePanel.svelte": [
-    {"tag":"div","context":"class=\"flex h-full min-w-0 flex-col overflow-hidden border-l border-base-300 bg-base-100\"","tokens":["min-w-0"],"count":1,"reason":"Shared review tab content stays within the host-bounded resizable panel."}
+    {"tag":"div","context":"class=\"flex h-full min-w-0 flex-col overflow-hidden border-r border-base-300 bg-base-100\"","tokens":["min-w-0"],"count":1,"reason":"Shared review tab content stays within the host-bounded resizable panel."}
   ],
   "src/components/task-detail/SelfReviewWorkspace.svelte": [
     {"tag":"div","context":"class=\"flex h-full w-full min-w-0 flex-col overflow-hidden\"","tokens":["min-w-0"],"count":1,"reason":"Keep horizontal overflow inside the review workspace rather than widening the task host."},
