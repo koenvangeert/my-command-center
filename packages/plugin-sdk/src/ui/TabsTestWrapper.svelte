@@ -4,10 +4,11 @@
   interface Props {
     disabled?: boolean
     fill?: boolean
+    attached?: boolean
     onValueChange?: (value: string) => void
   }
 
-  let { disabled = false, fill = false, onValueChange }: Props = $props()
+  let { disabled = false, fill = false, attached = false, onValueChange }: Props = $props()
   let value = $state('overview')
   const tabs = [
     { value: 'overview', label: 'Overview' },
@@ -17,7 +18,7 @@
 </script>
 
 <button type="button" onclick={() => (value = 'activity')}>Show activity</button>
-<Tabs label="Project sections" {tabs} {disabled} {fill} bind:value {onValueChange}>
+<Tabs label="Project sections" {tabs} {disabled} {fill} {attached} bind:value {onValueChange}>
   {#snippet children(tabValue)}
     {#if tabValue === 'overview'}
       <p>Overview panel</p>

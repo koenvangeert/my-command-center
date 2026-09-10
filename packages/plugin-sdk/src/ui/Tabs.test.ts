@@ -63,6 +63,18 @@ describe('plugin-sdk Tabs', () => {
     expect(onValueChange).not.toHaveBeenCalled()
   })
 
+  it('keeps keyboard selection and panel association in attached headers', async () => {
+    const onValueChange = vi.fn()
+    render(TabsTestWrapper, { props: { attached: true, fill: true, onValueChange } })
+    await tick()
+    const overview = screen.getByRole('tab', { name: 'Overview' })
+    overview.focus()
+    await fireEvent.keyDown(overview, { key: 'ArrowRight' })
+    expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'Activity' }))
+    expect(screen.getByRole('tabpanel', { name: 'Activity' }).textContent).toContain('Activity panel')
+    expect(onValueChange).toHaveBeenCalledWith('activity')
+  })
+
   it('fills a bounded work area when requested', async () => {
     render(TabsTestWrapper, { props: { fill: true } })
     await tick()

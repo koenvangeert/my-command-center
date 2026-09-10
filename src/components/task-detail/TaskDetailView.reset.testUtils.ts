@@ -1,3 +1,4 @@
+import { vi } from 'vitest'
 import {
   commandHeld,
   completingTasks,
@@ -11,6 +12,11 @@ import { resetTaskDetailViewPluginSetup } from './TaskDetailView.pluginSetup.tes
 import { resetTaskDetailViewTerminalPoolMocks } from './TaskDetailView.terminalSessionService.testUtils'
 
 function resetTaskDetailViewTestState() {
+  vi.stubGlobal('ResizeObserver', class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  })
   localStorage.clear()
   taskActiveView.set(new Map())
   taskRuntimeInfo.set(new Map())

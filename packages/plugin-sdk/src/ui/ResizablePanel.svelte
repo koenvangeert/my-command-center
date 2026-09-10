@@ -7,6 +7,8 @@
     defaultWidth: number
     minWidth?: number
     maxWidth?: number
+    /** Temporary host bound; shrinking it does not overwrite the saved preference. */
+    availableWidth?: number
     side?: 'left' | 'right'
     label?: string
     children?: Snippet
@@ -17,6 +19,7 @@
     defaultWidth,
     minWidth = 120,
     maxWidth = 600,
+    availableWidth = Infinity,
     side = 'left',
     label = side === 'left' ? 'left' : 'right',
     children,
@@ -52,6 +55,13 @@
   }
 
   let width = $state(loadWidth())
+  let effectiveMaxWidth = $derived(Math.max(0, Math.min(maxWidth, availableWidth)))
+  let effectiveMinWidth = $derived(Math.min(minWidth, effectiveMaxWidth))
+  let effectiveWidth = $derived(Math.max(effectiveMinWidth, Math.min(effectiveMaxWidth, width)))
+
+  function clampToHost(value: number): number {
+    return Math.max(effectiveMinWidth, Math.min(effectiveMaxWidth, value))
+  }
   let isDragging = $state(false)
 
   function onMouseDown(e: MouseEvent) {
@@ -59,7 +69,7 @@
     isDragging = true
 
     const startX = e.clientX
-    const startWidth = width
+    const startWidth = effectiveWidth
     const rect = panelEl?.getBoundingClientRect()
     if (!rect) return
 
@@ -67,7 +77,7 @@
       const delta = side === 'left'
         ? e.clientX - startX
         : startX - e.clientX
-      width = clamp(startWidth + delta)
+      width = clampToHost(startWidth + delta)
     }
 
     function onMouseUp() {
@@ -100,7 +110,7 @@
 
     if (delta !== 0) {
       e.preventDefault()
-      width = clamp(width + delta)
+      width = clampToHost(effectiveWidth + delta)
       saveWidth(width)
     }
   }
@@ -109,7 +119,7 @@
 <div
   data-testid="resizable-panel"
   class="relative flex shrink-0 h-full overflow-hidden"
-  style="width: {width}px"
+  style="width: {effectiveWidth}px"
   bind:this={panelEl}
 >
   {#if side === 'right'}
@@ -122,9 +132,9 @@
       role="separator"
       aria-orientation="vertical"
       aria-label="Resize {label} panel"
-      aria-valuemin={minWidth}
-      aria-valuemax={maxWidth}
-      aria-valuenow={width}
+      aria-valuemin={effectiveMinWidth}
+      aria-valuemax={effectiveMaxWidth}
+      aria-valuenow={effectiveWidth}
       tabindex="0"
       onmousedown={onMouseDown}
       ondblclick={onDblClick}
@@ -144,9 +154,9 @@
       role="separator"
       aria-orientation="vertical"
       aria-label="Resize {label} panel"
-      aria-valuemin={minWidth}
-      aria-valuemax={maxWidth}
-      aria-valuenow={width}
+      aria-valuemin={effectiveMinWidth}
+      aria-valuemax={effectiveMaxWidth}
+      aria-valuenow={effectiveWidth}
       tabindex="0"
       onmousedown={onMouseDown}
       ondblclick={onDblClick}

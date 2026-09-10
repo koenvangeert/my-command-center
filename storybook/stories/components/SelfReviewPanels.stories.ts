@@ -19,13 +19,13 @@ export const Diff: Story = scenario('diff')
 export const DiffEmpty: Story = scenario('diff', 'empty')
 export const DiffLoading: Story = scenario('diff', 'loading')
 export const DiffFailure: Story = scenario('diff', 'failure')
-export const Feedback: Story = scenario('feedback')
+export const Feedback: Story = scenario('feedback', 'github-comments')
 export const FeedbackEmpty: Story = scenario('feedback', 'empty')
 export const FeedbackAgentBusy: Story = { ...scenario('feedback'), args: { panel: 'feedback', agentStatus: 'running' } }
 export const SendFeedback: Story = {
   ...scenario('feedback'),
   play: async ({ canvasElement, args }) => {
-    await userEvent.click(await within(canvasElement).findByRole('button', { name: 'Send to agent' }))
+    await userEvent.click(await within(canvasElement).findByRole('button', { name: /Send feedback/ }))
     const dialog = within(await within(canvasElement.ownerDocument.body).findByRole('dialog', { name: 'Review the prompt before sending to the agent' }))
     await userEvent.click(dialog.getByRole('button', { name: 'Send to agent' }))
     await expect(args.onSendToAgent).toHaveBeenCalledWith(expect.stringContaining('Please cover the empty-name case too.'))

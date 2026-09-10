@@ -23,6 +23,17 @@ export const Populated: Story = {
     await expect(within(canvasElement).findByText('greet.ts')).resolves.toBeVisible()
   },
 }
+export const LinkedPullRequest: Story = scenario('github-comments')
+export const GithubComments: Story = {
+  ...scenario('github-comments'),
+  name: 'GitHub comments',
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(await canvas.findByRole('tab', { name: /^GitHub comments/ }))
+    const feedback = within(canvas.getByRole('region', { name: 'Feedback panel' }))
+    await expect(feedback.findByText('Please handle whitespace-only names.')).resolves.toBeVisible()
+  },
+}
 export const Empty: Story = scenario('empty')
 export const Loading: Story = scenario('loading')
 export const Failure: Story = {
@@ -41,7 +52,7 @@ export const SendFeedback: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
     await expect(canvas.findByText('greet.ts')).resolves.toBeVisible()
-    await userEvent.click(canvas.getByRole('button', { name: 'Send to agent' }))
+    await userEvent.click(canvas.getByRole('button', { name: /Send feedback/ }))
     const dialog = within(await within(canvasElement.ownerDocument.body).findByRole('dialog', { name: 'Review the prompt before sending to the agent' }))
     await userEvent.click(dialog.getByRole('button', { name: 'Send to agent' }))
     await expect(args.onRunAction).toHaveBeenCalledWith({

@@ -3374,7 +3374,7 @@
       "width": 900,
       "height": 800
     },
-    "ready": "text=greet.ts",
+    "ready": "[aria-label='Changed files panel'] >> text=greet.ts",
     "expectedErrors": []
   },
   {
@@ -3385,7 +3385,7 @@
       "width": 900,
       "height": 800
     },
-    "ready": "text=greet.ts",
+    "ready": "[aria-label='Changed files panel'] >> text=greet.ts",
     "expectedErrors": []
   },
   {
@@ -3408,6 +3408,54 @@
       "height": 1080
     },
     "ready": "text=Feedback sent to agent!",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-self-review--linked-pull-request",
+    "theme": "openforge-light",
+    "viewport": { "width": 1280, "height": 800 },
+    "ready": "text=GitHub comments (1)",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-self-review--linked-pull-request",
+    "theme": "openforge-dark",
+    "viewport": { "width": 1280, "height": 800 },
+    "ready": "text=GitHub comments (1)",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-self-review--github-comments",
+    "theme": "openforge-light",
+    "viewport": { "width": 1280, "height": 800 },
+    "ready": "[aria-label='Feedback panel'] >> text=Please handle whitespace-only names.",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-self-review--github-comments",
+    "theme": "openforge-dark",
+    "viewport": { "width": 1280, "height": 800 },
+    "ready": "[aria-label='Feedback panel'] >> text=Please handle whitespace-only names.",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-self-review--github-comments",
+    "theme": "openforge-light",
+    "viewport": { "width": 900, "height": 800 },
+    "ready": "[aria-label='Feedback panel'] >> text=Please handle whitespace-only names.",
+    "expectedErrors": []
+  },
+  {
+    "catalog": "pages",
+    "story": "pages-self-review--github-comments",
+    "theme": "openforge-dark",
+    "viewport": { "width": 900, "height": 800 },
+    "ready": "[aria-label='Feedback panel'] >> text=Please handle whitespace-only names.",
     "expectedErrors": []
   },
   {
@@ -3964,7 +4012,7 @@
       "width": 1000,
       "height": 720
     },
-    "ready": "text=1 inline comment",
+    "ready": "text=Please handle whitespace-only names.",
     "expectedErrors": []
   },
   {
@@ -3975,7 +4023,7 @@
       "width": 1000,
       "height": 720
     },
-    "ready": "text=1 inline comment",
+    "ready": "text=Please handle whitespace-only names.",
     "expectedErrors": []
   },
   {
@@ -3986,7 +4034,7 @@
       "width": 1000,
       "height": 720
     },
-    "ready": "text=No feedback collected yet",
+    "ready": "button[disabled]:has-text('Send feedback (0)')",
     "expectedErrors": []
   },
   {
@@ -3997,7 +4045,7 @@
       "width": 1000,
       "height": 720
     },
-    "ready": "text=Agent is working",
+    "ready": "button[disabled][title='Agent is currently running']",
     "expectedErrors": []
   },
   {

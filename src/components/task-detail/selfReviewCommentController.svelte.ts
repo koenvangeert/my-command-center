@@ -42,11 +42,16 @@ export function createSelfReviewCommentController(options: SelfReviewCommentCont
     const taskId = options.getTaskId()
     if (synchronizedTaskId !== taskId) {
       synchronizedTaskId = taskId
+      commentSelection.deselectAll()
       hasRequestedAttention = false
     }
     if (commentSelection.unaddressedCount === 0 || hasRequestedAttention) return
     hasRequestedAttention = true
     options.onCommentsNeedAttention?.()
+  }
+
+  function replacePendingInlineComments(comments: ReviewSubmissionComment[]): void {
+    setPendingComments(options.getTaskId(), comments)
   }
 
   function handlePendingInlineCommentsChange(comments: ReviewSubmissionComment[]): void {
@@ -83,6 +88,7 @@ export function createSelfReviewCommentController(options: SelfReviewCommentCont
     resolveRemoteMedia,
     synchronize,
     handlePendingInlineCommentsChange,
+    replacePendingInlineComments,
   }
 }
 

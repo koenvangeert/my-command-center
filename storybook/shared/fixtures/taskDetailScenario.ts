@@ -2,18 +2,18 @@ import * as stores from '../../../src/lib/stores'
 import { selfReviewStateByTask, emptySelfReviewTaskState } from '../../../src/lib/taskScopedSelfReviewState'
 import { agentTerminalSessions } from '../../../src/lib/terminalSessionService'
 import { clearTaskReviewPaneState } from '../../../src/lib/taskReviewPaneState'
-import type { AgentSession, GitStatusSummary } from '../../../src/lib/types'
+import type { AgentSession, GitStatusSummary, PrComment } from '../../../src/lib/types'
 import type { DesktopPtyBufferState } from '../../../src/lib/desktopTerminalTransport'
 import { INITIAL_TASK_RUN_APP_STATE } from '../../../src/components/task-detail/taskRunAppController'
 import type { StoryScenarioDefinition } from '../storyEnvironmentPreview'
 import { createStoryStoreAdapter as seed } from '../environment/storyStoreAdapter'
 import { createStoryTaskAdapter } from '../environment/storyTaskAdapter'
-import { createTask, createProject } from './appFixtures'
+import { createTask, createProject, createPullRequest } from './appFixtures'
 import { createReviewCommit, createReviewDiff, reviewFileContents } from './reviewFixtures'
 
 export type TaskDetailScenario = 'backlog' | 'active' | 'waiting' | 'failed' | 'completed' | 'dependency' | 'terminal' | 'review' | 'long-content'
 
-export type SelfReviewScenario = 'populated' | 'empty' | 'loading' | 'failure' | 'long-content'
+export type SelfReviewScenario = 'populated' | 'github-comments' | 'empty' | 'loading' | 'failure' | 'long-content'
 
 export function taskDetailScenario(kind: TaskDetailScenario = 'active', reviewState: SelfReviewScenario = 'populated') {
   const project = createProject()
@@ -51,6 +51,12 @@ export function taskDetailScenario(kind: TaskDetailScenario = 'active', reviewSt
   const diffs = reviewState === 'empty' || reviewState === 'loading' ? [] : reviewState === 'long-content'
     ? Array.from({ length: 18 }, (_, index) => createReviewDiff(`src/integrations/provider-${index}/greeting-normalization.ts`))
     : [createReviewDiff()]
+  const linkedPr = reviewState === 'github-comments' ? createPullRequest({ ticket_id: task.id }) : null
+  const prComments: PrComment[] = linkedPr ? [{
+    id: 101, pr_id: linkedPr.id, author: 'alex', body: 'Please handle whitespace-only names.',
+    comment_type: 'review_comment', file_path: 'src/greet.ts', line_number: 2,
+    addressed: 0, outdated: 0, created_at: task.createdAt,
+  }] : []
   function batchContents(payload: unknown) {
     const { files } = payload as { files: unknown[] }
     return files.map(() => reviewFileContents)
@@ -74,6 +80,7 @@ export function taskDetailScenario(kind: TaskDetailScenario = 'active', reviewSt
           throw error
         } : diffs,
         get_commit_diff: diffs,
+        get_pr_comments: prComments,
         get_task_commits: reviewState === 'empty' ? [] : [createReviewCommit()],
         get_task_file_contents: reviewFileContents, get_commit_file_contents: reviewFileContents,
         get_task_batch_file_contents: batchContents, get_commit_batch_file_contents: batchContents,
@@ -85,12 +92,12 @@ export function taskDetailScenario(kind: TaskDetailScenario = 'active', reviewSt
       seed(stores.projects, [project]), seed(stores.activeProjectId, project.id),
       seed(stores.currentView, 'board'), seed(stores.selectedTaskId, task.id),
       seed(stores.activeSessions, new Map(session ? [[task.id, session]] : [])),
-      seed(stores.ticketPrs, new Map()), seed(stores.startingTasks, new Set()),
+      seed(stores.ticketPrs, new Map(linkedPr ? [[task.id, [linkedPr]]] : [])), seed(stores.startingTasks, new Set()),
       seed(stores.taskActiveView, new Map([[task.id, kind === 'review' ? 'review' : 'agent']])),
       seed(stores.outOfFocusTaskIdsByProject, new Map()),
       seed(selfReviewStateByTask, new Map([[task.id, {
         ...emptySelfReviewTaskState,
-        pendingInlineComments: kind === 'review' && reviewState === 'populated' ? [{ path: 'src/greet.ts', line: 2, side: 'RIGHT', body: 'Please cover the empty-name case too.' }] : [],
+        pendingInlineComments: kind === 'review' && ['populated', 'github-comments'].includes(reviewState) ? [{ path: 'src/greet.ts', line: 2, side: 'RIGHT', body: 'Please cover the empty-name case too.' }] : [],
       }]])),
       {
         install() { clearTaskReviewPaneState(task.id) },

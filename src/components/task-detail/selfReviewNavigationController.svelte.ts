@@ -25,8 +25,10 @@ export interface SelfReviewNavigationControllerOptions {
 }
 
 export function createSelfReviewNavigationController(options: SelfReviewNavigationControllerOptions) {
-  let fileTreeVisible = $state(true)
-  let sidebarVisible = $state(true)
+  let sidePanelVisible = $state(true)
+  let sidePanelTab = $state<'files' | 'github-comments'>('files')
+  let fileTreeVisible = $derived(sidePanelVisible && sidePanelTab === 'files')
+  let sidebarVisible = $derived(sidePanelVisible && sidePanelTab === 'github-comments')
   let showAddressed = $state(false)
   let repositoryPreview = $state<MarkdownRepositoryLinkTarget | null>(null)
   let attachedDiffViewer: SelfReviewDiffViewerHandle | undefined
@@ -37,6 +39,8 @@ export function createSelfReviewNavigationController(options: SelfReviewNavigati
   function synchronizeTask(taskId: string): void {
     if (synchronizedTaskId === taskId) return
     synchronizedTaskId = taskId
+    sidePanelVisible = true
+    sidePanelTab = 'files'
     repositoryPreview = null
     hasRestoredScroll = false
   }
@@ -96,6 +100,21 @@ export function createSelfReviewNavigationController(options: SelfReviewNavigati
     }
   }
 
+  function selectSidePanelTab(tab: 'files' | 'github-comments'): void {
+    sidePanelTab = tab
+    sidePanelVisible = true
+  }
+
+  function setFileTreeVisible(visible: boolean): void {
+    if (visible) selectSidePanelTab('files')
+    else sidePanelVisible = false
+  }
+
+  function setSidebarVisible(visible: boolean): void {
+    if (visible) selectSidePanelTab('github-comments')
+    else sidePanelVisible = false
+  }
+
   return {
     get fileTreeVisible() { return fileTreeVisible },
     get sidebarVisible() { return sidebarVisible },
@@ -108,10 +127,14 @@ export function createSelfReviewNavigationController(options: SelfReviewNavigati
     restoreDiffScroll,
     selectFile: (filename: string) => { attachedDiffViewer?.scrollToFile?.(filename) },
     focusDiff: () => { attachedDiffViewer?.focusDiff?.() },
-    setFileTreeVisible: (visible: boolean) => { fileTreeVisible = visible },
-    toggleFileTree: () => { fileTreeVisible = !fileTreeVisible },
-    setSidebarVisible: (visible: boolean) => { sidebarVisible = visible },
-    toggleSidebar: () => { sidebarVisible = !sidebarVisible },
+    setFileTreeVisible,
+    toggleFileTree: () => setFileTreeVisible(!fileTreeVisible),
+    setSidebarVisible,
+    toggleSidebar: () => setSidebarVisible(!sidebarVisible),
+    get sidePanelVisible() { return sidePanelVisible },
+    get sidePanelTab() { return sidePanelTab },
+    selectSidePanelTab,
+    toggleSidePanel: () => { sidePanelVisible = !sidePanelVisible },
     setShowAddressed: (value: boolean) => { showAddressed = value },
     openRepositoryPath,
     closeRepositoryPreview,

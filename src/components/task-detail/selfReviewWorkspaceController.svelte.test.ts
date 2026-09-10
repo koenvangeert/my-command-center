@@ -72,9 +72,11 @@ function createController() {
 
 afterEach(() => {
   while (rootCleanups.length > 0) rootCleanups.pop()?.()
+  vi.unstubAllGlobals()
 })
 
 beforeEach(() => {
+  vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
   clearTaskReviewPaneState()
   selfReviewStateByTask.set(new Map())
   ticketPrs.set(new Map())
@@ -205,7 +207,8 @@ describe('SelfReviewWorkspace presentation', () => {
     await waitFor(() => {
       expect(screen.getByRole('region', { name: 'Changed files panel' })).toBeTruthy()
       expect(screen.getByRole('region', { name: 'Code diff panel' })).toBeTruthy()
-      expect(screen.getByRole('region', { name: 'Feedback panel' })).toBeTruthy()
+      expect(screen.getByRole('tab', { name: 'GitHub comments' })).toBeTruthy()
+      expect(screen.queryByRole('region', { name: 'Feedback panel' })).toBeNull()
       expect(screen.queryByRole('button', { name: 'General feedback' })).toBeNull()
       expect(screen.queryByRole('button', { name: 'PR Comments' })).toBeNull()
       expect(screen.getByText('No changes for current selection')).toBeTruthy()

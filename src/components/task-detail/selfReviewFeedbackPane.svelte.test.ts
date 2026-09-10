@@ -8,11 +8,12 @@ describe('self review feedback pane', () => {
     const unaddressedComment = { id: 1 } as PrComment
     const addressedComment = { id: 2 } as PrComment
     const pendingComment = { path: 'src/main.ts' } as ReviewSubmissionComment
-    const deselectAll = vi.fn()
+    const selectedPrCommentIds = new Set([1, 2])
     const selection = {
       unaddressedCount: 1,
       unaddressedComments: [unaddressedComment],
-      deselectAll,
+      selectedPrCommentIds,
+      toggleSelected: (id: number) => selectedPrCommentIds.delete(id),
     } as unknown as CommentSelectionState
     let pendingInlineComments = [pendingComment]
     let showAddressed = false
@@ -29,7 +30,7 @@ describe('self review feedback pane', () => {
         get pendingInlineComments() { return pendingInlineComments },
         markdownImageBaseUrl: null,
         resolveRemoteMedia: vi.fn(),
-        handlePendingInlineCommentsChange: (comments) => { pendingInlineComments = comments },
+        replacePendingInlineComments: (comments) => { pendingInlineComments = comments },
       },
       navigation: {
         get showAddressed() { return showAddressed },
@@ -45,11 +46,11 @@ describe('self review feedback pane', () => {
 
     pane.pullRequest.onShowAddressedChange(true)
     pane.navigation.onCollapse()
-    pane.composer.onSendComplete()
+    pane.composer.onSendComplete([1])
 
     expect(pane.pullRequest.visibleComments).toEqual([unaddressedComment, addressedComment])
     expect(sidebarVisible).toBe(false)
-    expect(deselectAll).toHaveBeenCalledOnce()
+    expect(pane.pullRequest.selection.selectedPrCommentIds).toEqual(new Set([2]))
 
     pane.composer.onPendingInlineCommentsChange([])
     expect(pane.totalCommentCount).toBe(1)

@@ -134,7 +134,7 @@ describe("SelfReviewView pane restoration", () => {
 		await fireEvent.click(screen.getByTitle("Show file tree"));
 
 		await waitFor(() => {
-			expect(screen.getByText("Changed files")).toBeTruthy();
+			expect(screen.getByRole("heading", { name: "Changed files" })).toBeTruthy();
 			expect(screen.getByText("Scope")).toBeTruthy();
 		});
 	});

@@ -9,16 +9,18 @@
     {"tag":"div","context":"class=\"rounded-[var(--of-radius-container)] border border-base-300 bg-base-200/40 p-3 min-h-48 flex flex-col\"","tokens":["min-h-48"],"count":2,"reason":"Feature pane, header, divider or content viewport geometry; not shared control sizing."}
   ],
   "packages/pr-review-ui/src/DiffFileHeader.svelte": [
+    {"tag":"div","context":"class=\"sticky top-0 z-20 w-full flex items-center gap-2 px-4 py-1 bg-base-200 border-b border-base-300 rounded-t-[var(--of-diff-section-radius,var(--of-radius-container))] shadow-sm\"","tokens":["rounded-t-[var(--of-diff-section-radius,var(--of-radius-container))]"],"count":1,"reason":"Diff headers share their section radius; attached workspaces can flatten it without changing buttons or comment cards."},
     {"tag":"div","context":"class=\"flex min-w-0 flex-1 items-center overflow-hidden whitespace-nowrap font-mono text-[13px] text-base-content\"","tokens":["min-w-0"],"count":1,"reason":"Let this flex/grid child shrink and scroll rather than overflow its feature pane."},
     {"tag":"span","context":"class=\"max-w-[40%] min-w-0 overflow-hidden text-ellipsis text-base-content/50 line-through\"","tokens":["max-w-[40%]","min-w-0"],"count":1,"reason":"Reserve the metadata, status glyph or alignment column without sizing a shared control."},
     {"tag":"span","context":"class=\"min-w-0 overflow-hidden text-ellipsis\"","tokens":["min-w-0"],"count":1,"reason":"Let this flex/grid child shrink and scroll rather than overflow its feature pane."}
   ],
   "packages/pr-review-ui/src/DiffFileSection.svelte": [
+    {"tag":"div","context":"class=\"border border-base-300 rounded-[var(--of-diff-section-radius,var(--of-radius-container))]\"","tokens":["rounded-[var(--of-diff-section-radius,var(--of-radius-container))]"],"count":1,"reason":"Keep standalone diff sections rounded while allowing attached workspace sections to share flat pane edges."},
     {"tag":"div","context":"class=\"alert alert-info py-1.5 px-4 rounded-none border-x-0 text-xs\"","tokens":["rounded-none"],"count":1,"reason":"Square shared edges between connected diff rows, inspector sections or inline messages."}
   ],
   "packages/pr-review-ui/src/DiffViewer.svelte": [
     {"tag":"div","context":"class=\"flex flex-col flex-1 min-w-0 min-h-0 h-full overflow-hidden\"","tokens":["min-w-0","min-h-0"],"count":1,"reason":"Let this flex/grid child shrink and scroll rather than overflow its feature pane."},
-    {"tag":"div","context":"class=\"diff-viewer-toolbar flex min-h-10 shrink-0 items-center gap-1 border-b border-base-300 bg-base-200 px-2 py-1\"","tokens":["min-h-10"],"count":1,"reason":"Feature pane, header, divider or content viewport geometry; not shared control sizing."},
+    {"tag":"div","context":"class=\"diff-viewer-toolbar flex min-h-[var(--of-diff-toolbar-height,2.5rem)] shrink-0 flex-wrap items-center gap-1 border-b border-base-300 bg-base-200 px-2 py-1\"","tokens":["min-h-[var(--of-diff-toolbar-height,2.5rem)]"],"count":1,"reason":"Align the attached diff toolbar with the adjacent tab strip, retaining the existing standalone height and narrow-host wrapping."},
     {"tag":"div","context":"class=\"w-px h-5 bg-base-300 mx-1 self-center\"","tokens":["h-5","w-px"],"count":3,"reason":"Feature pane, header, divider or content viewport geometry; not shared control sizing. One-pixel separator between diff toolbar action groups; not a control hit area."},
     {"tag":"div","context":"class=\"w-48\"","tokens":["w-48"],"count":1,"reason":"Feature pane, header, divider or content viewport geometry; not shared control sizing."},
     {"tag":"div","context":"class=\"flex-1 min-h-0 overflow-y-auto overflow-x-hidden bg-base-100 pr-2 focus:outline-none focus-visible:ring-2 focus:ring-2 focus:ring-primary focus:ring-inset\"","tokens":["min-h-0"],"count":1,"reason":"Let this flex/grid child shrink and scroll rather than overflow its feature pane."},
@@ -481,12 +483,12 @@
   "src/components/task-detail/SelfReviewDiffPanel.svelte": [
     {"tag":"section","context":"class=\"flex min-w-0 flex-1 flex-col overflow-hidden bg-base-100\"","tokens":["min-w-0"],"count":1,"reason":"Let this flex/grid child shrink and scroll rather than overflow its feature pane."},
     {"tag":"div","context":"class=\"alert alert-error rounded-none border-x-0 border-t-0 py-2 text-sm\"","tokens":["rounded-none"],"count":1,"reason":"Square shared edges between connected diff rows, inspector sections or inline messages."},
-    {"tag":"div","context":"class=\"w-px h-5 bg-base-300 mx-1 self-center\"","tokens":["h-5","w-px"],"count":1,"reason":"Feature pane, header, divider or content viewport geometry; not shared control sizing. One-pixel separator between self-review toolbar action groups; not a control hit area."},
     {"tag":"p","context":"class=\"text-sm m-0 max-w-md\"","tokens":["max-w-md"],"count":1,"reason":"Self-review empty-state explanation uses a bounded reading column."}
   ],
   "src/components/task-detail/SelfReviewFeedbackPanel.svelte": [
-    {"tag":"div","context":"class=\"flex min-h-10 shrink-0 items-center justify-between gap-2 border-b border-base-300 bg-base-100 px-2\"","tokens":["min-h-10"],"count":1,"reason":"Feature pane, header, divider or content viewport geometry; not shared control sizing."},
-    {"tag":"div","context":"class=\"flex min-w-0 items-baseline gap-2\"","tokens":["min-w-0"],"count":1,"reason":"Let this flex/grid child shrink and scroll rather than overflow its feature pane."}
+    {"tag":"div","context":"class=\"flex min-h-[calc(var(--of-control-height-touch)+0.5rem+var(--of-border-width))] shrink-0 flex-wrap items-center gap-2 border-b border-base-300 bg-base-200 px-3 py-1\"","tokens":["min-h-[calc(var(--of-control-height-touch)+0.5rem+var(--of-border-width))]"],"count":1,"reason":"Align GitHub selection controls with the adjacent diff file header while retaining touch-target height and allowing wrapping."},
+    {"tag":"section","context":"class=\"flex h-full min-w-0 flex-col overflow-hidden bg-base-100\"","tokens":["min-w-0"],"count":1,"reason":"GitHub comment content shrinks inside the shared review panel without widening the workspace."},
+    {"tag":"div","context":"class=\"min-h-0 flex-1 overflow-y-auto p-3\"","tokens":["min-h-0"],"count":1,"reason":"Scroll the comment list within the space below its selection controls."}
   ],
   "src/components/task-detail/SelfReviewRepositoryPreview.svelte": [
     {"tag":"section","context":"class=\"absolute inset-0 z-20 flex min-h-0 flex-col overflow-hidden bg-base-100\"","tokens":["min-h-0"],"count":1,"reason":"Let this flex/grid child shrink and scroll rather than overflow its feature pane."},
@@ -499,12 +501,17 @@
     {"tag":"p","context":"class=\"max-w-xl break-all text-sm text-base-content/65\"","tokens":["max-w-xl"],"count":1,"reason":"Repository preview path is bounded for readable wrapping."},
     {"tag":"p","context":"class=\"max-w-xl text-sm text-error\"","tokens":["max-w-xl"],"count":1,"reason":"Repository preview error is bounded for readable wrapping."}
   ],
+  "src/components/task-detail/SelfReviewSidePanel.svelte": [
+    {"tag":"div","context":"class=\"flex h-full min-w-0 flex-col overflow-hidden border-l border-base-300 bg-base-100\"","tokens":["min-w-0"],"count":1,"reason":"Shared review tab content stays within the host-bounded resizable panel."}
+  ],
   "src/components/task-detail/SelfReviewWorkspace.svelte": [
-    {"tag":"div","context":"class=\"relative flex min-w-0 flex-1 overflow-hidden\"","tokens":["min-w-0"],"count":1,"reason":"Let this flex/grid child shrink and scroll rather than overflow its feature pane."}
+    {"tag":"div","context":"class=\"flex h-full w-full min-w-0 flex-col overflow-hidden\"","tokens":["min-w-0"],"count":1,"reason":"Keep horizontal overflow inside the review workspace rather than widening the task host."},
+    {"tag":"div","context":"class=\"flex min-h-0 min-w-0 flex-1 overflow-hidden\"","tokens":["min-h-0","min-w-0"],"count":1,"reason":"Fit the diff and shared panel below the review bar without workspace-level scrolling."},
+    {"tag":"div","context":"class=\"relative flex min-w-0 flex-1 overflow-hidden\"","tokens":["min-w-0"],"count":1,"reason":"The diff flexes beside the bounded panel; horizontal code scrolling stays inside the diff."}
   ],
   "src/components/task-detail/SendToAgentPanel.svelte": [
-    {"tag":"div","context":"class=\"{layout === 'sidebar' ? 'flex flex-col gap-3 border-t border-base-300 bg-base-100 p-3' : 'flex min-h-14 items-center justify-between gap-4 border-t border-base-300 bg-base-200 px-6 py-3'}\"","tokens":["min-h-14"],"count":1,"reason":"Feature pane, header, divider or content viewport geometry; not shared control sizing."},
-    {"tag":"div","context":"class=\"flex items-center gap-2 flex-1 min-w-0\"","tokens":["min-w-0"],"count":1,"reason":"Let this flex/grid child shrink and scroll rather than overflow its feature pane."}
+    {"tag":"div","context":"class=\"flex min-w-0 flex-wrap items-center gap-2\"","tokens":["min-w-0"],"count":1,"reason":"Allow review actions to wrap within the workspace."},
+    {"tag":"div","context":"class=\"flex min-w-0 flex-wrap items-center gap-2.5\"","tokens":["min-w-0"],"count":1,"reason":"Keep feedback actions inside narrow hosts by wrapping the action row."}
   ],
   "src/components/task-detail/SourceTicketLink.svelte": [
     {"tag":"span","context":"class=\"w-3 shrink-0\"","tokens":["w-3"],"count":1,"reason":"Reserve the metadata, status glyph or alignment column without sizing a shared control."},

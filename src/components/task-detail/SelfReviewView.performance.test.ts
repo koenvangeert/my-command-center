@@ -30,7 +30,7 @@ describe("SelfReviewView integration performance", () => {
 		await screen.findByText("Loading diff...");
 
 		expect(screen.getByText("Scope")).toBeTruthy();
-		expect(screen.getByText("Changed files")).toBeTruthy();
+		expect(screen.getByRole("heading", { name: "Changed files" })).toBeTruthy();
 
 		resolveTaskDiff([baseDiff]);
 	});
@@ -119,7 +119,7 @@ describe("SelfReviewView integration performance", () => {
 		await fireEvent.click(screen.getByTitle(secondCommit.message));
 
 		expect(screen.getByText("Scope")).toBeTruthy();
-		expect(screen.getByText("Changed files")).toBeTruthy();
+		expect(screen.getByRole("heading", { name: "Changed files" })).toBeTruthy();
 		expect(screen.getByText("Loading diff...")).toBeTruthy();
 
 		resolveSecondCommit(secondCommitDiff);

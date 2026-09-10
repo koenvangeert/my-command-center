@@ -17,9 +17,11 @@ describe("SelfReviewView review workspace", () => {
 
 		expect(await screen.findByRole("region", { name: "Changed files panel" })).toBeTruthy();
 		expect(screen.getByRole("region", { name: "Code diff panel" })).toBeTruthy();
-		expect(screen.getByRole("region", { name: "Feedback panel" })).toBeTruthy();
+		expect(screen.queryByRole("region", { name: "Feedback panel" })).toBeNull();
 		expect(screen.getByRole("button", { name: "Collapse Changed files panel" })).toBeTruthy();
-		expect(screen.getByRole("button", { name: "Collapse Feedback panel" })).toBeTruthy();
+		await fireEvent.click(screen.getByRole('tab', { name: 'GitHub comments' }));
+		expect(screen.getByRole("region", { name: "Feedback panel" })).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Collapse review panel" })).toBeTruthy();
 	});
 
 	it("moves keyboard focus between the Review File Tree and diff with Tab and Shift+Tab", async () => {

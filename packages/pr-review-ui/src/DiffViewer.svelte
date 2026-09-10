@@ -25,6 +25,8 @@
   import { getGitHubMarkdownImageBaseUrl, getGitHubMarkdownLinkUrl } from './githubMarkdown'
   import DiffFileSection from './DiffFileSection.svelte'
   import { onDestroy, type Snippet } from 'svelte'
+  // Attached hosts can set --of-diff-toolbar-height, --of-diff-section-radius,
+  // and --of-diff-section-top-border-width without restyling controls or comments.
   interface BaseProps {
     files?: PrFileDiff[]
     existingComments?: ReviewComment[]
@@ -321,7 +323,7 @@
   tabindex="-1"
   onkeydown={search.handleRootKeydown}
 >
-  <div class="diff-viewer-toolbar flex min-h-10 shrink-0 items-center gap-1 border-b border-base-300 bg-base-200 px-2 py-1">
+  <div class="diff-viewer-toolbar flex min-h-[var(--of-diff-toolbar-height,2.5rem)] shrink-0 flex-wrap items-center gap-1 border-b border-base-300 bg-base-200 px-2 py-1">
     {#if onToggleFileTree}
       <IconButton
         label={fileTreeVisible ? 'Hide file tree' : 'Show file tree'}
