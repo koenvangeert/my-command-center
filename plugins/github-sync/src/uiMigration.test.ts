@@ -22,7 +22,7 @@ const MIGRATION_TARGETS: readonly {
 
 const NATIVE_CONTROL_ALLOWLIST: Readonly<Record<string, readonly RegExp[]>> = {
   'review/pr/WalkthroughStepNavigation.svelte': [
-    /aria-current=\{index === currentIndex \? 'step' : undefined\}/,
+    /aria-current=\{index === activeStepIndex \? 'step' : undefined\}/,
   ],
   'task/PullRequestCard.svelte': [
     /aria-label=\{`#\$\{prNumber\(pr\)\} \$\{pr\.title\}`\}/,
