@@ -39,7 +39,7 @@ beforeAll(async () => {
   <button style="position:fixed;bottom:24px;right:24px" onclick={() => clicks++}>Outside {clicks}</button>
   <style>
     :global(:root) {
-      --of-space1: 4px; --of-space2: 8px; --of-space3: 12px;
+      --of-space1: 2px; --of-space2: 4px; --of-space3: 6px; --of-space4: 8px; --of-space5: 12px;
       --of-border-width: 1px; --of-border-interactive: #777; --of-border-strong: #777; --of-border: #aaa;
       --of-radius-control: 4px; --of-radius-overlay: 6px; --of-radius-round: 99px;
       --of-field: white; --of-text: #111; --of-text-muted: #666; --of-surface-raised: white;

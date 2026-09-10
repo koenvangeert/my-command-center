@@ -232,7 +232,7 @@
     max-height: 200px;
     overflow-y: auto;
     margin: 0;
-    padding: var(--of-space1) 0;
+    padding: var(--of-space2) 0;
     list-style: none;
   }
 
@@ -240,7 +240,7 @@
     display: flex;
     min-width: 0;
     align-items: center;
-    gap: var(--of-space2);
+    gap: var(--of-space4);
   }
 
   .searchable-select-option-value {
@@ -261,9 +261,10 @@
   }
 
   .searchable-select-empty {
-    padding: var(--of-space2) var(--of-space3);
+    padding: var(--of-space4) var(--of-space5);
     color: var(--of-text-muted);
-    font-size: var(--of-text-xs);
+    font-size: var(--of-text-sm);
+    line-height: calc(4 / 3);
   }
 
   .searchable-select {
