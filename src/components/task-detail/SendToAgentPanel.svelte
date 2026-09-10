@@ -18,6 +18,8 @@
 
   let { agentStatus, onSendToAgent, onRefresh, selectedPrComments = [], pendingInlineComments = [], onPendingInlineCommentsChange, onSendComplete }: Props = $props()
 
+  const isMac = navigator.platform.startsWith('Mac')
+
   let successMessage = $state<string | null>(null)
   let showPromptDialog = $state(false)
   let promptDraft = $state('')
@@ -66,6 +68,13 @@
     )).map(comment => comment.id))
   }
 
+  function handlePromptKeydown(event: KeyboardEvent) {
+    if (event.isComposing || event.repeat || event.altKey || event.shiftKey) return
+    if (event.key !== 'Enter' || !(isMac ? event.metaKey : event.ctrlKey)) return
+    confirmSend()
+    return true
+  }
+
   function cancelPromptDialog() {
     showPromptDialog = false
   }
@@ -112,6 +121,7 @@
 {#if showPromptDialog}
   <Modal
     onClose={cancelPromptDialog}
+    onKeydown={handlePromptKeydown}
     maxWidth="760px"
     initialFocus="textarea"
     ariaLabel="Review the prompt before sending to the agent"
@@ -152,11 +162,13 @@
           size="sm"
           data-testid="confirm-send-prompt"
           onclick={confirmSend}
+          aria-keyshortcuts={isMac ? 'Meta+Enter' : 'Control+Enter'}
           disabled={isAgentBusy || !promptDraft.trim()}
           title={isAgentBusy ? `Agent is currently ${agentStatus}` : undefined}
         >
           <Send size={17} strokeWidth={1.8} aria-hidden="true" />
           Send to agent
+          <kbd aria-hidden="true" class="ml-1 whitespace-nowrap text-[11px]">{isMac ? '⌘↵' : 'Ctrl+Enter'}</kbd>
         </Button>
       </div>
     </div>
