@@ -138,7 +138,9 @@
       }
       // Remember where repos live for next time (clone + new-repo modes).
       if (mode !== 'local' && parentDir.trim()) {
-        void setConfig(DEFAULT_REPOS_DIR_KEY, parentDir.trim())
+        void setConfig(DEFAULT_REPOS_DIR_KEY, parentDir.trim()).catch((e: unknown) => {
+          console.error('Failed to save default repositories directory:', e)
+        })
       }
       successMessage = `Project created. Opening ${project.name}.`
       await tick()
