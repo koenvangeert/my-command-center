@@ -12,8 +12,8 @@ pub(super) fn openforge_bin_dir(home_dir: &Path) -> PathBuf {
 
 fn build_cli_launcher(cli_path: &Path) -> String {
     format!(
-        "#!/bin/sh\nexec node \"{}\" \"$@\"\n",
-        cli_path.to_string_lossy()
+        "#!/bin/sh\nexec node '{}' \"$@\"\n",
+        cli_path.to_string_lossy().replace('\'', "'\"'\"'")
     )
 }
 
@@ -80,6 +80,74 @@ mod tests {
         let obsolete_segment = ["mcp", "server"].join("-");
         assert!(!content.contains(&obsolete_segment));
         assert!(content.contains("exec node"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn installed_launcher_executes_literal_paths_and_forwards_arguments() {
+        use std::os::unix::fs::PermissionsExt;
+        use std::process::Command;
+
+        for directory in [
+            "config",
+            "config with spaces",
+            "$(> injected)",
+            "`> injected`",
+            "$LAUNCHER_TEST_EXPANSION",
+            "double\"quote",
+            "single'quote",
+            "back\\slash",
+            "line\nbreak",
+            "'\"$(> injected)`> injected`$LAUNCHER_TEST_EXPANSION\\",
+        ] {
+            let tmp = tempfile::tempdir().unwrap();
+            let config = tmp.path().join(directory);
+            let payload = openforge_cli_path(&config);
+            fs::create_dir_all(payload.parent().unwrap()).unwrap();
+            fs::write(&payload, "printf '%s\\0' \"$0\" \"$@\"\nexit 37\n").unwrap();
+
+            // Stand in for Node so this shell-boundary test needs no Node installation.
+            let node = tmp.path().join("node");
+            fs::write(&node, "#!/bin/sh\nexec /bin/sh \"$@\"\n").unwrap();
+            fs::set_permissions(&node, fs::Permissions::from_mode(0o755)).unwrap();
+            let launcher = install_cli_launcher(&tmp.path().join("home"), &config).unwrap();
+            let args = [
+                "",
+                "two words",
+                "'\"$HOME`> argument-injected`$(> argument-injected)\\",
+                "*",
+            ];
+            let output = Command::new(&launcher)
+                .current_dir(tmp.path())
+                .env_clear()
+                .env("PATH", tmp.path())
+                .env("LAUNCHER_TEST_EXPANSION", "expanded")
+                .args(args)
+                .output()
+                .unwrap();
+
+            assert!(
+                !tmp.path().join("injected").exists(),
+                "command ran for {directory:?}"
+            );
+            assert!(!tmp.path().join("argument-injected").exists());
+            assert_eq!(
+                output.status.code(),
+                Some(37),
+                "payload failed for {directory:?}: {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            let mut expected = payload.as_os_str().as_encoded_bytes().to_vec();
+            expected.push(0);
+            for arg in args {
+                expected.extend_from_slice(arg.as_bytes());
+                expected.push(0);
+            }
+            assert_eq!(
+                output.stdout, expected,
+                "arguments changed for {directory:?}"
+            );
+        }
     }
 
     #[test]
