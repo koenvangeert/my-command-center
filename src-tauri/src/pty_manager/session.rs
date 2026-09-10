@@ -40,6 +40,8 @@ pub(super) struct TerminalSessions {
         std::sync::Arc<tokio::sync::Mutex<std::collections::HashMap<(String, u64), bool>>>,
     #[cfg(test)]
     resize_start_gate: std::sync::Arc<std::sync::Mutex<Option<super::ResizeStartGate>>>,
+    #[cfg(test)]
+    resize_model_gate: std::sync::Arc<std::sync::Mutex<Option<super::ResizeStartGate>>>,
 }
 
 pub(super) struct ManagedRecovery {
@@ -139,6 +141,8 @@ impl TerminalSessions {
             )),
             #[cfg(test)]
             resize_start_gate: std::sync::Arc::new(std::sync::Mutex::new(None)),
+            #[cfg(test)]
+            resize_model_gate: std::sync::Arc::new(std::sync::Mutex::new(None)),
         }
     }
 
@@ -164,9 +168,16 @@ impl TerminalSessions {
     }
 
     #[cfg(test)]
-    fn pause_before_resize(&self) {
-        let gate = self
-            .resize_start_gate
+    pub(super) fn set_resize_model_gate(&self, gate: super::ResizeStartGate) {
+        *self
+            .resize_model_gate
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(gate);
+    }
+
+    #[cfg(test)]
+    fn pause_resize(gate: &std::sync::Mutex<Option<super::ResizeStartGate>>) {
+        let gate = gate
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
             .take();
@@ -395,15 +406,22 @@ impl TerminalSessions {
                 // look up a successor or hold the sessions map during PTY I/O.
                 tokio::task::spawn_blocking(move || {
                     #[cfg(test)]
-                    test_sessions.pause_before_resize();
-                    master
+                    Self::pause_resize(&test_sessions.resize_start_gate);
+                    // Keep PTY and model resize submissions in the same order.
+                    // Both mutex contention and model backpressure stay on this
+                    // blocking worker, never on a Tokio executor thread.
+                    let master = master
                         .lock()
-                        .unwrap_or_else(|poisoned| poisoned.into_inner())
+                        .unwrap_or_else(|poisoned| poisoned.into_inner());
+                    master
                         .resize(size)
                         .map_err(|error| TerminalSessionFailure::Resize(error.to_string()))?;
+                    #[cfg(test)]
+                    Self::pause_resize(&test_sessions.resize_model_gate);
                     if let Some(terminal_model) = terminal_model {
                         terminal_model.resize(columns, rows);
                     }
+                    drop(master);
                     Ok(())
                 })
                 .await

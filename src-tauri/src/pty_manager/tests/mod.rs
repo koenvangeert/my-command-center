@@ -81,3 +81,4 @@ mod lifecycle;
 mod manager;
 mod output_processing;
 mod pid_cleanup;
+mod resize;
