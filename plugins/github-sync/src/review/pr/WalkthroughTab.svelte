@@ -13,13 +13,7 @@
   import Button from '@openforge-app/plugin-sdk/ui/Button.svelte'
   import IconButton from '@openforge-app/plugin-sdk/ui/IconButton.svelte'
   import { ChevronDown, ChevronUp, RefreshCw } from '@lucide/svelte'
-  import { parseAndValidateWalkthroughSteps } from '../../lib/walkthroughParse'
-  import {
-    buildSyntheticStepFiles,
-    buildWalkthroughStepList,
-    clampStepIndex,
-    isWalkthroughStale,
-  } from '../../lib/walkthroughViewState'
+  import { buildSyntheticStepFiles, isWalkthroughStale } from '../../lib/walkthroughViewState'
   import {
     loadWalkthroughStepDetailsExpanded,
     saveWalkthroughStepDetailsExpanded,
@@ -74,17 +68,10 @@
 
   let aiThreads = $derived(props.aiThreads ?? [])
   let pendingReplies = $derived(props.pendingReplies ?? [])
-  let parsedSteps = $derived<PrWalkthroughStep[] | null>(
-    lifecycle.walkthrough?.status === 'ready'
-      ? parseAndValidateWalkthroughSteps(lifecycle.walkthrough.steps_json, props.files)
-      : null,
-  )
-  let stepEntries = $derived(parsedSteps ? buildWalkthroughStepList(parsedSteps) : [])
+  let stepEntries = $derived(lifecycle.stepEntries)
   let totalSteps = $derived(stepEntries.length)
-  let clampedStepIndex = $derived(
-    parsedSteps ? clampStepIndex(lifecycle.activeStepIndex, totalSteps) : 0,
-  )
-  let activeEntry = $derived(stepEntries[clampedStepIndex] ?? null)
+  let activeStepIndex = $derived(lifecycle.activeStepIndex)
+  let activeEntry = $derived(stepEntries[activeStepIndex] ?? null)
   let isFinalStep = $derived(activeEntry?.kind === 'submit')
   let isTicketStep = $derived(activeEntry?.kind === 'ticket')
   let activeStep = $derived<PrWalkthroughStep | null>(
@@ -120,13 +107,13 @@
   let lastFocusedStepId: string | null = null
   $effect(() => {
     const id = props.focusStepId
-    const steps = parsedSteps
+    const steps = lifecycle.steps
     if (!id || !steps || id === lastFocusedStepId) return
     const conceptIndex = steps.findIndex(s => s.id === id)
     if (conceptIndex === -1) return
     lastFocusedStepId = id
     // Step entries are [ticket, ...concepts, submit]; the ticket occupies index 0.
-    lifecycle.activeStepIndex = clampStepIndex(conceptIndex + 1, totalSteps)
+    lifecycle.activeStepIndex = conceptIndex + 1
   })
 
   function toggleStepDetails(): void {
@@ -137,18 +124,18 @@
 </script>
 
 <div class="flex flex-col h-full min-h-0 overflow-hidden">
-  {#if (lifecycle.isLoading || lifecycle.isStarting) && !lifecycle.walkthrough}
+  {#if lifecycle.view === 'loading'}
     <div class="flex flex-col items-center justify-center flex-1 gap-3 text-base-content/50 text-sm">
       <span class="loading loading-spinner loading-md text-primary"></span>
       <span>Loading walkthrough…</span>
     </div>
-  {:else if lifecycle.loadError}
+  {:else if lifecycle.view === 'loadError'}
     <div class="flex flex-col items-center justify-center flex-1 gap-3 text-error text-sm text-center p-5">
       <span class="text-5xl">⚠</span>
       <span>{lifecycle.loadError}</span>
       <Button variant="ghost" size="sm" onclick={lifecycle.loadCached}>Retry</Button>
     </div>
-  {:else if !lifecycle.walkthrough}
+  {:else if lifecycle.view === 'absent'}
     <div class="flex flex-col items-center justify-center flex-1 gap-4 text-center p-8 max-w-xl mx-auto">
       <h3 class="text-lg font-semibold text-base-content m-0">Walk me through this PR</h3>
       <p class="text-sm text-base-content/60 m-0">
@@ -158,7 +145,7 @@
         {lifecycle.isStarting ? 'Starting…' : 'Generate walkthrough'}
       </Button>
     </div>
-  {:else if lifecycle.walkthrough.status === 'generating'}
+  {:else if lifecycle.view === 'generating'}
     <div class="flex flex-col items-center justify-center flex-1 gap-3 text-base-content/60 text-sm">
       <span class="loading loading-spinner loading-md text-primary"></span>
       <span>The agent is reading the diff and assembling steps…</span>
@@ -167,13 +154,13 @@
         <Button variant="danger" size="xs" onclick={lifecycle.stop}>Stop</Button>
       </div>
     </div>
-  {:else if lifecycle.walkthrough.status === 'error'}
+  {:else if lifecycle.view === 'failed'}
     <div class="flex flex-col items-center justify-center flex-1 gap-3 text-error text-sm text-center p-5">
       <span class="text-5xl">⚠</span>
-      <span>{lifecycle.walkthrough.error_message ?? 'The walkthrough failed.'}</span>
+      <span>{lifecycle.walkthrough?.error_message ?? 'The walkthrough failed.'}</span>
       <Button variant="ghost" size="sm" onclick={lifecycle.regenerate}>Try again</Button>
     </div>
-  {:else if !parsedSteps || parsedSteps.length === 0}
+  {:else if lifecycle.view === 'unaligned'}
     <div class="flex flex-col items-center justify-center flex-1 gap-3 text-base-content/60 text-sm text-center p-5">
       <p class="m-0">The walkthrough was generated but couldn't be aligned with the current diff.</p>
       <Button variant="ghost" size="sm" onclick={lifecycle.regenerate}>Regenerate</Button>
@@ -193,7 +180,7 @@
     <div class="flex items-start gap-2 px-4 {stepDetailsExpanded ? 'py-2.5' : 'py-1'} border-b border-base-300 shrink-0">
       <div class="flex flex-col gap-1.5 min-w-0 flex-1">
         <div class="flex items-baseline gap-2 min-w-0">
-          <span class="text-[11px] font-semibold uppercase tracking-wider text-primary tabular-nums shrink-0">Step {clampedStepIndex + 1}</span>
+          <span class="text-[11px] font-semibold uppercase tracking-wider text-primary tabular-nums shrink-0">Step {activeStepIndex + 1}</span>
           <span class="text-[10px] font-medium uppercase tracking-wider text-base-content/40 shrink-0">of {totalSteps}</span>
           <h3 class="text-sm font-semibold text-base-content m-0 leading-snug min-w-0 {stepDetailsExpanded ? '' : 'truncate'}">{stepTitle}</h3>
         </div>

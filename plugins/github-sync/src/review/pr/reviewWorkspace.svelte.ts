@@ -169,8 +169,12 @@ export function createReviewWorkspace(api: FrontendOpenForgeAPI, getContext: () 
     get postReview() { return postReviewModel },
     handleKeydown(event: KeyboardEvent) {
       if (list.handleFilterKeydown(event)) return
-      if (selectedPr.current) selection.handleKeydown(event)
-      else list.handleKeydown(event)
+      if (!selectedPr.current) {
+        list.handleKeydown(event)
+        return
+      }
+      if (walkthrough.handleKeydown(event)) return
+      selection.handleKeydown(event)
     },
   }
 }

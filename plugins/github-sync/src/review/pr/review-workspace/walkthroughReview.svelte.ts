@@ -1,10 +1,13 @@
 import { untrack } from 'svelte'
 import type { PrFileDiff, ReviewPullRequest } from '@openforge-app/plugin-sdk/domain'
+import { isInputFocused } from '../../../lib/domUtils'
 import { parseAndValidateWalkthroughSteps } from '../../../lib/walkthroughParse'
-import { buildWalkthroughStepList } from '../../../lib/walkthroughViewState'
+import { buildWalkthroughStepList, clampStepIndex } from '../../../lib/walkthroughViewState'
 import type { GithubSyncPrReviewClient } from '../githubSyncClient'
 import type { Walkthroughs } from './useWalkthroughPolling.svelte'
 import { useWalkthroughTicketCoverage } from './useWalkthroughTicketCoverage.svelte'
+
+export type WalkthroughView = 'loading' | 'loadError' | 'absent' | 'generating' | 'failed' | 'unaligned' | 'ready'
 
 export function createWalkthroughReview(
   walkthroughs: Walkthroughs,
@@ -16,6 +19,23 @@ export function createWalkthroughReview(
   let activeStepIndex = $state(0)
   let retainedHead = $state('')
   let lastPrKey = ''
+  // Separate derived: polling replaces the status object every tick, which would re-parse an unchanged diff.
+  let walkthrough = $derived(walkthroughs.status(getPr()).walkthrough)
+  let steps = $derived(
+    walkthrough?.status === 'ready'
+      ? parseAndValidateWalkthroughSteps(walkthrough.steps_json, getFiles())
+      : null,
+  )
+  let stepEntries = $derived(steps ? buildWalkthroughStepList(steps) : [])
+  let view = $derived.by<WalkthroughView>(() => {
+    const status = walkthroughs.status(getPr())
+    if ((status.isLoading || status.isStarting) && !walkthrough) return 'loading'
+    if (status.loadError) return 'loadError'
+    if (!walkthrough) return 'absent'
+    if (walkthrough.status === 'generating') return 'generating'
+    if (walkthrough.status === 'error') return 'failed'
+    return steps ? 'ready' : 'unaligned'
+  })
   const prKey = () => {
     const pr = getPr()
     return pr ? `${pr.id}:${pr.head_sha}` : ''
@@ -61,6 +81,10 @@ export function createWalkthroughReview(
     if (getPr()?.id === pr.id && getPr()?.head_sha === pr.head_sha) await regenerate()
   }
 
+  function setActiveStepIndex(value: number): void {
+    activeStepIndex = clampStepIndex(value, stepEntries.length)
+  }
+
   $effect(() => {
     const key = prKey()
     if (key === lastPrKey) return
@@ -83,31 +107,38 @@ export function createWalkthroughReview(
     untrack(() => { void ticketCoverage.load() })
   })
 
+  function handleKeydown(event: KeyboardEvent): boolean {
+    if (view !== 'ready' || !isVisible() || isInputFocused()) return false
+    if (event.metaKey || event.ctrlKey || event.altKey) return false
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return false
+    event.preventDefault()
+    setActiveStepIndex(activeStepIndex + (event.key === 'ArrowLeft' ? -1 : 1))
+    return true
+  }
+
   return {
     get available() { return walkthroughs.selectedReady || (!!retainedHead && retainedHead === prKey()) },
     get walkthrough() { return walkthroughs.status(getPr()).walkthrough },
-    get isLoading() { return walkthroughs.status(getPr()).isLoading },
     get isStarting() { return walkthroughs.status(getPr()).isStarting },
     get loadError() { return walkthroughs.status(getPr()).loadError },
-    get activeStepIndex() { return activeStepIndex },
-    set activeStepIndex(value: number) { activeStepIndex = value },
+    get view() { return view },
+    get steps() { return steps },
+    get stepEntries() { return stepEntries },
+    get activeStepIndex() { return clampStepIndex(activeStepIndex, stepEntries.length) },
+    set activeStepIndex(value: number) { setActiveStepIndex(value) },
     // Rail-matching labels for step-anchored questions ("Step 2 · <title>"). Numbers
     // match the walkthrough rail exactly (ticket is step 1, so the first concept is
     // step 2) by reusing the same entry list the rail builds. Consumed by the
     // questions panel; missing ids fall back to a generic label there.
     get stepLabelById() {
-      const wt = walkthroughs.status(getPr()).walkthrough
       const labels = new Map<string, { number: number; title: string }>()
-      if (!wt || wt.status !== 'ready') return labels
-      const steps = parseAndValidateWalkthroughSteps(wt.steps_json, getFiles())
-      if (!steps) return labels
-      buildWalkthroughStepList(steps).forEach((entry, index) => {
+      stepEntries.forEach((entry, index) => {
         if (entry.kind === 'concept') labels.set(entry.step.id, { number: index + 1, title: entry.step.title })
       })
       return labels
     },
     ticketCoverage,
-    loadCached, generate, stop, regenerate, setIssueKey,
+    loadCached, generate, stop, regenerate, setIssueKey, handleKeydown,
   }
 }
 

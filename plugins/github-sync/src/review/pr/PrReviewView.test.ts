@@ -1340,20 +1340,8 @@ describe('PrReviewView walkthrough generation', () => {
   })
 
   it('reveals the Walkthrough tab only for a PR whose walkthrough is ready for the current head sha', async () => {
-    const readyWalkthrough: PrWalkthrough = {
-      pr_id: basePr.id,
-      head_sha: basePr.head_sha,
-      walkthrough_session_key: 'k',
-      status: 'ready',
-      steps_json: JSON.stringify({
-        steps: [{ id: 's1', title: 'Step one', summary: 'x', files: [{ filename: 'src/main.rs', hunk_indexes: null }] }],
-      }),
-      error_message: null,
-      created_at: 0,
-      updated_at: 0,
-    }
     const registry = createOpenForgeRegistryFake({ pluginId: 'com.openforge.github-sync', projectId: 'project-1' })
-    registerPrReviewBackends(registry, () => [baseDiff], [basePr], [], async () => undefined, '', () => readyWalkthrough)
+    registerPrReviewBackends(registry, () => [baseDiff], [basePr], [], async () => undefined, '', () => readyWalkthrough(['Step one']))
 
     renderPrReviewView(registry)
 
@@ -1365,18 +1353,8 @@ describe('PrReviewView walkthrough generation', () => {
   })
 
   it('does not initialize an inactive walkthrough tab', async () => {
-    const readyWalkthrough: PrWalkthrough = {
-      pr_id: basePr.id,
-      head_sha: basePr.head_sha,
-      walkthrough_session_key: 'k',
-      status: 'ready',
-      steps_json: JSON.stringify({ steps: [] }),
-      error_message: null,
-      created_at: 0,
-      updated_at: 0,
-    }
     const registry = createOpenForgeRegistryFake({ pluginId: 'com.openforge.github-sync', projectId: 'project-1' })
-    registerPrReviewBackends(registry, () => [baseDiff], [basePr], [], async () => undefined, '', () => readyWalkthrough)
+    registerPrReviewBackends(registry, () => [baseDiff], [basePr], [], async () => undefined, '', () => readyWalkthrough([]))
 
     renderPrReviewView(registry)
 
@@ -1391,6 +1369,109 @@ describe('PrReviewView walkthrough generation', () => {
       expect(registry.calls.backendInvocations.some((call) => call.method === 'getPrTicket')).toBe(true),
     )
   })
+
+  it.each(['Escape', 'q'])('returns to the list on %s from the Walkthrough tab without a render error', async (key) => {
+    const reported: string[] = []
+    const collect = (event: ErrorEvent) => { reported.push(event.message) }
+    window.addEventListener('error', collect)
+
+    try {
+      await openWalkthroughTab()
+      await fireEvent.keyDown(window, { key })
+
+      await waitFor(() => expect(get(selectedReviewPr)).toBeNull())
+      expect(reported).toEqual([])
+      expect(await screen.findByText('Fix authentication middleware')).toBeTruthy()
+    } finally {
+      window.removeEventListener('error', collect)
+    }
+  })
+
+  it('steps through the walkthrough with the arrow keys', async () => {
+    await openWalkthroughTab()
+
+    await fireEvent.keyDown(window, { key: 'ArrowRight' })
+    expect(await screen.findByText('Step one')).toBeTruthy()
+
+    await fireEvent.keyDown(window, { key: 'ArrowLeft' })
+    expect(await screen.findByText('Ticket coverage')).toBeTruthy()
+  })
+
+  it('holds the first and last steps when the arrow keys run past them', async () => {
+    await openWalkthroughTab()
+
+    await fireEvent.keyDown(window, { key: 'ArrowLeft' })
+    expect(await screen.findByText('Ticket coverage')).toBeTruthy()
+
+    for (let press = 0; press < 5; press++) await fireEvent.keyDown(window, { key: 'ArrowRight' })
+    expect(await screen.findByText('Review & submit')).toBeTruthy()
+  })
+
+  it('leaves the step keys unclaimed on the other detail tabs', async () => {
+    await openWalkthroughTab()
+    await fireEvent.click(screen.getByRole('tab', { name: 'Overview' }))
+
+    expect(pressArrowRight().defaultPrevented).toBe(false)
+
+    await fireEvent.click(screen.getByRole('tab', { name: 'Walkthrough' }))
+    expect(await screen.findByText('Ticket coverage')).toBeTruthy()
+  })
+
+  it('leaves the step keys unclaimed while the walkthrough reports a load error', async () => {
+    let loadFails = false
+    await openWalkthroughTab(() => {
+      if (loadFails) throw new Error('offline')
+      return readyWalkthrough(['Step one', 'Step two'])
+    })
+
+    loadFails = true
+    await fireEvent.click(screen.getByRole('tab', { name: 'Overview' }))
+    await fireEvent.click(screen.getByRole('tab', { name: 'Walkthrough' }))
+    await screen.findByText('Failed to load walkthrough.')
+
+    expect(pressArrowRight().defaultPrevented).toBe(false)
+  })
+
+  function readyWalkthrough(stepTitles: readonly string[]): PrWalkthrough {
+    return {
+      pr_id: basePr.id,
+      head_sha: basePr.head_sha,
+      walkthrough_session_key: 'k',
+      status: 'ready',
+      steps_json: JSON.stringify({
+        steps: stepTitles.map((title, index) => ({
+          id: `s${index + 1}`,
+          title,
+          summary: 'x',
+          files: [{ filename: 'src/main.rs', hunk_indexes: null }],
+        })),
+      }),
+      error_message: null,
+      created_at: 0,
+      updated_at: 0,
+    }
+  }
+
+  function pressArrowRight(): KeyboardEvent {
+    const event = new KeyboardEvent('keydown', { key: 'ArrowRight', cancelable: true, bubbles: true })
+    window.dispatchEvent(event)
+    return event
+  }
+
+  async function openWalkthroughTab(
+    getWalkthrough: () => PrWalkthrough | null = () => readyWalkthrough(['Step one', 'Step two']),
+  ) {
+    const registry = createOpenForgeRegistryFake({ pluginId: 'com.openforge.github-sync', projectId: 'project-1' })
+    registerPrReviewBackends(registry, () => [baseDiff], [basePr], [], async () => undefined, '', getWalkthrough)
+
+    renderPrReviewView(registry)
+
+    const title = await screen.findByText('Fix authentication middleware')
+    await fireEvent.click(requireElement(title.closest('button'), HTMLButtonElement))
+    await fireEvent.click(await screen.findByRole('tab', { name: 'Walkthrough' }))
+    await screen.findByText('Ticket coverage')
+    return registry
+  }
 
   it('hides the Walkthrough tab when the open PR has no ready walkthrough', async () => {
     const registry = createOpenForgeRegistryFake({ pluginId: 'com.openforge.github-sync', projectId: 'project-1' })
