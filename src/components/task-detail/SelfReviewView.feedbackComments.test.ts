@@ -285,7 +285,7 @@ describe("SelfReviewView — hide addressed comments", () => {
 		const resizeHandle = screen.getByRole("separator", { name: "Resize Review panel" });
 		const initialWidth = Number(resizeHandle.getAttribute("aria-valuenow"));
 
-		await fireEvent.keyDown(resizeHandle, { key: "ArrowLeft" });
+		await fireEvent.keyDown(resizeHandle, { key: "ArrowRight" });
 
 		expect(Number(resizeHandle.getAttribute("aria-valuenow"))).toBe(initialWidth + 10);
 	});
