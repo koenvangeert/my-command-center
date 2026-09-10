@@ -1,4 +1,8 @@
 {
+  "src/components/BranchDivergenceModal.svelte": [
+    {"tag":"style","context":".divergence-heading","tokens":["min-width: 0"],"count":1,"reason":"Allow long branch names to wrap within the modal header beside its close button."},
+    {"tag":"style","context":".commit-comparison","tokens":["min-height: 0"],"count":1,"reason":"Allow the commit body to shrink into a scroll viewport while header and decisions remain visible."}
+  ],
   "packages/plugin-sdk/src/ui/PluginSidebarLink.svelte": [
     {"tag":"style","context":".of-plugin-sidebar-link-label","tokens":["min-width: 0"],"count":1,"reason":"Let this flex/grid child shrink and scroll rather than overflow its feature pane."},
     {"tag":"style","context":"button","tokens":["width: calc(100% - (var(--of-space2) * 2))"],"count":1,"reason":"Sidebar link fills the navigation lane minus theme-owned side gutters; it does not set a fixed control width."}
