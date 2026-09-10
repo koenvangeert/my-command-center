@@ -122,6 +122,34 @@ describe('ResizablePanel', () => {
     expect(localStorage.getItem('resizable-panel:test-persist')).toBe('300')
   })
 
+  it.each(['left', 'right'] as const)('releases drag listeners on %s panel unmount without saving', async (side) => {
+    localStorage.setItem('resizable-panel:test-unmount', '250')
+    const { container, unmount } = render(ResizablePanel, {
+      props: { storageKey: 'test-unmount', defaultWidth: 250, side },
+    })
+    const added = vi.spyOn(document, 'addEventListener')
+    const removed = vi.spyOn(document, 'removeEventListener')
+    try {
+      await fireEvent.mouseDown(getHandle(container), { clientX: 250 })
+      await fireEvent.mouseMove(document, { clientX: side === 'left' ? 300 : 200 })
+      expect(getPanel(container).style.width).toBe('300px')
+      const dragListeners = added.mock.calls.filter(([type]) => type === 'mousemove' || type === 'mouseup')
+      expect(dragListeners.map(([type]) => type).sort()).toEqual(['mousemove', 'mouseup'])
+
+      unmount()
+      for (const [type, listener] of dragListeners) {
+        expect(removed).toHaveBeenCalledWith(type, listener)
+      }
+      await fireEvent.mouseMove(document, { clientX: 350 })
+      await fireEvent.mouseUp(document)
+      expect(localStorage.getItem('resizable-panel:test-unmount')).toBe('250')
+    } finally {
+      await fireEvent.mouseUp(document)
+      added.mockRestore()
+      removed.mockRestore()
+    }
+  })
+
   it('respects minWidth during drag', async () => {
     const { container } = render(ResizablePanel, {
       props: { storageKey: 'test-min', defaultWidth: 250, minWidth: 150, side: 'left' },

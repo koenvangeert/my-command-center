@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Snippet } from 'svelte'
+  import { onDestroy, type Snippet } from 'svelte'
   import { parseStrictFiniteNumber } from '../numberParsing'
 
   interface Props {
@@ -63,9 +63,13 @@
     return Math.max(effectiveMinWidth, Math.min(effectiveMaxWidth, value))
   }
   let isDragging = $state(false)
+  let cleanupDrag: (() => void) | undefined
+
+  onDestroy(() => cleanupDrag?.())
 
   function onMouseDown(e: MouseEvent) {
     e.preventDefault()
+    cleanupDrag?.()
     isDragging = true
 
     const startX = e.clientX
@@ -81,10 +85,15 @@
     }
 
     function onMouseUp() {
-      isDragging = false
+      cleanupDrag?.()
       saveWidth(width)
+    }
+
+    cleanupDrag = () => {
+      isDragging = false
       document.removeEventListener('mousemove', onMouseMove)
       document.removeEventListener('mouseup', onMouseUp)
+      cleanupDrag = undefined
     }
 
     document.addEventListener('mousemove', onMouseMove)
